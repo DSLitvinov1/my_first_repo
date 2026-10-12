@@ -26,6 +26,14 @@ class RealSelfImprovementTests(unittest.TestCase):
             if item['id']=='NF-DEV-01':item['state']='verified'
             elif item['id']=='NF-DEV-02':item['state']='active'
             else:item['state']='pending'
+    def test_15_real_atomic_publisher_uses_model_approved_path_gate(self):
+        import publish_real_improvement as publisher
+        self.assertTrue(publisher.enforce_generated_policy(SAFE_CANDIDATE))
+    def test_16_real_atomic_publisher_rejects_policy_denial(self):
+        import publish_real_improvement as publisher
+        candidate="def approved_change_path(path):\n    return False\n"
+        with self.assertRaises(ValueError):
+            publisher.enforce_generated_policy(candidate)
     def test_01_real_candidate_contract(self):
         self.assertIsNotNone(real.validate_source(SAFE_CANDIDATE))
     def test_02_independent_real_repo_path_policy(self):
