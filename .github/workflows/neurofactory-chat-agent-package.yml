@@ -1,0 +1,53 @@
+name: Neurofactory Chat Agent Install Package
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/development/chat_agent/**'
+      - '.github/workflows/neurofactory-chat-agent-package.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-chat-extension-package
+  cancel-in-progress: false
+jobs:
+  extension:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Fetch public isolated source without publishing credentials
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Validate extension and test no-duplicate safety
+        run: |
+          node --check bridge/neurofactory/development/chat_agent/background.js
+          node --check bridge/neurofactory/development/chat_agent/content.js
+          node --check bridge/neurofactory/development/chat_agent/test_sender.js
+          node bridge/neurofactory/development/chat_agent/test_sender.js
+      - name: Package only installable extension files
+        run: |
+          python - <<'PY'
+          import json,pathlib,zipfile,hashlib
+          base=pathlib.Path('bridge/neurofactory/development/chat_agent')
+          manifest=json.loads((base/'manifest.json').read_text('utf-8'))
+          assert manifest['manifest_version']==3
+          assert set(manifest['host_permissions'])=={'https://chatgpt.com/*','https://api.github.com/*'}
+          assert set(manifest['permissions'])=={'storage','alarms','tabs'}
+          assert 'webRequest' not in manifest['permissions'] and 'cookies' not in manifest['permissions']
+          files=('manifest.json','background.js','content.js','README.md')
+          out=pathlib.Path('neurofactory-chat-agent-chrome-edge.zip')
+          with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
+              for name in files:z.write(base/name,name)
+          print('EXTENSION_PACKAGE_READY',out,'SHA256',hashlib.sha256(out.read_bytes()).hexdigest())
+          PY
+      - name: Publish tested Chrome or Edge installation bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-chat-agent-chrome-edge
+          path: neurofactory-chat-agent-chrome-edge.zip
+          retention-days: 14
+          if-no-files-found: error
