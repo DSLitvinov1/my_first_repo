@@ -44,7 +44,7 @@ def validate(plan):
             text = t.get(key)
             if not isinstance(text, str) or not 25 <= len(text) <= 2400:
                 raise PlanError("Missing or oversized milestone content")
-            if re.search(r"(?:token|токен|секрет|парол|api.key|https?://|\bexec\b)", text, re.IGNORECASE):
+            if re.search(r"(?:https?://|\bexec\b|(?:token|токен|секрет|парол\w*|api.key)\s*[:=]\s*\S+)", text, re.IGNORECASE):
                 raise PlanError("Sensitive or dangerous instruction")
         if not isinstance(t.get("acceptance"), list) or not t["acceptance"]:
             raise PlanError("Missing acceptance criteria")
