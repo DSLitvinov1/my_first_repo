@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "stage": "NF-DEV-01",
+  "kind": "independent_real_development_review",
+  "scope": "neurofactory_only",
+  "windows_bridge_run": 38318013640,
+  "request": "Review current verified self-development control plane; approve and advance only if both 21 cloud tests and Windows bridge checks passed.",
+  "free_only": true
+}
