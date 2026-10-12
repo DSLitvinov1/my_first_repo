@@ -32,7 +32,7 @@
   "milestones": [
     {
       "id": "NF-DEV-01",
-      "state": "active",
+      "state": "verified",
       "title": "Автоматический планировщик развития нейрозавода",
       "objective": "Создать версионированный план, формировать очередное практическое задание, блокировать повторы и записывать подтверждение выполнения без изменения чужих проектов.",
       "acceptance": [
@@ -42,11 +42,28 @@
         "Текст следующего задания записывается в защищённую исходящую очередь",
         "Проверки проходят на резервном Windows-мосте"
       ],
-      "prompt": "Развивай только нейрозавод. Доделай автоматический планировщик, контроль зависимостей, защиту от повторных заданий, сохранение результатов и выдачу очередного промпта. Проверяй реальные тесты и факты GitHub. Не запускай новые учебные приложения и не изменяй другие проекты."
+      "prompt": "Развивай только нейрозавод. Доделай автоматический планировщик, контроль зависимостей, защиту от повторных заданий, сохранение результатов и выдачу очередного промпта. Проверяй реальные тесты и факты GitHub. Не запускай новые учебные приложения и не изменяй другие проекты.",
+      "evidence": {
+        "repo": "DSLitvinov1/my_first_repo",
+        "branch": "neurofactory-public-lab-20261012",
+        "commit_sha": "fc75881ae2fa51a1c5f2047fe49d670263cf9247",
+        "tests_passed": true,
+        "independent_review": true,
+        "reviewer": "qwen3:4b",
+        "review_verdict": "REVIEW_OK",
+        "verification_mode": "authorized_connector_checked",
+        "cloud_test_run": 38319773458,
+        "windows_bridge_run": 38319734198,
+        "independent_review_run": 38319439757,
+        "source_sha256": "370958591230e874163299f319cd3e58c6e774efa1b4ad9c41dd6c33882543a1",
+        "independent_review_proof": "bridge/neurofactory/development/independent-review-nf-dev-01.json",
+        "browser_handoff_checks": 9,
+        "browser_live_delivery_verified": false
+      }
     },
     {
       "id": "NF-DEV-02",
-      "state": "pending",
+      "state": "active",
       "title": "Передача следующего промпта в конкретный чат",
       "depends_on": [
         "NF-DEV-01"
