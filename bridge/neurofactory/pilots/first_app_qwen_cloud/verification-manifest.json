@@ -1,0 +1,38 @@
+{
+  "status": "two_models_reviewed",
+  "mode": "ephemeral_cloud",
+  "models": [
+    {
+      "name": "qwen2.5-coder:1.5b",
+      "module": "pricing",
+      "validated_cases": 4,
+      "free_ram_gb": 13.56
+    },
+    {
+      "name": "qwen2.5-coder:1.5b",
+      "module": "discount",
+      "validated_cases": 4,
+      "free_ram_gb": 13.4
+    }
+  ],
+  "paid_services_used": false,
+  "production_projects_modified": false,
+  "started_at": "2026-10-12T11:24:46.551642+00:00",
+  "tests": {
+    "passed": 10,
+    "total": 10,
+    "smoke_output": "405"
+  },
+  "reviewer": {
+    "model": "qwen3:4b",
+    "verdict": "REVIEW_OK"
+  },
+  "hashes": {
+    "pricing.py": "f15cb7e9d1075ad5819386b146a774d6f9404e750293fcec7a22daea9e09c78f",
+    "discount.py": "5150a2e7cf66fd99343b81aaa734a6191cf218eb82d8fbac4180c0aaa2fbf9c9",
+    "main.py": "d006c27b456c9a6beaa30fc13e8ed11e45e4a47f15f4e134e994aab1298fd54e",
+    "test_app.py": "6592940b81e1eb88faf8bdb742bb9c6fcdde0b74c7779f1632f7df3ee0481e1f",
+    "README.md": "026c8981531ae589b546c64f367c7c8dc72998cb6d0461f7b9b9a53362058126"
+  },
+  "elapsed_seconds": 17.9
+}
