@@ -59,10 +59,12 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(calls.length,1,'tampered prompt must not send');
   remote=job;
   let handlers=[];
-  function probe(href,editor){
+  function probe(href,editor,options={}){
     handlers=[];
     const fakeDoc={
+      activeElement:options.focused?editor:null,
       querySelector(selector){
+        if(options.generating && selector.includes('stop-button'))return {disabled:false};
         if(selector.includes('prompt-textarea'))return editor;
         if(selector.includes('send-button'))return {disabled:false,click(){calls.push({sent:true})}};
         return null
@@ -86,9 +88,13 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(answer.submitted,false,'wrong conversation must be denied');
   answer=await probe(conversation,{innerText:'I am typing',textContent:'I am typing',focus(){}});
   assert.equal(answer.submitted,false,'occupied user input must not be overwritten');
+  answer=await probe(conversation,clean(),{focused:true});
+  assert.equal(answer.submitted,false,'focused composer must be left alone');
+  answer=await probe(conversation,clean(),{generating:true});
+  assert.equal(answer.submitted,false,'must not interrupt existing ChatGPT response');
   const before=calls.length;
   answer=await probe(conversation,clean());
   assert.equal(answer.submitted,true,'known composer can click send');
   assert.equal(calls.length,before+1,'exactly one UI click');
-  console.log('9 browser handoff checks passed; actual ChatGPT send not tested');
+  console.log('11 browser handoff checks passed; actual ChatGPT send not tested');
 })().catch(e=>{console.error(e);process.exitCode=1});
