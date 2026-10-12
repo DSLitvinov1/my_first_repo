@@ -12,7 +12,7 @@ def ask(model,prompt,structured=False):
     CALLS+=1
     if CALLS>14:raise RuntimeError("Model-call safety limit reached")
     body={"model":model,"prompt":prompt,"stream":False,"think":False,"keep_alive":"0",
-          "options":{"num_ctx":4096,"num_predict":1700,"num_thread":2,"num_gpu":0,"temperature":0}}
+          "options":{"num_ctx":4096,"num_predict":1700,"num_thread":4,"num_gpu":0,"temperature":0}}
     if structured:body["format"]="json"
     request=urllib.request.Request("http://127.0.0.1:11434/api/generate",
                  data=json.dumps(body).encode(),method="POST",
