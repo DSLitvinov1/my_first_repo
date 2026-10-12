@@ -89,7 +89,7 @@ class RoadmapTests(unittest.TestCase):
         self.assertEqual(entry["delivery"],"no_chat_send")
         self.assertEqual(entry["prompt"],"")
     def test_21_never_allow_account_credentials(self):
-        self.p["milestones"][0]["prompt"]+=" токен секрет"
+        self.p["milestones"][0]["prompt"]+=" токен=НЕ_ДОПУСКАЕТСЯ"
         with self.assertRaises(core.PlanError):core.validate(self.p)
 
 if __name__=="__main__":
