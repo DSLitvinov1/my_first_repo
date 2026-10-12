@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Neurofactory Chat Handoff",
+  "version": "0.1.0",
+  "description": "One-time pairing to a specific ChatGPT conversation; sends only approved next roadmap prompt once per milestone.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://api.github.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Привязать нейрозавод к открытому чату (повторное нажатие отключит отправку)"
+  }
+}
