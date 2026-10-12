@@ -146,6 +146,8 @@ def run():
                 feedback=type(error).__name__+": "+str(error)
                 print("WRITER_RETRY:",filename,feedback[:300],flush=True)
                 if attempt:raise
+    if len({hashlib.sha256(written[name].encode("utf-8")).hexdigest() for name in NAMES})!=len(NAMES):
+        raise ValueError("Different modules cannot contain identical AI-authored source")
     ok,log=tests()
     for fix in range(3):
         if ok:break
