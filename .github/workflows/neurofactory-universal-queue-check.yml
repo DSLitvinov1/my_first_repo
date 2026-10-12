@@ -20,5 +20,5 @@ jobs:
           persist-credentials: false
       - name: Validate syntax and serial queue behavior without a model
         run: |
-          python -m py_compile bridge/neurofactory/universal_queue/queue_core.py bridge/neurofactory/universal_queue/test_queue_core.py
-          python -B -m unittest discover -s bridge/neurofactory/universal_queue -p test_queue_core.py -v
+          python -m py_compile bridge/neurofactory/universal_queue/queue_core.py bridge/neurofactory/universal_queue/test_queue_core.py bridge/neurofactory/universal_queue/new_app_factory.py bridge/neurofactory/universal_queue/queue_runner.py bridge/neurofactory/universal_queue/test_two_apps.py
+          python -B -m unittest discover -s bridge/neurofactory/universal_queue -p 'test_*.py' -v
