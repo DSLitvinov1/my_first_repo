@@ -10,8 +10,8 @@
       "id": "NFQ-0001",
       "brief": "Создай учебный конвертер температуры Цельсия и Фаренгейта без интернета",
       "kind": "temperature_converter",
-      "state": "publishing",
-      "stage": "publishing",
+      "state": "verified_done",
+      "stage": "closed",
       "attempts": 0,
       "suite_size": 10,
       "proof": {
@@ -23,7 +23,8 @@
           "README.md": "7e858fe5b7fc6f39d4b22362955ab1d9c0a3edb2ba1648b6f4a4713f3c91358a"
         },
         "tests": 10,
-        "reviewer": "qwen3:4b"
+        "reviewer": "qwen3:4b",
+        "manifest_sha256": "7a8c97ff0532ccd69f71e511212b56cf4beb110921a84069639422adac5f432f"
       },
       "error": ""
     },
@@ -69,6 +70,11 @@
       "at": "2026-10-12T22:30:37.998374+00:00",
       "id": "NFQ-0001",
       "event": "publishing"
+    },
+    {
+      "at": "2026-10-12T22:30:42.243142+00:00",
+      "id": "NFQ-0001",
+      "event": "verified_done"
     }
   ],
   "next_number": 3
