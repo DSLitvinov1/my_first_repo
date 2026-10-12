@@ -1,0 +1,9 @@
+{
+  "purpose": "noncommercial_synthetic_queue_security_tests",
+  "run": 1,
+  "approved_files": [
+    "test_task_engine.py",
+    "task_engine.py"
+  ],
+  "paid_cloud": false
+}
