@@ -1,0 +1,56 @@
+name: Neurofactory Russian CRM Autonomous Build
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/cloud/crm-launch-request.json'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-public-synthetic-one-model-at-a-time
+  cancel-in-progress: false
+jobs:
+  synthetic_first_app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout public synthetic branch without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Assert public repository and standard free Linux runner
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          test "$REPO" = "DSLitvinov1/my_first_repo"
+          test "$RUNNER_OS" = "Linux"
+          python - <<'PY'
+          import json,urllib.request
+          url="https://api.github.com/repos/DSLitvinov1/my_first_repo"
+          with urllib.request.urlopen(url,timeout=15) as r: data=json.load(r)
+          assert data["private"] is False and data["visibility"]=="public", "Free public status not confirmed"
+          print("Verified free standard hosted public repository")
+          PY
+      - name: Start offline Qwen service on temporary Linux runner
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:3b
+          ollama pull qwen3:4b
+      - name: Plan and generate three modules from Russian requirement
+        env:
+          NEUROFACTORY_PUBLIC_FREE_RUN_CONFIRMED: "yes"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+        run: python bridge/neurofactory/cloud/ru_crm_factory.py
+      - name: Save only verified synthetic files on isolated public branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python bridge/neurofactory/cloud/publish_verified_ru_crm.py
