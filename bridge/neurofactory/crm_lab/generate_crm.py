@@ -73,8 +73,14 @@ def run():
             plan=json.loads(ask(ARCHITECT,planning,True))
             if sorted(x["file"] for x in plan["modules"])!=sorted(NAMES):
                 raise ValueError("Unknown modules")
-            if any(not isinstance(x["public_api"],str) for x in plan["modules"]):
-                raise ValueError("Missing planned interfaces")
+            for entry in plan["modules"]:
+                public_api=entry.get("public_api")
+                if isinstance(public_api,(list,dict)):
+                    entry["public_api"]=json.dumps(public_api,ensure_ascii=False)
+                elif not isinstance(public_api,str) or not public_api.strip():
+                    raise ValueError("Missing planned interfaces")
+                if not isinstance(entry.get("responsibility"),str) or not entry["responsibility"].strip():
+                    raise ValueError("Missing module responsibility")
             break
         except Exception as err:
             if attempt:raise
