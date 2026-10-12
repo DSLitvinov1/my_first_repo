@@ -1,5 +1,5 @@
 """Publish only independently reviewed synthetic Russian CRM modules in the lab branch."""
-import base64,hashlib,json,os,urllib.error,urllib.request
+import base64,hashlib,json,os,time,urllib.error,urllib.request
 from pathlib import Path
 import generate_crm as generator
 
@@ -34,6 +34,8 @@ def integrity_check(manifest):
         raise ValueError("Invalid generated module list")
     if set(manifest.get("sha256",{}))!=set(GENERATED):
         raise ValueError("Missing source file hash")
+    if len(set(manifest["sha256"].values()))!=len(GENERATED):
+        raise ValueError("Duplicated source modules are not a verified multi-file app")
     for file in GENERATED:
         p=generator.DIR/file
         if p.is_symlink() or p.resolve().parent!=generator.DIR.resolve():
@@ -42,6 +44,7 @@ def integrity_check(manifest):
         if hashlib.sha256(b).hexdigest()!=manifest["sha256"][file]:
             raise ValueError("Generated code changed since model verification")
         generator.guard(b.decode("utf-8"))
+        generator.required_contract(file,b.decode("utf-8"))
     plan=json.loads((generator.DIR/"architecture-plan.json").read_text(encoding="utf-8"))
     if sorted(x["file"] for x in plan["modules"])!=sorted(GENERATED):
         raise ValueError("Model planning proof missing")
@@ -57,10 +60,24 @@ def put_idempotent(token,path,raw):
         raise ValueError("An existing published file has different content; no overwrite")
     except urllib.error.HTTPError as error:
         if error.code!=404:raise
-    request(token,path,"PUT",{"branch":BRANCH,
+    payload={"branch":BRANCH,
         "message":"neurofactory: verified synthetic CRM "+path[len(DEST):],
-        "content":base64.b64encode(raw).decode()})
-    return "created"
+        "content":base64.b64encode(raw).decode()}
+    for attempt in range(4):
+        try:
+            request(token,path,"PUT",payload)
+            return "created"
+        except urllib.error.HTTPError as error:
+            if error.code!=409 or attempt==3:raise
+            try:
+                current=request(token,path,"GET")
+                if base64.b64decode(current.get("content","").replace("\\n",""))==raw:
+                    return "unchanged"
+                raise ValueError("Conflict produced divergent content; overwrite denied")
+            except urllib.error.HTTPError as check_error:
+                if check_error.code!=404:raise
+            time.sleep(1.5*(attempt+1))
+    raise ValueError("Publication conflict retry limit")
 
 def publish():
     token=os.environ.get("GITHUB_TOKEN")
