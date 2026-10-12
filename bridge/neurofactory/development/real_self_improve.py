@@ -7,7 +7,7 @@ import ast, hashlib, json, os, pathlib, re, sys, urllib.request
 ROOT=pathlib.Path(__file__).resolve().parent
 OUT=pathlib.Path(os.environ.get("RUNNER_TEMP","/tmp"))/"nf-real-improvement"
 OUT.mkdir(parents=True,exist_ok=True)
-WRITER="qwen2.5-coder:1.5b"
+WRITER="qwen2.5-coder:3b"
 REVIEWER="qwen3:4b"
 GOOD=[
 "bridge/neurofactory/development/control_plane.py",
