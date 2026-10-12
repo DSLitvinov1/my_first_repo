@@ -1,0 +1,54 @@
+name: Neurofactory Autonomous Russian CRM Trial
+on:
+  push:
+    branches: [neurofactory-crm-autonomous-20261012]
+    paths:
+      - 'bridge/neurofactory/crm_lab/crm-launch-request.json'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-public-synthetic-autonomous-crm
+  cancel-in-progress: false
+jobs:
+  create_crm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout synthetic-only branch without publishing credentials
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-crm-autonomous-20261012
+          persist-credentials: false
+      - name: Confirm GitHub public free standard runner
+        run: |
+          test "$GITHUB_REPOSITORY" = "DSLitvinov1/my_first_repo"
+          test "$RUNNER_OS" = "Linux"
+          python - <<'PY'
+          import json,urllib.request
+          with urllib.request.urlopen("https://api.github.com/repos/DSLitvinov1/my_first_repo",timeout=20) as r:
+              data=json.load(r)
+          assert data["private"] is False and data["visibility"] == "public"
+          print("Public synthetic free standard Linux runner confirmed")
+          PY
+      - name: Install two local Qwen models on temporary cloud computer
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &)
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:3b
+          ollama pull qwen3:4b
+      - name: Self-plan, write, repair and independently review Russian CRM
+        env:
+          CRM_PUBLIC_FREE_CONFIRMED: "yes"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+        run: python bridge/neurofactory/crm_lab/generate_crm.py
+      - name: Save only fully verified synthetic CRM in separate GitHub branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python bridge/neurofactory/crm_lab/publish_crm.py
