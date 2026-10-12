@@ -107,6 +107,15 @@ def test_evidence(evidence):
     commit = evidence.get("commit_sha")
     if not isinstance(commit, str) or not re.fullmatch(r"[a-f0-9]{40}", commit):
         raise PlanError("Expected immutable verified commit SHA")
+    if evidence.get("reviewer") != "qwen3:4b" or evidence.get("review_verdict") != "REVIEW_OK":
+        raise PlanError("Separate second-agent verdict missing")
+    if evidence.get("verification_mode") != "authorized_connector_checked":
+        raise PlanError("External workflow results must be checked by authorized repository access")
+    for key in ("cloud_test_run", "windows_bridge_run", "independent_review_run"):
+        if not isinstance(evidence.get(key), int) or evidence[key] < 1000000:
+            raise PlanError("Specific run identity required: " + key)
+    if evidence["cloud_test_run"] == evidence["windows_bridge_run"]:
+        raise PlanError("Separate cloud and Windows check runs required")
     return True
 
 def complete(plan, task_id, evidence):
