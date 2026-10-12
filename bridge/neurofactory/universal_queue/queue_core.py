@@ -16,7 +16,7 @@ MAX_REPAIRS = 3
 MAX_TEXT_LENGTH = 1800
 SUITES = {"mini_crm": 20, "order_calculator": 10, "packaging_calculator": 10}
 FORBIDDEN = (
-    r"https?://", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", r"\b(?:api.?key|private.?key|парол[ьи]|токен|секрет)\b",
+    r"https?://", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", r"\b(?:api.?key|private.?key|парол\w*|токен\w*|секрет\w*)\b",
     r"\b(?:telegram|whatsapp|gmail|production|продакшн|боев(?:ой|ую|ые)|оплат[ауые]|платеж[иа])\b",
 )
 
