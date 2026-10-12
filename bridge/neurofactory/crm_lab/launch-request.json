@@ -1,6 +1,6 @@
 {
   "purpose": "real autonomous three-file Russian-spec synthetic CRM",
-  "run_number": 2,
+  "run_number": 3,
   "source_files_must_be_generated_by_ai": [
     "storage.py",
     "crm.py",
@@ -11,12 +11,14 @@
   "public_standard_free_runner": true,
   "private_client_data": false,
   "untouched_working_projects": true,
-  "trigger_reason": "Retry after accepting valid JSON-array or object interface declarations from the first architect agent",
+  "trigger_reason": "Do not accept duplicated application modules; require 12 interface checks, real 20 acceptance tests, independent agent review and guarded publisher",
   "safety": {
     "synthetic_only": true,
     "public_free_standard_runner_only": true,
     "no_private_projects": true,
     "independent_acceptance_tests": 20,
     "reviewer_required": true
-  }
+  },
+  "previous_result": "20 tests passed but AI generated duplicate monolithic modules; GitHub returned 409 after partial unverified writes, removed for safety",
+  "stop_if_unverified": true
 }
