@@ -1,0 +1,12 @@
+{
+  "task": "Create noncommercial fake-data CRM from a natural Russian brief",
+  "first_and_second_apps_already_verified": [
+    38242338060,
+    38242878423
+  ],
+  "use_existing_standard_free_public_runner": true,
+  "model_authors_all_app_modules": true,
+  "external_tests_written_separately": true,
+  "third_party_model_review_required": true,
+  "run": 1
+}
