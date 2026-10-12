@@ -10,7 +10,7 @@
       "id": "NFQ-0001",
       "brief": "Создай учебный конвертер температуры Цельсия и Фаренгейта без интернета",
       "kind": "temperature_converter",
-      "state": "pending",
+      "state": "writing",
       "stage": "writer",
       "attempts": 0,
       "suite_size": 10,
@@ -39,6 +39,11 @@
       "at": "2026-10-12T22:28:00Z",
       "id": "NFQ-0002",
       "event": "queued"
+    },
+    {
+      "at": "2026-10-12T22:30:18.446604+00:00",
+      "id": "NFQ-0001",
+      "event": "started"
     }
   ],
   "next_number": 3
