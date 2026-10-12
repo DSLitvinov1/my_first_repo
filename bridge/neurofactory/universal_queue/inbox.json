@@ -5,7 +5,41 @@
   "paid_services": false,
   "production_changes": false,
   "network_effects": false,
-  "tasks": [],
-  "events": [],
-  "next_number": 1
+  "tasks": [
+    {
+      "id": "NFQ-0001",
+      "brief": "Создай учебный конвертер температуры Цельсия и Фаренгейта без интернета",
+      "kind": "temperature_converter",
+      "state": "pending",
+      "stage": "writer",
+      "attempts": 0,
+      "suite_size": 10,
+      "proof": {},
+      "error": ""
+    },
+    {
+      "id": "NFQ-0002",
+      "brief": "Создай учебный расчёт топлива для поездки с расходом и ценой за литр",
+      "kind": "fuel_trip_estimator",
+      "state": "pending",
+      "stage": "writer",
+      "attempts": 0,
+      "suite_size": 10,
+      "proof": {},
+      "error": ""
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-10-12T22:28:00Z",
+      "id": "NFQ-0001",
+      "event": "queued"
+    },
+    {
+      "at": "2026-10-12T22:28:00Z",
+      "id": "NFQ-0002",
+      "event": "queued"
+    }
+  ],
+  "next_number": 3
 }
