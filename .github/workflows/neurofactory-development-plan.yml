@@ -1,0 +1,74 @@
+name: Neurofactory Real Development Planning
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/development/roadmap.json'
+      - 'bridge/neurofactory/development/control_plane.py'
+      - 'bridge/neurofactory/development/test_control_plane.py'
+      - 'bridge/neurofactory/development/chat_agent/**'
+      - '.github/workflows/neurofactory-development-plan.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-real-roadmap
+  cancel-in-progress: false
+jobs:
+  plan:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read only neurofactory public branch
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Run self-development validation, stop test replays
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_*.py' -v
+          python -B bridge/neurofactory/development/control_plane.py --check --out "$RUNNER_TEMP/neurofactory-prompt.json"
+          if command -v node >/dev/null; then
+            find bridge/neurofactory/development/chat_agent -name '*.js' -type f -exec node --check {} \;
+          fi
+      - name: Publish only the newest verified-roadmap prompt to a bounded GitHub outbox
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROMPT_FILE: ${{ runner.temp }}/neurofactory-prompt.json
+        run: |
+          python - <<'PY'
+          import base64,json,os,pathlib,urllib.error,urllib.request
+          repo="DSLitvinov1/my_first_repo"
+          branch="neurofactory-public-lab-20261012"
+          path="bridge/neurofactory/development/chat_outbox.json"
+          api="https://api.github.com/repos/"+repo+"/contents/"+path
+          local=pathlib.Path(os.environ["PROMPT_FILE"]).read_bytes()
+          data=json.loads(local)
+          assert data.get("schema")==1
+          assert data.get("destination_conversation") is None
+          assert data.get("auto_send_enabled") is False
+          assert data.get("created_from_roadmap") is True
+          headers={"Authorization":"Bearer "+os.environ["GITHUB_TOKEN"],
+                   "Accept":"application/vnd.github+json","User-Agent":"NeurofactoryRoadmapOutbox"}
+          request=urllib.request.Request(api+"?ref="+branch,headers=headers)
+          sha=None
+          try:
+              with urllib.request.urlopen(request,timeout=20) as response:
+                  obj=json.load(response)
+              sha=obj["sha"]
+              if base64.b64decode(obj["content"].replace("\n",""))==local:
+                  print("Roadmap outbox already current; no duplicate action")
+                  raise SystemExit(0)
+          except urllib.error.HTTPError as e:
+              if e.code!=404:raise
+          payload={"branch":branch,
+                   "message":"neurofactory-outbox: refresh next verified roadmap prompt",
+                   "content":base64.b64encode(local).decode()}
+          if sha:payload["sha"]=sha
+          req=urllib.request.Request(api,method="PUT",
+               data=json.dumps(payload).encode(),headers=headers)
+          with urllib.request.urlopen(req,timeout=30) as response:
+              receipt=json.load(response)
+          print("Outbox updated",data["task_id"],data["sequence"],receipt["commit"]["sha"])
+          PY
