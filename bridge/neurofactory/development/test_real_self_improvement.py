@@ -61,7 +61,7 @@ class RealSelfImprovementTests(unittest.TestCase):
         p["milestones"][1]["evidence"]={
             "observer":"visible_chat_turn","live_chat_delivery_verified":True,
             "conversation_url":"https://chatgpt.com/c/12345678-abcd-1234-abcd-123456789012",
-            "delivery_sequence":"a"*24,"independent_review":True,"tests_passed":True}
+            "delivery_sequence":__import__("control_plane").outbox(self.plan)["sequence"],"independent_review":True,"tests_passed":True}
         self.assertTrue(gate.approved_stage3(p))
     def test_14_no_other_path_to_stage_three(self):
         p=copy.deepcopy(self.plan);p["milestones"][2]["state"]="active"
