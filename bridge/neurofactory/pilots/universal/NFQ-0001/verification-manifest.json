@@ -1,0 +1,17 @@
+{
+  "status": "two_models_reviewed",
+  "task_id": "NFQ-0001",
+  "kind": "temperature_converter",
+  "writer": "qwen2.5-coder:1.5b",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "tests_passed": 10,
+  "sha256": {
+    "celsius_to_fahrenheit.py": "36c1c0b43adaaa372fdb79a8b4c048de7d6ab1ea72171b06600ce8d5c9fd62d4",
+    "fahrenheit_to_celsius.py": "72e4791c4609231babc9ac555937409a153a88bd0ba725422cd2e98828956322",
+    "main.py": "dbe87d498d2ac3457380ceb50a01884cb1fa410dfe9bd7eec6c485130e60de18",
+    "test_app.py": "9eee8e331dbd6f85dd8d00fb4288a2fca3c265782c2b051dc332b5742300303c",
+    "README.md": "7e858fe5b7fc6f39d4b22362955ab1d9c0a3edb2ba1648b6f4a4713f3c91358a"
+  },
+  "elapsed_seconds": 18.1
+}
