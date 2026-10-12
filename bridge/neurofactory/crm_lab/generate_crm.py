@@ -135,14 +135,16 @@ def run():
                 "\nУже готовые взаимосвязанные модули:\n"+other+
                 ("\nОшибка предыдущей попытки. Исправь именно свой файл:\n"+feedback[-3500:] if feedback else ""))
     for filename in NAMES:
+        feedback=""
         for attempt in range(2):
             try:
-                txt=source(ask(WRITER,prompt(filename)))
+                txt=source(ask(WRITER,prompt(filename,feedback)))
                 store(filename,txt);written[filename]=txt
                 print("WRITER_FILE:",filename,"size",len(txt),"try",attempt+1,flush=True)
                 break
             except Exception as error:
-                print("WRITER_RETRY:",filename,str(error)[:300],flush=True)
+                feedback=type(error).__name__+": "+str(error)
+                print("WRITER_RETRY:",filename,feedback[:300],flush=True)
                 if attempt:raise
     ok,log=tests()
     for fix in range(3):
