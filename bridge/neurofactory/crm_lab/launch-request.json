@@ -1,6 +1,6 @@
 {
   "purpose": "real autonomous three-file Russian-spec synthetic CRM",
-  "run_number": 1,
+  "run_number": 2,
   "source_files_must_be_generated_by_ai": [
     "storage.py",
     "crm.py",
@@ -10,5 +10,13 @@
   "independent_reviewer": "qwen3:4b",
   "public_standard_free_runner": true,
   "private_client_data": false,
-  "untouched_working_projects": true
+  "untouched_working_projects": true,
+  "trigger_reason": "Retry after accepting valid JSON-array or object interface declarations from the first architect agent",
+  "safety": {
+    "synthetic_only": true,
+    "public_free_standard_runner_only": true,
+    "no_private_projects": true,
+    "independent_acceptance_tests": 20,
+    "reviewer_required": true
+  }
 }
