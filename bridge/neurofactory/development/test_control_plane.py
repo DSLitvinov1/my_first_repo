@@ -10,7 +10,11 @@ PLAN=json.loads((pathlib.Path(__file__).resolve().parent/"roadmap.json").read_te
 
 class RoadmapTests(unittest.TestCase):
     def setUp(self):
+        # Isolate stage-one transition tests from the live advancing production roadmap.
         self.p=copy.deepcopy(PLAN)
+        for item in self.p["milestones"]:
+            item["state"]="active" if item["id"]=="NF-DEV-01" else "pending"
+            item.pop("evidence",None)
     def evidence(self):
         return {"repo":"DSLitvinov1/my_first_repo",
                 "branch":"neurofactory-public-lab-20261012",
@@ -19,6 +23,13 @@ class RoadmapTests(unittest.TestCase):
                 "verification_mode":"authorized_connector_checked",
                 "cloud_test_run":38317981561,"windows_bridge_run":38318013640,
                 "independent_review_run":38318188623}
+    def test_25_live_roadmap_remains_valid_after_advancement(self):
+        self.assertEqual(core.validate(copy.deepcopy(PLAN))["mode"],"self_development")
+    def test_26_outbox_tracks_live_active_task(self):
+        live=copy.deepcopy(PLAN)
+        current=core.select(live)
+        if current is not None:
+            self.assertEqual(core.outbox(live)["task_id"],current["id"])
     def test_01_validated_real_roadmap(self):
         self.assertIs(core.validate(self.p),self.p)
     def test_02_first_real_development_milestone(self):
