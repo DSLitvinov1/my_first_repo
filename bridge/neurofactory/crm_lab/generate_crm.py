@@ -5,7 +5,7 @@ DIR=pathlib.Path("/tmp")/("crm_generated_"+os.environ.get("GITHUB_RUN_ID","local
 TRUSTED=pathlib.Path(__file__).resolve().parent
 NAMES=("storage.py","crm.py","main.py")
 ARCHITECT="qwen3:4b"; WRITER="qwen2.5-coder:3b"; REVIEWER="qwen3:4b"
-ALLOWED_IMPORTS={"json","pathlib","argparse","sys","typing","datetime","collections"}
+ALLOWED_IMPORTS={"json","pathlib","argparse","sys","typing","datetime","collections","crm","storage"}
 CALLS=0
 def ask(model,prompt,structured=False):
     global CALLS
@@ -112,7 +112,7 @@ def run():
         store(filename,txt);written[filename]=txt
         ok,log=tests()
     if not ok:
-        print("FINAL_TEST_FAILURE:",log[-3000:],flush=True)
+        print("FINAL_TEST_FAILURE:",log[-5000:],flush=True)
         raise ValueError("Independent acceptance tests did not pass within retry limit")
     print("ACCEPTANCE_SUCCEEDED:",log[-1100:],flush=True)
     reviewer_prompt=("Ты независимый ревизор. Проверь русский ТЗ мини-CRM: добавление заявок, изменение "
