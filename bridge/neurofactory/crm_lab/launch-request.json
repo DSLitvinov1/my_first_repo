@@ -1,0 +1,14 @@
+{
+  "purpose": "real autonomous three-file Russian-spec synthetic CRM",
+  "run_number": 1,
+  "source_files_must_be_generated_by_ai": [
+    "storage.py",
+    "crm.py",
+    "main.py"
+  ],
+  "independent_tests": 20,
+  "independent_reviewer": "qwen3:4b",
+  "public_standard_free_runner": true,
+  "private_client_data": false,
+  "untouched_working_projects": true
+}
