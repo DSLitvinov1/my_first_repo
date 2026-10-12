@@ -5,7 +5,7 @@ DIR=pathlib.Path("/tmp")/("crm_generated_"+os.environ.get("GITHUB_RUN_ID","local
 TRUSTED=pathlib.Path(__file__).resolve().parent
 NAMES=("storage.py","crm.py","main.py")
 ARCHITECT="qwen3:4b"; WRITER="qwen2.5-coder:3b"; REVIEWER="qwen3:4b"
-ALLOWED_IMPORTS={"json","pathlib","argparse","sys","typing","datetime","collections"}
+ALLOWED_IMPORTS={"json","pathlib","argparse","sys","typing","datetime","collections","storage","crm"}
 CALLS=0
 def ask(model,prompt,structured=False):
     global CALLS
