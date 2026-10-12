@@ -1,0 +1,24 @@
+name: Neurofactory Universal Queue Offline Safety
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/universal_queue/**'
+      - '.github/workflows/neurofactory-universal-queue-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  queue_contract:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Validate syntax and serial queue behavior without a model
+        run: |
+          python -m py_compile bridge/neurofactory/universal_queue/queue_core.py bridge/neurofactory/universal_queue/test_queue_core.py
+          python -B -m unittest discover -s bridge/neurofactory/universal_queue -p test_queue_core.py -v
