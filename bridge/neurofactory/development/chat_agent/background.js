@@ -33,6 +33,11 @@ async function poll() {
       typeof job.prompt!=="string" || job.prompt.length<50 || job.prompt.length>MAX_PROMPT ||
       !(await verifyDigest(job))) return;
   if (cfg.attempted?.[job.sequence]) return;
+  // A visible per-milestone handoff receipt can later be matched to the actual chat turn.
+  // Only this one-stage sender adds it; clicking Send alone is never accepted as proof.
+  const visibleReceipt="\\n\\nПодтверждение отправки агентом нейрозавода: "+job.sequence+".";
+  const outgoingText=job.prompt+visibleReceipt;
+  if(outgoingText.length>MAX_PROMPT)return;
   const tabs=await chrome.tabs.query({});
   const matched=tabs.find(t=>t.url===cfg.chatUrl && t.id!==undefined);
   if (!matched) return;
@@ -42,7 +47,7 @@ async function poll() {
   await chrome.storage.local.set({attempted:attempt,lastAt:Date.now()});
   try {
     const reply=await chrome.tabs.sendMessage(matched.id,{type:"NF_SEND_APPROVED_PROMPT",boundUrl:cfg.chatUrl,
-      sequence:job.sequence,text:job.prompt});
+      sequence:job.sequence,text:outgoingText});
     attempt[job.sequence]={state:reply?.submitted?"submitted":"unconfirmed",task:job.task_id,at:Date.now()};
     await chrome.storage.local.set({attempted:attempt});
     await view(reply?.submitted?"OK":"?");
