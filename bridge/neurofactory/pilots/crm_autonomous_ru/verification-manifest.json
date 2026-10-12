@@ -1,0 +1,20 @@
+{
+  "status": "two_models_reviewed",
+  "architecture_model": "qwen3:4b",
+  "writer": "qwen2.5-coder:3b",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "tests_passed": 20,
+  "source_modules": [
+    "storage.py",
+    "crm.py",
+    "main.py"
+  ],
+  "model_calls": 5,
+  "duration_seconds": 304.2,
+  "sha256": {
+    "storage.py": "e29610884cac1f78dfd27d2031acc5e88b32e247d863a222cc688d2246a58b46",
+    "crm.py": "31c93db00f2a65a07715254fdaabbc36c24ea90e65af235710a33fb838a38af7",
+    "main.py": "1e6eefbd8647a080d61e6a425aeb096d7850564f7d8f35350168302bc1f6b82c"
+  }
+}
