@@ -1,11 +1,11 @@
 {
   "project": "synthetic_russian_mini_crm",
   "purpose": "autonomous planning+writing+repair+independent_approval",
-  "launch": 2,
+  "launch": 3,
   "noncommercial": true,
   "public_standard_runner_free_only": true,
   "private_projects_access": false,
   "application_code_must_be_created_by_local_Qwen": true,
   "reference": "bridge/neurofactory/crm_lab/requirements_ru.txt",
-  "retry_reason": "accept architect structured interface objects and arrays while retaining three planned files"
+  "retry_reason": "trusted acceptance file now copied into isolated readable temporary folder; retries for syntax errors bounded"
 }
