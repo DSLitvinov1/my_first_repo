@@ -41,12 +41,33 @@ def guard(txt):
         if isinstance(n,ast.Attribute) and n.attr in {"system","popen","spawn","unlink","rmtree"}:
             raise ValueError("Unsafe file/process operation")
     return True
+def required_contract(name,txt):
+    tree=ast.parse(txt)
+    if name=="storage.py":
+        functions={n.name for n in tree.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
+        missing={"load_records","save_records"}-functions
+        if missing:raise ValueError("storage.py requires top-level load_records(path), save_records(path,records): "+",".join(sorted(missing)))
+    elif name=="crm.py":
+        classes=[n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=="CRM"]
+        if len(classes)!=1:raise ValueError("crm.py requires top-level class CRM")
+        methods={n.name for n in classes[0].body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
+        missing={"__init__","add","all","search","edit","set_status"}-methods
+        if missing:raise ValueError("CRM requires public methods: "+",".join(sorted(missing)))
+        if not any(isinstance(n,ast.Import) and any(a.name=="storage" for a in n.names) or isinstance(n,ast.ImportFrom) and n.module=="storage" for n in tree.body):
+            raise ValueError("CRM must import the generated storage module for persistence")
+    elif name=="main.py":
+        imports=[n for n in tree.body if isinstance(n,(ast.Import,ast.ImportFrom))]
+        if not any(isinstance(n,ast.Import) and any(a.name=="crm" for a in n.names) or isinstance(n,ast.ImportFrom) and n.module=="crm" for n in imports):
+            raise ValueError("main.py must import generated crm.py")
+        if "argparse" not in txt:raise ValueError("main.py must provide argparse CLI with --db")
+    return True
 def store(name,txt):
     if name not in NAMES or DIR.is_symlink():raise ValueError("Output path denied")
     DIR.mkdir(mode=0o755,parents=True,exist_ok=True)
     p=DIR/name
     if p.is_symlink() or p.resolve().parent!=DIR.resolve():raise ValueError("Output escape")
     guard(txt)
+    required_contract(name,txt)
     p.write_text(txt,encoding="utf-8")
 def tests():
     env={"PATH":os.environ.get("PATH",""),"HOME":"/tmp","LANG":"C.UTF-8",
@@ -88,16 +109,31 @@ def run():
     print("ARCHITECTURE:",json.dumps(plan,ensure_ascii=False)[:1900],flush=True)
     written={}
     def prompt(name,feedback=""):
-        other="\n".join("Уже создан "+k+":\n"+v[:6000] for k,v in written.items() if k!=name)
-        return ("Напиши ПОЛНЫЙ исходный код файла "+name+" на Python по ТЗ. Верни только Python без пояснений. "
-                "Класс CRM(path) должен поддерживать add(name,phone,note=''), all(), search(query), "
-                "edit(id,name=None,phone=None,note=None), set_status(id,status). "
-                "Каждая запись имеет id:int,name,phone,note,status (new/in_progress/done). "
-                "Сохраняй изменения сразу в JSON, обеспечь повторное открытие. "
-                "main.py обеспечивает команды add,list,search,edit,status и --db. "
-                "Не используй внешние пакеты и сеть. Из стандартных импортов доступны json,pathlib,argparse,sys,typing. "
-                "ТЗ:\n"+spec+"\nПлан архитектора:\n"+json.dumps(plan,ensure_ascii=False)[:3400]+
-                "\n"+other+("\nОшибки предыдущей попытки:\n"+feedback[-3500:] if feedback else ""))
+        other="\n".join("Уже создан "+k+":\n"+v[:6500] for k,v in written.items() if k!=name)
+        contracts={
+          "storage.py":("Реализуй только функции верхнего уровня load_records(path)->list и "
+                        "save_records(path,records)->None. Сохраняй UTF-8 JSON в указанном файле. "
+                        "Если файла нет, load_records возвращает []. Никаких классов и сетевых вызовов."),
+          "crm.py":("Реализуй класс CRM(path), импортирующий созданный модуль storage. "
+                    "В конструкторе загрузка через storage.load_records(path), после каждого изменения "
+                    "сохранение через storage.save_records(path,records). "
+                    "Публичные методы add(name,phone,note='')->dict, all()->list, "
+                    "search(query)->list, edit(id,name=None,phone=None,note=None), "
+                    "set_status(id,status). Возвращай словари заявок с id:int, name,phone,note,status. "
+                    "Используй уникальный id при повторном открытии базы. "
+                    "Не меняй другие записи при редактировании; ищи без учёта регистра."),
+          "main.py":("Создай командный интерфейс с argparse и импортом CRM из crm. "
+                     "Должны работать --db PATH и подкоманды add,list,search,edit,status. "
+                     "Запуск --help должен успешно завершаться. "
+                     "Ввод и вывод только для вымышленных заявок, без сети.")
+        }
+        return ("Напиши ПОЛНЫЙ исходный код файла "+name+" на Python по ТЗ. "
+                "Верни только Python без пояснений и без разметки. "
+                "Контракт именно этого файла: "+contracts[name]+
+                " ТЗ:\n"+spec+"\nПлан архитектора:\n"+
+                json.dumps(plan,ensure_ascii=False)[:3400]+
+                "\nУже готовые взаимосвязанные модули:\n"+other+
+                ("\nОшибка предыдущей попытки. Исправь именно свой файл:\n"+feedback[-3500:] if feedback else ""))
     for filename in NAMES:
         for attempt in range(2):
             try:
