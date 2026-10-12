@@ -32,6 +32,10 @@ jobs:
           assert data["private"] is False and data["visibility"]=="public", "Paid private repo not allowed"
           print("Public standard free hosted runner confirmed")
           PY
+      - name: Check code syntax and 12 independent offline interface guards
+        run: |
+          python -m py_compile bridge/neurofactory/crm_lab/generate_crm.py bridge/neurofactory/crm_lab/publish_verified_crm.py bridge/neurofactory/crm_lab/test_generator_contracts.py
+          python -B -m unittest discover -s bridge/neurofactory/crm_lab -p test_generator_contracts.py -v
       - name: Start temporary Ollama with two independent models
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
