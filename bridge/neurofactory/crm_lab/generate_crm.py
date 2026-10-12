@@ -121,8 +121,15 @@ def run():
         print("TEST_REPAIR:",fix+1,log[-1200:],flush=True)
         filename=("storage.py" if "storage.py" in log else
                   "main.py" if "test_20" in log else "crm.py")
-        txt=source(ask(WRITER,prompt(filename,log)))
-        store(filename,txt);written[filename]=txt
+        for retry in range(2):
+            try:
+                txt=source(ask(WRITER,prompt(filename,log)))
+                store(filename,txt);written[filename]=txt
+                break
+            except (SyntaxError,ValueError) as error:
+                print("REPAIR_SYNTAX_RETRY:",filename,str(error)[:230],flush=True)
+                if retry:raise
+                log+="\nReturn only complete Python code; the prior repair was invalid: "+str(error)
         ok,log=tests()
     if not ok:
         print("FINAL_TEST_FAILURE:",log[-3000:],flush=True)
