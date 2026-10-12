@@ -128,8 +128,9 @@ def complete(plan, task_id, evidence):
         # Unit tests or a clicked Send button do not prove the correct ChatGPT thread received it.
         if (evidence.get("live_chat_delivery_verified") is not True or
                 evidence.get("observer") != "visible_chat_turn" or
-                not re.fullmatch(r"[a-f0-9]{24}", str(evidence.get("delivery_sequence", ""))) or
-                not str(evidence.get("conversation_url", "")).startswith("https://chatgpt.com/c/")):
+                evidence.get("delivery_sequence") != outbox(plan)["sequence"] or
+                not re.fullmatch(r"https://chatgpt[.]com/(?:g/[^/]+/)?c/[A-Za-z0-9-]+/?",
+                                 str(evidence.get("conversation_url", "")))):
             raise PlanError("Stage 02 requires independently observed exact-chat delivery")
     selected["state"] = "verified"
     selected["evidence"] = evidence.copy()
