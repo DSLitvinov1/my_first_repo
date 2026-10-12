@@ -1,0 +1,11 @@
+{
+  "purpose": "public_synthetic_educational_first_application",
+  "run_number": 1,
+  "approved_only_public_standard_runner": true,
+  "models": [
+    "qwen2.5-coder:1.5b",
+    "qwen3:1.7b"
+  ],
+  "no_private_projects": true,
+  "max_minutes": 14
+}
