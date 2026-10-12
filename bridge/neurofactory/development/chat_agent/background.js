@@ -35,7 +35,7 @@ async function poll() {
   if (cfg.attempted?.[job.sequence]) return;
   // A visible per-milestone handoff receipt can later be matched to the actual chat turn.
   // Only this one-stage sender adds it; clicking Send alone is never accepted as proof.
-  const visibleReceipt="\\n\\nПодтверждение отправки агентом нейрозавода: "+job.sequence+".";
+  const visibleReceipt=String.fromCharCode(10,10)+"Подтверждение отправки агентом нейрозавода: "+job.sequence+".";
   const outgoingText=job.prompt+visibleReceipt;
   if(outgoingText.length>MAX_PROMPT)return;
   const tabs=await chrome.tabs.query({});
