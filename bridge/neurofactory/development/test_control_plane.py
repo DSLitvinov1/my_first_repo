@@ -30,6 +30,25 @@ class RoadmapTests(unittest.TestCase):
         current=core.select(live)
         if current is not None:
             self.assertEqual(core.outbox(live)["task_id"],current["id"])
+    def test_27_live_chat_delivery_required(self):
+        core.complete(self.p,"NF-DEV-01",self.evidence())
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-02",self.evidence())
+    def test_28_clicked_send_is_not_delivery(self):
+        core.complete(self.p,"NF-DEV-01",self.evidence())
+        bad=self.evidence()
+        bad.update(live_chat_delivery_verified=True,observer="send_button_clicked",
+                   delivery_sequence="a"*24,conversation_url="https://chatgpt.com/c/example")
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-02",bad)
+    def test_29_real_delivery_unlocks_stage_three(self):
+        core.complete(self.p,"NF-DEV-01",self.evidence())
+        received=self.evidence()
+        received.update(live_chat_delivery_verified=True,observer="visible_chat_turn",
+                        delivery_sequence="a"*24,
+                        conversation_url="https://chatgpt.com/c/12345678-abcd-1234-abcd-123456789012")
+        core.complete(self.p,"NF-DEV-02",received)
+        self.assertEqual(core.select(self.p)["id"],"NF-DEV-03")
     def test_01_validated_real_roadmap(self):
         self.assertIs(core.validate(self.p),self.p)
     def test_02_first_real_development_milestone(self):
