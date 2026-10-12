@@ -1,0 +1,32 @@
+{
+  "status": "two_models_reviewed",
+  "application": "Synthetic packaging and box count",
+  "writer": "qwen2.5-coder:1.5b",
+  "reviewer": {
+    "model": "qwen3:4b",
+    "verdict": "REVIEW_OK"
+  },
+  "verified_code_modules": [
+    {
+      "name": "volume",
+      "verified_examples": 4
+    },
+    {
+      "name": "boxes",
+      "verified_examples": 4
+    }
+  ],
+  "tests": {
+    "passed": 10,
+    "total": 10,
+    "smoke_output": "24 3"
+  },
+  "hashes": {
+    "volume.py": "1523fd4606dfa62297d02a8cc730c618a195f9abe9a7665390787911672b9e16",
+    "boxes.py": "e3acdc03cb753e89b5ed8be0adc46e078e4b28aacd1167ad35d4f9c74f49f62e",
+    "main.py": "471057172fab143ea38c9ad5ab6e82385b1f7ab8cd4cdbea36f4c1bf03805206",
+    "test_app.py": "ab1fbe1a1bfca327e61622996b6e8bbfc53155d9cbd1fd372bd8868af4f86e8c",
+    "README.md": "b525e9b25064aee41f908d5b79ebb76bd72631c0ccebf76e8da0b113a2604062"
+  },
+  "elapsed_seconds": 12.2
+}
