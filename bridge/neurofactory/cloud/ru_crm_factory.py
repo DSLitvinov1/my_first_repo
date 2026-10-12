@@ -18,7 +18,7 @@ BRIEF=("Сделай с нуля мини-CRM на Python для вымышле�
 "main.py: python main.py --db ПУТЬ add ИМЯ ЗАМЕТКА / list / search СЛОВО / "
 "edit ID ИМЯ ЗАМЕТКА / status ID СТАТУС. Каждый вызов печатает только JSON. "
 "Команды add/edit/status сохраняют JSON-файл. "
-"Самостоятельно разработай всё содержимое трёх модулей.")
+"Самостоятельно разработай всё содержимое трёх модулей. Используй только функции верхнего уровня, НИКАКИХ классов. Функции должны принимать и возвращать именно указанные данные.")
 TEST=r'''import unittest,tempfile,subprocess,sys,json
 from pathlib import Path
 import crm,storage
@@ -96,6 +96,11 @@ def validate_source(code,name):
    raise ValueError("Disallowed from import")
   if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id in ("eval","exec","compile","__import__","input"):
    raise ValueError("Unsafe builtin call")
+ required={"storage.py":{"load_records","save_records"},
+ "crm.py":{"add_record","update_record","set_status","search_records"}}
+ names={n.name for n in t.body if isinstance(n,ast.FunctionDef)}
+ missing=required.get(name,set())-names
+ if missing:raise ValueError("Required TOP-LEVEL functions are absent: "+",".join(sorted(missing)))
  if name=="main.py" and "argparse" not in code:raise ValueError("No CLI")
 def test():
  e={k:v for k,v in os.environ.items() if k in ("PATH","HOME","LANG","TMPDIR")}
@@ -119,8 +124,14 @@ def run():
           "без готовых шаблонов. Верни только исходный код Python без пояснений. "
           "ТЗ: "+BRIEF+"\nПЛАН: "+str(plan["architecture"])+
           "\nТвоя роль: "+role+"\nУже созданные файлы: "+json.dumps(modules,ensure_ascii=False))
-  code=strip_code(generate(WRITER,prompt,1750))
-  validate_source(code,file)
+  code=None
+  for source_attempt in range(2):
+   proposal=strip_code(generate(WRITER,prompt,1250))
+   try:validate_source(proposal,file);code=proposal;break
+   except (ValueError,SyntaxError) as ex:
+    print("Module interface rejected",file,str(ex),flush=True)
+    prompt+="\\nПредыдущий исходник отвергнут: "+str(ex)+". Перепиши файл без классов, со всеми обязательными функциями верхнего уровня."
+  if code is None:raise ValueError("Model failed public interfaces for "+file)
   safe(file).write_text(code,encoding="utf-8")
   modules[file]=code
   print("AI created",file,len(code),flush=True)
@@ -134,12 +145,16 @@ def run():
    print("TEST FAILURE",attempt+1,str(e)[-650:],flush=True)
    if attempt==2:raise
    repaired+=1
-   for file in MODULES:
+   detail=str(e)
+   chosen=("main.py" if "main.py" in detail or "CLI" in detail else
+       "storage.py" if "storage.py" in detail or "load_records" in detail or "save_records" in detail else
+       "crm.py")
+   for file in (chosen,):
     p=("Исправь ПОЛНЫЙ файл "+file+". Не меняй тесты и API. Верни только Python. "
        "ТЗ: "+BRIEF+"\nОшибки тестов: "+str(e)[-2200:]+
        "\nТекущий код: "+modules[file]+
        "\nДругие файлы: "+json.dumps({k:v for k,v in modules.items() if k!=file},ensure_ascii=False))
-    response=strip_code(generate(WRITER,p,1750))
+    response=strip_code(generate(WRITER,p,1250))
     try:validate_source(response,file)
     except (ValueError,SyntaxError):continue
     modules[file]=response;safe(file).write_text(response,encoding="utf-8")
