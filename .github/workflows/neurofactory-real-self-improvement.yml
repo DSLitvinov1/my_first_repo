@@ -1,0 +1,95 @@
+name: Neurofactory Real Self Improvement Two Agents
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/development/roadmap.json'
+      - 'bridge/neurofactory/development/stage3_guard.py'
+      - 'bridge/neurofactory/development/test_real_self_improvement.py'
+      - 'bridge/neurofactory/development/real_self_improve.py'
+      - 'bridge/neurofactory/development/publish_real_improvement.py'
+      - '.github/workflows/neurofactory-real-self-improvement.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-verified-real-self-change
+  cancel-in-progress: false
+jobs:
+  stage3_gate_and_code_checks:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+    steps:
+      - name: Checkout exact public Neurofactory branch without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Test real code safety and gated stage transitions
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_*.py' -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+      - name: Check if actual chat delivery is verified before enabling models
+        id: gate
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'bridge/neurofactory/development')
+          from stage3_guard import approved_stage3,read
+          status=approved_stage3(read())
+          with open(__import__('os').environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
+              f.write('ready='+str(status).lower()+'\n')
+          print('STAGE3_ACTUAL_CHAT_DELIVERY_GATE:', 'OPEN' if status else 'CLOSED')
+          PY
+  two_model_real_development:
+    needs: stage3_gate_and_code_checks
+    if: ${{ needs.stage3_gate_and_code_checks.outputs.ready == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact verified version without persisting GitHub token
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Confirm free public execution and exact current milestone
+        env:
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+        run: |
+          python - <<'PY'
+          import json,os,sys,urllib.request
+          assert os.environ['GITHUB_REPOSITORY']=='DSLitvinov1/my_first_repo'
+          with urllib.request.urlopen('https://api.github.com/repos/DSLitvinov1/my_first_repo',timeout=20) as f:
+              assert json.load(f)['private'] is False
+          sys.path.insert(0,'bridge/neurofactory/development')
+          from stage3_guard import approved_stage3,read
+          assert approved_stage3(read())
+          print('APPROVED_REAL_DEVELOPMENT_FREE_PUBLIC_RUNNER')
+          PY
+      - name: Run separate free local writer and reviewer with bounded resources
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-real-neurofactory.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:1.5b
+          ollama pull qwen3:4b
+      - name: Qwen writer proposes actual Neurofactory safety improvement; Qwen reviewer independently accepts
+        env:
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/real_self_improve.py
+      - name: Atomically publish ONLY verified Neurofactory change and evidence
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+        run: python -B bridge/neurofactory/development/publish_real_improvement.py
