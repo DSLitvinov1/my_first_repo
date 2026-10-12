@@ -14,7 +14,8 @@ class QueueError(ValueError):
 MAX_TASKS = 12
 MAX_REPAIRS = 3
 MAX_TEXT_LENGTH = 1800
-SUITES = {"mini_crm": 20, "order_calculator": 10, "packaging_calculator": 10}
+SUITES = {"mini_crm": 20, "order_calculator": 10, "packaging_calculator": 10,
+          "temperature_converter": 10, "fuel_trip_estimator": 10}
 FORBIDDEN = (
     r"https?://", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", r"\b(?:api.?key|private.?key|парол\w*|токен\w*|секрет\w*)\b",
     r"\b(?:telegram|whatsapp|gmail|production|продакшн|боев(?:ой|ую|ые)|оплат[ауые]|платеж[иа])\b",
@@ -25,6 +26,10 @@ def now():
 
 def route(brief):
     text = brief.casefold()
+    if any(word in text for word in ("температур", "цельси", "фаренгейт")):
+        return "temperature_converter"
+    if any(word in text for word in ("топлив", "бензин", "расход топлива")):
+        return "fuel_trip_estimator"
     if any(word in text for word in ("crm", "срм", "мини-срм", "мини-crm")):
         return "mini_crm"
     if any(word in text for word in ("упаковк", "короб", "упаковать")):
