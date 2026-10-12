@@ -56,7 +56,7 @@ jobs:
                    'Content-Type':'application/json','User-Agent':'NeurofactoryIndependentReviewGate'}
           source_req=urllib.request.Request(api+'bridge/neurofactory/development/control_plane.py?ref=neurofactory-public-lab-20261012',headers=headers)
           with urllib.request.urlopen(source_req,timeout=25) as response: src=json.load(response)
-          remote_source=base64.b64decode(src['content'].replace('\\n',''))
+          remote_source=base64.b64decode(src['content'])
           assert hashlib.sha256(remote_source).hexdigest()==proof['source_sha256'], 'Reviewer source changed'
           proof.update({'review_run_id':int(os.environ['GITHUB_RUN_ID']),
                         'reviewed_commit':os.environ['GITHUB_SHA'],
@@ -64,7 +64,7 @@ jobs:
                         'windows_bridge_run':38318013640,
                         'private_windows_status':'must_be_checked_via_authorized_connector_before_roadmap_advancement',
                         'milestone_automatically_completed':False})
-          data=(json.dumps(proof,ensure_ascii=False,indent=2)+'\\n').encode('utf-8')
+          data=json.dumps(proof,ensure_ascii=False,indent=2).encode('utf-8')
           path='bridge/neurofactory/development/independent-review-nf-dev-01.json'
           url=api+path
           sha=None
