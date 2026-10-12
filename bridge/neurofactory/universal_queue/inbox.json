@@ -32,8 +32,8 @@
       "id": "NFQ-0002",
       "brief": "Создай учебный расчёт топлива для поездки с расходом и ценой за литр",
       "kind": "fuel_trip_estimator",
-      "state": "publishing",
-      "stage": "publishing",
+      "state": "verified_done",
+      "stage": "closed",
       "attempts": 0,
       "suite_size": 10,
       "proof": {
@@ -45,7 +45,8 @@
           "README.md": "69c1937ed9f0a7385f598141758e2c5acb199fb56246384775e4748874d38d79"
         },
         "tests": 10,
-        "reviewer": "qwen3:4b"
+        "reviewer": "qwen3:4b",
+        "manifest_sha256": "5ccb8a2380bf9195f80de6d0c97dd279855114c970889e699cbd63cf8040f178"
       },
       "error": ""
     }
@@ -105,6 +106,11 @@
       "at": "2026-10-12T22:31:03.265948+00:00",
       "id": "NFQ-0002",
       "event": "publishing"
+    },
+    {
+      "at": "2026-10-12T22:31:07.426026+00:00",
+      "id": "NFQ-0002",
+      "event": "verified_done"
     }
   ],
   "next_number": 3
