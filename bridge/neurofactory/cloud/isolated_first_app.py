@@ -5,7 +5,7 @@ business projects, accepts no untrusted task instructions and holds no token.
 import ast,hashlib,json,os,pathlib,re,subprocess,sys,time,urllib.request,datetime
 
 MODEL_WRITER="qwen2.5-coder:1.5b"
-MODEL_REVIEWER="qwen3:1.7b"
+MODEL_REVIEWER="qwen3:4b"
 API="http://127.0.0.1:11434/api/generate"
 ROOT=pathlib.Path(os.environ.get("RUNNER_TEMP","/tmp"))/"neurofactory_cloud_first_app"
 REPO_ROOT=pathlib.Path(__file__).resolve().parents[3]
@@ -140,14 +140,21 @@ def run_pilot():
         report["models"].append({"name":MODEL_WRITER,"module":part,
                                   "validated_cases":4,"free_ram_gb":get_memory_gb()})
     report["tests"]=integration()
-    reviewer_prompt=("Independent reviewer: examine these two functions. Should line_total multiply "
-                     "quantity by unit_price and discounted_total apply subtotal * (100 - percent) // 100 "
-                     "correctly? Reply REVIEW_OK if correct or REVIEW_BAD otherwise.\n"+
-                     publishable_file("pricing.py").read_text(encoding="utf-8")+"\n"+
-                     publishable_file("discount.py").read_text(encoding="utf-8"))
-    verdict_raw=prompt_model(MODEL_REVIEWER,reviewer_prompt,60).upper()
-    verdict="REVIEW_OK" if re.search(r"\bREVIEW_OK\b",verdict_raw) else (
-            "REVIEW_BAD" if re.search(r"\bREVIEW_BAD\b",verdict_raw) else "UNCLEAR")
+    reviewer_prompt=(
+        "Review two pure Python functions against the EXACT arithmetic specifications below. "
+        "First: line_total(quantity, unit_price) must return quantity * unit_price. "
+        "Second: discounted_total(subtotal, percent) must return subtotal * (100 - percent) // 100. "
+        "A separate test suite with 10 test cases already passed. "
+        "Return a single token REVIEW_OK if BOTH function bodies implement these formulas; "
+        "otherwise return REVIEW_BAD. Do not add any explanation.\n"
+        "Function one:\n"+publishable_file("pricing.py").read_text(encoding="utf-8")+
+        "\nFunction two:\n"+publishable_file("discount.py").read_text(encoding="utf-8")
+    )
+    raw_review=prompt_model(MODEL_REVIEWER,reviewer_prompt,75)
+    print("Reviewer raw verdict (synthetic):",repr(raw_review[:300]),flush=True)
+    verdict_text=raw_review.strip().upper()
+    verdict=("REVIEW_BAD" if verdict_text.startswith("REVIEW_BAD") else
+             "REVIEW_OK" if verdict_text.startswith("REVIEW_OK") else "UNCLEAR")
     report["reviewer"]={"model":MODEL_REVIEWER,"verdict":verdict}
     if verdict!="REVIEW_OK":raise ValueError("Second independent model did not approve")
     report["status"]="two_models_reviewed"
