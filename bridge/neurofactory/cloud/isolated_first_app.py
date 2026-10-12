@@ -34,6 +34,7 @@ def prompt_model(model,prompt,limit=160):
     body={"model":model,"prompt":prompt,"stream":False,"think":False,
           "keep_alive":"0","options":{"num_ctx":768,"num_predict":limit,
           "num_thread":2,"num_gpu":0,"temperature":0}}
+    if model==MODEL_REVIEWER: body["format"]="json"
     req=urllib.request.Request(API,data=json.dumps(body).encode(),method="POST",
                                headers={"Content-Type":"application/json"})
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -141,20 +142,24 @@ def run_pilot():
                                   "validated_cases":4,"free_ram_gb":get_memory_gb()})
     report["tests"]=integration()
     reviewer_prompt=(
-        "Review two pure Python functions against the EXACT arithmetic specifications below. "
-        "First: line_total(quantity, unit_price) must return quantity * unit_price. "
-        "Second: discounted_total(subtotal, percent) must return subtotal * (100 - percent) // 100. "
-        "A separate test suite with 10 test cases already passed. "
-        "Return a single token REVIEW_OK if BOTH function bodies implement these formulas; "
-        "otherwise return REVIEW_BAD. Do not add any explanation.\n"
-        "Function one:\n"+publishable_file("pricing.py").read_text(encoding="utf-8")+
-        "\nFunction two:\n"+publishable_file("discount.py").read_text(encoding="utf-8")
+        "You are an independent Python reviewer. Compare the ACTUAL function bodies below "
+        "to the exact specifications, not merely their names. "
+        "Formula A: line_total(quantity, unit_price) returns quantity * unit_price. "
+        "Formula B: discounted_total(subtotal, percent) returns subtotal * (100 - percent) // 100. "
+        "Return ONLY a valid JSON object containing one field named verdict, with the value "
+        "REVIEW_OK if both functions exactly implement the formulas, or REVIEW_BAD otherwise. "
+        "No explanation or additional fields. "
+        "Code A:\\n"+publishable_file("pricing.py").read_text(encoding="utf-8")+
+        "\\nCode B:\\n"+publishable_file("discount.py").read_text(encoding="utf-8")
     )
-    raw_review=prompt_model(MODEL_REVIEWER,reviewer_prompt,75)
-    print("Reviewer raw verdict (synthetic):",repr(raw_review[:300]),flush=True)
-    verdict_text=raw_review.strip().upper()
-    verdict=("REVIEW_BAD" if verdict_text.startswith("REVIEW_BAD") else
-             "REVIEW_OK" if verdict_text.startswith("REVIEW_OK") else "UNCLEAR")
+    raw_review=prompt_model(MODEL_REVIEWER,reviewer_prompt,200)
+    print("Independent review JSON excerpt:",repr(raw_review[:600]),flush=True)
+    try:
+        parsed=json.loads(raw_review)
+        verdict=parsed.get("verdict") if isinstance(parsed,dict) else None
+    except (ValueError,TypeError):
+        verdict=None
+    if verdict not in ("REVIEW_OK","REVIEW_BAD"):verdict="UNCLEAR"
     report["reviewer"]={"model":MODEL_REVIEWER,"verdict":verdict}
     if verdict!="REVIEW_OK":raise ValueError("Second independent model did not approve")
     report["status"]="two_models_reviewed"
