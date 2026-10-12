@@ -1,9 +1,12 @@
 {
-  "version": 1,
+  "version": 2,
   "stage": "NF-DEV-01",
   "kind": "independent_real_development_review",
   "scope": "neurofactory_only",
   "windows_bridge_run": 38318013640,
-  "request": "Review current verified self-development control plane; approve and advance only if both 21 cloud tests and Windows bridge checks passed.",
-  "free_only": true
+  "request": "Review current hardened NF-DEV-01 control plane (24 independent cloud tests), persist separate Qwen3 verdict and source hash; require separate authorized check of private Windows run before advancing roadmap",
+  "free_only": true,
+  "cloud_test_count": 24,
+  "previous_review_run": 38318188623,
+  "previous_blocker": "Private Windows repository returned unauthenticated 404 to public GitHub runner; use separately verified connector evidence"
 }
