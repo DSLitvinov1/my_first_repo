@@ -87,7 +87,11 @@ def run():
     spec=(TRUSTED/"requirements_ru.txt").read_text(encoding="utf-8")
     planning=("Ты архитектор. По русскому ТЗ спланируй структуру новой Python CRM. "
               "Верни JSON с полем modules — ровно три объекта с полями file, responsibility, public_api, "
-              "имена storage.py, crm.py, main.py; и поле rationale. Не пиши код. ТЗ:\n"+spec)
+              "имена storage.py, crm.py, main.py; и поле rationale. "
+              "Обязательные интерфейсы: storage.py только load_records(path), save_records(path,records); "
+              "crm.py только класс CRM с импортом storage и вызовами storage.load_records и storage.save_records; "
+              "main.py только CLI с импортом CRM из crm. Каждый файл отвечает только за свой слой. "
+              "Не пиши код. ТЗ:\n"+spec)
     plan=None
     for attempt in range(2):
         try:
@@ -129,14 +133,20 @@ def run():
         }
         return ("Напиши ПОЛНЫЙ исходный код файла "+name+" на Python по ТЗ. "
                 "Верни только Python без пояснений и без разметки. "
-                "Контракт именно этого файла: "+contracts[name]+
-                " ТЗ:\n"+spec+"\nПлан архитектора:\n"+
-                json.dumps(plan,ensure_ascii=False)[:3400]+
+                "Контракт именно этого файла (обязателен, имеет приоритет над предложениями архитектора): "+contracts[name]+
+                " НЕ создавай функции, классы или интерфейс чужого файла. "
+                "storage.py: только верхнеуровневые load_records и save_records. "
+                "crm.py: обязательно строка import storage на верхнем уровне и вызовы "
+                "storage.load_records и storage.save_records; без argparse и команды main. "
+                "main.py: обязательно from crm import CRM, только командный интерфейс, "
+                "никакой реализации класса CRM. "
+                " ТЗ:\n"+spec+"\nНазначение из плана архитектора:\n"+
+                str(next(x['responsibility'] for x in plan['modules'] if x['file']==name))[:600]+
                 "\nУже готовые взаимосвязанные модули:\n"+other+
                 ("\nОшибка предыдущей попытки. Исправь именно свой файл:\n"+feedback[-3500:] if feedback else ""))
     for filename in NAMES:
         feedback=""
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 txt=source(ask(WRITER,prompt(filename,feedback)))
                 store(filename,txt);written[filename]=txt
@@ -145,7 +155,7 @@ def run():
             except Exception as error:
                 feedback=type(error).__name__+": "+str(error)
                 print("WRITER_RETRY:",filename,feedback[:300],flush=True)
-                if attempt:raise
+                if attempt==2:raise
     if len({hashlib.sha256(written[name].encode("utf-8")).hexdigest() for name in NAMES})!=len(NAMES):
         raise ValueError("Different modules cannot contain identical AI-authored source")
     ok,log=tests()
