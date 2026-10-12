@@ -51,7 +51,12 @@ def store(name,txt):
 def tests():
     env={"PATH":os.environ.get("PATH",""),"HOME":"/tmp","LANG":"C.UTF-8",
          "PYTHONIOENCODING":"utf-8","CRM_TARGET":str(DIR)}
-    exe=[sys.executable,"-S",str(TRUSTED/"acceptance_check.py")]
+    # Place the trusted, prewritten test suite inside the public-safe temporary
+    # sandbox so the unprivileged user can read it without checkout permissions.
+    suite=DIR/"_independent_acceptance.py"
+    shutil.copyfile(TRUSTED/"acceptance_check.py",suite)
+    suite.chmod(0o644)
+    exe=[sys.executable,"-S",str(suite)]
     DIR.chmod(0o755)
     if os.geteuid()==0:
         exe=["runuser","-u","nobody","--"]+exe
