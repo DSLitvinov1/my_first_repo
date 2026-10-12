@@ -1,11 +1,12 @@
 {
   "purpose": "public_synthetic_educational_first_application",
-  "run_number": 1,
+  "run_number": 2,
   "approved_only_public_standard_runner": true,
   "models": [
     "qwen2.5-coder:1.5b",
     "qwen3:1.7b"
   ],
   "no_private_projects": true,
-  "max_minutes": 14
+  "max_minutes": 14,
+  "reason": "repeat after first local writer passed all 10 tests but independent reviewer did not approve; now stronger 4B independent reviewer"
 }
