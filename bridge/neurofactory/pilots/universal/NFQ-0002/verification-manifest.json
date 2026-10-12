@@ -1,0 +1,17 @@
+{
+  "status": "two_models_reviewed",
+  "task_id": "NFQ-0002",
+  "kind": "fuel_trip_estimator",
+  "writer": "qwen2.5-coder:1.5b",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "tests_passed": 10,
+  "sha256": {
+    "fuel_liters.py": "3df13a68b523f7ba7465155d70176e41908442e1c1ada7d32de2ca3aca6694e2",
+    "fuel_cost.py": "c65b49918c07f52deed5484131f21065725829ba51549af7659ffb0020ca43a0",
+    "main.py": "64911efe4f72002d5f18776b9c0becd60606d6257559d3cee4d75deb420e2527",
+    "test_app.py": "a01ab8ff407739d300f826a6df4de10204de02852eac967e51ed5974ce3aa953",
+    "README.md": "69c1937ed9f0a7385f598141758e2c5acb199fb56246384775e4748874d38d79"
+  },
+  "elapsed_seconds": 18.2
+}
