@@ -45,10 +45,18 @@ class RoadmapTests(unittest.TestCase):
         core.complete(self.p,"NF-DEV-01",self.evidence())
         received=self.evidence()
         received.update(live_chat_delivery_verified=True,observer="visible_chat_turn",
-                        delivery_sequence="a"*24,
+                        delivery_sequence=core.outbox(self.p)["sequence"],
                         conversation_url="https://chatgpt.com/c/12345678-abcd-1234-abcd-123456789012")
         core.complete(self.p,"NF-DEV-02",received)
         self.assertEqual(core.select(self.p)["id"],"NF-DEV-03")
+    def test_30_wrong_fingerprint_cannot_approve_stage_two(self):
+        core.complete(self.p,"NF-DEV-01",self.evidence())
+        bad=self.evidence()
+        bad.update(live_chat_delivery_verified=True,observer="visible_chat_turn",
+                   delivery_sequence="a"*24,
+                   conversation_url="https://chatgpt.com/c/12345678-abcd-1234-abcd-123456789012")
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-02",bad)
     def test_01_validated_real_roadmap(self):
         self.assertIs(core.validate(self.p),self.p)
     def test_02_first_real_development_milestone(self):
