@@ -15,6 +15,16 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
   if(!editor||editor.innerText.trim()||editor.textContent.trim()){
     respond({submitted:false,reason:"composer unavailable or occupied"});return;
   }
+  // Never take over the composer when the user is currently focused on it.
+  if(document.activeElement===editor ||
+     (typeof editor.contains==="function" && editor.contains(document.activeElement))){
+    respond({submitted:false,reason:"user is actively using composer"});return;
+  }
+  // Do not submit another prompt while ChatGPT is generating an answer.
+  if(document.querySelector('button[data-testid="stop-button"]')||
+     document.querySelector('button[aria-label="Stop generating"]')){
+    respond({submitted:false,reason:"response currently generating"});return;
+  }
   // Message listener stays open until React updates the input state.
   (async()=>{
     try{
@@ -30,6 +40,10 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
       await new Promise(resolve=>setTimeout(resolve,350));
       if(location.href.split("?")[0].split("#")[0]!==req.boundUrl){
         respond({submitted:false,reason:"conversation changed before send"});return;
+      }
+      if(document.querySelector('button[data-testid="stop-button"]')||
+         document.querySelector('button[aria-label="Stop generating"]')){
+        respond({submitted:false,reason:"generation began before send"});return;
       }
       if(!(editor.innerText||editor.textContent||"").includes(prompt.slice(0,40))){
         respond({submitted:false,reason:"composer text mismatch"});return;
