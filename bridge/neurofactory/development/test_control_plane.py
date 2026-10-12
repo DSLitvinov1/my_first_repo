@@ -14,7 +14,11 @@ class RoadmapTests(unittest.TestCase):
     def evidence(self):
         return {"repo":"DSLitvinov1/my_first_repo",
                 "branch":"neurofactory-public-lab-20261012",
-                "commit_sha":"a"*40,"tests_passed":True,"independent_review":True}
+                "commit_sha":"a"*40,"tests_passed":True,"independent_review":True,
+                "reviewer":"qwen3:4b","review_verdict":"REVIEW_OK",
+                "verification_mode":"authorized_connector_checked",
+                "cloud_test_run":38317981561,"windows_bridge_run":38318013640,
+                "independent_review_run":38318188623}
     def test_01_validated_real_roadmap(self):
         self.assertIs(core.validate(self.p),self.p)
     def test_02_first_real_development_milestone(self):
@@ -88,6 +92,18 @@ class RoadmapTests(unittest.TestCase):
         entry=core.outbox(self.p)
         self.assertEqual(entry["delivery"],"no_chat_send")
         self.assertEqual(entry["prompt"],"")
+    def test_22_missing_review_run_rejected(self):
+        bad=self.evidence();del bad["independent_review_run"]
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-01",bad)
+    def test_23_unchecked_external_status_rejected(self):
+        bad=self.evidence();bad["verification_mode"]="self_report"
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-01",bad)
+    def test_24_second_agent_verdict_rejected(self):
+        bad=self.evidence();bad["review_verdict"]="REVIEW_BAD"
+        with self.assertRaises(core.PlanError):
+            core.complete(self.p,"NF-DEV-01",bad)
     def test_21_never_allow_account_credentials(self):
         self.p["milestones"][0]["prompt"]+=" токен=НЕ_ДОПУСКАЕТСЯ"
         with self.assertRaises(core.PlanError):core.validate(self.p)
