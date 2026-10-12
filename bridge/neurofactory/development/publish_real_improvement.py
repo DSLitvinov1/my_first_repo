@@ -25,6 +25,17 @@ def content(path):
         if e.code==404:return None
         raise
     return base64.b64decode(obj["content"])
+def enforce_generated_policy(source):
+    # The independently reviewed AI function actually gates the real publication paths.
+    tree=model.validate_source(source.decode("utf-8") if isinstance(source,bytes) else source)
+    safe={"isinstance":isinstance,"len":len,"all":all,"any":any,"str":str}
+    isolated={"__builtins__":safe}
+    exec(compile(tree,"<verified-path-gate>","exec"),isolated)
+    check=isolated["approved_change_path"]
+    for path in (TARGET,RECEIPT):
+        if check(path) is not True:
+            raise ValueError("Independent AI path gate rejects real Neurofactory publication")
+    return True
 def verify_candidate():
     source=(model.OUT/"path_policy.py").read_bytes()
     proof=json.loads((model.OUT/"verification.json").read_text("utf-8"))
@@ -35,6 +46,7 @@ def verify_candidate():
     if proof.get("sha256")!=hashlib.sha256(source).hexdigest():
         raise ValueError("Candidate changed since model review")
     n=model.acceptance(source.decode("utf-8"))
+    enforce_generated_policy(source)
     if proof.get("tests_passed")!=n:
         raise ValueError("Independent test-count mismatch")
     return source,proof
