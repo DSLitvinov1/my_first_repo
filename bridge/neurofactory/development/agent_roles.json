@@ -64,6 +64,6 @@
     "do_not_fake_chat_delivery": true,
     "report_ready_prompt_every_reply": true
   },
-  "current_stage": "NF-DEV-01",
-  "next_stage_after_acceptance": "NF-DEV-02"
+  "current_stage_source": "bridge/neurofactory/development/roadmap.json",
+  "stage_resolution": "Read active milestone at each cycle; never use a stale cached stage or replay verified work"
 }
