@@ -31,6 +31,7 @@ jobs:
           python -B bridge/neurofactory/development/control_plane.py --check --out "$RUNNER_TEMP/neurofactory-prompt.json"
           if command -v node >/dev/null; then
             find bridge/neurofactory/development/chat_agent -name '*.js' -type f -exec node --check {} \;
+            node bridge/neurofactory/development/chat_agent/test_sender.js
           fi
       - name: Publish only the newest verified-roadmap prompt to a bounded GitHub outbox
         env:
