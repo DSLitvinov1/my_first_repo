@@ -3,11 +3,21 @@ const OUTBOX="https://api.github.com/repos/DSLitvinov1/my_first_repo/contents/br
 const CHAT=/^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+\/?$/;
 const MIN_GAP=5*60*1000;
 const MAX_PROMPT=3900;
+let pollInFlight=false;
+async function singlePoll(){if(pollInFlight)return;pollInFlight=true;try{await poll();}finally{pollInFlight=false;}}
 async function local() { return await chrome.storage.local.get(["chatUrl","enabled","attempted","lastAt"]); }
 async function view(text) { await chrome.action.setBadgeText({text}); }
 function decode(data) {
   const bin=atob(data.replace(/\s+/g,""));
   return new TextDecoder("utf-8").decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));
+}
+async function verifyDigest(job){
+  if(!/^[a-f0-9]{64}$/.test(job.sha256||""))return false;
+  if(job.sequence!==job.sha256.slice(0,24))return false;
+  const encoded=new TextEncoder().encode('{"id": '+JSON.stringify(job.task_id)+', "prompt": '+JSON.stringify(job.prompt)+'}');
+  const digest=await crypto.subtle.digest('SHA-256',encoded);
+  const actual=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
+  return actual===job.sha256;
 }
 async function poll() {
   const cfg=await local();
@@ -20,7 +30,8 @@ async function poll() {
       job.delivery!=="requires_bound_chat" || job.created_from_roadmap!==true ||
       !/^NF-DEV-\d{2}$/.test(job.task_id||"") ||
       !/^[a-f0-9]{24}$/.test(job.sequence||"") ||
-      typeof job.prompt!=="string" || job.prompt.length<50 || job.prompt.length>MAX_PROMPT) return;
+      typeof job.prompt!=="string" || job.prompt.length<50 || job.prompt.length>MAX_PROMPT ||
+      !(await verifyDigest(job))) return;
   if (cfg.attempted?.[job.sequence]) return;
   const tabs=await chrome.tabs.query({});
   const matched=tabs.find(t=>t.url===cfg.chatUrl && t.id!==undefined);
@@ -42,10 +53,10 @@ async function poll() {
   }
 }
 chrome.runtime.onInstalled.addListener(async()=>{
-  await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:1});
+  await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:3});
   await view("OFF");
 });
-chrome.alarms.onAlarm.addListener(a=>{if(a.name==="nf-roadmap-poll") poll().catch(async()=>view("!"));});
+chrome.alarms.onAlarm.addListener(a=>{if(a.name==="nf-roadmap-poll") singlePoll().catch(async()=>view("!"));});
 chrome.action.onClicked.addListener(async tab=>{
   const url=(tab.url||"").split("?")[0].split("#")[0];
   if (!CHAT.test(url)) { await view("NO");return; }
@@ -56,7 +67,7 @@ chrome.action.onClicked.addListener(async tab=>{
   // Explicit binding, initiated by the human on the exact conversation tab.
   await chrome.storage.local.set({chatUrl:url,enabled:true,attempted:cfg.chatUrl===url?(cfg.attempted||{}):{}});
   await view("ON");
-  await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:1});
-  await poll().catch(async()=>view("!"));
+  await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:3});
+  await singlePoll().catch(async()=>view("!"));
 });
-chrome.runtime.onStartup.addListener(async()=>{await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:1});});
+chrome.runtime.onStartup.addListener(async()=>{await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:3});});
