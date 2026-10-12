@@ -17,7 +17,7 @@ const job={schema:1,task_id:'NF-DEV-02',sequence:digest.slice(0,24),
 const state={};
 const subscribers={};
 const calls=[];
-let badge='', remote=job;
+let badge='', remote=job, sendMode='sent';
 const api={
   storage:{local:{
     async get(keys){return Object.fromEntries(keys.filter(k=>k in state).map(k=>[k,state[k]]));},
@@ -29,7 +29,7 @@ const api={
   runtime:{onInstalled:{addListener(fn){subscribers.install=fn}},
     onStartup:{addListener(fn){subscribers.startup=fn}}},
   tabs:{async query(){return [{id:11,url:conversation}]},
-    async sendMessage(id,msg){calls.push({id,msg});return {submitted:true}}}
+    async sendMessage(id,msg){if(sendMode==='busy')return {submitted:false,reason:'user is actively using composer'};calls.push({id,msg});return {submitted:true}}}
 };
 const context={
   chrome:api,crypto:crypto.webcrypto,TextEncoder,TextDecoder,Date,
@@ -59,6 +59,13 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   await subscribers.clicked({url:conversation});
   assert.equal(calls.length,1,'tampered prompt must not send');
   remote=job;
+  // New local test fixture: a definitely refused pre-send attempt must be retryable.
+  state.attempted={};state.lastAt=0;sendMode='busy';
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(state.attempted[job.sequence],undefined,'pre-send busy state is not permanently locked');
+  sendMode='sent';state.lastAt=0;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(state.attempted[job.sequence].state,'submitted','idle composer allows later delivery');
   let handlers=[];
   function probe(href,editor,options={}){
     handlers=[];
@@ -97,5 +104,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   answer=await probe(conversation,clean());
   assert.equal(answer.submitted,true,'known composer can click send');
   assert.equal(calls.length,before+1,'exactly one UI click');
-  console.log('12 browser handoff checks passed including visible receipt; actual ChatGPT send not tested');
+  console.log('14 browser handoff checks passed including visible receipt and safe busy retry; actual ChatGPT send not tested');
 })().catch(e=>{console.error(e);process.exitCode=1});
