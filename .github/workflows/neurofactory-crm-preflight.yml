@@ -1,0 +1,24 @@
+name: Neurofactory CRM Safe Preflight
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/crm_lab/generate_crm.py'
+      - 'bridge/neurofactory/crm_lab/test_generator_contracts.py'
+      - '.github/workflows/neurofactory-crm-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  offline_contract_checks:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Python syntax validation
+        run: python -m py_compile bridge/neurofactory/crm_lab/generate_crm.py bridge/neurofactory/crm_lab/test_generator_contracts.py
+      - name: Offline AI-module interface tests (no model, no network, no secrets)
+        run: python -B -m unittest discover -s bridge/neurofactory/crm_lab -p test_generator_contracts.py -v
