@@ -42,7 +42,7 @@ jobs:
           done
           curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
           ollama pull qwen2.5-coder:1.5b
-          ollama pull qwen3:1.7b
+          ollama pull qwen3:4b
       - name: Generate first app and verify with second independent model
         env:
           NEUROFACTORY_PUBLIC_FREE_RUN_CONFIRMED: "yes"
