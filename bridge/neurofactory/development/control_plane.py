@@ -124,6 +124,13 @@ def complete(plan, task_id, evidence):
     if selected is None or selected["id"] != task_id or selected["state"] != "active":
         raise PlanError("Can only complete the active non-replayed milestone")
     test_evidence(evidence)
+    if task_id == "NF-DEV-02":
+        # Unit tests or a clicked Send button do not prove the correct ChatGPT thread received it.
+        if (evidence.get("live_chat_delivery_verified") is not True or
+                evidence.get("observer") != "visible_chat_turn" or
+                not re.fullmatch(r"[a-f0-9]{24}", str(evidence.get("delivery_sequence", ""))) or
+                not str(evidence.get("conversation_url", "")).startswith("https://chatgpt.com/c/")):
+            raise PlanError("Stage 02 requires independently observed exact-chat delivery")
     selected["state"] = "verified"
     selected["evidence"] = evidence.copy()
     for task in plan["milestones"]:
