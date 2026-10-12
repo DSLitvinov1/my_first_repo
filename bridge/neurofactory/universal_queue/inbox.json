@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "enabled": true,
+  "scope": "synthetic_only",
+  "paid_services": false,
+  "production_changes": false,
+  "network_effects": false,
+  "tasks": [],
+  "events": [],
+  "next_number": 1
+}
