@@ -1,0 +1,22 @@
+name: Neurofactory Bounded Factory Queue Tests
+on:
+  push:
+    branches: [neurofactory-crm-autonomous-20261012]
+    paths:
+      - 'bridge/neurofactory/factory/queue-test-request.json'
+permissions:
+  contents: read
+jobs:
+  verify_queue:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: neurofactory-crm-autonomous-20261012
+          persist-credentials: false
+      - name: Validate synthetic task dispatcher with all safety tests
+        run: |
+          test "$GITHUB_REPOSITORY" = "DSLitvinov1/my_first_repo"
+          cd bridge/neurofactory/factory
+          python -m unittest -v test_task_engine.py
