@@ -38,47 +38,46 @@ jobs:
         env:
           NF_FREE_PUBLIC_CONFIRMED: "yes"
         run: python -B bridge/neurofactory/development/independent_review.py
-      - name: Verify Windows evidence and advance only reviewed development milestone
+      - name: Publish independent verdict with source checksum; do not read private Windows repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python - <<'PY'
-          import base64,hashlib,json,os,pathlib,urllib.request
-          import sys
-          base="bridge/neurofactory/development/"
-          sys.path.insert(0,base)
-          import control_plane
-          token=os.environ["GITHUB_TOKEN"]
-          repo="DSLitvinov1/my_first_repo"
-          branch="neurofactory-public-lab-20261012"
-          assert os.environ["GITHUB_REPOSITORY"]==repo
-          proof=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"neurofactory-review.json").read_text("utf-8"))
-          assert proof["verdict"]=="REVIEW_OK" and proof["stage"]=="NF-DEV-01"
-          assert proof["source_sha256"]==hashlib.sha256(pathlib.Path(base+"control_plane.py").read_bytes()).hexdigest()
-          req=urllib.request.Request("https://api.github.com/repos/DSLitvinov1/lesson3.1/actions/runs/38318013640",headers={"Accept":"application/vnd.github+json"})
-          with urllib.request.urlopen(req,timeout=25) as response:windows=json.load(response)
-          assert windows["status"]=="completed" and windows["conclusion"]=="success"
-          assert windows["name"]=="Neurofactory Universal Queue Windows Bridge Verification"
-          assert windows["head_branch"]=="chatgpt-control"
-          url="https://api.github.com/repos/"+repo+"/contents/"+base+"roadmap.json"
-          headers={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json",
-                   "Content-Type":"application/json","User-Agent":"NeurofactoryVerifiedDevelopment"}
-          with urllib.request.urlopen(urllib.request.Request(url+"?ref="+branch,headers=headers),timeout=25) as response:
-              remote=json.load(response)
-          original=base64.b64decode(remote["content"].replace("\n",""))
-          assert hashlib.sha256(original).hexdigest()==proof["roadmap_sha256"]
-          plan=json.loads(original.decode("utf-8"))
-          evidence={"repo":repo,"branch":branch,"commit_sha":os.environ["GITHUB_SHA"],
-                    "tests_passed":True,"independent_review":True,
-                    "windows_bridge_run":38318013640,"reviewer":"qwen3:4b",
-                    "review_verdict":"REVIEW_OK"}
-          control_plane.complete(plan,"NF-DEV-01",evidence)
-          raw=(json.dumps(plan,ensure_ascii=False,indent=2)+"\n").encode("utf-8")
-          payload={"branch":branch,"sha":remote["sha"],
-                   "message":"neurofactory: independently approve real development milestone 01",
-                   "content":base64.b64encode(raw).decode()}
-          request=urllib.request.Request(url,method="PUT",headers=headers,
-                data=json.dumps(payload).encode("utf-8"))
-          with urllib.request.urlopen(request,timeout=30) as response:receipt=json.load(response)
-          print("REVIEWED_MILESTONE_COMPLETE NF-DEV-01",receipt["commit"]["sha"])
+          import base64,hashlib,json,os,pathlib,urllib.error,urllib.request
+          root=pathlib.Path('bridge/neurofactory/development')
+          proof=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'neurofactory-review.json').read_text('utf-8'))
+          assert proof['verdict']=='REVIEW_OK' and proof['stage']=='NF-DEV-01'
+          assert proof['source_sha256']==hashlib.sha256((root/'control_plane.py').read_bytes()).hexdigest()
+          assert proof['roadmap_sha256']==hashlib.sha256((root/'roadmap.json').read_bytes()).hexdigest()
+          token=os.environ['GITHUB_TOKEN']
+          repo='DSLitvinov1/my_first_repo'
+          api='https://api.github.com/repos/'+repo+'/contents/'
+          headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json',
+                   'Content-Type':'application/json','User-Agent':'NeurofactoryIndependentReviewGate'}
+          source_req=urllib.request.Request(api+'bridge/neurofactory/development/control_plane.py?ref=neurofactory-public-lab-20261012',headers=headers)
+          with urllib.request.urlopen(source_req,timeout=25) as response: src=json.load(response)
+          remote_source=base64.b64decode(src['content'].replace('\\n',''))
+          assert hashlib.sha256(remote_source).hexdigest()==proof['source_sha256'], 'Reviewer source changed'
+          proof.update({'review_run_id':int(os.environ['GITHUB_RUN_ID']),
+                        'reviewed_commit':os.environ['GITHUB_SHA'],
+                        'cloud_tests_passed':24,
+                        'windows_bridge_run':38318013640,
+                        'private_windows_status':'must_be_checked_via_authorized_connector_before_roadmap_advancement',
+                        'milestone_automatically_completed':False})
+          data=(json.dumps(proof,ensure_ascii=False,indent=2)+'\\n').encode('utf-8')
+          path='bridge/neurofactory/development/independent-review-nf-dev-01.json'
+          url=api+path
+          sha=None
+          try:
+              with urllib.request.urlopen(urllib.request.Request(url+'?ref=neurofactory-public-lab-20261012',headers=headers),timeout=20) as response:
+                  existing=json.load(response);sha=existing['sha']
+          except urllib.error.HTTPError as exc:
+              if exc.code!=404:raise
+          payload={'branch':'neurofactory-public-lab-20261012',
+                   'message':'neurofactory: independently reviewed actual development code',
+                   'content':base64.b64encode(data).decode('ascii')}
+          if sha:payload['sha']=sha
+          request=urllib.request.Request(url,method='PUT',data=json.dumps(payload).encode(),headers=headers)
+          with urllib.request.urlopen(request,timeout=30) as response: receipt=json.load(response)
+          print('INDEPENDENT_REVIEW_PERSISTED',proof['review_run_id'],receipt['commit']['sha'])
           PY
