@@ -1,0 +1,58 @@
+name: Neurofactory Full Russian CRM Autonomous Pilot
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/crm_lab/launch-request.json'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-public-synthetic-one-model-at-a-time
+  cancel-in-progress: false
+jobs:
+  synthetic_crm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out only public synthetic branch
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Assert free standard GitHub-hosted runner and public repository
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          test "$REPO" = "DSLitvinov1/my_first_repo"
+          test "$RUNNER_OS" = "Linux"
+          python - <<'PY'
+          import json,urllib.request
+          with urllib.request.urlopen("https://api.github.com/repos/DSLitvinov1/my_first_repo",timeout=15) as response:
+              data=json.load(response)
+          assert data["private"] is False and data["visibility"]=="public", "Paid private repo not allowed"
+          print("Public standard free hosted runner confirmed")
+          PY
+      - name: Start temporary Ollama with two independent models
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-crm.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:3b
+          ollama pull qwen3:4b
+      - name: Independently plan and implement all three CRM source modules
+        env:
+          CRM_PUBLIC_FREE_CONFIRMED: "yes"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python bridge/neurofactory/crm_lab/generate_crm.py
+      - name: Publish only two-agent-verified and 20-test approved CRM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python bridge/neurofactory/crm_lab/publish_verified_crm.py
