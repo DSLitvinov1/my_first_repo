@@ -78,6 +78,8 @@ class FactoryTests(unittest.TestCase):
             factory.safe_id("../../other-project")
     def test_12_proof_for_wrong_task_denied(self):
         self.fixture("fuel_trip_estimator","NFQ-0002")
+        saved=factory.source_file("NFQ-0002","verification-manifest.json").read_bytes()
+        factory.source_file("NFQ-0001","verification-manifest.json").write_bytes(saved)
         with self.assertRaises(ValueError):
             factory.verify_published_candidate("fuel_trip_estimator","NFQ-0001")
     def test_13_can_replay_published_proof_without_model(self):
