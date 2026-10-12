@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "mode": "neurofactory_self_development_only",
+  "chat_mode": "ordinary_chat",
+  "paid_services": false,
+  "repo": "DSLitvinov1/my_first_repo",
+  "branch": "neurofactory-public-lab-20261012",
+  "scope": [
+    "bridge/neurofactory/",
+    ".github/workflows/neurofactory-"
+  ],
+  "roles": {
+    "writer": {
+      "model": "qwen2.5-coder:1.5b",
+      "work": "Propose narrow improvements of Neurofactory itself according to current approved roadmap",
+      "allowed_actions": [
+        "read_public_neurofactory",
+        "propose_patch"
+      ],
+      "forbidden_actions": [
+        "execute_untrusted_code",
+        "alter_other_projects",
+        "access_secrets",
+        "send_chat"
+      ]
+    },
+    "reviewer": {
+      "model": "qwen3:4b",
+      "work": "Independently evaluate real Neurofactory code change, test results and safety",
+      "allowed_actions": [
+        "read_candidate_patch",
+        "review_tests",
+        "reject_unsafe_changes"
+      ],
+      "forbidden_actions": [
+        "self_approve_without_tests",
+        "alter_other_projects",
+        "send_chat"
+      ]
+    },
+    "chat_sender": {
+      "work": "Read only approved roadmap outbox and deliver exactly once to explicitly bound conversation",
+      "activation": "requires_user_bound_authenticated_chat",
+      "allowed_actions": [
+        "send_approved_prompt_once"
+      ],
+      "forbidden_actions": [
+        "choose_arbitrary_chat",
+        "read_other_conversations",
+        "send_without_binding",
+        "replay_same_sequence"
+      ]
+    }
+  },
+  "state_rules": {
+    "complete_requires": [
+      "real_tests_passed",
+      "separate_review_success",
+      "published_commit",
+      "accepted_evidence"
+    ],
+    "no_task_replays": true,
+    "no_parallel_heavy_workers": true,
+    "do_not_fake_chat_delivery": true,
+    "report_ready_prompt_every_reply": true
+  },
+  "current_stage": "NF-DEV-01",
+  "next_stage_after_acceptance": "NF-DEV-02"
+}
