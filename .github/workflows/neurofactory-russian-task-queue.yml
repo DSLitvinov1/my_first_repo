@@ -1,0 +1,58 @@
+name: Neurofactory Two Agent Russian Task Queue
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/universal_queue/inbox.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-public-synthetic-one-model-at-a-time
+  cancel-in-progress: false
+jobs:
+  queue:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout only isolated public branch without persistent credentials
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-public-lab-20261012
+          persist-credentials: false
+      - name: Verify zero-cost public runner and isolated repository
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request
+          assert os.environ["RUNNER_OS"] == "Linux"
+          assert os.environ["GITHUB_REPOSITORY"] == "DSLitvinov1/my_first_repo"
+          with urllib.request.urlopen("https://api.github.com/repos/DSLitvinov1/my_first_repo", timeout=20) as response:
+              repo = json.load(response)
+          assert not repo["private"] and repo["visibility"] == "public"
+          print("Approved free public standard runner")
+          PY
+      - name: Validate serial queue, recovery and both new app contracts locally
+        run: |
+          python -m py_compile bridge/neurofactory/universal_queue/queue_core.py bridge/neurofactory/universal_queue/new_app_factory.py bridge/neurofactory/universal_queue/queue_runner.py
+          python -B -m unittest discover -s bridge/neurofactory/universal_queue -p 'test_*.py' -v
+      - name: Start two independent local Qwen models with low memory concurrency
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-queue.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:1.5b
+          ollama pull qwen3:4b
+      - name: Serially create, test, review and atomically publish two new apps
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          OLLAMA_KEEP_ALIVE: "0"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/universal_queue/queue_runner.py
