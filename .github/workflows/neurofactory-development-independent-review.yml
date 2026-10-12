@@ -1,0 +1,84 @@
+name: Neurofactory Independent Real Development Review
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/development/review-request.json'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-verified-development-review
+  cancel-in-progress: false
+jobs:
+  independent_second_agent:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 26
+    steps:
+      - name: Checkout exact isolated neurofactory source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Run actual control-plane tests before AI verdict
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_control_plane.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+      - name: Start free independent local reviewer Qwen3
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/neurofactory-review.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags > /dev/null
+          ollama pull qwen3:4b
+      - name: Independently review real Neurofactory control code (no publishing credential)
+        env:
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+        run: python -B bridge/neurofactory/development/independent_review.py
+      - name: Verify Windows evidence and advance only reviewed development milestone
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PY'
+          import base64,hashlib,json,os,pathlib,urllib.request
+          import sys
+          base="bridge/neurofactory/development/"
+          sys.path.insert(0,base)
+          import control_plane
+          token=os.environ["GITHUB_TOKEN"]
+          repo="DSLitvinov1/my_first_repo"
+          branch="neurofactory-public-lab-20261012"
+          assert os.environ["GITHUB_REPOSITORY"]==repo
+          proof=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/"neurofactory-review.json").read_text("utf-8"))
+          assert proof["verdict"]=="REVIEW_OK" and proof["stage"]=="NF-DEV-01"
+          assert proof["source_sha256"]==hashlib.sha256(pathlib.Path(base+"control_plane.py").read_bytes()).hexdigest()
+          req=urllib.request.Request("https://api.github.com/repos/DSLitvinov1/lesson3.1/actions/runs/38318013640",headers={"Accept":"application/vnd.github+json"})
+          with urllib.request.urlopen(req,timeout=25) as response:windows=json.load(response)
+          assert windows["status"]=="completed" and windows["conclusion"]=="success"
+          assert windows["name"]=="Neurofactory Universal Queue Windows Bridge Verification"
+          assert windows["head_branch"]=="chatgpt-control"
+          url="https://api.github.com/repos/"+repo+"/contents/"+base+"roadmap.json"
+          headers={"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json",
+                   "Content-Type":"application/json","User-Agent":"NeurofactoryVerifiedDevelopment"}
+          with urllib.request.urlopen(urllib.request.Request(url+"?ref="+branch,headers=headers),timeout=25) as response:
+              remote=json.load(response)
+          original=base64.b64decode(remote["content"].replace("\n",""))
+          assert hashlib.sha256(original).hexdigest()==proof["roadmap_sha256"]
+          plan=json.loads(original.decode("utf-8"))
+          evidence={"repo":repo,"branch":branch,"commit_sha":os.environ["GITHUB_SHA"],
+                    "tests_passed":True,"independent_review":True,
+                    "windows_bridge_run":38318013640,"reviewer":"qwen3:4b",
+                    "review_verdict":"REVIEW_OK"}
+          control_plane.complete(plan,"NF-DEV-01",evidence)
+          raw=(json.dumps(plan,ensure_ascii=False,indent=2)+"\n").encode("utf-8")
+          payload={"branch":branch,"sha":remote["sha"],
+                   "message":"neurofactory: independently approve real development milestone 01",
+                   "content":base64.b64encode(raw).decode()}
+          request=urllib.request.Request(url,method="PUT",headers=headers,
+                data=json.dumps(payload).encode("utf-8"))
+          with urllib.request.urlopen(request,timeout=30) as response:receipt=json.load(response)
+          print("REVIEWED_MILESTONE_COMPLETE NF-DEV-01",receipt["commit"]["sha"])
+          PY
