@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "owner_lane": "HANDOFF",
+  "branch": "neurofactory-model-handoff-owned-20261013",
+  "parent_approved_for_test": "9c2f40daedea6f853da55b5f943094736b3ac1fe",
+  "tested_source_commit": "db38b78e5c36207edf5d344741f9d317e1fff33d",
+  "current_scoped_source_at_check": "309e4da0d5fa7ffdcd71aa4e45691405e76e2a41",
+  "live_pair": {
+    "run": 38469770594,
+    "conclusion": "success",
+    "writer": "qwen2.5-coder:7b",
+    "reviewer": "qwen3:4b",
+    "model_verdict": "APPROVE",
+    "module_verdict": "APPROVE",
+    "artifact_id": 11850873678,
+    "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+    "module_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+    "publication_count": 0
+  },
+  "scoped_checks": {
+    "regression_run": 38471293905,
+    "regression_pass": 43,
+    "regression_fail": 0,
+    "ownership_run": 38471390326,
+    "ownership_conclusion": "success",
+    "artifact_recheck_run": 38471390414,
+    "artifact_recheck_conclusion": "success",
+    "recheck_artifact_id": 11851833219,
+    "archive_entries": 8,
+    "byte_digest_consistency": true,
+    "writer_reply_matches_processed_review": true,
+    "raw_qwen3_module_verdict_checked": true,
+    "release_authorized": false,
+    "independent_review_owner": "PENDING"
+  },
+  "branch_heads": {
+    "core": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "handoff": "309e4da0d5fa7ffdcd71aa4e45691405e76e2a41",
+    "review": "e0a6a915a2c17352f4f7a6d6a542dfc6b5718288",
+    "providers": "56cf7f0ffeca9810a67e3bb346816cb1817e7bea",
+    "coordinator": "ff813510b284c062fa40c1f501b48ea642efeb3d"
+  },
+  "branch_overlap_audit": {
+    "owner_scoped_files_modified_by_other_lanes": 0,
+    "historic_shared_coordination_files_present_in_multiple_branches": 5,
+    "coordination_check_lanes_file_has_newer_coordinator_owned_blob": true,
+    "note": "Historical shared ancestry is not a per-owner collision; whole-branch merge would carry stale coordinator code and is prohibited. Only explicit HANDOFF-owned paths can be considered for later minimal integration."
+  },
+  "requested_next_gates": [
+    "Independent REVIEW lane verdict on exact branch SHA and original run artifact with source and raw review receipts",
+    "Coordinator approval of a scoped integration plan, based on fresh five-branch audit and reviewed HEAD",
+    "Trusted verified GitHub receipt and separate publisher test before any production output",
+    "No automatic ChatGPT delivery, paid API, or changes to CORE/shared journal"
+  ],
+  "release_decision": "BLOCKED_PENDING_SEPARATE_REVIEW_AND_COORDINATOR",
+  "test_caveats": [
+    "43 regression tests are deterministic, not a newly executed real model cycle",
+    "Second independent REVIEW owner has not issued a positive approval; Qwen3's own verdict alone is insufficient",
+    "Archive check tests internal integrity and run provenance, not the semantic correctness of all possible generated code",
+    "Remote cross-run CORE journal and production publication belong to other owners and were not modified"
+  ],
+  "changed_paths": [
+    "bridge/neurofactory/development/model_handoff_owned/verify_live_archive.py",
+    "bridge/neurofactory/development/model_handoff_owned/test_verify_live_archive.py",
+    ".github/workflows/neurofactory-handoff-owned-artifact-recheck.yml",
+    "bridge/neurofactory/development/model_handoff_owned/proof-artifact-recheck-38471390414.json"
+  ]
+}
