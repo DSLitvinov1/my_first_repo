@@ -1,0 +1,70 @@
+name: Neurofactory Stage4 One Real Two-Agent Durable Execution
+on:
+  push:
+    branches: [neurofactory-stage4-live-integration-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage4-live-cycle.yml'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-stage4-one-real-receipt-publication
+  cancel-in-progress: false
+jobs:
+  isolated_contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: New stage4 tests and existing durable crash suites
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage4_live_cycle.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage4_queue.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_durable_checkpoint.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+  first_writer_second_reviewer_real_run:
+    needs: isolated_contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prove free public scope and approved stage
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          with urllib.request.urlopen('https://api.github.com/repos/DSLitvinov1/my_first_repo',timeout=20) as response:
+              doc=json.load(response)
+          assert doc['private'] is False
+          plan=json.load(open('bridge/neurofactory/development/roadmap.json',encoding='utf-8'))
+          assert plan['free_only'] and plan['chat_delivery_paused']
+          assert {t['id']:t['state'] for t in plan['milestones']}['NF-DEV-04']=='active'
+          print('NF4_ISOLATED_PUBLIC_FREE_SCOPE_CONFIRMED')
+          PY
+      - name: Start two independent no-cost models sequentially
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-stage4-live.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: Writer, independent reviewer, durable checkpoints, real child kills, GitHub verification and replay
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          PYTHONDONTWRITEBYTECODE: "1"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+        run: |
+          python -B bridge/neurofactory/development/stage4_live_cycle.py
+          python -B bridge/neurofactory/development/stage4_live_cycle.py
