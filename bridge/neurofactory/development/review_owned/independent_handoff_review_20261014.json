@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "role": "REVIEW",
+  "decision": "REJECT",
+  "independently_performed": true,
+  "allow_core_handoff_integration": false,
+  "allow_merging": false,
+  "allow_publication": false,
+  "reviewed": {
+    "source_branch": "neurofactory-model-handoff-owned-20261013",
+    "exact_commit": "b205a495b51aa125dd8273955c202a177df7a173",
+    "reviewed_file": "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+    "source_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+    "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+    "original_handoff_actions_run": 38469770594,
+    "original_evidence_artifact": 11850873678,
+    "original_evidence_zip_sha256": "24c8cbb5a8c383c4dbb000127f5805b27eac62a6ff35c20cdaefbc8265d9fd6b",
+    "original_evidence_archive_file_count": 8,
+    "independent_handoff_regression_run": 38471630462,
+    "regressions_reported": 43,
+    "independent_archive_recheck_run": 38471390414
+  },
+  "reviewer_evidence": {
+    "independent_actions_run": 38483261300,
+    "review_branch": "neurofactory-review-owned-20261013",
+    "original_test_commit": "3fd8a95acbc96371123ad3679b5fe7d685afa5e5",
+    "workflow_commit": "e702fee3cc1c24c1407571eef9ca8935d5724c47",
+    "test_file": "bridge/neurofactory/development/review_owned/test_handoff_independent_security.py",
+    "test_count": 8,
+    "test_passed": 8,
+    "test_failed": 0,
+    "rejection_artifact_id": 11858027447,
+    "rejection_artifact_json_sha256": "2bc08bb74e111248e4d17de20bdeb785dd7c6a2a7a03f9a0b3015b6003d1ac40",
+    "runner_environment": "isolated Linux GitHub Actions checkout of exact HANDOFF Git commit, no Git write credentials"
+  },
+  "blocking_findings": [
+    {
+      "id": "REVIEW-HANDOFF-001",
+      "severity": "HIGH_CONDITIONAL",
+      "status": "CONFIRMED_REPRODUCED",
+      "issue": "Directory replacement between destination.is_symlink() and target.open('xb') allows creation of the evidence file outside the isolated evidence root if a competing local process can rename/write the parent directory.",
+      "reproduction": "In independently checked out exact HANDOFF source, intercept the target.open call only AFTER the symlink check; rename task directory and substitute symlink to a separate temporary foreign directory; store_once returns created=True but a new candidate.json exists in foreign directory.",
+      "precise_boundary": "Requires a concurrent local actor who can modify the evidence root or task path. Reproduced in isolated Linux runner temp directories, not evidence of remote exploitation or a Windows exploit.",
+      "minimal_fix_guidance": "Use a truly private task directory whose parent cannot be replaced by less-trusted actors, and bind all child operations to validated directory handles (directory-relative no-follow semantics) or equivalently secure platform-specific atomic handles; verify under controlled cross-process directory swaps. Avoid relying on pre-write is_symlink() checks alone."
+    },
+    {
+      "id": "REVIEW-HANDOFF-002",
+      "severity": "MODERATE_PROVENANCE_LIMITATION",
+      "status": "CONFIRMED_API_CAN_BE_FED_FORGED_REVIEW",
+      "issue": "review_packet accepts caller supplied reviewer response and a model='qwen3:4b' argument as proof fields; a caller may fabricate APPROVE and receive a model-tagged saved review without a genuine model invocation.",
+      "reproduction": "Construct JSON verdict APPROVE with the real candidate hash and invoke review_packet directly; result contains reviewer_model='qwen3:4b' and verdict=APPROVE despite zero calls to the model.",
+      "precise_boundary": "The live test runner separately calls a local Ollama endpoint and validates the returned model field, so this is not proof that original GitHub archive was forged. It demonstrates that raw packet fields alone cannot be elevated to authenticated model provenance.",
+      "minimal_fix_guidance": "Keep source-bound, origin-bound proof from a trusted model runner or external reviewer, verify immutable GitHub job/artifact identity, and do not allow a mere candidate packet or model tag to satisfy independent REVIEW or publisher authorization."
+    }
+  ],
+  "positive_findings": [
+    "Exact source and expected SHA-256 matched in independent GitHub checkout.",
+    "Existing target symlink was rejected by store_once.",
+    "Two competing processes with different content did not overwrite each other's file; loser failed safely.",
+    "Identical saved evidence replay is a no-op.",
+    "Strict JSON duplicate keys, wrong candidate hash and incomplete review were rejected.",
+    "Persisted handoff dossier and model packet keep release_authorized=false and publisher_enabled=false.",
+    "Original eight-file GitHub model artifact shows candidate and module Qwen3 APPROVE but checkpoint awaiting_review_owner and zero publications."
+  ],
+  "limitations": [
+    "Review was limited to exact pinned HANDOFF module, original evidence archive and new isolated Linux adversarial tests, not a completed production publisher.",
+    "Review suite includes intentionally successful exploit-reproduction tests; 8/8 PASS is NOT safety approval.",
+    "Live Qwen3 APPROVE on original artifact is a model opinion, not a separate REVIEW owner attestation.",
+    "Directory swap exploit requires concurrent write access to evidence root; runtime ACLs and actual threat model must be separately validated, including Windows.",
+    "No paid service or ChatGPT send used and no new production task executed."
+  ],
+  "next_actions": {
+    "HANDOFF": "Fix the directory-swap race and strengthen provenance requirements in HANDOFF-owned code only. Add exact regression tests proving the exploit no longer occurs. Retest on Linux and Windows and obtain a new independent Qwen3 source review.",
+    "REVIEW": "Once HANDOFF publishes a NEW code SHA and evidence, independently re-run the same adversarial tests; issue a fresh exact SHA-bound verdict.",
+    "CORE": "No integration with this rejected HANDOFF source yet.",
+    "COORDINATOR": "Keep Issue #3 and old mixed draft PR #2 blocked; allow minimal integration only after a new positive REVIEW and production branch safeguards."
+  }
+}
