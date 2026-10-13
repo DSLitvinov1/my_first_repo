@@ -33,12 +33,15 @@ def read():
     return obj,result["sha"]
 def main():
     import sys,tempfile
-    if os.getenv("GITHUB_REPOSITORY")!=REPO or os.getenv("GITHUB_REF_NAME")!=BRANCH:
-        raise ValueError("Wrong branch, abort")
+    phase=sys.argv[1]
+    hosted = os.getenv("GITHUB_REPOSITORY")==REPO and os.getenv("GITHUB_REF_NAME")==BRANCH
+    windows_audit = (phase=="recover" and os.getenv("NF_STAGE5_WINDOWS_READONLY")=="yes"
+                     and os.getenv("GITHUB_REPOSITORY")=="DSLitvinov1/lesson3.1")
+    if not (hosted or windows_audit):
+        raise ValueError("Wrong project or branch, abort")
     plan=json.loads((ROOT/"roadmap.json").read_text("utf-8"))
     if plan.get("chat_delivery_paused") is not True or plan.get("free_only") is not True:
         raise ValueError("User safety settings changed")
-    phase=sys.argv[1]
     jobs=[OBJECTIVE,OBJECTIVE2]
     with tempfile.TemporaryDirectory(prefix="neurofactory-stage5-real-github-") as t:
         q=DevelopmentQueue(t,plan,jobs)
