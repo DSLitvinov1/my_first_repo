@@ -48,8 +48,8 @@
   ],
   "new_live_model_tasks_executed": 0,
   "actual_github_stage5_state_write_tested": false,
-  "reviewer_workflow_run": 38455062233,
-  "reviewer_verdict": "pending",
+  "reviewer_workflow_run": 38456001161,
+  "reviewer_verdict": "pending_independent_model_approval",
   "future_approved_jobs": [
     "NF-DEV-05-Q001",
     "NF-DEV-05-Q002",
@@ -61,5 +61,10 @@
     "Live model dispatcher is intentionally disabled until an independent security verdict and explicit new-task integration gate.",
     "GitHub billing not available; no claim of zero total expenses.",
     "ChatGPT delivery is still user-deferred, so full milestone cannot close."
-  ]
+  ],
+  "previous_reviewer_run": {
+    "run_id": 38455062233,
+    "conclusion": "failure",
+    "reason": "Qwen CPU generation exceeded 300 second response timeout; no security verdict issued"
+  }
 }
