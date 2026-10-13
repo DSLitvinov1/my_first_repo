@@ -58,6 +58,7 @@ jobs:
           mkdir -p nf-stage5-proof
           python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-stage5-proof
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: neurofactory-stage5-two-independent-models
           path: nf-stage5-proof/
