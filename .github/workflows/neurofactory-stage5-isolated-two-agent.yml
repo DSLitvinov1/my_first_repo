@@ -30,17 +30,23 @@ jobs:
           foreach ($needed in @('qwen2.5-coder:7b','qwen3:4b')) {
             if ($names -notcontains $needed) { throw "Missing local model: $needed. No automatic pull allowed." }
           }
-          $prompts = @(
-            @{ role = 'writer'; model = 'qwen2.5-coder:7b'; prompt = 'Produce a small Python pure function returning the sum of even integers in a list. Return only code. Do not use external tools.' },
-            @{ role = 'reviewer'; model = 'qwen3:4b'; prompt = 'Independently review a Python function that sums even integers: enumerate edge cases, correctness issues, and deterministic tests. Do not assume the author is correct. Return your review.' }
-          )
-          foreach ($item in $prompts) {
-            $body = @{ model = $item.model; prompt = $item.prompt; stream = $false; options = @{ num_predict = 450 } } | ConvertTo-Json -Depth 5
-            $response = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/generate' -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 240
-            if ([string]::IsNullOrWhiteSpace($response.response) -or $response.model -notlike ($item.model + '*')) { throw "Missing or unexpected response from $($item.role)" }
-            $out = @{ role = $item.role; model = $response.model; result_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($response.response))).ToLowerInvariant(); evaluated_count = $response.eval_count; completed = $true }
-            $out | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $dir ($item.role + '.json'))
-          }
+          # The actual immutable writer output is passed to the independent reviewer.
+          # A task description alone is never evidence of independent review.
+          $writerRequest = @{ model = 'qwen2.5-coder:7b'; prompt = 'Write only a pure Python function sum_even(values) that sums even integers. No external tools.'; stream = $false; options = @{ num_predict = 350; temperature = 0 } } | ConvertTo-Json -Depth 5
+          $writer = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/generate' -Method Post -ContentType 'application/json' -Body $writerRequest -TimeoutSec 240
+          if ([string]::IsNullOrWhiteSpace($writer.response) -or $writer.model -notlike 'qwen2.5-coder:7b*') { throw 'Writer unavailable; stop without publication.' }
+          $candidate = [string]$writer.response
+          $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($candidate))).ToLowerInvariant()
+          $candidate | Set-Content -Encoding utf8 (Join-Path $dir 'candidate.txt')
+          $reviewPrompt = 'You are an independent reviewer. Analyze the following exact candidate for correctness, safety and edge cases. Report explicitly REVIEW_OK only if the candidate is correct, otherwise REVIEW_REJECT. Explain your decision and tests. Candidate SHA256: ' + $digest + "`nCANDIDATE START`n" + $candidate + "`nCANDIDATE END"
+          $reviewRequest = @{ model = 'qwen3:4b'; prompt = $reviewPrompt; stream = $false; options = @{ num_predict = 650; temperature = 0 } } | ConvertTo-Json -Depth 5
+          $review = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/generate' -Method Post -ContentType 'application/json' -Body $reviewRequest -TimeoutSec 240
+          if ([string]::IsNullOrWhiteSpace($review.response) -or $review.model -notlike 'qwen3:4b*') { throw 'Reviewer unavailable; stop without publication.' }
+          $verdict = [string]$review.response
+          $accepted = ($verdict -match '(?m)^REVIEW_OK\b') -and ($verdict -notmatch 'REVIEW_REJECT')
+          @{ role = 'writer'; model = $writer.model; candidate_sha256 = $digest; completed = $true; published = $false } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $dir 'writer.json')
+          @{ role = 'reviewer'; model = $review.model; reviewed_candidate_sha256 = $digest; approved = $accepted; completed = $true; published = $false } | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $dir 'reviewer.json')
+          if (-not $accepted) { throw 'Independent reviewer did not explicitly approve the candidate. No publication permitted.' }
           $env:PYTHONPATH = 'bridge/neurofactory/development'
           python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_development_queue.py -v
           python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
@@ -51,5 +57,7 @@ jobs:
         if: always()
         with:
           name: neurofactory-stage5-isolated-model-evidence
-          path: ${{ runner.temp }}/neurofactory-stage5-isolated/*.json
+          path: |
+            ${{ runner.temp }}/neurofactory-stage5-isolated/*.json
+            ${{ runner.temp }}/neurofactory-stage5-isolated/candidate.txt
           if-no-files-found: warn
