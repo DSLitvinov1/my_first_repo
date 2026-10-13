@@ -71,6 +71,29 @@ class RealSelfImprovementTests(unittest.TestCase):
             "conversation_url":"https://chatgpt.com/c/12345678-abcd-1234-abcd-123456789012",
             "delivery_sequence":__import__("control_plane").outbox(self.plan)["sequence"],"independent_review":True,"tests_passed":True}
         self.assertTrue(gate.approved_stage3(p))
+    def test_17_explicit_pause_allows_real_neurofactory_development_only(self):
+        p=copy.deepcopy(self.plan)
+        p["chat_delivery_paused"]=True
+        p["stage3_independent_of_chat"]=True
+        p["milestones"][1]["state"]="deferred"
+        p["milestones"][1].pop("evidence",None)
+        p["milestones"][2]["state"]="active"
+        self.assertTrue(gate.approved_stage3(p))
+        self.assertEqual(p["milestones"][1]["state"],"deferred")
+    def test_18_pause_without_explicit_stage_three_permission_stays_closed(self):
+        p=copy.deepcopy(self.plan)
+        p["chat_delivery_paused"]=True
+        p["stage3_independent_of_chat"]=False
+        p["milestones"][1]["state"]="deferred"
+        p["milestones"][2]["state"]="active"
+        self.assertFalse(gate.approved_stage3(p))
+    def test_19_paused_chat_does_not_unlock_finished_roadmap_early(self):
+        p=copy.deepcopy(self.plan)
+        p["chat_delivery_paused"]=True
+        p["stage3_independent_of_chat"]=True
+        p["milestones"][1]["state"]="deferred"
+        p["milestones"][2]["state"]="pending"
+        self.assertFalse(gate.approved_stage3(p))
     def test_14_no_other_path_to_stage_three(self):
         p=copy.deepcopy(self.plan);p["milestones"][2]["state"]="active"
         with self.assertRaises(Exception):gate.approved_stage3(p)
