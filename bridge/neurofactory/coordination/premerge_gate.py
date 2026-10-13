@@ -133,7 +133,7 @@ def required_checks(pr, check_runs):
     return True
 
 
-def evaluate(pr, files, reviews, checks, policy):
+def evaluate(pr, files, reviews, checks, policy, *, base_protected=False, handoff_review=None):
     number, sha = pr_head(pr)
     blocks = []
     if pr.get("state") != "open" or pr.get("draft") is not False:
@@ -146,6 +146,13 @@ def evaluate(pr, files, reviews, checks, policy):
         blocks.append("wrong_base_or_external_fork")
     if pr.get("mergeable") is not True or pr.get("mergeable_state") not in ("clean",):
         blocks.append("mergeability_not_confirmed")
+    if base_protected is not True:
+        blocks.append("production_branch_unprotected")
+    if head.get("ref") == "neurofactory-model-handoff-owned-20261013":
+        # No generic passing CI can overrule an independent REJECT. A newly
+        # edited source is also blocked until the reviewer approves exact bytes.
+        if not isinstance(handoff_review, dict) or handoff_review.get("blocked") is not False:
+            blocks.append("handoff_independent_review_not_approved")
     if not isinstance(files, list) or not files:
         blocks.append("missing_changed_files")
         paths = []
@@ -196,7 +203,16 @@ def verify_pr(number, getter=get_json, policy=None):
             check_response["total_count"] >= 100):
         raise MergeGateError("Missing/truncated check run evidence")
     checks = check_response.get("check_runs")
-    result = evaluate(pr, files, reviews, checks, p)
+    # An API check returning 403 or no explicit protected=true is a hard
+    # blocker. This is a read-only preflight, never an attempt to configure it.
+    base_meta = getter(URL + "branches/" + BASE_BRANCH)
+    base_protected = isinstance(base_meta, dict) and base_meta.get("protected") is True
+    review_status = None
+    if (pr.get("head") or {}).get("ref") == "neurofactory-model-handoff-owned-20261013":
+        from review_release_gate import audit as read_independent_release
+        review_status = read_independent_release(getter)["release"]
+    result = evaluate(pr, files, reviews, checks, p,
+                      base_protected=base_protected, handoff_review=review_status)
     # Guard against a PR changing between fetches by re-reading the exact
     # head after all checks. Never let an old reviewed SHA approve a new head.
     updated = getter(URL + "pulls/" + str(number))
