@@ -1,0 +1,300 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "date": "2026-10-14",
+  "issue": 3,
+  "owner": "COORDINATOR",
+  "scope": "read_only_final_release_acceptance_no_cross_lane_edits",
+  "production_branch": "neurofactory-public-lab-20261012",
+  "release_decision": "NOT_ACCEPTED",
+  "release_authorization": false,
+  "roadmap": [
+    {
+      "id": "NF-DEV-01",
+      "state": "verified"
+    },
+    {
+      "id": "NF-DEV-02",
+      "state": "deferred_by_user_no_chatgpt_auto_send"
+    },
+    {
+      "id": "NF-DEV-03",
+      "state": "verified"
+    },
+    {
+      "id": "NF-DEV-04",
+      "state": "verified"
+    },
+    {
+      "id": "NF-DEV-05",
+      "state": "pending"
+    }
+  ],
+  "lane_heads_at_checkpoint": [
+    {
+      "lane": "CORE",
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "sha": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "code_integrated_into_production": false
+    },
+    {
+      "lane": "HANDOFF",
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "sha": "b205a495b51aa125dd8273955c202a177df7a173"
+    },
+    {
+      "lane": "REVIEW",
+      "branch": "neurofactory-review-owned-20261013",
+      "sha": "e0a6a915a2c17352f4f7a6d6a542dfc6b5718288",
+      "separate_handoff_review_approved": false
+    },
+    {
+      "lane": "PROVIDERS",
+      "branch": "neurofactory-providers-free-20261013",
+      "sha": "56cf7f0ffeca9810a67e3bb346816cb1817e7bea"
+    },
+    {
+      "lane": "COORDINATOR",
+      "branch": "neurofactory-chat-coordination-20261013",
+      "sha": "ff813510b284c062fa40c1f501b48ea642efeb3d"
+    }
+  ],
+  "verified_evidence": [
+    {
+      "kind": "live_two_models",
+      "run_id": 38469770594,
+      "commit": "db38b78e5c36207edf5d344741f9d317e1fff33d",
+      "result": "SUCCESS",
+      "model_writer": "qwen2.5-coder:7b",
+      "model_review": "qwen3:4b",
+      "model_verdict": "APPROVE",
+      "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+      "handoff_module_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+      "artifacts": [
+        11850873678
+      ],
+      "publication_count": 0,
+      "separate_review_owner": "PENDING",
+      "candidate_review_tests_executed_by_qwen3": false
+    },
+    {
+      "kind": "independent_artifact_recheck",
+      "run_id": 38471390414,
+      "source_artifact": 11850873678,
+      "result": "SUCCESS",
+      "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+      "owner_review": "PENDING",
+      "release_authorized": false,
+      "publication_count": 0
+    },
+    {
+      "kind": "local_independent_archive_recalculation",
+      "source_artifact": 11850873678,
+      "checks": 11,
+      "passed": 11,
+      "failed": 0,
+      "safety": "only archived eight files parsed; no external writes"
+    },
+    {
+      "kind": "candidate_isolated_semantic_test",
+      "source_artifact": 11850873678,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "tests_executed_in": "isolated Python subprocess, not production"
+    },
+    {
+      "kind": "three_windows_runners_separate_jobs",
+      "run_id": 38455676540,
+      "result": "SUCCESS",
+      "jobs": [
+        "primary",
+        "reserve",
+        "third"
+      ],
+      "claim_limitation": "all runners located on same Windows host; not proof of host-wide disaster recovery"
+    },
+    {
+      "kind": "windows_stage5_crash_and_restore",
+      "run_id": 38464557424,
+      "result": "SUCCESS",
+      "test_count": 32,
+      "source_scope": "unmerged independent Stage5 candidate"
+    },
+    {
+      "kind": "windows_remote_receipt_replay_denial",
+      "run_id": 38463962239,
+      "result": "SUCCESS",
+      "limitation": "not new Q090 publication"
+    },
+    {
+      "kind": "independent_qwen3_core_restore",
+      "run_id": 38464998899,
+      "result": "REVIEW_OK",
+      "limitation": "CORE restore candidate only, not latest HANDOFF release"
+    },
+    {
+      "kind": "coordinator_five_branch_ownership",
+      "run_id": 38469576511,
+      "result": "SUCCESS",
+      "tests_passed": 62,
+      "overlaps": 0
+    },
+    {
+      "kind": "coordinator_premerge",
+      "run_id": 38469576877,
+      "result": "SUCCESS",
+      "blocked_pr_count": 1
+    }
+  ],
+  "requirements": [
+    {
+      "id": "scope_isolation",
+      "state": "verified",
+      "evidence": [
+        38469576511
+      ]
+    },
+    {
+      "id": "first_model_real_execution",
+      "state": "verified_isolated",
+      "evidence": [
+        38469770594
+      ]
+    },
+    {
+      "id": "second_model_real_review",
+      "state": "verified_isolated",
+      "evidence": [
+        38469770594
+      ]
+    },
+    {
+      "id": "artifact_exact_hash_chain",
+      "state": "verified_isolated",
+      "evidence": [
+        11850873678,
+        38471390414
+      ]
+    },
+    {
+      "id": "candidate_behavior_tests",
+      "state": "verified_isolated",
+      "count": 5,
+      "evidence": [
+        11850873678
+      ]
+    },
+    {
+      "id": "three_distinct_windows_runners_tested",
+      "state": "verified_historical",
+      "evidence": [
+        38455676540
+      ]
+    },
+    {
+      "id": "stage5_checkpoint_restore_after_child_crash",
+      "state": "verified_isolated",
+      "evidence": [
+        38464557424
+      ]
+    },
+    {
+      "id": "separate_review_owner_approves_exact_handoff",
+      "state": "missing"
+    },
+    {
+      "id": "core_owned_runtime_integration",
+      "state": "missing"
+    },
+    {
+      "id": "new_multi_task_production_queue_execution",
+      "state": "missing"
+    },
+    {
+      "id": "actual_approved_single_github_publication",
+      "state": "missing",
+      "production_commits_confirmed": 0
+    },
+    {
+      "id": "replay_same_task_no_second_publication",
+      "state": "missing_for_Q090"
+    },
+    {
+      "id": "cross_runner_live_recovery_of_new_published_task",
+      "state": "missing"
+    },
+    {
+      "id": "repo_enforces_required_reviews_and_status_checks",
+      "state": "missing",
+      "observed_protected": false
+    },
+    {
+      "id": "different_hardware_host_redundancy",
+      "state": "not_provided",
+      "note": "three runners share one Windows computer"
+    },
+    {
+      "id": "windows_full_reboot_recovery",
+      "state": "not_tested_safety_deferred"
+    }
+  ],
+  "blocking_pull_requests": [
+    {
+      "number": 2,
+      "state": "open_draft",
+      "merged": false,
+      "head_sha": "3d1579cf3e0a86345f93e15ac7bdb92f918a35e3",
+      "owners": [
+        "CORE",
+        "REVIEW"
+      ],
+      "merge_allowed": false
+    }
+  ],
+  "required_next_actions": [
+    {
+      "owner": "REVIEW",
+      "action": "independently inspect exact HANDOFF commit 9c2f40daedea6f853da55b5f943094736b3ac1fe and stored eight-file artifact 11850873678; publish signed result to review-owned branch",
+      "do_not_merge": true
+    },
+    {
+      "owner": "CORE",
+      "action": "produce integration compatibility proposal for actual core-owned Stage5 queue and trusted receipt path without modifying HANDOFF or coordinator files",
+      "do_not_merge": true
+    },
+    {
+      "owner": "HANDOFF",
+      "action": "after independent REVIEW approval, pass new unique task through trusted integration, publish only once with GitHub receipt and immutable checkpoint; verify on replay and preserve prior Q090",
+      "do_not_repeat_Q090": true
+    },
+    {
+      "owner": "COORDINATOR",
+      "action": "verify independent source SHA, single-owner PRs, true branch protection, all three runner evidence, usage and stop on any conflict"
+    },
+    {
+      "owner": "REPO_ADMIN",
+      "action": "enable enforced branch protection / ruleset and required status checks and independent review on production branch"
+    }
+  ],
+  "costs": {
+    "actual_billing_charges": null,
+    "currency": null,
+    "status": "NOT_VERIFIED",
+    "paid_api_execution_authorized": false,
+    "github_minutes_pricing_not_estimated": true
+  },
+  "safety": {
+    "external_model_api_paid": false,
+    "chatgpt_delivery_paused": true,
+    "shared_queue_direct_edits": false,
+    "reboots_performed": false,
+    "branch_merges_performed": false
+  },
+  "notes": [
+    "Archive semantics: Qwen3 did not execute candidate behavior tests; five additional isolated tests were performed independently.",
+    "Evidence is a checkpoint at observed SHAs, not an automatically updated release certificate.",
+    "No full end-to-end new production task was executed, because the independent owner approval and trusted merged publisher are not available.",
+    "Run identifiers and source SHA must be rechecked after any subsequent branch change."
+  ]
+}
