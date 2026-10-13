@@ -253,7 +253,16 @@
         "qwen_stage5_prior_attempt": {
           "run_id": 38455062233,
           "reason": "timeout_not_rejection"
-        }
+        },
+        "real_isolated_journal_run": 38463831418,
+        "real_windows_restore_run": 38463962239,
+        "real_isolated_snapshot_sha256": "b03166f49a5eae313cf97e0de023a4b34ce7ca723c8d44e65c364513dce8ac33",
+        "isolated_test_branch": "neurofactory-stage5-isolated-journal-20261013",
+        "genuine_github_checkpoint_write_verified": true,
+        "three_runner_cross_environment_restore": true,
+        "independent_qwen_safety_run": 38456001161,
+        "independent_qwen_safety_status": "invalid_verdict_not_approved",
+        "model_autodispatch_enabled": false
       }
     }
   ],

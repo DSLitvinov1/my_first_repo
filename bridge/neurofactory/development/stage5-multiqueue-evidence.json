@@ -47,24 +47,38 @@
     "qwen3:4b"
   ],
   "new_live_model_tasks_executed": 0,
-  "actual_github_stage5_state_write_tested": false,
+  "actual_github_stage5_state_write_tested": true,
   "reviewer_workflow_run": 38456001161,
-  "reviewer_verdict": "pending_independent_model_approval",
+  "reviewer_verdict": "invalid_or_missing_verdict_no_approval",
   "future_approved_jobs": [
     "NF-DEV-05-Q001",
     "NF-DEV-05-Q002",
     "NF-DEV-05-Q003"
   ],
   "limitations": [
-    "Stage5 tasks were fixture-backed validations and have not each been executed by live Qwen models.",
-    "Production GitHub CAS state write has mock transport verification, not a real end-to-end write in the approved branch.",
-    "Live model dispatcher is intentionally disabled until an independent security verdict and explicit new-task integration gate.",
-    "GitHub billing not available; no claim of zero total expenses.",
-    "ChatGPT delivery is still user-deferred, so full milestone cannot close."
+    "Two newly approved development tasks have not been implemented by the live Qwen writer/reviewer pipeline",
+    "Qwen3 independent security verdict remains missing or invalid, so no production dynamic queue activation",
+    "Real GitHub state transport verified on isolated branch with two fresh cloud runners plus Windows; production live queue transport not enabled",
+    "Actual account billing unavailable; elapsed time is not billed amount",
+    "ChatGPT delivery remains deferred by user; Stage5 must not be closed"
   ],
   "previous_reviewer_run": {
     "run_id": 38455062233,
     "conclusion": "failure",
     "reason": "Qwen CPU generation exceeded 300 second response timeout; no security verdict issued"
-  }
+  },
+  "real_github_isolated_crossrun": {
+    "status": "verified_three_runners",
+    "runs": [
+      38463831418,
+      38463962239
+    ],
+    "storage_branch": "neurofactory-stage5-isolated-journal-20261013",
+    "snapshot_sha256": "b03166f49a5eae313cf97e0de023a4b34ce7ca723c8d44e65c364513dce8ac33",
+    "original_writer_attempts": 1,
+    "second_approved_task_still_queued": true,
+    "same_snapshot_between_cloud_and_windows": true,
+    "no_duplicate_execution": true
+  },
+  "external_github_acceptance_limited_to_isolated_branch": true
 }

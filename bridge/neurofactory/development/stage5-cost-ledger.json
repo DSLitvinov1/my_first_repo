@@ -4,7 +4,7 @@
   "record_type": "sampled_execution_and_expense_audit",
   "period": "2026-10-13",
   "source": "read-only GitHub Actions run metadata and two validated Windows logs",
-  "scope": "22 named verified Stage4/5 runs, including failed isolated Qwen attempts, Windows recovery checks and independent security reviews; not an account invoice.",
+  "scope": "Identified Stage4/5 workflow runs only, including failures. Not complete project usage or billing invoice.",
   "runs": [
     {
       "run_id": 38444910309,
@@ -166,11 +166,35 @@
       "platform": "GitHub Actions hosted",
       "conclusion": "success",
       "elapsed_wall_seconds": 10
+    },
+    {
+      "run_id": 38456001161,
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "kind": "stage5_independent_qwen_review_invalid_verdict",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 280
+    },
+    {
+      "run_id": 38463831418,
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "kind": "stage5_real_isolated_checkpoint_write_fresh_runner_recovery",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 17
+    },
+    {
+      "run_id": 38463962239,
+      "repo": "DSLitvinov1/lesson3.1",
+      "platform": "self-hosted Windows runner",
+      "kind": "stage5_real_checkpoint_windows_readonly_recovery",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 140
     }
   ],
   "unique_run_ids_verified": true,
-  "observed_total_elapsed_wall_seconds": 3291,
-  "observed_total_elapsed_wall_minutes": 54.85,
+  "observed_total_elapsed_wall_seconds": 3728,
+  "observed_total_elapsed_wall_minutes": 62.13,
   "usage_note": "Wall-clock durations are not billable minutes and cannot establish monetary charges.",
   "new_paid_ai_api_calls_during_stage5_windows_audits": 0,
   "model_usage": "Previously executed Qwen2.5-Coder 7B and Qwen3 4B with local Ollama; two new stage5 Windows jobs invoked no models.",
