@@ -32,7 +32,7 @@ jobs:
         run: |
           python -B -m unittest discover -s bridge/neurofactory/development -p 'test_*.py' -v
           python -B bridge/neurofactory/development/control_plane.py --check
-      - name: Check if actual chat delivery is verified before enabling models
+      - name: Confirm active code-development stage; ChatGPT handoff may be deferred
         id: gate
         run: |
           python - <<'PY'
