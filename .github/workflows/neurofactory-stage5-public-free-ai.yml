@@ -1,5 +1,5 @@
 name: Neurofactory Stage5 Public Free Two-Agent Acceptance
-# Strict static safety gate retained; one bounded Qwen coder repair attempt.
+# Strict independent reviewer findings addressed: exact path, immutable nested values, input types.
 on:
   push:
     branches: [neurofactory-stage5-isolated-acceptance-20261013]
