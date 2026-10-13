@@ -14,7 +14,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 ROADMAP = ROOT / "roadmap.json"
 OUTBOX = ROOT / "chat_outbox.json"
 SAFE_PREFIXES = ("bridge/neurofactory/", ".github/workflows/neurofactory-")
-STATE_VALUES = {"pending", "active", "blocked", "verified"}
+STATE_VALUES = {"pending", "active", "blocked", "verified", "deferred"}
 REQUIRE_FREE = True
 
 class PlanError(ValueError):
@@ -28,6 +28,8 @@ def validate(plan):
     paths = plan.get("allow_changes_prefixes")
     if not isinstance(paths, list) or paths != list(SAFE_PREFIXES):
         raise PlanError("Changed project-only allowlist")
+    if not isinstance(plan.get("chat_delivery_paused", False), bool):
+        raise PlanError("Chat delivery pause must be an explicit boolean")
     milestones = plan.get("milestones")
     if not isinstance(milestones, list) or not 1 <= len(milestones) <= 12:
         raise PlanError("Invalid roadmap size")
@@ -51,6 +53,9 @@ def validate(plan):
         deps = t.get("depends_on", [])
         if not isinstance(deps, list) or any(d not in seen for d in deps):
             raise PlanError("Milestone dependency missing or out of order")
+        if t["state"] == "deferred" and (
+            t["id"] != "NF-DEV-02" or plan.get("chat_delivery_paused") is not True):
+            raise PlanError("Only user-paused chat delivery stage may be deferred")
         if t["state"] in ("active", "verified") and any(
              next(x for x in milestones if x["id"] == dep)["state"] != "verified" for dep in deps):
             raise PlanError("Milestone cannot proceed before dependencies verified")
@@ -84,7 +89,10 @@ def outbox(plan):
     digest = hashlib.sha256(stable.encode("utf-8")).hexdigest()
     return {
         "schema": 1, "task_id": chosen["id"], "sequence": digest[:24],
-        "state": "ready_for_chat_agent", "delivery": "requires_bound_chat",
+        "state": "paused_by_user" if plan.get("chat_delivery_paused") is True
+                 else "ready_for_chat_agent",
+        "delivery": "no_chat_send" if plan.get("chat_delivery_paused") is True
+                    else "requires_bound_chat",
         "destination_origin": "https://chatgpt.com",
         "destination_conversation": None,
         "auto_send_enabled": False,
