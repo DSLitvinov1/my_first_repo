@@ -138,6 +138,43 @@ class JournalTests(unittest.TestCase):
             with self.assertRaises(journal.RemoteJournalError):
                 journal.checkpoint_to_github(earlier)
 
+    def test_recover_commits_remote_checkpoint_before_new_task(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        coord.claim(JOBS[0]["id"],"writer",100,10)
+        remote_before=self.remote.writes
+        recovered=coord.recover(120)
+        self.assertGreater(self.remote.writes,remote_before)
+        self.assertEqual(self.queue.snapshot()[JOBS[0]["id"]]["writer"]["state"],"queued")
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-following-run-") as next_dir:
+            another=tasks.DevelopmentQueue(next_dir,PLAN,JOBS)
+            journal.DurableCoordinator(another).restore_if_exists()
+            self.assertEqual(another.snapshot(),self.queue.snapshot())
+        before_repeat=self.remote.writes
+        coord.recover(121)
+        self.assertEqual(self.remote.writes,before_repeat)
+
+    def test_old_runner_cannot_recover_over_newer_remote_state(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-stale-runner-") as other_dir:
+            stale=tasks.DevelopmentQueue(other_dir,PLAN,JOBS)
+            journal.DurableCoordinator(stale).restore_if_exists()
+            coord.claim(JOBS[0]["id"],"writer",100,10)
+            count=self.remote.writes
+            with self.assertRaises(journal.RemoteJournalError):
+                journal.DurableCoordinator(stale).recover(120)
+            self.assertEqual(self.remote.writes,count)
+
+    def test_recovery_fails_closed_when_remote_commit_unavailable(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        coord.claim(JOBS[0]["id"],"writer",100,10)
+        self.remote.fail=True
+        with self.assertRaises(journal.RemoteJournalError):
+            coord.recover(120)
+        self.assertEqual(self.remote.writes,2)
+
     def test_external_write_requires_trusted_publisher_token(self):
         self.patcher.stop()
         try:
