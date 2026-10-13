@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "lane": "handoff",
+  "branch": "neurofactory-model-handoff-owned-20261013",
+  "source_commit": "5916fd5531a8c0d0cf042d8f10389910d34fc8fc",
+  "run_id": 38467349250,
+  "result": "success",
+  "tests_passed": 20,
+  "tests_failed": 0,
+  "ownership_run_id": 38467349012,
+  "ownership": "success",
+  "files_created": [
+    "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+    "bridge/neurofactory/development/model_handoff_owned/test_handoff_gate.py",
+    ".github/workflows/neurofactory-handoff-owned-model-gate.yml"
+  ],
+  "properties_checked": [
+    "actual candidate source serialized verbatim for independent reviewer",
+    "SHA-256 bound to candidate and Qwen3 verdict",
+    "source/target limited to HANDOFF owner paths",
+    "strict reviewer verdict and duplicate JSON rejection",
+    "idempotent per-task evidence; conflicting packet never overwritten",
+    "no live publication authorization",
+    "request for independent REVIEW owner before any merge"
+  ],
+  "limitations": [
+    "Deterministic tests use fixtures, not new live Qwen invocations.",
+    "This HANDOFF run never contacted Windows runners or changed shared CORE checkpoints.",
+    "No real independent Qwen3 acceptance of this new patch yet.",
+    "No production GitHub receipt or publication; merge prohibited."
+  ],
+  "gate": "AWAITING_REVIEW_OWNER_APPROVAL",
+  "chat_delivery": "paused",
+  "paid_apis_used": false,
+  "other_branches_modified": false
+}
