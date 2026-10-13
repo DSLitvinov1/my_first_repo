@@ -87,33 +87,16 @@ def run():
     if os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"):
         raise ValueError("No model may have publication secrets")
     instruction=(
-       "You are Qwen2.5-Coder, author of a NEW production Neurofactory Python "
-       "path access policy. Output exactly one function def approved_change_path(path): "
-       "and return only true Python code, no markdown or explanation. "
-       "The policy must allow TWO independent prefix families: "
-       "1. bridge/neurofactory/ followed by a nonempty relative file path; "
-       "2. .github/workflows/neurofactory- followed by a nonempty filename ending in .yml. "
-       "Both families MUST return True for real files; DO NOT reject .github simply "
-       "because it begins with a dot. Deny everything else. "
-       "First deny if not isinstance(path,str), path length above 240, "
-       "or path.isascii() is False. "
-       "Deny any backslash. Split EVERY input with path.split('/'), then deny "
-       "if ANY segment is empty, '.' or '..'. IMPORTANT: do not reject a harmless "
-       "segment like '.github'; only reject the exact strings '.' and '..'. "
-       "Deny if ANY character in ANY segment is not alphanumeric or one of '._-'. "
-       "Only AFTER those global checks test the two allowed prefixes. "
-       "An accepted workflow MUST start with '.github/workflows/neurofactory-' "
-       "and end with '.yml'. Normal source paths MUST start with 'bridge/neurofactory/'. "
-       "Required True: bridge/neurofactory/development/control_plane.py, "
-       ".github/workflows/neurofactory-real-self-improvement.yml. "
-       "Required False: bridge/neurofactory/../other_project/main.py, "
-       ".github/workflows/other-project.yml, bridge/neurofactory//bad.py, "
-       "bridge\\\\neurofactory\\\\bad.py. "
-       "Use only if statements, return statements, comprehensions and builtins "
-       "isinstance,len,all,any,str. String methods allowed: "
-       "startswith,endswith,split,replace,isalnum,isascii. "
-       "No imports, file IO, classes, exec, eval, while, for loops, try, "
-       "exception handling, function nesting or other function calls."
+        "You are the FIRST AI code author implementing one NEW REAL production Neurofactory file-path allowlist function."
+        "Return ONLY the complete Python source: exactly one def approved_change_path(path): with a bool return and no Markdown."
+        "Preserve this correct production security reference algorithm exactly in behavior; you may simplify wording but NEVER remove a validation."
+        "REFERENCE SOURCE:\\n"
+        "def approved_change_path(path):\\n    if not isinstance(path, str) or len(path) < 5 or len(path) > 240 or not path.isascii():\\n        return False\\n    if '\\\\\\\\' in path:\\n        return False\\n    parts = path.split('/')\\n    if not all(part != '' and part != '.' and part != '..' and all(c.isalnum() or c in '._-' for c in part) for part in parts):\\n        return False\\n    if path.startswith('bridge/neurofactory/'):\\n        return True\\n    if path.startswith('.github/workflows/neurofactory-') and path.endswith('.yml'):\\n        return True\\n    return False\\n"
+        "Both independent allowed families MUST accept real files. Dot-prefixed .github segment is legitimate. Reject exact '.' and '..' segments. Reject path traversal and any non-ASCII."
+        "Do NOT require Python files to end in .yml. Restrict .yml suffix only to .github/workflows/neurofactory- files."
+        "All input checks MUST occur before both allowed prefixes are evaluated. Always deny everything outside Neurofactory."
+        "Never invoke IO, imports, syscalls, eval, exec or secrets. Only pure Python if, return, comprehensions and allowed builtins/methods."
+        "Pass all published positive and forbidden-path acceptance vectors, including real bridge/neurofactory/development/control_plane.py and .github/workflows/neurofactory-real-self-improvement.yml."
     )
     code=None
     feedback=""
@@ -133,11 +116,9 @@ def run():
             if "repeated an already rejected" in str(e):
                 print("REAL_NF_WRITER_REJECTED_DUPLICATE",flush=True)
                 break
-            feedback="\nYour previous candidate failed: "+str(e)[:240]+(
-                "\nRewrite it from the full-file-segment validation rules above. "
-                "Ensure BOTH allowed prefix families accept real paths; "
-                "do not repeat identical code.")
-                
+            feedback=("\nPrevious candidate rejected: "+str(e)[:240]
+                      +"\nFix the exact rejected input. Follow the REFERENCE SOURCE faithfully. "
+                      +"The next proposal must not repeat the failed candidate.")
             print("REAL_NF_WRITER_REPAIR",i+1,str(e)[:120],flush=True)
     if code is None:raise ValueError("Unverified model output; no publication")
     prompt=("You are the second independent reviewer Qwen3. Review this REAL new "
