@@ -142,6 +142,19 @@ class DurableCoordinator:
         self.queue.restore_snapshot(remote)
         return {"changed":False,"restored":True}
 
+    def recover(self, now):
+        """Reconcile the exact GitHub checkpoint before local recovery, then persist it.
+
+        Recovery from a stale runner is rejected instead of overwriting a newer
+        writer/reviewer/publisher receipt. No agent runs if the CAS save fails.
+        """
+        previous,_=read()
+        if previous is None or previous!=self.queue.sealed_snapshot():
+            raise RemoteJournalError("Cannot recover stale or unpersisted task state")
+        result=self.queue.recover(now)
+        checkpoint_to_github(self.queue)
+        return result
+
     def claim(self, job_id, role, now, lease_seconds=120):
         result=self.queue.claim(job_id,role,now,lease_seconds)
         checkpoint_to_github(self.queue)
