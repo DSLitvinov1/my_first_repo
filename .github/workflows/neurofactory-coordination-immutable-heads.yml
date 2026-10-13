@@ -1,0 +1,40 @@
+name: Neurofactory Coordinator Immutable Head Audit
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/audit_stable_heads.py'
+      - 'bridge/neurofactory/coordination/test_audit_stable_heads.py'
+      - '.github/workflows/neurofactory-coordination-immutable-heads.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordinator-pinned-heads
+  cancel-in-progress: false
+jobs:
+  audited_five_heads:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout only coordinator branch with no stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify coordinator race regressions and ownership constraints
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_*.py' -v
+      - name: Pin all five real GitHub heads and reject moving or foreign-owned changes
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -B bridge/neurofactory/coordination/audit_stable_heads.py --output "$RUNNER_TEMP/neurofactory-coordination-heads.json"
+      - name: Store isolated read-only evidence without repository writes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-coordinator-pinned-heads
+          path: ${{ runner.temp }}/neurofactory-coordination-heads.json
+          if-no-files-found: warn
+          retention-days: 4
