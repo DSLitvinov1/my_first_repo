@@ -5,6 +5,7 @@ publisher. No models, paid APIs, ChatGPT sender, or GitHub writes occur in this 
 """
 import hashlib
 import json
+import os
 import pathlib
 import re
 
@@ -78,6 +79,15 @@ class DevelopmentQueue:
     def prepare(self):
         with checkpoint._lock(self.lock):
             if not self.manifest.exists():
+                # An interrupted restore can leave uncommitted role files.
+                # Never initialize a fresh manifest over those files: this
+                # would silently adopt half of an older, unverified snapshot.
+                role_files = [p for lane in self.lanes.values()
+                              for p in lane.paths.values()]
+                if any(path.exists() for path in role_files):
+                    raise DevelopmentQueueError(
+                        "Incomplete restoration detected: no committed manifest; "
+                        "restore only into a fresh empty directory")
                 checkpoint.initialize(self.manifest, {
                     "id": "NF-DEV-05-QUEUE", "state": "queued",
                     "attempts": 0, "lease_until": None,
@@ -193,14 +203,35 @@ class DevelopmentQueue:
                 raise DevelopmentQueueError("Cannot restore over existing checkpoint")
             for name in expected:
                 doc = json.loads(body["files"][name])
-                value = checkpoint._load  # Validate canonical signed checkpoint before writing.
-                payload = json.dumps(doc,ensure_ascii=False).encode("utf-8")
                 if doc.get("schema") != 1 or not isinstance(doc.get("data"), dict):
                     raise DevelopmentQueueError("Checkpoint schema changed")
                 checkpoint.validate(doc["data"])
                 if doc.get("sha256") != hashlib.sha256(_canonical(doc["data"])).hexdigest():
                     raise DevelopmentQueueError("Tampered role checkpoint")
-            for name in sorted(expected):
-                (self.root / name).write_text(body["files"][name], "utf-8")
-            self._snapshot()
+            # Reserve every checkpoint with O_EXCL. A concurrent initializer may
+            # create a file after the existence preflight; never overwrite it.
+            created = []
+            try:
+                # Manifest is an atomic commit marker: publish the role files
+                # first. Other coordinators acquire the same global process
+                # lock; readers must not see a committed, partial restore.
+                names = sorted(expected - {self.manifest.name}) + [self.manifest.name]
+                for name in names:
+                    path = self.root / name
+                    try:
+                        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    except FileExistsError as exc:
+                        raise DevelopmentQueueError(
+                            "Concurrent checkpoint initialization; restore refused") from exc
+                    created.append(path)
+                    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+                        stream.write(body["files"][name])
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                self._snapshot()
+            except BaseException:
+                # Only remove checkpoints created by this restore invocation.
+                for path in reversed(created):
+                    path.unlink(missing_ok=True)
+                raise
             return True
