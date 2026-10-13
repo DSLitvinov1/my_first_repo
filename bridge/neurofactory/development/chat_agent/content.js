@@ -10,6 +10,20 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
     respond({ready:Boolean(chatKey(exact))&&chatKey(req.boundUrl)===chatKey(exact)});
     return;
   }
+  // Read-only recovery inspection: never focus the editor or click Send.
+  // This merely reports whether the matching marker is already in this exact chat.
+  if(req?.type==="NF_INSPECT_DELIVERY"){
+    const exact=chatKey(location.href);
+    if(!exact||exact!==chatKey(req.boundUrl)||
+       !/^[a-f0-9]{24}$/.test(req.sequence||"")){
+      respond({ready:false,found:false,reason:"wrong chat or sequence"});return;
+    }
+    const marker="Подтверждение отправки агентом нейрозавода: "+req.sequence+".";
+    const count=Array.from(document.querySelectorAll('[data-message-author-role="user"]')||[])
+      .filter(element=>(element.textContent||"").includes(marker)).length;
+    respond({ready:true,found:count>0,matchCount:count});
+    return;
+  }
   if(req?.type!=="NF_SEND_APPROVED_PROMPT")return;
   const exact=location.href.split("?")[0].split("#")[0];
   if(!chatKey(exact) || chatKey(exact)!==chatKey(req.boundUrl)){
