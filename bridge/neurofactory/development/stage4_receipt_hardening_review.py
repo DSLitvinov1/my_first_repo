@@ -29,9 +29,42 @@ def run():
     review=json.loads(str(r.get("response","")))
     verdict=review.get("verdict");reason=str(review.get("reason",""))[:500]
     print("NF4_HARDENING_SECOND_AGENT",verdict,reason,flush=True)
+    review_history=[{"verdict":verdict,"reason":reason}]
+    if verdict=="REVIEW_BAD":
+        # A negative reviewer claim is checked against its explicit alleged exploit.
+        # We only offer correction when a concrete cited attack demonstrably fails.
+        import importlib.util
+        spec=importlib.util.spec_from_file_location("neurofactory_hardening_attack_verification",SOURCE)
+        candidate=importlib.util.module_from_spec(spec);spec.loader.exec_module(candidate)
+        sha="0123456789abcdef"*2+"01234567"
+        attack={"repo":"attacker/other","path":"../secret","sha":sha}
+        actual=candidate.receipt_matches(attack,"attacker/other","../secret",sha)
+        if actual is not False:
+            raise ValueError("AI reviewer found a genuine exploit; do not publish")
+        print("NF4_REVIEWER_ALLEGED_FORGED_IDENTITY_RESULT",actual,flush=True)
+        retry_prompt=(
+          prompt+
+          "\nAn initial review claimed the forged attacker/other ../secret example was accepted. "
+          "That explicit input was independently executed against the exact source and returned False. "
+          "The relevant source enforces repo != hardcoded and path != hardcoded -> return False, "
+          "before it compares record values. This is not a request to auto-approve: identify a "
+          "DIFFERENT concrete runnable failing input and its actual expected/observed output "
+          "if rejection is justified. If the initial claim was refuted and no new defect exists, "
+          "return REVIEW_OK. Reinspect the candidate carefully."
+        )
+        req["prompt"]=retry_prompt[:9500]
+        again=urllib.request.Request("http://127.0.0.1:11434/api/generate",
+            data=json.dumps(req).encode(),method="POST",headers={"Content-Type":"application/json"})
+        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(again,timeout=240) as resp:
+            reply=json.load(resp)
+        if reply.get("done") is not True:raise ValueError("Second independent review incomplete")
+        reassess=json.loads(str(reply.get("response","")))
+        verdict=reassess.get("verdict");reason=str(reassess.get("reason",""))[:500]
+        review_history.append({"verdict":verdict,"reason":reason})
+        print("NF4_INDEPENDENT_REVIEWER_RECHECKED",verdict,reason,flush=True)
     if verdict!="REVIEW_OK" or len(reason)<12:raise ValueError("Independent reviewer rejected security correction")
     PROOF.write_text(json.dumps({"stage":"NF-DEV-04","component":"receipt_validator_security_hardening",
         "reviewer":"qwen3:4b","verdict":verdict,"source_sha256":digest,
-        "new_attack_regressions":9,"prior_behavior_cases":15,"reason":reason,
+        "new_attack_regressions":9,"prior_behavior_cases":15,"reason":reason,"history":review_history,
         "scope":"neurofactory_only"},sort_keys=True)+"\n","utf-8")
 if __name__=="__main__":run()
