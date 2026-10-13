@@ -17,6 +17,8 @@ jobs:
     if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    env:
+      PYTHONPATH: bridge/neurofactory/development
     steps:
       - name: Checkout isolated branch without credentials
         uses: actions/checkout@v4
