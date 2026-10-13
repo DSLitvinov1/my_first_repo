@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "record_type": "sampled_execution_and_expense_audit",
+  "period": "2026-10-13",
+  "source": "read-only GitHub Actions run metadata and two validated Windows logs",
+  "scope": "Only five named runs; not a complete project-wide statement or GH invoice",
+  "runs": [
+    {
+      "run_id": 38444910309,
+      "kind": "real_writer_reviewer_publisher",
+      "platform": "GitHub Actions hosted",
+      "elapsed_wall_seconds": 200
+    },
+    {
+      "run_id": 38446284364,
+      "kind": "independent_security_fix_review",
+      "platform": "GitHub Actions hosted",
+      "elapsed_wall_seconds": 142
+    },
+    {
+      "run_id": 38447399597,
+      "kind": "reserve_windows_stage4_acceptance",
+      "platform": "self-hosted Windows runner",
+      "elapsed_wall_seconds": 265
+    },
+    {
+      "run_id": 38449522945,
+      "kind": "stage5_readonly_audit_first",
+      "platform": "self-hosted Windows runner",
+      "elapsed_wall_seconds": 146
+    },
+    {
+      "run_id": 38449862949,
+      "kind": "stage5_readonly_audit_second",
+      "platform": "self-hosted Windows runner",
+      "elapsed_wall_seconds": 150
+    }
+  ],
+  "unique_run_ids_verified": true,
+  "observed_total_elapsed_wall_seconds": 903,
+  "observed_total_elapsed_wall_minutes": 15.05,
+  "usage_note": "Wall-clock durations are not billable minutes and cannot establish monetary charges.",
+  "new_paid_ai_api_calls_during_stage5_windows_audits": 0,
+  "model_usage": "Previously executed Qwen2.5-Coder 7B and Qwen3 4B with local Ollama; two new stage5 Windows jobs invoked no models.",
+  "monetary_charges": {
+    "currency": null,
+    "verified_amount": null,
+    "status": "unknown_billing_not_available",
+    "reason": "GitHub Actions account billing, Windows power/equipment and any plan charges were not accessible; do not declare zero spending."
+  },
+  "on_going_ledger_rule": "Append only confirmed distinct run IDs, record measured wall time separately from verified provider charges; never infer a price from public/free assumptions."
+}

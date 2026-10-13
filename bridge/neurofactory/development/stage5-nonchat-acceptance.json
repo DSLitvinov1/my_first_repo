@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "stage": "NF-DEV-05",
+  "substage": "non_chat_end_to_end_audit",
+  "status": "non_chat_historical_chain_and_crossrun_persistence_verified",
+  "official_milestone_state": "pending",
+  "dependency": "NF-DEV-02 remains deferred by user",
+  "no_chat_delivery": true,
+  "other_projects_modified": false,
+  "real_ai_chain": {
+    "source_run": 38444910309,
+    "writer": "qwen2.5-coder:7b",
+    "reviewer": "qwen3:4b",
+    "publisher": "trusted GitHub publisher",
+    "writer_attempts": 2,
+    "reviewer_attempts": 1,
+    "publisher_attempts": 1,
+    "process_crash_recovery_verified_in_stage4": true,
+    "original_commit": "4156913b3572bc17b7579ca4cbcc0059c53928cf",
+    "separate_verified_security_fix_commit": "b11b9fdba325976018b8a0547f53c8660a10726c",
+    "no_duplicate_publication": true
+  },
+  "windows_runs": [
+    {
+      "run_id": 38449522945,
+      "conclusion": "success",
+      "read_only": true,
+      "reported_state_sha256": "59271a85b796a31899ff7ffbdeb6bff8547e5421c9983a4c863696091f1f21fb"
+    },
+    {
+      "run_id": 38449862949,
+      "conclusion": "success",
+      "read_only": true,
+      "reported_state_sha256": "59271a85b796a31899ff7ffbdeb6bff8547e5421c9983a4c863696091f1f21fb"
+    }
+  ],
+  "cross_run_report_exact_match": true,
+  "repository_receipts": {
+    "writer_candidate_commits": 1,
+    "reviewer_result_commits": 1,
+    "original_production_result_commits": 1,
+    "distinct_security_fix_commits": 1
+  },
+  "checkpoint_integrity": "sha256 verified for each archived role across both Windows runs",
+  "archived_synthetic_universal_queue": {
+    "scope": "synthetic_only",
+    "verified_tasks": 2,
+    "automatic_general_development_integration_verified": false
+  },
+  "expenses_ledger": "bridge/neurofactory/development/stage5-cost-ledger.json",
+  "historical_elapsed_wall_seconds": 903,
+  "billing_verified": false,
+  "new_paid_ai_api_calls": 0,
+  "limits": [
+    "The unified dynamic self-development queue has not been accepted; Stage4 execution was intentionally bounded to one approved real task.",
+    "No physical Windows restart or sudden power loss was used in Stage5; earlier tests terminated only owned child processes.",
+    "GitHub Actions invoices and electricity/equipment expenditures were not accessible.",
+    "NF-DEV-02 ChatGPT delivery remains deferred, hence complete NF-DEV-05 is not permitted."
+  ],
+  "verification_tool": "bridge/neurofactory/development/stage5_nonchat_audit.py"
+}

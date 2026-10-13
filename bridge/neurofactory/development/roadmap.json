@@ -211,7 +211,21 @@
         "После завершения назначается новый этап"
       ],
       "prompt": "Проведи end-to-end приёмку: агент получает следующий промпт, передаёт его в выбранный чат и запускает обновление самого нейрозавода, независимая проверка принимает результат, отчёт фиксирует доказательства и предлагает следующую задачу.",
-      "pending_reason": "Full milestone awaits user-deferred ChatGPT delivery from Stage02; autonomous non-chat portions may be audited without resuming it."
+      "pending_reason": "NF-DEV-02 is user-deferred; non-chat read-only acceptance passed but unified dynamic development queue remains unverified and full Stage5 cannot be closed.",
+      "progress_evidence": {
+        "non_chat_substage": "verified_readonly_history_and_checkpoint_stability",
+        "verification_windows_runs": [
+          38449522945,
+          38449862949
+        ],
+        "identical_crossrun_checkpoint": true,
+        "real_agent_workflow_run": 38444910309,
+        "proof_file": "bridge/neurofactory/development/stage5-nonchat-acceptance.json",
+        "cost_ledger": "bridge/neurofactory/development/stage5-cost-ledger.json",
+        "synthetic_universal_queue_not_general_development": true,
+        "completed_full_stage": false,
+        "chat_delivery_paused": true
+      }
     }
   ],
   "chat_delivery_paused": true,
