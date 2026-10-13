@@ -78,7 +78,9 @@ async function poll() {
 }
 chrome.runtime.onInstalled.addListener(async()=>{
   await chrome.alarms.create("nf-roadmap-poll",{periodInMinutes:3});
-  await view("OFF");
+  const cfg=await local();
+  // A reload of the unpacked extension must not imply opt-out or a new consent.
+  await view(cfg.enabled&&CHAT.test(cfg.chatUrl||"")?"ON":"OFF");
 });
 chrome.alarms.onAlarm.addListener(a=>{if(a.name==="nf-roadmap-poll") singlePoll().catch(async()=>view("!"));});
 chrome.action.onClicked.addListener(async tab=>{
