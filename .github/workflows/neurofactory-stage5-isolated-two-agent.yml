@@ -1,0 +1,55 @@
+name: Neurofactory Stage5 Isolated Two-Agent Evidence
+on:
+  push:
+    branches: [neurofactory-stage5-isolated-acceptance-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-isolated-two-agent.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-isolated-two-agent
+  cancel-in-progress: false
+jobs:
+  isolated_two_agent_check:
+    runs-on: [self-hosted, Windows, X64, chatgpt-bridge]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Sequential real local models and read-only queue validation
+        shell: pwsh
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = Join-Path $env:RUNNER_TEMP 'neurofactory-stage5-isolated'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $models = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 10
+          $names = @($models.models | ForEach-Object { $_.name })
+          foreach ($needed in @('qwen2.5-coder:7b','qwen3:4b')) {
+            if ($names -notcontains $needed) { throw "Missing local model: $needed. No automatic pull allowed." }
+          }
+          $prompts = @(
+            @{ role = 'writer'; model = 'qwen2.5-coder:7b'; prompt = 'Produce a small Python pure function returning the sum of even integers in a list. Return only code. Do not use external tools.' },
+            @{ role = 'reviewer'; model = 'qwen3:4b'; prompt = 'Independently review a Python function that sums even integers: enumerate edge cases, correctness issues, and deterministic tests. Do not assume the author is correct. Return your review.' }
+          )
+          foreach ($item in $prompts) {
+            $body = @{ model = $item.model; prompt = $item.prompt; stream = $false; options = @{ num_predict = 450 } } | ConvertTo-Json -Depth 5
+            $response = Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/generate' -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 240
+            if ([string]::IsNullOrWhiteSpace($response.response) -or $response.model -notlike ($item.model + '*')) { throw "Missing or unexpected response from $($item.role)" }
+            $out = @{ role = $item.role; model = $response.model; result_sha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($response.response))).ToLowerInvariant(); evaluated_count = $response.eval_count; completed = $true }
+            $out | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $dir ($item.role + '.json'))
+          }
+          $env:PYTHONPATH = 'bridge/neurofactory/development'
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_development_queue.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_git_receipts.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_usage_ledger.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neurofactory-stage5-isolated-model-evidence
+          path: ${{ runner.temp }}/neurofactory-stage5-isolated/*.json
+          if-no-files-found: warn
