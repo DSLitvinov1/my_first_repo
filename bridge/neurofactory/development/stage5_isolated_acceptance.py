@@ -129,15 +129,30 @@ def generate():
     if not {WRITER, REVIEWER}.issubset(available):
         raise GateError("Both free local models must already exist; no model downloads")
     prompt = (
-        "Write only Python 3 source, no prose. Implement an immutable registry for approved "
-        "Neurofactory development tasks: accept a list of records each containing id, target, "
-        "objective; validate unique id and target, forbid path traversal, require target under "
-        "bridge/neurofactory/development/, expose a deterministic sha256 identity. "
-        "Use only Python standard library hashlib/json/typing/dataclasses if needed. "
-        "Do not access filesystem, network, shell, GitHub, other projects, or any credentials."
+        "Write only Python 3 source, no prose. Implement ONE PURE FUNCTION named "
+        "approved_registry(records): accepts a list of dictionaries with exactly id, "
+        "target, objective, checks duplicate ids and duplicate targets, rejects any "
+        "empty id and path traversal, allows targets ONLY under "
+        "bridge/neurofactory/development/, and returns an immutable tuple of "
+        "validated records plus a deterministic sha256 string. "
+        "Use hashlib and json standard-library imports if necessary. "
+        "DO NOT define classes, magic methods or access any attribute beginning "
+        "with double underscore. No filesystem, shell, network, dynamic execution, "
+        "GitHub, secrets or other project operations."
     )
-    writer_text, writer_stats = model_call(WRITER, prompt)
-    candidate = clean_candidate(writer_text)
+    writer_attempts = 0
+    for writer_attempts in range(1, 3):
+        writer_text, writer_stats = model_call(WRITER, prompt)
+        try:
+            candidate = clean_candidate(writer_text)
+            break
+        except GateError as exc:
+            if writer_attempts == 2:
+                raise
+            prompt += (" Your preceding output FAILED static safety screening: " +
+                       str(exc) + ". Rewrite with a simple pure function, "
+                       "ordinary variables and no dunder attribute access.")
+    writer_stats["attempts"] = writer_attempts
     digest = sha(candidate)
     review_prompt = (
         "/no_think\nYou are an INDEPENDENT security/code reviewer, not the author. "
