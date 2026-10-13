@@ -1,12 +1,22 @@
-"""Prevent real self-modification until exact-chat stage 02 is independently verified."""
+"""Gate real self-development by verified foundation or explicit user-approved chat deferral."""
 import copy,json,pathlib,re
 from control_plane import validate,outbox
 ROOT=pathlib.Path(__file__).resolve().parent
 def approved_stage3(plan):
     validate(plan)
     stages={step["id"]:step for step in plan["milestones"]}
+    t1=stages["NF-DEV-01"]
     t2=stages["NF-DEV-02"]
     t3=stages["NF-DEV-03"]
+    # The user explicitly deferred optional ChatGPT delivery. Stage 03 only
+    # needs verified Stage 01, and MUST remain independent of browser sending.
+    # This alternative does not verify or silently complete Stage 02.
+    if (t1["state"]=="verified" and t2["state"]=="deferred"
+        and t3["state"]=="active"
+        and plan.get("chat_delivery_paused") is True
+        and plan.get("stage3_independent_of_chat") is True
+        and not t2.get("evidence")):
+        return True
     proof=t2.get("evidence",{})
     # Reconstruct the exact approved stage-two outbox independently from the plan.
     stage2_plan=copy.deepcopy(plan)
@@ -27,4 +37,4 @@ def approved_stage3(plan):
 def read():
     return json.loads((ROOT/"roadmap.json").read_text("utf-8"))
 if __name__=="__main__":
-    print("STAGE3_READY" if approved_stage3(read()) else "STAGE3_BLOCKED_UNTIL_REAL_CHAT_RECEIPT")
+    print("STAGE3_READY" if approved_stage3(read()) else "STAGE3_BLOCKED_BY_PLAN_OR_EVIDENCE")
