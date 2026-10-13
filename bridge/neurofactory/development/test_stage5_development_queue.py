@@ -279,6 +279,54 @@ print('RESTORE_ACCEPTED', flush=True)
             self.assertTrue(expected_role_files.issubset(observed[0]))
             self.assertNotIn(target.manifest.name, observed[0])
 
+    def test_real_process_dies_mid_restore_and_uncommitted_files_never_adopted(self):
+        # Crash after one exclusive checkpoint write, before manifest commit.
+        # A later runner must fail closed rather than mix old and new files.
+        original = self.queue.sealed_snapshot()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-hardcrash-") as d:
+            root = pathlib.Path(d)
+            barrier = root / "snapshot.json"
+            barrier.write_text(json.dumps(original), "utf-8")
+            recovery = root / "target"
+            recovery.mkdir()
+            foreign = recovery / "other_project.txt"
+            foreign.write_text("owned by another task", "utf-8")
+            script = """
+import os, pathlib, json, sys
+import stage5_development_queue as stages
+from test_stage5_development_queue import PLAN, TASKS
+source, target = map(pathlib.Path, sys.argv[1:])
+queue = stages.DevelopmentQueue(target, PLAN, TASKS)
+real_open = stages.os.open
+counter = [0]
+def interrupted(path, flags, *args, **kwargs):
+    if flags & os.O_EXCL:
+        counter[0] += 1
+        if counter[0] == 2:
+            os._exit(75)
+    return real_open(path, flags, *args, **kwargs)
+stages.os.open = interrupted
+queue.restore_snapshot(json.loads(source.read_text('utf-8')))
+sys.exit(1)
+"""
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(HERE) + os.pathsep + env.get("PYTHONPATH", "")
+            completed = subprocess.run([sys.executable, "-B", "-c", script,
+                                         str(barrier), str(recovery)],
+                                        env=env, capture_output=True, text=True,
+                                        timeout=25)
+            self.assertEqual(completed.returncode, 75, completed.stderr)
+            restored = stages.DevelopmentQueue(recovery, PLAN, TASKS)
+            self.assertFalse(restored.manifest.exists())
+            self.assertTrue(any(p.exists() for lane in restored.lanes.values()
+                                for p in lane.paths.values()))
+            with self.assertRaises(stages.DevelopmentQueueError):
+                restored.prepare()
+            self.assertFalse(restored.manifest.exists())
+            with self.assertRaises(stages.DevelopmentQueueError):
+                restored.restore_snapshot(original)
+            self.assertEqual(foreign.read_text("utf-8"), "owned by another task")
+
     def test_chat_delivery_and_paid_services_remain_blocked(self):
         unsafe=copy.deepcopy(PLAN);unsafe["chat_delivery_paused"]=False
         with self.assertRaises(Exception):
