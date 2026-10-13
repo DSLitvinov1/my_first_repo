@@ -24,18 +24,23 @@ def approved_plan(plan):
     if (plan.get("chat_delivery_paused") is not True
             or states.get("NF-DEV-02") != "deferred"
             or states.get("NF-DEV-03") != "verified"
-            or states.get("NF-DEV-04") != "active"):
+            or states.get("NF-DEV-04") not in ("active", "verified")
+        or states.get("NF-DEV-05") != "pending"):
         raise Stage4Error("Stage 4 is not authorized or ChatGPT delivery was unpaused")
 
 
 class Stage4Queue:
-    def __init__(self, root, plan):
+    def __init__(self, root, plan, *, task_id="NF-DEV-04"):
         approved_plan(plan)
+        if not isinstance(task_id, str) or not re.fullmatch(r"NF-DEV-04|NF-DEV-05-Q[0-9]{3}", task_id):
+            raise Stage4Error("Only approved Neurofactory task identifiers")
+        self.task_id = task_id
         self.root = pathlib.Path(root)
         if not self.root.is_dir() or self.root.is_symlink():
             raise Stage4Error("Existing isolated checkpoint directory required")
         self.guard = self.root / "neurofactory-stage4-coordinator"
-        self.paths = {role: self.root / ("nf-dev-04-" + role + ".json") for role in STAGES}
+        slug = task_id.lower()
+        self.paths = {role: self.root / (slug + "-" + role + ".json") for role in STAGES}
 
     def prepare(self):
         with checkpoint._lock(self.guard):
@@ -43,7 +48,7 @@ class Stage4Queue:
                 path = self.paths[role]
                 if not path.exists():
                     checkpoint.initialize(path, {
-                        "id": "NF-DEV-04-" + role,
+                        "id": self.task_id + "-" + role,
                         "role": role,
                         "actor": ACTOR[role],
                         "state": "queued",
@@ -58,7 +63,7 @@ class Stage4Queue:
 
     def _read(self, role):
         task = checkpoint.load(self.paths[role])
-        if (task["id"] != "NF-DEV-04-" + role
+        if (task["id"] != self.task_id + "-" + role
                 or task.get("role") != role
                 or task.get("actor") != ACTOR[role]
                 or task.get("scope") != "neurofactory_only"
