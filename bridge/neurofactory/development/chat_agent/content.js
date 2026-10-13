@@ -1,5 +1,11 @@
 /* Exact-conversation ChatGPT handoff. Never reads previous conversation or credentials. */
 chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
+  // Readiness check does not focus the composer or send any message.
+  if(req?.type==="NF_HEALTH_CHECK"){
+    const exact=location.href.split("?")[0].split("#")[0];
+    respond({ready:req.boundUrl===exact&&/^https:\/\/chatgpt\.com\//.test(exact)});
+    return;
+  }
   if(req?.type!=="NF_SEND_APPROVED_PROMPT")return;
   const exact=location.href.split("?")[0].split("#")[0];
   if(exact!==req.boundUrl || !/^https:\/\/chatgpt\.com\//.test(exact)){
