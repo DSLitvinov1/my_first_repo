@@ -1,4 +1,5 @@
 name: Neurofactory Stage5 Live Pair Unit Preflight
+# Verify no-inference restoration of already accepted tasks across a later GitHub run.
 on:
   push:
     branches: [neurofactory-stage5-live-e2e-20261013]
