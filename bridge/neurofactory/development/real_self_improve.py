@@ -34,7 +34,7 @@ BANNED_NODES=(ast.Import,ast.ImportFrom,ast.Global,ast.Nonlocal,ast.With,ast.Asy
     ast.Delete,ast.Yield,ast.YieldFrom,ast.Await,ast.NamedExpr)
 def ask(model,prompt,structured=False):
     payload={"model":model,"prompt":prompt[:8500],"stream":False,"think":False,
-        "keep_alive":"0","options":{"num_ctx":2800,"num_predict":460,
+        "keep_alive":"0","options":{"num_ctx":4096,"num_predict":760,
         "num_thread":3,"num_gpu":0,"temperature":0}}
     if structured:payload["format"]="json"
     req=urllib.request.Request("http://127.0.0.1:11434/api/generate",
@@ -87,47 +87,57 @@ def run():
     if os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"):
         raise ValueError("No model may have publication secrets")
     instruction=(
-       "You are improving security in a real application factory, Neurofactory. "
-       "Return ONLY Python source for exactly one function def approved_change_path(path): "
-       "returning a boolean. No imports, no IO, no exceptions, no for, while, try, classes. "
-       "Only pure str operations startswith endswith split replace isalnum isascii "
-       "and functions isinstance len all any str. "
-       "Accept portable ASCII relative source paths ONLY inside bridge/neurofactory/ "
-       "or .github/workflows/neurofactory- ending with .yml. "
-       "Reject empty segments, . or .., backslash, absolute Windows or Linux paths, "
-       "newlines, emoji, question marks, empty file names, lengths over 240, nonstring input. "
-       "IMPORTANT: there are TWO independent allowed path families, not just bridge/neurofactory/. "
-       "The exact valid workflow .github/workflows/neurofactory-real-self-improvement.yml "
-       "MUST return True. The exact valid workflow "
-       ".github/workflows/neurofactory-development-plan.yml MUST also return True. "
-       "The .github directory is not an invalid dot segment: reject only segments "
-       "equal to . or .., never all segments that start with a dot. "
-       "The workflow branch must verify both the required .github/workflows/neurofactory- "
-       "prefix AND the .yml suffix; the source branch must allow bridge/neurofactory/. "
-       "Reject everything else, including other-project.yml and traversals. "
-       "CRITICAL SECURITY ORDER: FIRST validate the FULL path BEFORE testing its prefix. "
-       "Use parts = path.split('/') and reject if ANY part is empty, '.' or '..'. "
-       "It is never enough to check only path.startswith('bridge/neurofactory/'): "
-       "the exact path bridge/neurofactory/../other_project/main.py MUST be False, "
-       "as must bridge/neurofactory/sub/../../secret.txt. "
-       "Validate every character in every segment using c.isalnum() or c in '_-.'; "
-       "reject non-ASCII, backslashes and excessively long strings. "
-       "ONLY AFTER the complete segments are validated should the function "
-       "return True for either the real bridge/neurofactory/ source family "
-       "or the allowed .github/workflows/neurofactory- prefix with .yml suffix. "
-       "Return a pure single Python function with no explanation and no markdown."
+       "You are Qwen2.5-Coder, author of a NEW production Neurofactory Python "
+       "path access policy. Output exactly one function def approved_change_path(path): "
+       "and return only true Python code, no markdown or explanation. "
+       "The policy must allow TWO independent prefix families: "
+       "1. bridge/neurofactory/ followed by a nonempty relative file path; "
+       "2. .github/workflows/neurofactory- followed by a nonempty filename ending in .yml. "
+       "Both families MUST return True for real files; DO NOT reject .github simply "
+       "because it begins with a dot. Deny everything else. "
+       "First deny if not isinstance(path,str), path length above 240, "
+       "or path.isascii() is False. "
+       "Deny any backslash. Split EVERY input with path.split('/'), then deny "
+       "if ANY segment is empty, '.' or '..'. IMPORTANT: do not reject a harmless "
+       "segment like '.github'; only reject the exact strings '.' and '..'. "
+       "Deny if ANY character in ANY segment is not alphanumeric or one of '._-'. "
+       "Only AFTER those global checks test the two allowed prefixes. "
+       "An accepted workflow MUST start with '.github/workflows/neurofactory-' "
+       "and end with '.yml'. Normal source paths MUST start with 'bridge/neurofactory/'. "
+       "Required True: bridge/neurofactory/development/control_plane.py, "
+       ".github/workflows/neurofactory-real-self-improvement.yml. "
+       "Required False: bridge/neurofactory/../other_project/main.py, "
+       ".github/workflows/other-project.yml, bridge/neurofactory//bad.py, "
+       "bridge\\\\neurofactory\\\\bad.py. "
+       "Use only if statements, return statements, comprehensions and builtins "
+       "isinstance,len,all,any,str. String methods allowed: "
+       "startswith,endswith,split,replace,isalnum,isascii. "
+       "No imports, file IO, classes, exec, eval, while, for loops, try, "
+       "exception handling, function nesting or other function calls."
     )
     code=None
     feedback=""
-    for i in range(4):
+    seen_candidates=set()
+    for i in range(3):
         try:
             candidate=extract(ask(WRITER,instruction+feedback))
+            fingerprint=hashlib.sha256(candidate.encode()).hexdigest()
+            if fingerprint in seen_candidates:
+                raise ValueError("Writer repeated an already rejected source; stop without replay")
+            seen_candidates.add(fingerprint)
             checked=acceptance(candidate)
             code=candidate
             print("REAL_NF_WRITER_ACCEPTED",i+1,"test_count",checked,flush=True)
             break
         except (ValueError,SyntaxError,TypeError) as e:
-            feedback="\nCandidate rejected: "+str(e)[:240]+". Correct the entire function."
+            if "repeated an already rejected" in str(e):
+                print("REAL_NF_WRITER_REJECTED_DUPLICATE",flush=True)
+                break
+            feedback="\nYour previous candidate failed: "+str(e)[:240]+(
+                "\nRewrite it from the full-file-segment validation rules above. "
+                "Ensure BOTH allowed prefix families accept real paths; "
+                "do not repeat identical code.")
+                
             print("REAL_NF_WRITER_REPAIR",i+1,str(e)[:120],flush=True)
     if code is None:raise ValueError("Unverified model output; no publication")
     prompt=("You are the second independent reviewer Qwen3. Review this REAL new "
