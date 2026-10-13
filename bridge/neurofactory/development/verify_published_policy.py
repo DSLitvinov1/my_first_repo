@@ -16,7 +16,12 @@ PROOF = HERE / "path-policy-verification.json"
 def verify():
     if not SOURCE.is_file() or not PROOF.is_file():
         raise ValueError("Neurofactory accepted source or audit receipt absent")
-    data = SOURCE.read_bytes()
+    checkout_bytes = SOURCE.read_bytes()
+    # Git for Windows may convert LF into CRLF during checkout; normalize only
+    # that reversible platform conversion before checking the signed source.
+    data = checkout_bytes.replace(b"\r\n", b"\n")
+    if b"\r" in data:
+        raise ValueError("Unexpected carriage return in published source")
     receipt = json.loads(PROOF.read_text(encoding="utf-8"))
     required = {
         "stage": "NF-DEV-03",
