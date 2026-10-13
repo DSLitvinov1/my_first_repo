@@ -1,0 +1,122 @@
+{
+  "schema": 2,
+  "project": "НЕЙРОЗАВОД",
+  "owner_lane": "coordinator",
+  "audit_date": "2026-10-14",
+  "issue_number": 3,
+  "mode": "read_only_live_github_pinned_commit_comparison",
+  "repo": "DSLitvinov1/my_first_repo",
+  "baseline": "13bc0df6368472c45a34fc412f927dca7d2fd44e",
+  "branches": [
+    {
+      "lane": "core",
+      "name": "neurofactory-core-queue-owned-20261013",
+      "sha": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "ahead": 1,
+      "behind": 0,
+      "changed": [
+        "bridge/neurofactory/development/core_owned/README.md"
+      ]
+    },
+    {
+      "lane": "handoff",
+      "name": "neurofactory-model-handoff-owned-20261013",
+      "sha": "3c68171c7ddfaba81f55f03bcc542fda80fc8857",
+      "ahead": 10,
+      "behind": 0,
+      "changed": [
+        ".github/workflows/neurofactory-handoff-owned-live-two-model.yml",
+        ".github/workflows/neurofactory-handoff-owned-model-gate.yml",
+        "bridge/neurofactory/development/model_handoff_owned/README.md",
+        "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+        "bridge/neurofactory/development/model_handoff_owned/live_two_model_trial.py",
+        "bridge/neurofactory/development/model_handoff_owned/proof-38467349250.json",
+        "bridge/neurofactory/development/model_handoff_owned/test_handoff_gate.py",
+        "bridge/neurofactory/development/model_handoff_owned/test_live_two_model_trial.py"
+      ]
+    },
+    {
+      "lane": "review",
+      "name": "neurofactory-review-owned-20261013",
+      "sha": "e0a6a915a2c17352f4f7a6d6a542dfc6b5718288",
+      "ahead": 1,
+      "behind": 0,
+      "changed": [
+        "bridge/neurofactory/development/review_owned/README.md"
+      ]
+    },
+    {
+      "lane": "providers",
+      "name": "neurofactory-providers-free-20261013",
+      "sha": "56cf7f0ffeca9810a67e3bb346816cb1817e7bea",
+      "ahead": 1,
+      "behind": 0,
+      "changed": [
+        "bridge/neurofactory/providers/README.md"
+      ]
+    },
+    {
+      "lane": "coordinator",
+      "name": "neurofactory-chat-coordination-20261013",
+      "sha": "13072e1fbb574574320add8f2727732b0f145911",
+      "ahead": 20,
+      "behind": 0,
+      "changed": [
+        ".github/workflows/neurofactory-coordination-branch-overlap.yml",
+        ".github/workflows/neurofactory-coordination-immutable-heads.yml",
+        ".github/workflows/neurofactory-coordination-ownership-audit.yml",
+        ".github/workflows/neurofactory-coordination-premerge.yml",
+        "bridge/neurofactory/coordination/PREMERGE_ACCEPTANCE_RU.txt",
+        "bridge/neurofactory/coordination/THREE_CHATS_HANDOFF_20261013_RU.md",
+        "bridge/neurofactory/coordination/audit-five-lanes-20261014.json",
+        "bridge/neurofactory/coordination/audit_lane_heads.py",
+        "bridge/neurofactory/coordination/audit_pr_ownership.py",
+        "bridge/neurofactory/coordination/audit_stable_heads.py",
+        "bridge/neurofactory/coordination/check_lanes.py",
+        "bridge/neurofactory/coordination/premerge_gate.py",
+        "bridge/neurofactory/coordination/resource-audit-sample-20261013.json",
+        "bridge/neurofactory/coordination/test_audit_lane_heads.py",
+        "bridge/neurofactory/coordination/test_audit_pr_ownership.py",
+        "bridge/neurofactory/coordination/test_audit_stable_heads.py",
+        "bridge/neurofactory/coordination/test_premerge_gate.py"
+      ]
+    }
+  ],
+  "immutable_head_checks": true,
+  "heads_unchanged_during_read": true,
+  "confirmed_changed_files": 28,
+  "intersection_count": 0,
+  "known_unresolved": [
+    {
+      "type": "mixed_pull_request",
+      "number": 2,
+      "state": "open_draft",
+      "merge_allowed": false,
+      "owners": [
+        "core",
+        "review"
+      ],
+      "reason": "PR contains files of multiple owners and legacy unowned workflows"
+    },
+    {
+      "type": "handoff_independent_verdict",
+      "run_id": 38468862784,
+      "state": "failed",
+      "reason": "Reviewer omitted mandatory evidence",
+      "publish_allowed": false
+    },
+    {
+      "type": "repository_branch_protection",
+      "branch": "neurofactory-public-lab-20261012",
+      "state": "not_confirmed_enforced",
+      "reason": "Issue #3 records protected=false and branch protection API 403; requires authorized admin"
+    }
+  ],
+  "safety": {
+    "no_other_branch_writes": true,
+    "no_code_execution_on_windows": true,
+    "no_paid_services_requested": true,
+    "chatgpt_delivery": "paused"
+  },
+  "caveat": "This is a versioned observation before this report commit. Re-run CI and the five-heads audit after changes; manual merge protection must be enforced by repository administrator."
+}
