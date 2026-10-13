@@ -69,6 +69,40 @@ def _validate(entry):
     return entry
 
 
+def _no_rewind(old, fresh):
+    """A restarted older worker must never overwrite a newer confirmed checkpoint."""
+    previous=old["body"]["files"]
+    current=fresh["body"]["files"]
+    if set(previous)!=set(current):
+        raise RemoteJournalError("Checkpoint inventory changed")
+    moves={
+        "queued":{"queued","running"},
+        "running":{"running","queued","publishing","retry_exhausted","needs_manual_review"},
+        "publishing":{"publishing","needs_receipt_check","verified_done"},
+        "needs_receipt_check":{"needs_receipt_check","verified_done"},
+        "verified_done":{"verified_done"},
+        "retry_exhausted":{"retry_exhausted"},
+        "needs_manual_review":{"needs_manual_review"},
+        "failed":{"failed"}
+    }
+    for filename in previous:
+        former=json.loads(previous[filename])["data"]
+        latest=json.loads(current[filename])["data"]
+        if former["id"]!=latest["id"] or former.get("identity_sha256")!=latest.get("identity_sha256"):
+            raise RemoteJournalError("Checkpoint identity regressed")
+        if latest.get("attempts",0)<former.get("attempts",0):
+            raise RemoteJournalError("Attempt count rewind denied")
+        if latest.get("state") not in moves.get(former.get("state"),set()):
+            raise RemoteJournalError("Already-verified or unresolved task rewind denied")
+        for field in ("publication_sha",):
+            if field in former and former[field]!=latest.get(field):
+                raise RemoteJournalError("Persisted GitHub receipt cannot be replaced")
+        for field in ("proof",):
+            if field in former and former[field]!=latest.get(field):
+                raise RemoteJournalError("Author or reviewer proof cannot be rewritten")
+    return True
+
+
 def checkpoint_to_github(queue):
     """Persist before each writer/reviewer/publisher external effect; reread receipt."""
     fresh=_validate(queue.sealed_snapshot())
@@ -78,6 +112,7 @@ def checkpoint_to_github(queue):
             raise RemoteJournalError("Another approved queue owns this journal")
         if old==fresh:
             return {"changed":False,"verified":True}
+        _no_rewind(old,fresh)
     payload={
         "branch":BRANCH,
         "message":"neurofactory-state: durable stage5 per-task agent checkpoints",
