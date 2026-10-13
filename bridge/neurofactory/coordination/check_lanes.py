@@ -46,7 +46,7 @@ def load_policy(path=POLICY):
 
 
 def matches(rule, path):
-    return path == rule or path.startswith(rule) if rule.endswith(("/", "-")) else path == rule
+    return path.startswith(rule) if rule.endswith(("/", "-", "_")) else path == rule
 
 
 def owners_for(path, policy):
