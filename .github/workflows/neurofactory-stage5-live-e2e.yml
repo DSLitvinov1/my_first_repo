@@ -1,0 +1,105 @@
+name: Neurofactory Stage5 Isolated Live Two-Agent GitHub Acceptance
+on:
+  push:
+    branches: [neurofactory-stage5-live-e2e-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-live-e2e.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-isolated-live-two-agents
+  cancel-in-progress: false
+jobs:
+  durable_preflight:
+    if: github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create real GitHub checkpoint before model execution
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py init
+
+  two_real_local_agents:
+    needs: durable_preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download two free local models, never use paid APIs
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf-stage5-ollama.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: First Qwen2.5 writes each task; independent Qwen3 reviews exact produced source
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+        run: |
+          mkdir -p nf-stage5-proof
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-stage5-proof
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-stage5-two-independent-models
+          path: nf-stage5-proof/
+          if-no-files-found: error
+
+  receipt_gated_publisher:
+    needs: two_real_local_agents
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: neurofactory-stage5-two-independent-models
+          path: nf-stage5-proof/
+      - name: Recheck both model-generated functions without GitHub credentials
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B - <<'PY'
+          import pathlib,sys,json
+          sys.path.insert(0,"bridge/neurofactory/development")
+          from stage5_live_pair_lab import check_source,JOBS
+          root=pathlib.Path("nf-stage5-proof")
+          for jid,filename,function,_ in JOBS:
+              src=(root/filename).read_text("utf-8")
+              proof=json.loads((root/(filename+".proof.json")).read_text("utf-8"))
+              check=check_source(src,function)
+              assert check["source_sha256"]==proof["source_sha256"]
+              assert proof["independent_verdict"]["verdict"]=="REVIEW_OK"
+              assert proof["independent_verdict"]["source_sha256"]==check["source_sha256"]
+          print("NF5_TWO_INDEPENDENT_ARTIFACTS_REVALIDATED_WITHOUT_TOKEN")
+          PY
+      - name: Trustworthy GitHub publisher verifies receipts and persists after each task
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf-stage5-proof
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py audit nf-stage5-proof
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf-stage5-proof
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py audit nf-stage5-proof
