@@ -4,6 +4,7 @@ on:
     branches: [neurofactory-stage5-q002-writer-lab-20261013]
     paths:
       - 'bridge/neurofactory/development/stage5_live_pair_lab.py'
+      - 'bridge/neurofactory/development/test_stage5_live_pair_lab.py'
       - '.github/workflows/neurofactory-stage5-q002-writer-lab.yml'
 permissions:
   contents: read
