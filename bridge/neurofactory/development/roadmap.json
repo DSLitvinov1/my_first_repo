@@ -121,7 +121,7 @@
     },
     {
       "id": "NF-DEV-04",
-      "state": "active",
+      "state": "verified",
       "title": "Непрерывность и реальное восстановление",
       "depends_on": [
         "NF-DEV-03"
@@ -134,7 +134,7 @@
         "Windows runner не закрывает пользовательские программы"
       ],
       "prompt": "Проверь реальное прерывание и восстановление нейрозавода. Подтверди сохранение состояния, целостность результатов, ограниченные повторы, отсутствие параллельного запуска тяжёлых задач.",
-      "active_scope": "Atomic per-task state and role-separated queue published; 11 new plus 10 original crash tests passed on cloud and Windows. Remaining: bind queue to actual self-development agent executor and check a genuine remote GitHub receipt before automatic final completion.",
+      "active_scope": "Real two-agent executor with GitHub-persisted checkpoints; owned writer and publisher process crashes recovered; exact remote receipts and no replay verified by reserve Windows bridge.",
       "progress_evidence": {
         "first_verified_component": "Production recovery decision for interrupted tasks",
         "source": "bridge/neurofactory/development/recovery_decision.py",
@@ -148,12 +148,8 @@
         "source_sha256": "05d20779e59447bf5f06f34c2ab52c7efeb9865c05f9312e7574ee8b1203b063",
         "behavior_checks": 11,
         "windows_checks": 6,
-        "stage_complete": false,
-        "next_requirements": [
-          "Wire published durable queue to actual NF-DEV development executor before each real task",
-          "Use trusted read-only GitHub receipt reconciliation before publication acknowledgement",
-          "Perform one end-to-end live two-agent task with real GitHub commit and no-replay check; keep ChatGPT send paused"
-        ],
+        "stage_complete": true,
+        "next_requirements": [],
         "stage4_queue_source": "bridge/neurofactory/development/stage4_queue.py",
         "stage4_queue_proof": "bridge/neurofactory/development/stage4-queue-verification.json",
         "published_stage4_queue_commit": "7e790ff5be4335f675e75a621672edb19ad22bc0",
@@ -161,7 +157,41 @@
         "cloud_behavior_checks": 21,
         "windows_behavior_checks": 21,
         "actual_child_interruption": true,
-        "duplicate_publishing_guard_tested": true
+        "duplicate_publishing_guard_tested": true,
+        "live_two_agent_cloud_run": 38444910309,
+        "independent_security_correction_run": 38446284364,
+        "production_integration_commit": "d898d697ece3f236d8d57256c514f906acf858f7",
+        "original_live_commit": "4156913b3572bc17b7579ca4cbcc0059c53928cf",
+        "corrected_security_commit": "b11b9fdba325976018b8a0547f53c8660a10726c",
+        "final_windows_run": 38447399597,
+        "final_windows_tests": 43,
+        "chat_delivery_paused": true
+      },
+      "evidence": {
+        "repo": "DSLitvinov1/my_first_repo",
+        "branch": "neurofactory-public-lab-20261012",
+        "commit_sha": "d898d697ece3f236d8d57256c514f906acf858f7",
+        "tests_passed": true,
+        "independent_review": true,
+        "reviewer": "qwen3:4b",
+        "review_verdict": "REVIEW_OK",
+        "verification_mode": "authorized_connector_checked",
+        "cloud_test_run": 38444910309,
+        "windows_bridge_run": 38447399597,
+        "independent_review_run": 38446284364,
+        "exact_real_cycle_commit": "4156913b3572bc17b7579ca4cbcc0059c53928cf",
+        "security_correction_commit": "b11b9fdba325976018b8a0547f53c8660a10726c",
+        "live_task_attempts": {
+          "writer": 2,
+          "reviewer": 1,
+          "publisher": 1
+        },
+        "owner_worker_crash": true,
+        "owner_publisher_crash": true,
+        "no_duplicate_publication": true,
+        "proof_path": "bridge/neurofactory/development/stage4-closure-evidence.json",
+        "chat_delivery_paused": true,
+        "other_projects_untouched": true
       }
     },
     {
@@ -180,7 +210,8 @@
         "Факт независимой ревизии есть в GitHub",
         "После завершения назначается новый этап"
       ],
-      "prompt": "Проведи end-to-end приёмку: агент получает следующий промпт, передаёт его в выбранный чат и запускает обновление самого нейрозавода, независимая проверка принимает результат, отчёт фиксирует доказательства и предлагает следующую задачу."
+      "prompt": "Проведи end-to-end приёмку: агент получает следующий промпт, передаёт его в выбранный чат и запускает обновление самого нейрозавода, независимая проверка принимает результат, отчёт фиксирует доказательства и предлагает следующую задачу.",
+      "pending_reason": "Full milestone awaits user-deferred ChatGPT delivery from Stage02; autonomous non-chat portions may be audited without resuming it."
     }
   ],
   "chat_delivery_paused": true,

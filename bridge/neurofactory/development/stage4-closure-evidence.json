@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "stage": "NF-DEV-04",
+  "status": "verified",
+  "scope": "neurofactory_only",
+  "cost": "free_only",
+  "chat_delivery": "paused_by_user",
+  "other_projects_modified": false,
+  "actual_real_agent_cycle": {
+    "run_id": 38444910309,
+    "writer": "qwen2.5-coder:7b",
+    "reviewer": "qwen3:4b",
+    "writer_attempts": 2,
+    "reviewer_attempts": 1,
+    "publisher_attempts": 1,
+    "forcibly_terminated_owned_writer_exit_code": 73,
+    "forcibly_terminated_owned_publisher_exit_code": 74,
+    "original_one_time_published_commit": "4156913b3572bc17b7579ca4cbcc0059c53928cf",
+    "original_source_sha256": "745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c",
+    "state_in_github": "neurofactory-stage4-live-integration-20261013:bridge/neurofactory/development/stage4-live-state.json",
+    "subsequent_execution_no_repeated_commit": true
+  },
+  "security_correction": {
+    "run_id": 38446284364,
+    "source_commit": "b11b9fdba325976018b8a0547f53c8660a10726c",
+    "source_sha256": "eeab7dc07ca8c7000948ff41d726ac2e688af7011eec3cec453f1e29f2c31db3",
+    "prior_reviewer_initial_false_positive_rechecked_against_actual_input": true,
+    "independent_final_verdict": "REVIEW_OK",
+    "forged_identity_regression_tests": 9,
+    "correction_is_distinct_change_not_duplicate_publication": true
+  },
+  "acceptance": {
+    "cloud_contracts_passed": 34,
+    "windows_run_id": 38447399597,
+    "windows_conclusion": "success",
+    "windows_suite_counts": [
+      13,
+      11,
+      10,
+      9
+    ],
+    "windows_total_tests": 43,
+    "exact_github_receipts_checked": true,
+    "owner_processes_only_terminated": true,
+    "no_duplicate_publication_verified": true,
+    "windows_workflow_repo": "DSLitvinov1/lesson3.1"
+  },
+  "deployment": {
+    "production_repo": "DSLitvinov1/my_first_repo",
+    "production_branch": "neurofactory-public-lab-20261012",
+    "integration_source_commit": "d898d697ece3f236d8d57256c514f906acf858f7",
+    "paths": [
+      "bridge/neurofactory/development/stage4_live_cycle.py",
+      "bridge/neurofactory/development/stage4_live_worker.py",
+      "bridge/neurofactory/development/stage4_queue.py",
+      "bridge/neurofactory/development/durable_checkpoint.py"
+    ]
+  },
+  "caveat": "Owned subprocess termination and persistence across GitHub workflow execution are verified; no full physical Windows reboot or power loss test was claimed. Automatic ChatGPT delivery remains intentionally paused."
+}
