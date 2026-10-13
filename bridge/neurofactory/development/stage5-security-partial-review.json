@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "scope": "neurofactory_only",
+  "review_run": 38461101666,
+  "reviewer": "qwen3:4b",
+  "job_overall_conclusion": "failure_due_to_following_group_incomplete_json",
+  "component": "stage5_remote_journal.py",
+  "git_blob_sha": "294bc5a163b25e862865a45f9f2477f398ba4182",
+  "component_verdict": "REVIEW_OK",
+  "reason": "The code correctly implements checkpointing with GitHub CAS and DurableCoordinator.recover() using nested-ID and attempt checks. The _no_rewind() function validates identity and attempt counts per file. Production tests reject the alleged inputs. No valid counterexample found for overwrite.",
+  "group": "remote_checkpoint_and_recovery",
+  "full_stage5_security_approved": false,
+  "chat_delivery_paused": true
+}
