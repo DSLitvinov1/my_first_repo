@@ -83,6 +83,8 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(state.attempted[job.sequence].state,'unconfirmed','uncertain send is reserved');
   assert.equal(state.nfDiagnostic.code,'UNCONFIRMED','diagnostics must show the no-retry state');
+  assert.match(state.attempted[job.sequence].reason,/clicked but own message not observed/,
+    'ambiguous send must record the reason without unlocking retry');
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,unconfirmedCalls+1,'uncertain send must never replay');
@@ -148,7 +150,8 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
       InputEvent:class{},
     },{filename:'content.js'});
     return new Promise(resolve=>handlers[0](
-       {type:'NF_SEND_APPROVED_PROMPT',boundUrl:conversation,sequence:job.sequence,text:deliveredText},
+       {type:options.probeType||'NF_SEND_APPROVED_PROMPT',
+        boundUrl:conversation,sequence:job.sequence,text:deliveredText},
        {},resolve));
   }
   const clean=()=>({tagName:'DIV',innerText:'',textContent:'',
@@ -168,6 +171,19 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(attachmentDraft.submitted,false,'unsent images must never be submitted by the agent');
   assert.equal(attachmentDraft.reason,'composer contains pending attachments','show safe diagnostic for draft files');
   assert.equal(calls.length,beforeAttachments,'no click when user screenshots are attached');
+  const beforeInspect=calls.length;
+  const checked=await probe(conversation,clean(),
+    {probeType:'NF_INSPECT_DELIVERY',previousReceipt:true,visible:false});
+  assert.equal(checked.ready,true,'read-only receipt check requires exact bound conversation');
+  assert.equal(checked.found,true,'read-only check locates existing full receipt');
+  assert.equal(calls.length,beforeInspect,'inspection must never click Send');
+  const checkedAbsent=await probe(conversation,clean(),
+    {probeType:'NF_INSPECT_DELIVERY',visible:false});
+  assert.equal(checkedAbsent.found,false,'receipt check distinguishes missing marker');
+  assert.equal(calls.length,beforeInspect,'missing receipt must not trigger new send');
+  const checkedWrong=await probe('https://chatgpt.com/c/other',clean(),
+    {probeType:'NF_INSPECT_DELIVERY',previousReceipt:true});
+  assert.equal(checkedWrong.ready,false,'must not inspect wrong conversation');
   const noEditorCalls=calls.length;
   answer=await probe(conversation,clean(),{noEditor:true});
   assert.equal(answer.submitted,false,'missing composer must not initiate a send');
@@ -218,5 +234,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'new milestone must not be sent twice');
-  console.log('Browser handoff checks passed: exact chat identity and URL suffixes, user image attachment safeguard, no duplicates, safe editor, next approved task. Live sending remains unverified.');
+  console.log('Browser handoff checks passed: read-only exact-chat receipt inspection, recorded uncertain reason, no replay, attachment and user draft protection, next task. Live sending remains unverified.');
 })().catch(e=>{console.error(e);process.exitCode=1});
