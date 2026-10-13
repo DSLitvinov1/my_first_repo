@@ -1,0 +1,38 @@
+name: Neurofactory Coordinator Owns Only Coordinator Files
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/**'
+      - '.github/workflows/neurofactory-coordination-ownership-audit.yml'
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: neurofactory-chat-coordinator-only-ownership-check
+  cancel-in-progress: false
+jobs:
+  audit_three_chats:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout only coordinator's branch without stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm path ownership and no chat/publisher bypass
+        run: |
+          python -B bridge/neurofactory/coordination/check_lanes.py --check-policy
+          python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_*.py' -v
+      - name: Read live PR changes from GitHub and flag mixed chat ownership
+        run: |
+          mkdir -p coordination-evidence
+          python -B bridge/neurofactory/coordination/audit_pr_ownership.py --report coordination-evidence/pr-ownership.json --enforce
+      - name: Persist only isolated non-secret coordination evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-coordinator-pr-ownership-readonly
+          path: coordination-evidence/
+          retention-days: 5
+          if-no-files-found: ignore
