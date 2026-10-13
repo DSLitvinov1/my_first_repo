@@ -20,7 +20,11 @@
     "original_evidence_archive_file_count": 8,
     "independent_handoff_regression_run": 38471630462,
     "regressions_reported": 43,
-    "independent_archive_recheck_run": 38471390414
+    "independent_archive_recheck_run": 38471390414,
+    "original_evidence_independent_integrity_tests": 15,
+    "original_evidence_independent_integrity_passed": 15,
+    "original_evidence_independent_integrity_failed": 0,
+    "note": "15 independent checks of the exact downloaded original eight-file artifact: raw byte hashes, canonical packet/dossier binding, raw replies, sealed checkpoint, no publication. Artifact consistency is NOT authenticated model provenance by itself."
   },
   "reviewer_evidence": {
     "independent_actions_run": 38483261300,
