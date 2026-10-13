@@ -2,7 +2,7 @@ name: Neurofactory Stage5 Isolated Live Two-Agent GitHub Acceptance
 # Retry only after strict first-author acceptance improvements; no publication on failure.
 on:
   push:
-    branches: [neurofactory-stage5-live-e2e-20261013]
+    branches: [neurofactory-stage5-pair-recovery-20261013]
     paths:
       - '.github/workflows/neurofactory-stage5-live-e2e.yml'
 permissions:
@@ -56,7 +56,8 @@ jobs:
           OLLAMA_NUM_PARALLEL: '1'
         run: |
           mkdir -p nf-stage5-proof
-          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-stage5-proof
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-stage5-proof NF-DEV-05-Q001
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-stage5-proof NF-DEV-05-Q002
       - uses: actions/upload-artifact@v4
         if: always()
         with:
