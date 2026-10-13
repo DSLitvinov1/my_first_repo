@@ -11,18 +11,18 @@
   "jobs": [
     {
       "id": "NF-DEV-05-Q001",
-      "target": "bridge/neurofactory/development/stage5_development_queue.py",
-      "objective": "Integrate the approved general development queue with per-task durable checkpoints"
+      "target": "bridge/neurofactory/development/stage5_task_registry.py",
+      "objective": "Build an immutable approved development task registry without allowing duplicate historical work"
     },
     {
       "id": "NF-DEV-05-Q002",
-      "target": "bridge/neurofactory/development/stage5_remote_journal.py",
-      "objective": "Synchronize verified task checkpoints to GitHub and prevent stale snapshots overwriting completed work"
+      "target": "bridge/neurofactory/development/stage5_receipt_reconciliation.py",
+      "objective": "Reconcile uncertain GitHub publication receipts before releasing a new approved development task"
     },
     {
       "id": "NF-DEV-05-Q003",
-      "target": "bridge/neurofactory/development/stage5_usage_ledger.py",
-      "objective": "Maintain append-only verified usage data without estimating monetary charges or enabling paid services"
+      "target": "bridge/neurofactory/development/stage5_expense_reporting.py",
+      "objective": "Report audited action usage separately from unknown monetary charges for every development cycle"
     }
   ],
   "roles": [
@@ -30,5 +30,5 @@
     "qwen3:4b",
     "trusted-github-publisher"
   ],
-  "operating_rules": "Independent model results require exact GitHub proof and trusted publisher receipts; no auto execution before integration review and Windows tests."
+  "operating_rules": "Prepared future tasks must be checked against completed GitHub work and independently reviewed. No automatic Qwen execution or ChatGPT send before separate approved dispatch verification."
 }
