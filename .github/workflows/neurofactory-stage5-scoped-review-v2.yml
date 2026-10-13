@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/neurofactory-stage5-scoped-review-v2.yml'
       - 'bridge/neurofactory/development/stage5_independent_security_review_v2.py'
+      - 'bridge/neurofactory/development/stage5_development_queue.py'
+      - 'bridge/neurofactory/development/test_stage5_development_queue.py'
 permissions:
   contents: read
 concurrency:
