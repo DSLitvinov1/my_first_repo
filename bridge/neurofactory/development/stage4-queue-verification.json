@@ -10,11 +10,20 @@
   "independent_verdict": "REVIEW_OK",
   "independent_review_artifact_id": 11835107195,
   "independent_review_reason": "No uncaught exceptions, mixed roles, data loss, replay, or missing proof equality. All states require prior verified steps. Publisher intent is not completion; receipt verification is mandatory.",
-  "publication_status": "independently_approved_windows_verification_pending",
+  "publication_status": "cloud_and_windows_verification_passed",
   "modes": {
     "free_only": true,
     "chat_delivery_paused": true,
     "other_projects_untouched": true
   },
-  "note": "Publisher operations remain external to this module. A trusted caller must independently verify a remote GitHub receipt before acknowledging completion."
+  "note": "Publisher operations remain external to this module. A trusted caller must independently verify a remote GitHub receipt before acknowledging completion.",
+  "windows_verified_run": 38441848485,
+  "windows_bridge_repo": "DSLitvinov1/lesson3.1",
+  "windows_run_conclusion": "success",
+  "windows_test_count": 21,
+  "windows_subprocess_termination_verified": true,
+  "windows_pinned_source_commit": "7e790ff5be4335f675e75a621672edb19ad22bc0",
+  "windows_first_incomplete_run": 38441527018,
+  "windows_first_incomplete_reason": "Initial checkout omitted 10 original checkpoint tests; second run included both suites",
+  "remaining_integration_gate": "Live self-development executor must use this checkpoint before each task and independently reconcile the real GitHub receipt before automatic acceptance."
 }
