@@ -4,6 +4,7 @@ on:
     branches: [neurofactory-public-lab-20261012]
     paths:
       - '.github/workflows/neurofactory-stage5-multiqueue-review.yml'
+      - 'bridge/neurofactory/development/stage5_multiqueue_review.py'
 permissions:
   contents: read
 concurrency:
