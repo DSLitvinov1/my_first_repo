@@ -84,5 +84,22 @@ class LiveHandoffOfflineTests(unittest.TestCase):
                 with self.assertRaises(trial.LiveError):
                     trial.checkpoint("writer_done")
 
+
+    def test_local_model_same_family_wrong_version_is_rejected(self):
+        with patch.object(trial.urllib.request, "urlopen") as transport:
+            transport.return_value.__enter__.return_value.read.return_value=json.dumps(
+                {"model":"qwen3:8b", "response":"{}"}).encode()
+            with self.assertRaises(trial.LiveError):
+                trial.local_model(gate.REVIEWER,"test",formatted=True)
+
+    def test_module_review_rejects_malformed_findings(self):
+        for findings in ([""], [42], ["test"]*26):
+            response = json.dumps({"verdict":"APPROVE",
+                                   "candidate_sha256":gate.digest(MODULE.encode()),
+                                   "findings":findings})
+            with self.subTest(findings=findings):
+                with self.assertRaises(trial.LiveError):
+                    trial.review_module(MODULE, response)
+
 if __name__ == "__main__":
     unittest.main()
