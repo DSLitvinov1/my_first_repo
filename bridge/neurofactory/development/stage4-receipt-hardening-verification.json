@@ -1,0 +1,35 @@
+{
+  "chat_delivery": "paused_by_user",
+  "component": "stage4_receipt_rules_security_correction",
+  "mode": "security_correction_not_duplicate_result",
+  "original_real_ai_cycle_commit": "4156913b3572bc17b7579ca4cbcc0059c53928cf",
+  "previous_source_sha256": "745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c",
+  "reviewer": {
+    "component": "receipt_validator_security_hardening",
+    "history": [
+      {
+        "reason": "Fails to handle forged inputs: when record={'repo':'attacker/other','path':'../secret','sha':'0123456789abcdef0123456789abcdef'}, repo='attacker/other', path='../secret', sha='0123456789abcdef0123456789abcdef' (40 hex), it returns True despite expected repo and path being different. Also, the function does not validate that record['repo'] and record['path'] match the expected repo and path, but rather checks if the record's values equal the inputs, which is incorrect.",
+        "verdict": "REVIEW_BAD"
+      },
+      {
+        "reason": "Source correctly enforces hardcoded repo and path before comparisons. Forged inputs return False as expected. No new flaw found.",
+        "verdict": "REVIEW_OK"
+      }
+    ],
+    "new_attack_regressions": 9,
+    "prior_behavior_cases": 15,
+    "reason": "Source correctly enforces hardcoded repo and path before comparisons. Forged inputs return False as expected. No new flaw found.",
+    "reviewer": "qwen3:4b",
+    "scope": "neurofactory_only",
+    "source_sha256": "eeab7dc07ca8c7000948ff41d726ac2e688af7011eec3cec453f1e29f2c31db3",
+    "stage": "NF-DEV-04",
+    "verdict": "REVIEW_OK"
+  },
+  "scope": "neurofactory_only",
+  "source_sha256": "eeab7dc07ca8c7000948ff41d726ac2e688af7011eec3cec453f1e29f2c31db3",
+  "stage": "NF-DEV-04",
+  "tests_passed": {
+    "forged_attack_regressions": 9,
+    "old_behavior": 15
+  }
+}
