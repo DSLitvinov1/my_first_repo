@@ -58,7 +58,7 @@ def publish():
     if not os.environ.get("GITHUB_TOKEN"):
         raise ValueError("Publisher-only token absent")
     if not approved_stage3(read()):
-        raise ValueError("Exact-chat delivery stage 02 not independently completed")
+        raise ValueError("Stage 03 not approved by verified foundation and explicitly recorded user preference")
     source,proof=verify_candidate()
     if content(TARGET) is not None or content(RECEIPT) is not None:
         raise ValueError("Refuse to modify or replay existing approved policy files")
