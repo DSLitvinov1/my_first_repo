@@ -60,8 +60,8 @@ def local_model(model, prompt, *, formatted=False):
             doc = json.load(resp)
     except (TimeoutError, OSError, urllib.error.URLError, ValueError) as exc:
         raise LiveError("Local model unavailable, invalid response or timeout") from exc
-    if doc.get("model", "").split(":")[0] != model.split(":")[0]:
-        raise LiveError("Unexpected model identity")
+    if doc.get("model") != model:
+        raise LiveError("Exact model version differs from approved local model")
     answer = doc.get("response")
     if not isinstance(answer, str) or not answer.strip():
         raise LiveError("Model produced no answer")
@@ -97,8 +97,10 @@ def review_module(source, reviewer_reply):
         raise LiveError("Reviewer did not bind module review to exact source")
     if result["verdict"] not in ("APPROVE", "REJECT"):
         raise LiveError("Module review verdict invalid")
-    if not isinstance(result["findings"], list):
-        raise LiveError("Module review findings missing")
+    if (not isinstance(result["findings"], list) or len(result["findings"]) > 25
+            or any(not isinstance(x, str) or not x.strip() or len(x) > 500
+                   for x in result["findings"])):
+        raise LiveError("Module review findings malformed")
     if result["verdict"] == "REJECT" and not result["findings"]:
         raise LiveError("Module review rejected without evidence")
     return {"model": gate.REVIEWER, "source_sha256": expected,
