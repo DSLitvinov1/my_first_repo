@@ -4,7 +4,7 @@
   "record_type": "sampled_execution_and_expense_audit",
   "period": "2026-10-13",
   "source": "read-only GitHub Actions run metadata and two validated Windows logs",
-  "scope": "Fourteen individually identified, verified Stage4/5 and historical CI maintenance runs, not an invoice or all project compute.",
+  "scope": "Fifteen named Stage4/Stage5 runs, including failures and security review timeout; not a billing invoice.",
   "runs": [
     {
       "run_id": 38444910309,
@@ -102,11 +102,19 @@
       "repo": "DSLitvinov1/lesson3.1",
       "conclusion": "success",
       "elapsed_wall_seconds": 127
+    },
+    {
+      "run_id": 38455062233,
+      "kind": "stage5_independent_qwen_review_timed_out",
+      "platform": "GitHub Actions hosted",
+      "repo": "DSLitvinov1/my_first_repo",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 361
     }
   ],
   "unique_run_ids_verified": true,
-  "observed_total_elapsed_wall_seconds": 1512,
-  "observed_total_elapsed_wall_minutes": 25.2,
+  "observed_total_elapsed_wall_seconds": 1873,
+  "observed_total_elapsed_wall_minutes": 31.22,
   "usage_note": "Wall-clock durations are not billable minutes and cannot establish monetary charges.",
   "new_paid_ai_api_calls_during_stage5_windows_audits": 0,
   "model_usage": "Previously executed Qwen2.5-Coder 7B and Qwen3 4B with local Ollama; two new stage5 Windows jobs invoked no models.",
