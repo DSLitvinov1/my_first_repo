@@ -96,16 +96,38 @@ class Stage4Queue:
             return checkpoint.transition(self.paths[role], "queued", "running",
                                          lease_until=now + lease_seconds)
 
-    def before_external_effect(self, role):
-        """Persist publishing intent *before* an external publication/review receipt."""
+    def before_external_effect(self, role, *, source_sha256=None, verdict=None):
+        """Store immutable evidence then publishing intent, before any external effect."""
         if role not in STAGES:
             raise Stage4Error("Unrecognized agent")
         with checkpoint._lock(self.guard):
             self._read(role)
-            return checkpoint.transition(self.paths[role], "running", "publishing")
+            if role == "writer":
+                if not isinstance(source_sha256, str) or not DIGEST.fullmatch(source_sha256):
+                    raise Stage4Error("Writer needs exact candidate SHA-256")
+                proof = {"source_sha256": source_sha256}
+            elif role == "reviewer":
+                writer = self._read("writer")
+                if writer["state"] != "verified_done":
+                    raise Stage4Error("Writer candidate not acknowledged")
+                if source_sha256 != writer.get("proof", {}).get("source_sha256") or verdict != "REVIEW_OK":
+                    raise Stage4Error("Reviewer did not approve writer's exact source")
+                proof = {"source_sha256": source_sha256, "verdict": verdict}
+            else:
+                reviewer = self._read("reviewer")
+                if reviewer["state"] != "verified_done" or reviewer.get("proof", {}).get("verdict") != "REVIEW_OK":
+                    raise Stage4Error("Reviewer proof missing")
+                proof = {"source_sha256": reviewer["proof"]["source_sha256"]}
+            path = self.paths[role]
+            with checkpoint._lock(path):
+                task = checkpoint._load(path)
+                if task["state"] != "running":
+                    raise Stage4Error("Publication must follow a fresh claimed task")
+                task["proof"] = proof
+                checkpoint._save(path, task)
+            return checkpoint.transition(path, "running", "publishing")
 
-    def acknowledge(self, role, commit_sha, *, remote_verified=False,
-                    verdict=None, reviewed_source_sha256=None, writer_source_sha256=None):
+    def acknowledge(self, role, commit_sha, *, remote_verified=False):
         """Never resend: acknowledgement requires an independently checked receipt."""
         if role not in STAGES or not isinstance(commit_sha, str) or not SHA.fullmatch(commit_sha):
             raise Stage4Error("Invalid remote receipt")
@@ -113,16 +135,16 @@ class Stage4Queue:
             raise Stage4Error("Remote GitHub receipt must be independently verified")
         with checkpoint._lock(self.guard):
             self._read(role)
+            task = self._read(role)
             if role == "reviewer":
-                if verdict != "REVIEW_OK" or not isinstance(reviewed_source_sha256, str) or not DIGEST.fullmatch(reviewed_source_sha256):
-                    raise Stage4Error("Independent Qwen3 review of exact source required")
-                if writer_source_sha256 != reviewed_source_sha256:
-                    raise Stage4Error("Writer and reviewer source digests differ")
-                if self._read("writer")["state"] != "verified_done":
-                    raise Stage4Error("No confirmed writer candidate")
+                if (self._read("writer")["state"] != "verified_done"
+                        or task.get("proof", {}).get("verdict") != "REVIEW_OK"
+                        or task.get("proof", {}).get("source_sha256") != self._read("writer").get("proof", {}).get("source_sha256")):
+                    raise Stage4Error("Missing independent review of writer's exact source")
             elif role == "publisher":
-                if self._read("reviewer")["state"] != "verified_done":
-                    raise Stage4Error("Production publishing requires independent review")
+                if (self._read("reviewer")["state"] != "verified_done"
+                        or task.get("proof", {}).get("source_sha256") != self._read("reviewer").get("proof", {}).get("source_sha256")):
+                    raise Stage4Error("Production publishing requires confirmed review")
             state = self._read(role)["state"]
             if state == "publishing":
                 checkpoint.recover(self.paths[role], 0, 2)
