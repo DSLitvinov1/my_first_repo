@@ -80,7 +80,13 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
     const deliveredText=prompt+'\n\nПодтверждение отправки агентом нейрозавода: '+job.sequence+'.';
     const fakeDoc={
       activeElement:options.focused?editor:null,
-      querySelectorAll(selector){return clickOccurred && options.visible!==false && selector==='[data-message-author-role="user"]'? [{textContent:deliveredText}]:[];},
+      querySelectorAll(selector){
+        if(selector!=='[data-message-author-role="user"]')return [];
+        const visible=[];
+        if(options.previousReceipt)visible.push({textContent:deliveredText});
+        if(clickOccurred && options.visible!==false)visible.push({textContent:deliveredText});
+        return visible;
+      },
       querySelector(selector){
         if(options.generating && selector.includes('stop-button'))return {disabled:false};
         if(selector.includes('prompt-textarea'))return editor;
@@ -88,7 +94,11 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
         return null
       },
       createRange(){return {selectNodeContents(){},collapse(){}}},
-      execCommand(){editor.textContent=deliveredText;editor.innerText=deliveredText;return true}
+      execCommand(){
+        editor.textContent=deliveredText+(options.appendUserText?' USER TYPED':'');
+        editor.innerText=editor.textContent;
+        return true;
+      }
     };
     vm.runInNewContext(contentScript,{
       chrome:{runtime:{onMessage:{addListener(f){handlers.push(f)}}}},
@@ -118,6 +128,14 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   const noReceipt=await probe(conversation,clean(),{visible:false});
   assert.equal(noReceipt.submitted,false,'button click alone is not proof of visible delivery');
   assert.equal(noReceipt.observed_user_turn,false,'absence of own turn cannot be accepted');
+  const oldReceiptOnly=await probe(conversation,clean(),{previousReceipt:true,visible:false});
+  assert.equal(oldReceiptOnly.submitted,false,'prior matching turn is not new delivery proof');
+  const withNewTurn=await probe(conversation,clean(),{previousReceipt:true,visible:true});
+  assert.equal(withNewTurn.submitted,true,'new user turn should count even when older matching turn exists');
+  const beforeTyping=calls.length;
+  const interrupted=await probe(conversation,clean(),{appendUserText:true});
+  assert.equal(interrupted.submitted,false,'changed composer cannot be sent');
+  assert.equal(calls.length,beforeTyping,'never click send after user appended text');
   // A newly approved milestone has a different digest and must be fetched exactly once.
   state.attempted[job.sequence]={state:'observed',task:job.task_id,at:Date.now()};
   state.enabled=true;state.lastAt=0;sendMode='observed';
@@ -133,5 +151,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'new milestone must not be sent twice');
-  console.log('22 browser handoff assertions passed: exact visible turn, automatic next milestone, no replay, no user-input overwrite; live authenticated send not tested');
+  console.log('Browser handoff checks passed: new visible turn vs stale receipt, unchanged editor, idempotence, next milestone. No live authenticated send performed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
