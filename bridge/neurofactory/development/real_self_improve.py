@@ -105,6 +105,16 @@ def run():
        "The workflow branch must verify both the required .github/workflows/neurofactory- "
        "prefix AND the .yml suffix; the source branch must allow bridge/neurofactory/. "
        "Reject everything else, including other-project.yml and traversals. "
+       "CRITICAL SECURITY ORDER: FIRST validate the FULL path BEFORE testing its prefix. "
+       "Use parts = path.split('/') and reject if ANY part is empty, '.' or '..'. "
+       "It is never enough to check only path.startswith('bridge/neurofactory/'): "
+       "the exact path bridge/neurofactory/../other_project/main.py MUST be False, "
+       "as must bridge/neurofactory/sub/../../secret.txt. "
+       "Validate every character in every segment using c.isalnum() or c in '_-.'; "
+       "reject non-ASCII, backslashes and excessively long strings. "
+       "ONLY AFTER the complete segments are validated should the function "
+       "return True for either the real bridge/neurofactory/ source family "
+       "or the allowed .github/workflows/neurofactory- prefix with .yml suffix. "
        "Return a pure single Python function with no explanation and no markdown."
     )
     code=None
