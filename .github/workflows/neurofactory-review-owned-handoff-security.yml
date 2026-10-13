@@ -1,0 +1,77 @@
+name: Neurofactory Independent REVIEW Source and Race Acceptance
+on:
+  push:
+    branches: [neurofactory-review-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/review_owned/test_handoff_independent_security.py'
+      - '.github/workflows/neurofactory-review-owned-handoff-security.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-review-owned-only-handoff-audit
+  cancel-in-progress: false
+jobs:
+  independent_review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Checkout independent REVIEW branch read-only
+        uses: actions/checkout@v4
+        with:
+          path: reviewer
+          persist-credentials: false
+      - name: Checkout exact independent HANDOFF source without token
+        uses: actions/checkout@v4
+        with:
+          ref: b205a495b51aa125dd8273955c202a177df7a173
+          path: inspected-handoff
+          persist-credentials: false
+      - name: Check exact git tree provenance and source digest
+        shell: bash
+        run: |
+          test "$(git -C inspected-handoff rev-parse HEAD)" = "b205a495b51aa125dd8273955c202a177df7a173"
+          python -B - <<'PY'
+          import hashlib
+          from pathlib import Path
+          p=Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
+          digest=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest=="75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",digest
+          print("INDEPENDENT_REVIEW_PINNED_SOURCE_SHA256_OK",digest)
+          PY
+      - name: Test exact HANDOFF source with two processes and hostile directory-swap interleaving
+        env:
+          PYTHONPATH: ${{ github.workspace }}/inspected-handoff/bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s reviewer/bridge/neurofactory/development/review_owned -p 'test_handoff_independent_security.py' -v
+      - name: Save read-only independent REVIEW counterexample evidence
+        if: success()
+        run: |
+          mkdir -p review-evidence
+          python -B - <<'PY'
+          import hashlib,json,pathlib
+          p=pathlib.Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
+          proof={
+            "scope":"REVIEW_only",
+            "review_result":"REJECT",
+            "reviewed_handoff_head":"b205a495b51aa125dd8273955c202a177df7a173",
+            "reviewed_module_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),
+            "reviewed_original_artifact_id":11850873678,
+            "independent_unit_tests":8,
+            "critical_reproduced":"writable parent allows taskdir symlink swap after check; store_once writes outside isolated evidence root",
+            "model_provenance_limitation":"caller-supplied qwen3:4b verdict is not independently authenticated",
+            "other_findings":"existing symlink target rejected; same-task conflicting two-process writes fail closed; release authorization remains false",
+            "production_publish_authorized":False,"merges_authorized":False
+          }
+          pathlib.Path("review-evidence/independent-handoff-counterexample.json").write_text(
+              json.dumps(proof,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+          print("REVIEW_REJECT_FOR_REPRODUCED_SECURITY_FINDINGS",proof["reviewed_module_sha256"])
+          PY
+      - name: Archive only independent reviewer-owned evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-review-owned-handoff-counterexample
+          path: review-evidence/
+          if-no-files-found: warn
+          retention-days: 10
