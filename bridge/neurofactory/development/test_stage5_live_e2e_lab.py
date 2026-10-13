@@ -11,6 +11,7 @@ from unittest import mock
 
 import stage5_live_pair_lab as worker
 import stage5_live_publish_lab as publisher
+import stage5_live_restore_artifact as recovery
 
 SOURCE_ONE="""def valid_task_ids(items):
     if not isinstance(items, list) or not items:
@@ -66,6 +67,41 @@ class SequentialRealWorkflowPreflight(unittest.TestCase):
             p.write_text(json.dumps(proof),"utf-8")
             with self.assertRaises(ValueError):
                 publisher.files_for(jobid,filename,d)
+
+    def test_readonly_restore_skips_already_published_task(self):
+        first=worker.JOBS[0]
+        digest=hashlib.sha256(SOURCE_ONE.encode()).hexdigest()
+        info={"task_id":first[0],"target":publisher.PREFIX+first[1],
+              "source_sha256":digest,"writer":"qwen2.5-coder:7b","reviewer":"qwen3:4b",
+              "independent_verdict":{"verdict":"REVIEW_OK","source_sha256":digest}}
+        state={"scope":"neurofactory_only","chat_delivery":"paused_by_user",
+               "branch":recovery.BRANCH,"tasks":{
+                  worker.JOBS[0][0]:{"state":"verified_done","target":publisher.PREFIX+first[1],
+                    "source_sha256":digest,"commit_sha":"a"*40},
+                  worker.JOBS[1][0]:{"state":"queued","target":publisher.PREFIX+worker.JOBS[1][1]}}}
+        files={
+           recovery.STATE:json.dumps(state).encode(),
+           publisher.PREFIX+first[1]:SOURCE_ONE.encode(),
+           publisher.PREFIX+"stage5-e2e-evidence/"+first[0]+".json":json.dumps(info).encode()
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(recovery,"fetch",side_effect=lambda path:files.get(path)):
+                self.assertTrue(recovery.restore(first[0],tmp))
+                self.assertEqual((pathlib.Path(tmp)/first[1]).read_text("utf-8"),SOURCE_ONE)
+
+    def test_queued_task_never_reissued_when_remote_source_exists(self):
+        job=worker.JOBS[0]
+        state={"scope":"neurofactory_only","chat_delivery":"paused_by_user",
+               "branch":recovery.BRANCH,"tasks":{
+                  worker.JOBS[0][0]:{"state":"queued","target":publisher.PREFIX+worker.JOBS[0][1]},
+                  worker.JOBS[1][0]:{"state":"queued","target":publisher.PREFIX+worker.JOBS[1][1]}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            def fake(path):
+                if path==recovery.STATE:return json.dumps(state).encode()
+                if path==publisher.PREFIX+job[1]:return SOURCE_ONE.encode()
+                return None
+            with mock.patch.object(recovery,"fetch",side_effect=fake):
+                with self.assertRaises(ValueError):recovery.restore(job[0],tmp)
 
     def test_only_one_exact_job_can_be_issued_or_published(self):
         self.assertEqual({j[0] for j in worker.JOBS},
