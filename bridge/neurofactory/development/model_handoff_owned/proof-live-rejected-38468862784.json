@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "lane": "handoff",
+  "branch": "neurofactory-model-handoff-owned-20261013",
+  "failed_live_run": 38468862784,
+  "failed_head_sha": "3c77eaa5467109444360594fc3974a9e370ad30e",
+  "offline_tests_at_that_sha": 31,
+  "offline_status": "success",
+  "model_stage": "failed",
+  "error": "Qwen3 response omitted required reviewer evidence fields",
+  "qwen3_verdict": "NOT_APPROVED",
+  "released": false,
+  "artifact_id": 11850597007,
+  "artifact_name": "neurofactory-handoff-owned-q090-evidence",
+  "root_cause_actions": [
+    "Enforced exact model tag instead of model-family-only comparison",
+    "Added constrained structured JSON schema for Qwen3",
+    "Retained raw reviewer responses per attempt",
+    "Capped transient or malformed responses at two attempts",
+    "Added offline failure, identity and evidence tests"
+  ],
+  "remediation_commit": "b1206c0e95c1e06036fc422a3ab4372db21dc00a",
+  "confirmed_offline_rerun": 38469692477,
+  "confirmed_offline_tests": 36,
+  "new_live_run": 38469770594,
+  "new_live_state_at_record_creation": "queued",
+  "verification_disclaimer": "New live run has not yielded an independent verdict; no merge or publication permitted.",
+  "foreign_branches_modified": false,
+  "shared_queue_modified": false,
+  "paid_services_used": false,
+  "chat_sender_enabled": false
+}
