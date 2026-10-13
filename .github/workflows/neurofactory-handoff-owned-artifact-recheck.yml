@@ -1,0 +1,45 @@
+name: Neurofactory HANDOFF Immutable Artifact Recheck
+on:
+  push:
+    branches: [neurofactory-model-handoff-owned-20261013]
+    paths:
+      - '.github/workflows/neurofactory-handoff-owned-artifact-recheck.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: neurofactory-handoff-artifact-recheck-38469770594
+  cancel-in-progress: false
+jobs:
+  immutable_artifact_recheck:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify trusted source run SHA and original archived proof
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          RUN_SHA="$(gh api repos/DSLitvinov1/my_first_repo/actions/runs/38469770594 --jq .head_sha)"
+          test "$RUN_SHA" = 'db38b78e5c36207edf5d344741f9d317e1fff33d'
+          gh api -H 'Accept: application/vnd.github+json' repos/DSLitvinov1/my_first_repo/actions/artifacts/11850873678/zip > "$RUNNER_TEMP/handoff-proof.zip"
+          python3 -B -m model_handoff_owned.verify_live_archive "$RUNNER_TEMP/handoff-proof.zip" \
+            3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32 \
+            75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc \
+            > "$RUNNER_TEMP/handoff-evidence-check.json"
+          cat "$RUNNER_TEMP/handoff-evidence-check.json"
+      - name: Archive read-only verification result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-handoff-owned-artifact-recheck
+          path: ${{ runner.temp }}/handoff-evidence-check.json
+          if-no-files-found: warn
+          retention-days: 14
