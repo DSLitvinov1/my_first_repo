@@ -89,6 +89,30 @@ class SequentialRealWorkflowPreflight(unittest.TestCase):
                 self.assertTrue(recovery.restore(first[0],tmp))
                 self.assertEqual((pathlib.Path(tmp)/first[1]).read_text("utf-8"),SOURCE_ONE)
 
+    def test_second_model_task_restores_without_reexecution(self):
+        second=worker.JOBS[1]
+        digest=hashlib.sha256(SOURCE_TWO.encode()).hexdigest()
+        info={"task_id":second[0],"target":publisher.PREFIX+second[1],
+              "source_sha256":digest,"writer":"qwen2.5-coder:7b",
+              "reviewer":"qwen3:4b",
+              "independent_verdict":{"verdict":"REVIEW_OK","source_sha256":digest}}
+        state={"scope":"neurofactory_only","chat_delivery":"paused_by_user",
+               "branch":recovery.BRANCH,"tasks":{
+                  worker.JOBS[0][0]:{"state":"verified_done",
+                     "target":publisher.PREFIX+worker.JOBS[0][1]},
+                  worker.JOBS[1][0]:{"state":"verified_done",
+                     "target":publisher.PREFIX+second[1],
+                     "source_sha256":digest,"commit_sha":"b"*40}}}
+        remote={
+          recovery.STATE:json.dumps(state).encode(),
+          publisher.PREFIX+second[1]:SOURCE_TWO.encode(),
+          publisher.PREFIX+"stage5-e2e-evidence/"+second[0]+".json":json.dumps(info).encode()
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(recovery,"fetch",side_effect=lambda path:remote.get(path)):
+                self.assertTrue(recovery.restore(second[0],tmp))
+            self.assertEqual((pathlib.Path(tmp)/second[1]).read_text("utf-8"),SOURCE_TWO)
+
     def test_queued_task_never_reissued_when_remote_source_exists(self):
         job=worker.JOBS[0]
         state={"scope":"neurofactory_only","chat_delivery":"paused_by_user",
