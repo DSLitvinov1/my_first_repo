@@ -1,14 +1,18 @@
 /* Exact-conversation ChatGPT handoff. Never reads previous conversation or credentials. */
+function chatKey(url){
+  const clean=String(url||"").split(/[?#]/)[0].replace(/\/+$/,"");
+  return /^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+$/.test(clean)?clean:"";
+}
 chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
   // Readiness check does not focus the composer or send any message.
   if(req?.type==="NF_HEALTH_CHECK"){
     const exact=location.href.split("?")[0].split("#")[0];
-    respond({ready:req.boundUrl===exact&&/^https:\/\/chatgpt\.com\//.test(exact)});
+    respond({ready:Boolean(chatKey(exact))&&chatKey(req.boundUrl)===chatKey(exact)});
     return;
   }
   if(req?.type!=="NF_SEND_APPROVED_PROMPT")return;
   const exact=location.href.split("?")[0].split("#")[0];
-  if(exact!==req.boundUrl || !/^https:\/\/chatgpt\.com\//.test(exact)){
+  if(!chatKey(exact) || chatKey(exact)!==chatKey(req.boundUrl)){
     respond({submitted:false,reason:"wrong conversation"});return;
   }
   const prompt=req.text;
@@ -116,7 +120,7 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
         }
       }
       await new Promise(resolve=>setTimeout(resolve,350));
-      if(location.href.split("?")[0].split("#")[0]!==req.boundUrl){
+      if(chatKey(location.href)!==chatKey(req.boundUrl)){
         respond({submitted:false,reason:"conversation changed before send"});return;
       }
       if(document.querySelector('button[data-testid="stop-button"]')||
