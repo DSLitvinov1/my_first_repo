@@ -7,7 +7,7 @@ import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
 SOURCE = HERE / "stage4_queue.py"
-OUTPUT = pathlib.Path(os.environ["RUNNER_TEMP"]) / "neurofactory-stage4-queue-reviewed.json"
+OUTPUT = HERE / "stage4-queue-review-result.json"
 
 
 def main():
