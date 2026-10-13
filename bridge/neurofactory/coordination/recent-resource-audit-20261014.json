@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "scope": "coordinator_only_recent_readonly_runs",
+  "not_invoice": true,
+  "cost_verified_currency": null,
+  "billing_amount": null,
+  "billing_status": "unknown_not_queried",
+  "owner_branch": "neurofactory-chat-coordination-20261013",
+  "runs": [
+    {
+      "id": 38484610412,
+      "wall_seconds": 9,
+      "tests": 12,
+      "category": "read_only_exact_review"
+    },
+    {
+      "id": 38484767544,
+      "wall_seconds": 16,
+      "tests": 97,
+      "category": "read_only_premerge"
+    },
+    {
+      "id": 38484767527,
+      "wall_seconds": 16,
+      "category": "read_only_exact_review"
+    },
+    {
+      "id": 38484767578,
+      "wall_seconds": 15,
+      "category": "read_only_five_branch_overlap"
+    },
+    {
+      "id": 38484767512,
+      "wall_seconds": 14,
+      "category": "coordinator_only_ownership"
+    },
+    {
+      "id": 38484767514,
+      "wall_seconds": 11,
+      "category": "five_lane_ownership"
+    }
+  ],
+  "new_paid_ai_api_calls": 0,
+  "new_chatgpt_sender_calls": 0,
+  "total_observed_wall_seconds": 81,
+  "description": "Wall time of explicitly listed GitHub Actions runs is not billed duration or monetary cost. Do not combine with production business workloads."
+}
