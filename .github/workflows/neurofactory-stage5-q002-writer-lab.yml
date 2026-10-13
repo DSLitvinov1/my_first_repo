@@ -1,0 +1,64 @@
+name: Neurofactory Stage5 Q002 Independent Writer Recovery Laboratory
+on:
+  push:
+    branches: [neurofactory-stage5-q002-writer-lab-20261013]
+    paths:
+      - 'bridge/neurofactory/development/stage5_live_pair_lab.py'
+      - '.github/workflows/neurofactory-stage5-q002-writer-lab.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-q002-exact-source-lab
+  cancel-in-progress: false
+jobs:
+  prove_q002:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 38
+    steps:
+      - name: Checkout isolated task source without storing a write token
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify unchanged offline source safety gate
+        run: |
+          mkdir -p nf-q002-proof
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_live_pair_lab.py -v
+      - name: Start free local Qwen2.5 Coder and independent Qwen3
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf-q002-models.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: Generate only new Q002, enforce real behavior vectors and independent approval
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+        run: |
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf-q002-proof NF-DEV-05-Q002
+          python -B - <<'PY'
+          import json, pathlib, sys
+          sys.path.insert(0,'bridge/neurofactory/development')
+          from stage5_live_pair_lab import check_source
+          p=pathlib.Path('nf-q002-proof')
+          source=(p/'stage5_receipt_reconciliation.py').read_text('utf-8')
+          proof=json.loads((p/'stage5_receipt_reconciliation.py.proof.json').read_text('utf-8'))
+          verified=check_source(source,'reconcile_receipt')
+          assert verified['source_sha256']==proof['source_sha256']
+          assert proof['independent_verdict']['verdict']=='REVIEW_OK'
+          assert proof['independent_verdict']['source_sha256']==verified['source_sha256']
+          print('NF_Q002_TWO_AGENTS_INDEPENDENTLY_VERIFIED_NO_PUBLISH')
+          PY
+      - name: Retain evidence without GitHub code publication
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-stage5-q002-model-evidence
+          path: nf-q002-proof/
+          if-no-files-found: warn
+          retention-days: 5
