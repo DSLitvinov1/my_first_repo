@@ -49,6 +49,8 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(calls[0].msg.text.includes('Подтверждение отправки агентом нейрозавода: '+job.sequence+'.'),true);
   assert.equal(state.attempted[job.sequence].state,'observed');
   assert.equal(state.nfDiagnostic.code,'SEEN','diagnostics must distinguish observed message from click');
+  await subscribers.install();
+  assert.equal(badge,'ON','extension reload must preserve the visible bound-on state');
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,1,'alarm must not replay same prompt');
   await subscribers.clicked({url:conversation});
