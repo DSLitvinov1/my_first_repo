@@ -116,6 +116,23 @@ os._exit(74)
         with self.assertRaises(st.checkpoint.CheckpointError):
             self.queue.prepare()
 
+    def test_publisher_write_ahead_intent_is_not_a_completion_receipt(self):
+        self.complete("writer", "a"*40, source_sha256="f"*64)
+        self.complete("reviewer", "b"*40, source_sha256="f"*64, verdict="REVIEW_OK")
+        self.queue.claim("publisher", 100, 10)
+        state = self.queue.before_external_effect("publisher")
+        self.assertEqual(state["state"], "publishing")
+        self.assertNotIn("publication_sha", state)
+        with self.assertRaises(st.Stage4Error):
+            self.queue.acknowledge("publisher", "c"*40, remote_verified=False)
+        self.assertEqual(self.queue.recover(999)["publisher"]["state"], "needs_receipt_check")
+        with self.assertRaises(st.Stage4Error):
+            self.queue.claim("publisher", 1000, 10)
+        self.assertEqual(self.queue.acknowledge("publisher", "c"*40,
+                                               remote_verified=True)["state"], "verified_done")
+        with self.assertRaises(st.Stage4Error):
+            self.queue.acknowledge("publisher", "c"*40, remote_verified=True)
+
     def test_forbids_resuming_chat_delivery(self):
         unsafe = copy.deepcopy(PLAN)
         unsafe["chat_delivery_paused"] = False
