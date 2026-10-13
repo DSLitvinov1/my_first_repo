@@ -1,0 +1,58 @@
+name: Neurofactory Stage4 Forged Receipt Identity Security Gate
+on:
+  push:
+    branches: [neurofactory-stage4-receipt-hardening-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage4-receipt-hardening.yml'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-stage4-receipt-hardening-one-time
+  cancel-in-progress: false
+jobs:
+  security_regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Old behavior and newly discovered forged expected identity bypass
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage4_receipt_hardening.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+  second_independent_agent_review:
+    needs: security_regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Start free Qwen3 with no publisher credentials
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf4-hardening.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Independent second agent reviews actual repaired source
+        env:
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/stage4_receipt_hardening_review.py
+      - name: Publish source and review proof atomically then prove no second publication
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B bridge/neurofactory/development/stage4_receipt_publish_hardening.py
+          python -B bridge/neurofactory/development/stage4_receipt_publish_hardening.py
