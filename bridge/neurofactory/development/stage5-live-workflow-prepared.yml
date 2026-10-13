@@ -1,0 +1,195 @@
+name: Neurofactory Stage5 Isolated Sequential Durable Live Agents
+on:
+  push:
+    branches: [neurofactory-stage5-live-e2e-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-live-e2e.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-live-durable-candidates
+  cancel-in-progress: false
+jobs:
+  durable_preflight:
+    if: github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify independently reviewed queue source and keep ChatGPT paused
+        run: |
+          python -B - <<'PY'
+          import json,subprocess,pathlib
+          root=pathlib.Path('bridge/neurofactory/development')
+          att=json.loads((root/'stage5-security-gate.json').read_text('utf-8'))
+          assert att['verdict']=='REVIEW_OK'
+          assert att['chat_delivery_paused'] is True
+          for name,sha in att['git_blobs'].items():
+              actual=subprocess.check_output(['git','hash-object',str(root/name)],text=True).strip()
+              assert actual==sha,(name,'reviewed source changed')
+          plan=json.loads((root/'roadmap.json').read_text('utf-8'))
+          assert plan['chat_delivery_paused'] and plan['free_only']
+          assert {x['id']:x['state'] for x in plan['milestones']}['NF-DEV-05']=='pending'
+          print('NF5_REVIEWED_QUEUE_SOURCE_VERIFIED')
+          PY
+      - name: Read or create real GitHub journal, without starting models
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -B bridge/neurofactory/development/stage5_live_publish_lab.py init
+
+  first_model_pair:
+    needs: durable_preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install two free local Qwen models without tokens
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf5-one.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: Writer creates first task, independent reviewer checks exact code
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+        run: |
+          mkdir -p nf5-one-proof
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf5-one-proof NF-DEV-05-Q001
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nf5-first-real-reviewed-task
+          path: nf5-one-proof/
+          if-no-files-found: error
+
+  durable_publish_first:
+    needs: first_model_pair
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: nf5-first-real-reviewed-task
+          path: nf5-approved/
+      - name: Verify exact first source and independent verdict without tokens
+        run: |
+          python -B - <<'PY'
+          import json,pathlib,sys
+          sys.path.insert(0,'bridge/neurofactory/development')
+          from stage5_live_pair_lab import JOBS,check_source
+          jid,filename,function,_=JOBS[0]
+          folder=pathlib.Path('nf5-approved')
+          source=(folder/filename).read_text('utf-8')
+          proof=json.loads((folder/(filename+'.proof.json')).read_text('utf-8'))
+          val=check_source(source,function)
+          assert proof['task_id']==jid and val['source_sha256']==proof['source_sha256']
+          assert proof['independent_verdict']['verdict']=='REVIEW_OK'
+          assert proof['independent_verdict']['source_sha256']==val['source_sha256']
+          PY
+      - name: Save first approved result in GitHub; re-run to prove no duplicate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf5-approved NF-DEV-05-Q001
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf5-approved NF-DEV-05-Q001
+
+  second_model_pair:
+    needs: durable_publish_first
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Start two no-cost local independent Qwen models
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf5-two.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: First agent writes second distinct task; reviewer sees actual source
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+        run: |
+          mkdir -p nf5-two-proof
+          python -B bridge/neurofactory/development/stage5_live_pair_lab.py nf5-two-proof NF-DEV-05-Q002
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nf5-second-real-reviewed-task
+          path: nf5-two-proof/
+          if-no-files-found: error
+
+  durable_publish_second:
+    needs: second_model_pair
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: nf5-first-real-reviewed-task
+          path: nf5-approved/
+      - uses: actions/download-artifact@v4
+        with:
+          name: nf5-second-real-reviewed-task
+          path: nf5-approved/
+      - name: Recheck both approved source hashes before publisher receives token
+        run: |
+          python -B - <<'PY'
+          import json,pathlib,sys
+          sys.path.insert(0,'bridge/neurofactory/development')
+          from stage5_live_pair_lab import JOBS,check_source
+          root=pathlib.Path('nf5-approved')
+          for jid,filename,function,_ in JOBS:
+              code=(root/filename).read_text('utf-8')
+              proof=json.loads((root/(filename+'.proof.json')).read_text('utf-8'))
+              check=check_source(code,function)
+              assert proof['task_id']==jid and check['source_sha256']==proof['source_sha256']
+              assert proof['independent_verdict']['verdict']=='REVIEW_OK'
+              assert proof['independent_verdict']['source_sha256']==check['source_sha256']
+          print('NF5_TWO_EXACT_QWEN_REVIEWED_SOURCES_ACCEPTED')
+          PY
+      - name: Publish second approved task and audit both across separate processes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf5-approved NF-DEV-05-Q001
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf5-approved NF-DEV-05-Q002
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py audit nf5-approved
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py publish nf5-approved NF-DEV-05-Q002
+          python -B bridge/neurofactory/development/stage5_live_publish_lab.py audit nf5-approved
