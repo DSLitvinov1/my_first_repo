@@ -1,0 +1,23 @@
+name: Neurofactory Stage5 Live Pair Unit Preflight
+on:
+  push:
+    branches: [neurofactory-stage5-live-e2e-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-live-preflight.yml'
+permissions:
+  contents: read
+jobs:
+  bounded_writer_reviewer_contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deterministic two-job source/reviewer/publisher tests without model or token
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_live_e2e_lab.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
