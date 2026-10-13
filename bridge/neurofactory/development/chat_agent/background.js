@@ -53,8 +53,8 @@ async function poll() {
       "response currently generating","wrong conversation","conversation changed before send",
       "generation began before send"
     ]);
-    if(reply?.submitted){
-      attempt[job.sequence]={state:"submitted",task:job.task_id,at:Date.now()};
+    if(reply?.submitted && reply?.observed_user_turn){
+      attempt[job.sequence]={state:"observed",task:job.task_id,at:Date.now()};
     }else if(safeBeforeSend.has(reply?.reason)){
       // Explicit pre-send cancellation is safe to retry later. Ambiguous failures stay reserved.
       delete attempt[job.sequence];
@@ -62,7 +62,7 @@ async function poll() {
       attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now()};
     }
     await chrome.storage.local.set({attempted:attempt});
-    await view(reply?.submitted?"OK":safeBeforeSend.has(reply?.reason)?"ON":"?");
+    await view(reply?.submitted && reply?.observed_user_turn?"SEEN":safeBeforeSend.has(reply?.reason)?"ON":"?");
   }catch(err){
     attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now(),error:String(err).slice(0,120)};
     await chrome.storage.local.set({attempted:attempt});
