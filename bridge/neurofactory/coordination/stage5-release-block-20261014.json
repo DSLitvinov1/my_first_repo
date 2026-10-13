@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "owner": "COORDINATOR",
+  "stage": "NF-DEV-05",
+  "status": "BLOCKED_REVIEW_REJECT",
+  "final_stage_complete": false,
+  "handoff": {
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "exact_commit": "b205a495b51aa125dd8273955c202a177df7a173",
+    "module_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+    "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+    "source_artifact_id": 11850873678,
+    "model_trial_run_id": 38469770594,
+    "archival_recheck_run": 38471390414,
+    "handoff_regressions_run": 38471630462,
+    "handoff_regressions_passed": 43
+  },
+  "independent_review": {
+    "owner_branch": "neurofactory-review-owned-20261013",
+    "exact_commit": "6b71680d3ce7e6f83565fed3e915b8ffc793ae6b",
+    "report": "bridge/neurofactory/development/review_owned/independent_handoff_review_20261014.json",
+    "decision": "REJECT",
+    "review_run": 38483261300,
+    "review_tests_passed": 8,
+    "findings": [
+      {
+        "id": "REVIEW-HANDOFF-001",
+        "reason": "confirmed directory swap race in local adversarial Linux reproduction"
+      },
+      {
+        "id": "REVIEW-HANDOFF-002",
+        "reason": "caller-supplied model tag not authenticated model invocation"
+      }
+    ],
+    "conclusion_is_not_model_signature": true
+  },
+  "coordinator_guard": {
+    "separate_release_gate_run": 38484610412,
+    "tests": 12,
+    "conclusion": "success",
+    "premerge_run": 38484767544,
+    "full_isolated_tests": 97,
+    "other_checks": [
+      {
+        "id": 38484767527,
+        "result": "success"
+      },
+      {
+        "id": 38484767578,
+        "result": "success"
+      },
+      {
+        "id": 38484767512,
+        "result": "success"
+      },
+      {
+        "id": 38484767514,
+        "result": "success"
+      }
+    ],
+    "production_branch": "neurofactory-public-lab-20261012",
+    "production_branch_protected": false,
+    "branch_protection_api_access": "403_forbidden",
+    "ready_to_merge": false,
+    "pr2": "BLOCKED_MIXED_OWNERSHIP"
+  },
+  "next_actions": {
+    "HANDOFF": "Fix directory-swap race and model provenance in HANDOFF-owned files only; provide new exact commit with regression tests on Linux and Windows",
+    "REVIEW": "Independently re-review the exact new HANDOFF source, repeat adversarial tests and save APPROVE or REJECT in REVIEW branch and Issue #3",
+    "CORE": "Do not integrate rejected HANDOFF",
+    "COORDINATOR": "Recheck immutable SHA and review, obtain protected branch and trusted attestation before any integration"
+  },
+  "forbidden_actions": [
+    "auto_merge",
+    "publish_rejected_handoff",
+    "repeat_Q090",
+    "modify_other_project",
+    "paid_models",
+    "resume_chatgpt_delivery"
+  ],
+  "notes": "This record is an audit snapshot, not cryptographic signing of reviewer identity or permission to publish. All protected-branch rules remain unset."
+}
