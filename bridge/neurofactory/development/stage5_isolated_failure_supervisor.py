@@ -108,7 +108,7 @@ class FailureLedger:
                          task_id=self.task_id, chat_delivery="paused",
                          phase=None, status="queued", retries=0,
                          runner=None, started=None, candidate=None,
-                         candidate_sha256=None, reviewer=None,
+                         candidate_sha256=None, writer_model=None, reviewer=None,
                          review_sha256=None, publication_sha=None,
                          error=None, revision=0)
             self._write(state)
@@ -138,18 +138,21 @@ class FailureLedger:
 
     @staticmethod
     def _independent_approval(s):
-        return (isinstance(s.get("candidate"), str)
+        return (s.get("writer_model") == "qwen2.5-coder:7b"
+                and isinstance(s.get("candidate"), str)
                 and digest(s["candidate"]) == s.get("candidate_sha256")
                 and s.get("reviewer") == "qwen3:4b"
                 and s.get("review_sha256") == s.get("candidate_sha256"))
 
-    def writer_result(self, candidate):
+    def writer_result(self, candidate, *, model):
+        if model != "qwen2.5-coder:7b":
+            raise UnsafeState("Unapproved writer model")
         if not isinstance(candidate, str) or not 1 <= len(candidate) <= 9000:
             raise UnsafeState("Empty or oversized writer result")
         def modify(s):
             if s["status"] != "running" or s["phase"] != "writer":
                 raise UnsafeState("Writer did not own this execution")
-            s.update(candidate=candidate, candidate_sha256=digest(candidate),
+            s.update(candidate=candidate, candidate_sha256=digest(candidate), writer_model=model,
                      status="writer_ready", started=None, retries=0)
             return True
         return self._change(modify)
@@ -219,7 +222,7 @@ class FailureLedger:
             return s
         return self.failure("owned_child_stopped", available_runners=available_runners)
 
-    def reconcile_receipt(self, receipt, *, github_reachable):
+    def reconcile_receipt(self, receipt, *, github_reachable, verify_remote=None):
         """Only exact read-back of trusted remote receipt can confirm publication."""
         def modify(s):
             if s["status"] == "verified_done":
@@ -231,6 +234,9 @@ class FailureLedger:
                 return True
             if not isinstance(receipt, dict):
                 s.update(status="blocked", error="Missing or ambiguous remote receipt")
+                return True
+            if not callable(verify_remote) or verify_remote(receipt) is not True:
+                s.update(status="needs_receipt_check", error="Trusted GitHub receipt verifier unavailable")
                 return True
             valid = (receipt.get("task_id") == self.task_id
                      and receipt.get("branch") == BRANCH
