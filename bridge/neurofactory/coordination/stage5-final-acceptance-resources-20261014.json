@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "owner": "COORDINATOR",
+  "date": "2026-10-14",
+  "scope": "six_selected_distinct_historical_runs_neither_lifetime_usage_nor_billing",
+  "source": "live GitHub Actions run metadata",
+  "runs": [
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38469770594,
+      "owner": "handoff",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "db38b78e5c36207edf5d344741f9d317e1fff33d",
+      "wall_seconds": 243
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38471390414,
+      "owner": "handoff",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "309e4da0d5fa7ffdcd71aa4e45691405e76e2a41",
+      "wall_seconds": 8
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38471630462,
+      "owner": "handoff",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "b205a495b51aa125dd8273955c202a177df7a173",
+      "wall_seconds": 7
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38464998899,
+      "owner": "review",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "3d1579cf3e0a86345f93e15ac7bdb92f918a35e3",
+      "wall_seconds": 433
+    },
+    {
+      "repo": "DSLitvinov1/lesson3.1",
+      "run_id": 38455676540,
+      "owner": "windows",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "9401e2bc4346510a7b842ea222e144e0e5443a82",
+      "wall_seconds": 716
+    },
+    {
+      "repo": "DSLitvinov1/lesson3.1",
+      "run_id": 38464557424,
+      "owner": "windows",
+      "status": "completed",
+      "conclusion": "success",
+      "source_sha": "c15d6c7a2c4cc12e211a7851b5e7f7b91ce4c64b",
+      "wall_seconds": 112
+    }
+  ],
+  "run_ids_unique": true,
+  "observed_sum_wall_seconds": 1519,
+  "money": {
+    "amount": null,
+    "currency": null,
+    "verified": false,
+    "claim_zero": false,
+    "warning": "Actions wall duration is not chargeable usage; actual GitHub invoice and model external billing not checked."
+  },
+  "policy": {
+    "paid_model_service_calls_authorized": false,
+    "chatgpt_auto_send_authorized": false
+  }
+}
