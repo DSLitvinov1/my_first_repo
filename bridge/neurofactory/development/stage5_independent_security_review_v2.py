@@ -30,6 +30,15 @@ SCHEMA = {
 }
 
 def question(filename, source, topic):
+    # Show the reviewer the actual dependency that implements the cross-process
+    # lock instead of asking it to guess whether the lock is process-global.
+    context = ""
+    if filename == "stage5_development_queue.py":
+        dependency = (HERE / "durable_checkpoint.py").read_text("utf-8")
+        regression = (HERE / "test_stage5_development_queue.py").read_text("utf-8")
+        context = ("\nREAD-ONLY DEPENDENCY IMPLEMENTING _lock, _save AND LOAD:\n" +
+                   dependency + "\nTWO-PROCESS CONCURRENCY / CRASH REGRESSIONS:\n" +
+                   regression)
     prompt = (
         "You are the SECOND INDEPENDENT AI, Qwen3:4b, acting as a STRICT "
         "safety and correctness auditor. A different agent developed the code. "
@@ -49,13 +58,13 @@ def question(filename, source, topic):
         "execution path and an actual counterexample. REVIEW_OK must describe "
         "at least two concrete verified safeguards and a remaining deployment "
         "limitation. Never return fields other than verdict and reason.\n"
-        "SOURCE BELOW (ENTIRE FILE):\n" + source
+        "SOURCE BELOW (ENTIRE FILE):\n" + source + context
     )
     payload = {
         "model": MODEL, "stream": False, "think": False,
         "format": SCHEMA, "keep_alive": "10m",
         "prompt": prompt,
-        "options": {"temperature": 0, "num_ctx": 9000, "num_predict": 520,
+        "options": {"temperature": 0, "num_ctx": 16000, "num_predict": 700,
                     "num_thread": 4, "num_gpu": 0},
     }
     req = urllib.request.Request(
