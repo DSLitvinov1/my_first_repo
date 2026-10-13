@@ -101,5 +101,49 @@ class LiveHandoffOfflineTests(unittest.TestCase):
                 with self.assertRaises(trial.LiveError):
                     trial.review_module(MODULE, response)
 
+
+    def test_structured_review_format_requires_exact_digest(self):
+        sha = gate.digest(MODULE.encode())
+        schema = trial.review_format(sha)
+        self.assertEqual(schema["properties"]["candidate_sha256"]["enum"], [sha])
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(set(schema["required"]),
+                         {"verdict", "candidate_sha256", "findings"})
+
+    def test_invalid_qwen_review_has_one_retry_with_original_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            sha = gate.digest(MODULE.encode())
+            wrong = '{"verdict":"APPROVE","findings":[]}'
+            correct = json.dumps({"verdict":"REJECT", "candidate_sha256":sha,
+                                  "findings":["A security issue remains"]})
+            with patch.object(trial, "OUT", Path(folder)):
+                with patch.object(trial, "local_model",
+                                  side_effect=[(wrong,{"model":gate.REVIEWER}),
+                                               (correct,{"model":gate.REVIEWER})]) as mocked:
+                    result,stats = trial.call_independent_review(
+                        "review exact code", sha, lambda raw: trial.review_module(MODULE, raw),
+                        "module_review")
+                    self.assertEqual(mocked.call_count,2)
+                    self.assertEqual(stats["attempts"],2)
+                    self.assertEqual(result["verdict"],"REJECT")
+                    self.assertTrue((Path(folder)/"module_review-response-1.json").exists())
+                    self.assertTrue((Path(folder)/"module_review-response-2.json").exists())
+
+    def test_two_malformed_reviews_block_without_approval(self):
+        with tempfile.TemporaryDirectory() as folder:
+            sha = gate.digest(MODULE.encode())
+            with patch.object(trial, "OUT", Path(folder)):
+                with patch.object(trial, "local_model",
+                                  return_value=('{"verdict":"APPROVE"}',
+                                                {"model":gate.REVIEWER})) as mocked:
+                    with self.assertRaises(trial.LiveError):
+                        trial.call_independent_review("review", sha,
+                                                     lambda raw: trial.review_module(MODULE, raw),
+                                                     "module_review")
+                    self.assertEqual(mocked.call_count,2)
+                    doc = json.loads((Path(folder)/"checkpoint.json").read_text())
+                    self.assertEqual(doc["stage"],"module_review_failed")
+                    self.assertEqual(doc["attempts"],2)
+
 if __name__ == "__main__":
     unittest.main()
