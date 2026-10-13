@@ -1,0 +1,33 @@
+name: Neurofactory Stage4 Bridge Adapter Validation
+on:
+  push:
+    branches: [neurofactory-resilience-bridge-adapter-20261013]
+    paths:
+      - 'bridge/neurofactory/development/stage4_bridge_adapter.py'
+      - 'bridge/neurofactory/development/test_stage4_bridge_adapter.py'
+      - '.github/workflows/neurofactory-stage4-bridge-adapter-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-adapter-validation
+  cancel-in-progress: false
+jobs:
+  isolated_checks:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: bridge/neurofactory/development
+    steps:
+      - name: Checkout isolated branch without credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify adapter plus already reviewed Stage4 queue and checkpoints
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_stage4_bridge_adapter.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_stage4_queue.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_durable_checkpoint.py' -v
+          python -B bridge/neurofactory/development/control_plane.py --check
