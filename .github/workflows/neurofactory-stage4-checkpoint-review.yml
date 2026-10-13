@@ -1,0 +1,65 @@
+name: Neurofactory Stage4 Actual Crash Checkpoint Independent Review
+on:
+  push:
+    branches: [neurofactory-stage4-checkpoint-review-20261013]
+    paths:
+      - 'bridge/neurofactory/development/durable_checkpoint.py'
+      - 'bridge/neurofactory/development/test_durable_checkpoint.py'
+      - 'bridge/neurofactory/development/checkpoint_review.py'
+      - 'bridge/neurofactory/development/publish_checkpoint.py'
+      - '.github/workflows/neurofactory-stage4-checkpoint-review.yml'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-stage4-durable-checkpoint-one-review
+  cancel-in-progress: false
+jobs:
+  safety_first:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read isolated Neurofactory checkpoint candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Force stop ONLY the owned child and verify persisted recovery and no duplicate publishing
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_durable_checkpoint.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+  independent_qwen3:
+    needs: safety_first
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Read exactly the reviewed candidate without stored credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Boot one free local Qwen3 independent reviewer
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-nf-checkpoint.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Independent Qwen3 reviews exact checkpoint source, without GitHub secrets
+        env:
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/checkpoint_review.py
+      - name: Atomically publish ONLY the Qwen3-approved source and receipt to the production Neurofactory branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/publish_checkpoint.py
