@@ -3,6 +3,10 @@ const OUTBOX="https://api.github.com/repos/DSLitvinov1/my_first_repo/contents/br
 const CHAT=/^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+\/?$/;
 const MIN_GAP=5*60*1000;
 const MAX_PROMPT=3900;
+function chatKey(url){
+  const clean=String(url||"").split(/[?#]/)[0].replace(/\/+$/,"");
+  return /^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+$/.test(clean)?clean:"";
+}
 const MISSING_RECEIVER="Could not establish connection. Receiving end does not exist.";
 function receiverMissing(error){return String(error||"").includes(MISSING_RECEIVER);}
 let pollInFlight=false;
@@ -47,8 +51,16 @@ async function poll() {
   const outgoingText=job.prompt+visibleReceipt;
   if(outgoingText.length>MAX_PROMPT){await note("PROMPT_TOO_LONG");return;}
   const tabs=await chrome.tabs.query({});
-  const matched=tabs.find(t=>t.url===cfg.chatUrl && t.id!==undefined);
-  if (!matched){await note("BOUND_TAB_NOT_FOUND");return;}
+  // Match only the SAME explicitly paired conversation; ignore URL suffixes.
+  const boundKey=chatKey(cfg.chatUrl);
+  const matched=tabs.find(t=>chatKey(t.url)===boundKey && t.id!==undefined);
+  if (!matched){
+    const visibleTabs=tabs.filter(t=>chatKey(t.url)).slice(0,3);
+    await note("BOUND_TAB_NOT_FOUND",
+      "paired ending "+boundKey.slice(-8)+
+      "; open endings "+(visibleTabs.map(t=>chatKey(t.url).slice(-8)).join(",")||"none"));
+    return;
+  }
   // Probe the actual page listener before writing an irreversible attempt record.
   try{
     const health=await chrome.tabs.sendMessage(matched.id,{type:"NF_HEALTH_CHECK",boundUrl:cfg.chatUrl});
@@ -76,7 +88,8 @@ async function poll() {
       sequence:job.sequence,text:outgoingText});
     const safeBeforeSend=new Set([
       "composer unavailable or occupied","composer not found in current ChatGPT interface",
-      "composer contains user text","user is actively using composer",
+      "composer contains user text","composer contains pending attachments",
+      "user is actively using composer",
       "response currently generating","wrong conversation","conversation changed before send",
       "generation began before send"
     ]);
@@ -87,7 +100,8 @@ async function poll() {
       // Explicit pre-send cancellation is safe to retry later. Ambiguous failures stay reserved.
       delete attempt[job.sequence];
       await note(reply?.reason==="composer not found in current ChatGPT interface"?
-                 "COMPOSER_NOT_FOUND":"COMPOSER_BUSY",reply?.reason||"");
+                 "COMPOSER_NOT_FOUND":reply?.reason==="composer contains pending attachments"?
+                 "PENDING_ATTACHMENTS":"COMPOSER_BUSY",reply?.reason||"");
     }else{
       attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now()};
       await note("UNCONFIRMED",reply?.reason||"no response");
