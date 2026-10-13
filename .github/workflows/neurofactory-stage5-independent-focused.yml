@@ -9,7 +9,23 @@ concurrency:
   group: neurofactory-stage5-security-focused
   cancel-in-progress: false
 jobs:
+  deterministic_recovery_gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Real Windows-equivalent recovery and anti-replay contracts
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_development_queue.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage4_queue.py -v
   review:
+    needs: deterministic_recovery_gate
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
