@@ -13,7 +13,7 @@ import urllib.request
 import stage5_live_pair_lab as lab
 
 REPO="DSLitvinov1/my_first_repo"
-BRANCH="neurofactory-stage5-live-e2e-20261013"
+BRANCH="neurofactory-stage5-pair-recovery-20261013"
 PREFIX="bridge/neurofactory/development/"
 JOURNAL=PREFIX+"stage5-live-e2e-journal.json"
 BASE="https://api.github.com/repos/"+REPO+"/"
