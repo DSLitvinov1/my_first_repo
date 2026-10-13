@@ -24,9 +24,9 @@ def run():
       "approved recovery_decision.resume_unfinished to handle expired leases. "
       "Publisher's remote receipt verification happens in a DIFFERENT trusted component; "
       "checkpoint state 'needs_receipt_check' intentionally forbids automatic republishing. "
-      "A test forcibly kills its OWN small child process after saving a running checkpoint, "
-      "then reopens the checkpoint and resumes the task. No user programs are touched. "
-      "Acceptance behavior: six tests passed including actual subprocess termination, "
+      "One test forcibly kills its OWN small child process after saving a running checkpoint, "
+      "then reopens the checkpoint and resumes the task. Another test forces a crash BEFORE os.replace and proves the original checkpoint remains intact. The standard POSIX durability sequence is: fsync temporary file, atomic rename within same directory, fsync parent directory. Before rename the old valid checkpoint remains. After rename the new valid checkpoint exists. Do not claim that fsync and rename need to be one syscall. No user programs are touched. "
+      "Acceptance behavior: seven tests passed, including actual subprocess termination, "
       "duplicate claim denial, irreversible verified_done, bounded retries, detecting changed "
       "checkpoint contents and no duplicate publication after interrupted publishing. "
       "You must independently inspect source and assess these exact properties. "
@@ -56,7 +56,7 @@ def run():
             "reviewer":"qwen3:4b","review_verdict":"REVIEW_OK",
             "source_sha256":digest,"reason":reason,
             "actual_interruption_checked":True,
-            "checks_passed":6,"scope":"neurofactory_only"}
+            "checks_passed":7,"scope":"neurofactory_only"}
     OUTPUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n","utf-8")
     print("NEUROFACTORY_CHECKPOINT_INDEPENDENT_APPROVED",digest,flush=True)
 

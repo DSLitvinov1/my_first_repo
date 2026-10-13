@@ -34,6 +34,21 @@ os._exit(73)
         self.assertEqual(store.recover(self.path, 150, 3)["attempts"], 1)
         self.assertEqual(store.transition(self.path, "queued", "running", lease_until=170)["attempts"], 2)
 
+    def test_interruption_before_atomic_replace_preserves_old_checkpoint(self):
+        command = """
+import os,sys
+from pathlib import Path
+import durable_checkpoint as store
+store.os.replace=lambda *args: os._exit(74)
+store.transition(Path(sys.argv[1]),'queued','running',lease_until=120)
+"""
+        cp = subprocess.run([sys.executable, "-c", command, str(self.path)],
+                            env=os.environ.copy(), timeout=12)
+        self.assertEqual(cp.returncode, 74)
+        original = store.load(self.path)
+        self.assertEqual(original["state"], "queued")
+        self.assertEqual(original["attempts"], 0)
+
     def test_publishing_interruption_never_resubmits(self):
         store.transition(self.path, "queued", "running", lease_until=100)
         store.transition(self.path, "running", "publishing")
