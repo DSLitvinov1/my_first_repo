@@ -1,5 +1,5 @@
 name: Neurofactory Stage5 Independent Focused Security Review
-# Review complete untruncated modules and the corrected remote recovery implementation.
+# Re-review validated nested checkpoint attack vectors with independent security test coverage.
 on:
   push:
     branches: [neurofactory-stage5-security-check-20261013]
