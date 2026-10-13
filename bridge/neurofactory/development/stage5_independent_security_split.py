@@ -6,7 +6,7 @@ import hashlib,json,os,pathlib,urllib.request
 ROOT=pathlib.Path(__file__).resolve().parent
 GROUPS=[
  {"name":"remote_checkpoint_and_recovery","files":["stage5_remote_journal.py"],
-  "question":"Check the trusted DurableCoordinator.recover() method that reads and compares exact GitHub state before local recovery, then commits it via checkpoint_to_github. Examine stale-runner CAS conflict handling and give exact exploit only if still present."},
+  "question":"Analyze actual GitHub CAS and DurableCoordinator.recover(). Prior reviewer alleged a body-level attempts field and identity regression, but actual attempts live within serialized body.files[role].data; production _validate requires those files, and _no_rewind compares nested IDs and attempts. Dedicated tests reject both alleged inputs. Independently find a VALID canonical checkpoint and exact execution that still permits overwrite, or return REVIEW_OK if that particular allegation is disproven."},
  {"name":"serial_queue_core","files":["stage5_development_queue.py"],
   "question":"Examine sequential task issuance, local file identity, portable snapshot validation and the strictly local recover() method. This local queue is used via DurableCoordinator for real remote effects. Identify concrete exploit or unsafe local handling."},
  {"name":"verified_remote_receipts","files":["stage5_git_receipts.py"],
@@ -41,6 +41,9 @@ def main():
             "from trusted GitHub coordinator that performs remote checkpointing. "
             "Scope is Neurofactory only; no API secrets or ChatGPT sender. "
             "Return JSON verdict REVIEW_OK or REVIEW_BAD with reason 30-80 words. "
+            "When reporting REVIEW_BAD use a valid schema 1 checkpoint and cite "
+            "a transition that actually passes the file inventory, nested-ID, "
+            "attempt count and GitHub CAS checks. Do not assume top-level attempts. "
             "If REVIEW_BAD identify the exact function and a precise runnable "
             "counterexample in the provided code, not a hypothetical omitted caller. "
             "Examine: "+group["question"]+
