@@ -17,7 +17,7 @@ const job={schema:1,task_id:'NF-DEV-02',sequence:digest.slice(0,24),
 const state={};
 const subscribers={};
 const calls=[];
-let badge='', remote=job, sendMode='observed';
+let badge='', remote=job, sendMode='observed', tabUrl=conversation;
 const api={
   storage:{local:{
     async get(keys){return Object.fromEntries(keys.filter(k=>k in state).map(k=>[k,state[k]]));},
@@ -28,7 +28,7 @@ const api={
     onClicked:{addListener(fn){subscribers.clicked=fn}}},
   runtime:{onInstalled:{addListener(fn){subscribers.install=fn}},
     onStartup:{addListener(fn){subscribers.startup=fn}}},
-  tabs:{async query(){return [{id:11,url:conversation}]},
+  tabs:{async query(){return [{id:11,url:tabUrl}]},
     async sendMessage(id,msg){
       if(msg.type==='NF_HEALTH_CHECK'){
         if(sendMode==='missingReceiver')throw Error('Could not establish connection. Receiving end does not exist.');
@@ -124,6 +124,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
         return visible;
       },
       querySelector(selector){
+        if(options.attachments && selector.startsWith('form img[src]'))return {tagName:'IMG'};
         if(options.generating && selector.includes('stop-button'))return {disabled:false};
         if(options.noEditor && (selector.includes('prompt-textarea')||selector.includes('composer-text-input')))return null;
         if(options.altWrapper && selector.includes('#prompt-textarea'))return null;
@@ -162,6 +163,11 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(answer.submitted,false,'focused composer must be left alone');
   answer=await probe(conversation,clean(),{generating:true});
   assert.equal(answer.submitted,false,'must not interrupt existing ChatGPT response');
+  const beforeAttachments=calls.length;
+  const attachmentDraft=await probe(conversation,clean(),{attachments:true});
+  assert.equal(attachmentDraft.submitted,false,'unsent images must never be submitted by the agent');
+  assert.equal(attachmentDraft.reason,'composer contains pending attachments','show safe diagnostic for draft files');
+  assert.equal(calls.length,beforeAttachments,'no click when user screenshots are attached');
   const noEditorCalls=calls.length;
   answer=await probe(conversation,clean(),{noEditor:true});
   assert.equal(answer.submitted,false,'missing composer must not initiate a send');
@@ -203,6 +209,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   const nextStable=JSON.stringify({id:'NF-DEV-03',prompt:nextPrompt}).replace('"id":','"id": ').replace(',"prompt":',', "prompt": ');
   const nextDigest=crypto.createHash('sha256').update(nextStable).digest('hex');
   remote={...job,task_id:'NF-DEV-03',prompt:nextPrompt,sha256:nextDigest,sequence:nextDigest.slice(0,24)};
+  tabUrl=conversation+'/?utm_source=browser'; // same exact bound thread with harmless URL suffix
   const previousCount=calls.length;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'next verified milestone should be fetched automatically');
@@ -211,5 +218,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'new milestone must not be sent twice');
-  console.log('Browser handoff checks passed: exact chat, alternate composer detection, missing input diagnosed, nested editor, no duplicates, safe message editing, independent next task. Live sending remains unverified.');
+  console.log('Browser handoff checks passed: exact chat identity and URL suffixes, user image attachment safeguard, no duplicates, safe editor, next approved task. Live sending remains unverified.');
 })().catch(e=>{console.error(e);process.exitCode=1});
