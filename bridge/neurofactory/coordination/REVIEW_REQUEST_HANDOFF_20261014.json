@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "owner": "COORDINATOR",
+  "type": "independent_REVIEW_request_only",
+  "decision": "PENDING",
+  "release_authorized": false,
+  "handoff": {
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "exact_head_sha": "b205a495b51aa125dd8273955c202a177df7a173",
+    "module": "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+    "module_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+    "source_candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+    "artifact_id": 11850873678,
+    "original_model_run": 38469770594,
+    "independent_archive_recheck": 38471390414,
+    "latest_head_tests": 38471630462,
+    "latest_owner_gate": 38471630587
+  },
+  "reviewer": {
+    "owner_branch": "neurofactory-review-owned-20261013",
+    "last_observed_head": "e0a6a915a2c17352f4f7a6d6a542dfc6b5718288",
+    "required_verdict": [
+      "APPROVE",
+      "REJECT"
+    ],
+    "evidence_origin": "new_read_only_verdict_from_separate_review_owner",
+    "must_contain": [
+      "exact_handoff_git_commit",
+      "exact_handoff_module_sha256",
+      "independently_recomputed_artifact_hash",
+      "artifact_id_and_run_id",
+      "test_results_and_adversarial_findings",
+      "limitations",
+      "explicit_verdict",
+      "distinct_reviewer_identity"
+    ]
+  },
+  "adversarial_review_questions": [
+    "Confirm exact reviewed HANDOFF bytes match pinned SHA256. Untrusted replies that merely self-identify as qwen3:4b are not proof of model provenance.",
+    "Inspect store_once: verify exclusive create, no overwrite of competing files, absence of symlink-following and directory-swap races in the proposed trust model; try adversarial temporary path tests.",
+    "Check strict JSON duplicate-key rejection, malformed/missing fields, changed candidate bytes, forged model identity, and refusal of self-approval.",
+    "Check two-agent independence and whether evidence authenticates actual local model invocation versus only caller-supplied string fields.",
+    "Check candidate execution is not falsely claimed: Qwen3 did not execute behavioral tests, and the tested candidate was never deployed.",
+    "Check incomplete or uncertain handoff evidence cannot become a signed REVIEW owner decision or authorize a publisher.",
+    "Confirm current HEAD was not modified after original model trial; any changed code requires exact-byte re-review."
+  ],
+  "decisions": {
+    "review_owner_signoff": "PENDING",
+    "core_handoff_integration": "BLOCKED",
+    "new_unique_task_ids_reserved": 0,
+    "new_github_publications_authorized": 0,
+    "old_draft_pr2_merge": "BLOCKED"
+  },
+  "guardrails": {
+    "other_owner_file_writes": false,
+    "chatgpt_delivery": false,
+    "paid_api": false,
+    "windows_reboot": false,
+    "auto_merge": false
+  },
+  "note": "Only the designated REVIEW owner may issue the independent owner verdict. A coordinator audit or prior model APPROVE cannot replace it."
+}
