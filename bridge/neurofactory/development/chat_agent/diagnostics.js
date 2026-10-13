@@ -34,8 +34,8 @@ async function refresh(){
  (previous.reason||previous.error||"Старая версия не сохранила причину попытки"):"—";
 }
 function conversationKey(url){
- const clean=String(url||"").split(/[?#]/)[0].replace(/\\/+$/,"");
- return /^https:\\/\\/chatgpt\\.com\\/(?:g\\/[^/]+\\/)?c\\/[A-Za-z0-9-]+$/.test(clean)?clean:"";
+ const clean=String(url||"").split(/[?#]/)[0].replace(/\/+$/,"");
+ return /^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+$/.test(clean)?clean:"";
 }
 async function inspectCurrentReceipt(){
  const result=document.getElementById("receiptCheck");
