@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Neurofactory Chat Handoff",
-  "version": "0.1.1",
-  "description": "Optional one-time exact-chat pairing. Reads a signed roadmap prompt from public GitHub and submits once only when the chat is available.",
+  "version": "0.1.2",
+  "description": "Отправляет следующий утверждённый промпт только в явно выбранную беседу. Диагностика без доступа к вашим сообщениям.",
   "permissions": [
     "storage",
     "alarms",
@@ -28,5 +28,6 @@
   ],
   "action": {
     "default_title": "Привязать нейрозавод к открытому чату (повторное нажатие отключит отправку)"
-  }
+  },
+  "options_page": "diagnostics.html"
 }
