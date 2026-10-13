@@ -5,9 +5,9 @@ messages, or publishes code. An authorized runner provides the actual publisher.
 Publication may be acknowledged only when its existing remote result is verified.
 """
 import base64
+import binascii
 import hashlib
 import json
-import pathlib
 import re
 import urllib.error
 import urllib.parse
@@ -79,12 +79,21 @@ class ReadOnlyGithubReceipts:
                 isinstance(f, dict) and f.get("filename") == path
                 and f.get("status") in ("added", "modified") for f in changed):
             raise ReceiptError("Commit did not publish requested source")
+        # A matching source file does not bless an otherwise cross-project commit.
+        for item in changed:
+            name = item.get("filename") if isinstance(item, dict) else None
+            if not (isinstance(name, str) and
+                    (name.startswith("bridge/neurofactory/") or
+                     (name.startswith(".github/workflows/neurofactory-")
+                      and name.endswith(".yml"))) and
+                    all(part not in ("", ".", "..") for part in name.split("/"))):
+                raise ReceiptError("Receipt includes changes outside Neurofactory")
         item = self.fetch(base + "/contents/" + path + "?ref=" + commit)
         if not isinstance(item, dict) or item.get("encoding") != "base64":
             raise ReceiptError("Published source cannot be read")
         try:
             body = base64.b64decode(item["content"], validate=False)
-        except (ValueError, KeyError) as error:
+        except (ValueError, KeyError, binascii.Error) as error:
             raise ReceiptError("Invalid remote source encoding") from error
         if hashlib.sha256(body).hexdigest() != source_sha256:
             raise ReceiptError("Remote source differs from independent review")
