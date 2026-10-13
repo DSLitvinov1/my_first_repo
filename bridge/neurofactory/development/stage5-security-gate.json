@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "stage": "NF-DEV-05",
+  "scope": "isolated_branch_only",
+  "verdict": "PENDING_INDEPENDENT_REVIEW",
+  "security_review_runs": [
+    38461101666,
+    38461965930
+  ],
+  "chat_delivery_paused": true,
+  "paid_services_allowed": false,
+  "source_branch": "neurofactory-stage5-security-check-20261013",
+  "git_blobs": {
+    "stage5_development_queue.py": "4a0a1cd35a92cf5ad9d08d06408a22eb0efb9b4c",
+    "stage5_remote_journal.py": "294bc5a163b25e862865a45f9f2477f398ba4182",
+    "stage5_git_receipts.py": "2688e4b521b21995347ed00c5a0267db11e9fc85",
+    "stage5_usage_ledger.py": "6192d6f0ae40f17c0c6f83eab837493b96cbe61a"
+  },
+  "auto_publish_enabled": false,
+  "reason": "Independent full queue review must finish with explicit approvals and source hashes before any isolated publisher workflow is activated."
+}
