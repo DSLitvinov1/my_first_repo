@@ -12,7 +12,12 @@ JOBS=(
  ("NF-DEV-05-Q001","stage5_task_registry.py","valid_task_ids",
   "Return True only for a nonempty list of unique strings, each exactly 'NF-DEV-05-Q' followed by three decimal digits. Reject every invalid input."),
  ("NF-DEV-05-Q002","stage5_receipt_reconciliation.py","reconcile_receipt",
-  "For state publishing or needs_receipt_check, return verify if published and hash_matches are True; wait if published is False; otherwise block. For verified_done return done only with both flags True. For queued return ready only with published False. For all other states or invalid flags return block.")
+  "Return exact STRINGS. When state is 'publishing' or 'needs_receipt_check': "
+  "if published is True and hash_matches is True return 'verify'; "
+  "if published is False return 'wait'; else return 'block'. "
+  "For 'verified_done' return 'done' only if both flags are exactly True, else 'block'. "
+  "For 'queued' return 'ready' only if published is exactly False, else 'block'. "
+  "For any other state return 'block'. Never return other words such as 'verified' or 'ok'.")
 )
 P="bridge/neurofactory/development/"
 BUILTINS={"isinstance":isinstance,"len":len,"all":all,"set":set,"str":str,"list":list,"bool":bool,"any":any}
@@ -77,7 +82,7 @@ def check_source(src,name):
     for index,(args,expected_value) in enumerate(vectors):
         actual=func(args) if name=="valid_task_ids" else func(*args)
         if type(actual)!=type(expected_value) or actual!=expected_value:
-            raise ValueError("Behavior test "+str(index))
+            raise ValueError("Behavior test "+str(index)+" input="+repr(args)+" expected="+repr(expected_value)+" actual="+repr(actual))
     return {"source_sha256":digest(src),"behavior_cases":len(vectors)}
 
 def ask(model,prompt):
