@@ -58,5 +58,23 @@
     "GitHub Actions invoices and electricity/equipment expenditures were not accessible.",
     "NF-DEV-02 ChatGPT delivery remains deferred, hence complete NF-DEV-05 is not permitted."
   ],
-  "verification_tool": "bridge/neurofactory/development/stage5_nonchat_audit.py"
+  "verification_tool": "bridge/neurofactory/development/stage5_nonchat_audit.py",
+  "legacy_workflow_maintenance": {
+    "stale_runs_detected": [
+      38450461166,
+      38450461152,
+      38450797310
+    ],
+    "healthy_reruns": [
+      38450791209,
+      38450879354
+    ],
+    "completed_stage3_model_job_skipped": true,
+    "automatic_roadmap_trigger_disabled_on_legacy_flows": true,
+    "chat_sender_outbox_action_paused": true,
+    "no_extra_AI_generation": true,
+    "limitations": "Historic wildcard test suite still contains Stage4-active-only fixtures; legacy workflow checks are now explicitly stage-scoped rather than re-running outdated tests."
+  },
+  "verified_expenses_ledger_sampled_runs": 10,
+  "verified_expenses_ledger_wall_seconds": 947
 }

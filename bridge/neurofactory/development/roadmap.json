@@ -224,7 +224,14 @@
         "cost_ledger": "bridge/neurofactory/development/stage5-cost-ledger.json",
         "synthetic_universal_queue_not_general_development": true,
         "completed_full_stage": false,
-        "chat_delivery_paused": true
+        "chat_delivery_paused": true,
+        "legacy_ci_cleaned_up": true,
+        "legacy_ci_final_success_runs": [
+          38450791209,
+          38450879354
+        ],
+        "legacy_ci_old_ai_job_skipped": true,
+        "expense_ledger_run_count": 10
       }
     }
   ],
