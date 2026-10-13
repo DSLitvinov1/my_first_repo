@@ -63,6 +63,20 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
   const nativeInput=String(editor.tagName||"").toLowerCase()==="textarea";
   const editorText=()=>nativeInput?String(editor.value||""):
     String(editor.innerText||editor.textContent||"").replace(/\r\n/g,"\n");
+  // Attachments are user drafts even when the text editor appears empty.
+  // Reject before touching the composer; never send the user's files.
+  function pendingAttachments(){
+    const scope=editor.closest?.("form")||editor.closest?.('[data-testid="composer"]');
+    const selector="img[src], [data-testid*='attachment'], [data-testid*='file-preview'], [data-testid*='upload-preview']";
+    if(scope?.querySelector?.(selector))return true;
+    return Boolean(document.querySelector(
+      "form img[src], form [data-testid*='attachment'], form [data-testid*='file-preview'], "+
+      "[data-testid='composer'] img[src], [data-testid='composer'] [data-testid*='attachment']"
+    ));
+  }
+  if(pendingAttachments()){
+    respond({submitted:false,reason:"composer contains pending attachments"});return;
+  }
   if(editorText().trim()){
     respond({submitted:false,reason:"composer contains user text"});return;
   }
@@ -120,6 +134,9 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
       }
       // Capture baseline at the last possible instant before the irreversible click.
       const previousCount=countVisibleReceipts();
+      if(pendingAttachments()){
+        respond({submitted:false,reason:"composer contains pending attachments"});return;
+      }
       if(interruptedByUser){
         respond({submitted:false,reason:"composer changed during send; do not auto-retry"});return;
       }
