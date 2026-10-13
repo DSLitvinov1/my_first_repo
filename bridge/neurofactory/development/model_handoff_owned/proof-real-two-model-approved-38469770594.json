@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 3,
+  "owner_lane": "handoff",
+  "branch": "neurofactory-model-handoff-owned-20261013",
+  "evidence_type": "isolated_live_models_approved_pending_separate_review_owner",
+  "run_id": 38469770594,
+  "run_sha": "db38b78e5c36207edf5d344741f9d317e1fff33d",
+  "workflow": "Neurofactory HANDOFF Real Free Two-Model Isolation",
+  "offline_tests": {
+    "passed": 36,
+    "failed": 0,
+    "status": "success"
+  },
+  "model_run": "success",
+  "models": {
+    "writer": "qwen2.5-coder:7b",
+    "independent_reviewer": "qwen3:4b",
+    "writer_attempts": 1,
+    "candidate_review_attempts": 1,
+    "module_review_attempts": 1
+  },
+  "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+  "handoff_module_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+  "review_verdicts": {
+    "exact_candidate": "APPROVE",
+    "actual_handoff_module": "APPROVE",
+    "separate_review_owner": "PENDING"
+  },
+  "artifact": {
+    "id": 11850873678,
+    "name": "neurofactory-handoff-owned-q090-evidence",
+    "run_url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/38469770594",
+    "retention_days": 14
+  },
+  "verified_directly_from_artifact": {
+    "candidate_utf8_sha256_equal": true,
+    "review_bound_to_candidate_sha256": true,
+    "strict_reviewer_json_present": true,
+    "reviewer_model_tag": "qwen3:4b",
+    "dossier_body_sha256_valid": true,
+    "packet_sha256_valid": true,
+    "review_sha256_valid": true,
+    "checkpoint_stage": "awaiting_review_owner",
+    "second_attempt_used": false,
+    "publication_count": 0,
+    "release_authorized": false
+  },
+  "record_sha256": {
+    "candidate_json": "3bdc80c94ad4a6d9f701b6a1fffe51001a719795e42453c25b5efdf696033943",
+    "review_json": "5a2d133a24adc8ca1077c8b2f18ff5fd8c28f97edd930784428e8a42cbde8f0c",
+    "handoff_json": "d1e776848558f150ff4b68070cd4876723f60f623ad80fc8b2051130d7e0b403"
+  },
+  "past_failure": {
+    "run_id": 38468862784,
+    "result": "failure",
+    "issue": "malformed Qwen3 reviewer JSON; blocked and archived",
+    "remediation_test_run": 38469692477,
+    "remediation_test_count": 36
+  },
+  "safety": {
+    "published_to_production": false,
+    "merged_into_other_branches": false,
+    "changed_shared_core": false,
+    "paid_model_api_calls": 0,
+    "chat_sender_enabled": false
+  },
+  "limitations": [
+    "Positive Qwen3 opinion is one independent model review, not approval by separate REVIEW chat owner.",
+    "Candidate code was not executed; its semantics were assessed by Qwen3, no deterministic candidate behavioral tests.",
+    "No live GitHub production publishing or cross-run CORE checkpoint was attempted in HANDOFF scope.",
+    "Artifact retention is limited; do not merge until external reviewer examines exact source and receipt."
+  ],
+  "release_gate": "BLOCKED_PENDING_REVIEW_OWNER"
+}
