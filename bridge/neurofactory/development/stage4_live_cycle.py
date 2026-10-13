@@ -150,7 +150,7 @@ def reconcile(store,state,role,remote_path,branch,expected):
 
 def prod_publish(candidate,review_bytes):
     """Single atomic Git commit; stop if target exists. No token goes to models."""
-    digest,passed=worker.check(candidate)
+    digest,passed=worker.check(candidate.decode("utf-8"))
     evidence=json.loads(review_bytes)
     if evidence.get("source_sha256")!=digest or evidence.get("verdict")!="REVIEW_OK":
         raise ValueError("Independent model review does not match exact tested source")
