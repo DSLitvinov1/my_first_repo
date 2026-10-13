@@ -58,6 +58,22 @@ def frozen_scan(policy=None, getter=github_get):
             raise LaneAuditError("No pinned comparison data")
         actual = data.get("head_commit")
         actual_sha = actual.get("sha") if isinstance(actual, dict) else None
+        if actual_sha is None:
+            # The public connector can omit GitHub's head_commit wrapper.
+            # Require the COMPLETE commit array and derive the last commit,
+            # never trust an incomplete paginated comparison.
+            commits = data.get("commits")
+            count = data.get("total_commits")
+            if not isinstance(commits, list) or type(count) is not int:
+                raise LaneAuditError("Pinned comparison lacks complete commit history")
+            if len(commits) != count:
+                raise LaneAuditError("Truncated pinned comparison history")
+            if count:
+                last = commits[-1]
+                actual_sha = last.get("sha") if isinstance(last, dict) else None
+            elif data.get("status") == "identical":
+                base = data.get("base_commit")
+                actual_sha = base.get("sha") if isinstance(base, dict) else None
         if actual_sha != desired:
             raise LaneAuditError("Pinned comparison did not include expected exact head")
         return data
