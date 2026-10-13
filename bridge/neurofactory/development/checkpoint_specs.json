@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "stage": "NF-DEV-04",
+  "goal": "durable checkpoint before work and crash-safe resume",
+  "accepted_states": [
+    "queued",
+    "running",
+    "publishing",
+    "verified_done",
+    "needs_receipt_check"
+  ],
+  "safety": [
+    "atomic filesystem replacement",
+    "verify digest",
+    "forbid auto-republishing",
+    "bounded retries",
+    "do not touch outside isolated checkpoint dir"
+  ],
+  "chat_delivery": "paused_by_user",
+  "phase": "design_not_accepted"
+}
