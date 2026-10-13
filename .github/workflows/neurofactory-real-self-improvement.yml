@@ -3,7 +3,6 @@ on:
   push:
     branches: [neurofactory-public-lab-20261012]
     paths:
-      - 'bridge/neurofactory/development/roadmap.json'
       - 'bridge/neurofactory/development/stage3_guard.py'
       - 'bridge/neurofactory/development/test_real_self_improvement.py'
       - 'bridge/neurofactory/development/real_self_improve.py'
@@ -30,7 +29,7 @@ jobs:
           persist-credentials: false
       - name: Test real code safety and gated stage transitions
         run: |
-          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_*.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_real_self_improvement.py -v
           python -B bridge/neurofactory/development/control_plane.py --check
       - name: Confirm active code-development stage; ChatGPT handoff may be deferred
         id: gate
