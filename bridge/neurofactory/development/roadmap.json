@@ -134,7 +134,7 @@
         "Windows runner не закрывает пользовательские программы"
       ],
       "prompt": "Проверь реальное прерывание и восстановление нейрозавода. Подтверди сохранение состояния, целостность результатов, ограниченные повторы, отсутствие параллельного запуска тяжёлых задач.",
-      "active_scope": "Independently approved pure recovery decision published and Windows checked. Next: durable atomic checkpoint journal, actual crash/restart exercise, lease and no-replay publication evidence.",
+      "active_scope": "Atomic per-task state and role-separated queue published; 11 new plus 10 original crash tests passed on cloud and Windows. Remaining: bind queue to actual self-development agent executor and check a genuine remote GitHub receipt before automatic final completion.",
       "progress_evidence": {
         "first_verified_component": "Production recovery decision for interrupted tasks",
         "source": "bridge/neurofactory/development/recovery_decision.py",
@@ -144,16 +144,24 @@
         "reviewer": "qwen3:4b",
         "review_verdict": "REVIEW_OK",
         "cloud_run": 38421463570,
-        "windows_bridge_run": 38422237905,
+        "windows_bridge_run": 38441848485,
         "source_sha256": "05d20779e59447bf5f06f34c2ab52c7efeb9865c05f9312e7574ee8b1203b063",
         "behavior_checks": 11,
         "windows_checks": 6,
         "stage_complete": false,
         "next_requirements": [
-          "Durable atomic checkpoint journal for active task state",
-          "Resume after actual interruption, no duplicate publishes",
-          "Bounded lease retries and verified remote receipt reconciliation"
-        ]
+          "Wire published durable queue to actual NF-DEV development executor before each real task",
+          "Use trusted read-only GitHub receipt reconciliation before publication acknowledgement",
+          "Perform one end-to-end live two-agent task with real GitHub commit and no-replay check; keep ChatGPT send paused"
+        ],
+        "stage4_queue_source": "bridge/neurofactory/development/stage4_queue.py",
+        "stage4_queue_proof": "bridge/neurofactory/development/stage4-queue-verification.json",
+        "published_stage4_queue_commit": "7e790ff5be4335f675e75a621672edb19ad22bc0",
+        "second_agent_review_run": 38440527287,
+        "cloud_behavior_checks": 21,
+        "windows_behavior_checks": 21,
+        "actual_child_interruption": true,
+        "duplicate_publishing_guard_tested": true
       }
     },
     {
