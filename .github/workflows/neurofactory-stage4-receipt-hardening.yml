@@ -1,4 +1,5 @@
 name: Neurofactory Stage4 Forged Receipt Identity Security Gate
+# Recheck factual second-model counterexample against exact executed behavior.
 on:
   push:
     branches: [neurofactory-stage4-receipt-hardening-20261013]
