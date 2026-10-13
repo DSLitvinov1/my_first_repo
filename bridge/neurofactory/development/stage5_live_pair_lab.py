@@ -62,7 +62,7 @@ def check_source(src,name):
             (["NF-DEV-05-Q001","NF-DEV-05-Q002"],True),
             (["NF-DEV-05-Q001","NF-DEV-05-Q001"],False),
             ([],False),(None,False),("NF-DEV-05-Q001",False),
-            ([42],False),(["NF-DEV-05-Q001","other"],False),
+            ([42],False),([{}],False),([["NF-DEV-05-Q001"]],False),(["NF-DEV-05-Q001","other"],False),
             (["NF-DEV-05-Q01"],False),(["NF-DEV-05-Q0001"],False),
             (["NF-DEV-04-Q001"],False),(["NF-DEV-05-QABC"],False)]
     else:
@@ -107,7 +107,8 @@ def write(function,objective):
         ("items" if function=="valid_task_ids" else "state,published,hash_matches")+
         ". ONLY Python source, no imports or explanation, no I/O, no nested definitions. "
         "Allowed builtins isinstance,len,all,set,str,list,bool,any; string methods startswith,isdigit. "
-        "For task IDs, use len(set(items)) to reject duplicates (do NOT call set.add). "
+        "For task IDs, FIRST reject every non-string list element before calling set(items); "
+        "THEN use len(set(items)) to reject duplicates (do NOT call set.add). "
         "The required prefix is exactly NF-DEV-05-Q followed by 3 digits, total length 14. "
         "For receipt flags compare with is True / is False, never trust truthy integers. "
         "For reconcile_receipt implement this exact decision table: "
