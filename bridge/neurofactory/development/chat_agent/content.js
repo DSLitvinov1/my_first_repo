@@ -14,14 +14,14 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
   if(!prompt.endsWith(receipt)){
     respond({submitted:false,reason:"missing expected delivery receipt"});return;
   }
-  // The sender may record delivery only after its own message is visible in
-  // the bound thread. Never inspect assistant or other conversations.
-  async function waitForOwnVisibleTurn(){
+  // Count existing receipts BEFORE clicking. A pre-existing turn with this
+  // sequence is never accepted as proof that this attempt was delivered.
+  const countVisibleReceipts=()=>Array.from(
+    document.querySelectorAll('[data-message-author-role="user"]')||[]
+  ).filter(element=>(element.textContent||"").includes(receipt)).length;
+  async function waitForOwnVisibleTurn(previousCount){
     for(let attempt=0;attempt<12;attempt++){
-      const userTurns=Array.from(document.querySelectorAll('[data-message-author-role="user"]')||[]);
-      if(userTurns.slice(-4).some(element=>(element.textContent||"").includes(receipt))){
-        return true;
-      }
+      if(countVisibleReceipts()>previousCount)return true;
       await new Promise(resolve=>setTimeout(resolve,500));
     }
     return false;
@@ -43,6 +43,11 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
   }
   // Message listener stays open until React updates the input state.
   (async()=>{
+    let interruptedByUser=false;
+    const interrupt=event=>{if(event?.isTrusted!==false)interruptedByUser=true;};
+    editor.addEventListener?.("beforeinput",interrupt,true);
+    editor.addEventListener?.("paste",interrupt,true);
+    editor.addEventListener?.("keydown",interrupt,true);
     try{
       editor.focus();
       const selection=window.getSelection(),range=document.createRange();
@@ -61,19 +66,30 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
          document.querySelector('button[aria-label="Stop generating"]')){
         respond({submitted:false,reason:"generation began before send"});return;
       }
-      if(!(editor.innerText||editor.textContent||"").includes(prompt.slice(0,40))){
-        respond({submitted:false,reason:"composer text mismatch"});return;
+      const composerText=(editor.innerText||editor.textContent||"").replace(/\r\n/g,"\n").trim();
+      if(interruptedByUser || composerText!==prompt.trim()){
+        respond({submitted:false,reason:"composer changed during send; do not auto-retry"});return;
       }
       const send=document.querySelector('button[data-testid="send-button"]')||
                  document.querySelector('button[aria-label="Send prompt"]');
       if(!send||send.disabled){
         respond({submitted:false,reason:"send button missing or disabled"});return;
       }
+      // Capture baseline at the last possible instant before the irreversible click.
+      const previousCount=countVisibleReceipts();
+      if(interruptedByUser){
+        respond({submitted:false,reason:"composer changed during send; do not auto-retry"});return;
+      }
       send.click();
-      const visible=await waitForOwnVisibleTurn();
+      const visible=await waitForOwnVisibleTurn(previousCount);
       respond({submitted:visible,observed_user_turn:visible,
-        reason:visible?"own user message visible in bound chat":"clicked but own message not observed; do not auto-retry"});
+        reason:visible?"new own user turn visible in bound chat":"clicked but own message not observed; do not auto-retry"});
     }catch(err){respond({submitted:false,reason:String(err).slice(0,110)});}
+    finally{
+      editor.removeEventListener?.("beforeinput",interrupt,true);
+      editor.removeEventListener?.("paste",interrupt,true);
+      editor.removeEventListener?.("keydown",interrupt,true);
+    }
   })();
   return true;
 });
