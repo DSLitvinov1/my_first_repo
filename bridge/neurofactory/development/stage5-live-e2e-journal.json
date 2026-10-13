@@ -1,0 +1,20 @@
+{
+  "branch": "neurofactory-stage5-live-e2e-20261013",
+  "chat_delivery": "paused_by_user",
+  "schema": 1,
+  "scope": "neurofactory_only",
+  "tasks": {
+    "NF-DEV-05-Q001": {
+      "commit_sha": null,
+      "source_sha256": null,
+      "state": "queued",
+      "target": "bridge/neurofactory/development/stage5_task_registry.py"
+    },
+    "NF-DEV-05-Q002": {
+      "commit_sha": null,
+      "source_sha256": null,
+      "state": "queued",
+      "target": "bridge/neurofactory/development/stage5_receipt_reconciliation.py"
+    }
+  }
+}
