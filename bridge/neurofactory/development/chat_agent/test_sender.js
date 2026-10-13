@@ -29,7 +29,15 @@ const api={
   runtime:{onInstalled:{addListener(fn){subscribers.install=fn}},
     onStartup:{addListener(fn){subscribers.startup=fn}}},
   tabs:{async query(){return [{id:11,url:conversation}]},
-    async sendMessage(id,msg){if(sendMode==='busy')return {submitted:false,reason:'user is actively using composer'};calls.push({id,msg});return sendMode==='unconfirmed'?{submitted:false,reason:'clicked but own message not observed; do not auto-retry'}:{submitted:true,observed_user_turn:true}}}
+    async sendMessage(id,msg){
+      if(msg.type==='NF_HEALTH_CHECK'){
+        if(sendMode==='missingReceiver')throw Error('Could not establish connection. Receiving end does not exist.');
+        return {ready:true};
+      }
+      if(sendMode==='busy')return {submitted:false,reason:'user is actively using composer'};
+      calls.push({id,msg});
+      return sendMode==='unconfirmed'?{submitted:false,reason:'clicked but own message not observed; do not auto-retry'}:{submitted:true,observed_user_turn:true};
+    }}
 };
 const context={
   chrome:api,crypto:crypto.webcrypto,TextEncoder,TextDecoder,Date,
@@ -78,6 +86,29 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,unconfirmedCalls+1,'uncertain send must never replay');
+  // A tab opened before installing an extension has no receiving content script.
+  state.attempted={};state.lastAt=0;sendMode='missingReceiver';
+  const beforeNoListener=calls.length;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(calls.length,beforeNoListener,'readiness failure must not attempt to send');
+  assert.equal(state.attempted[job.sequence],undefined,'no-listener failure must not reserve task');
+  assert.equal(state.nfDiagnostic.code,'CHAT_REFRESH_REQUIRED','explain F5 on the bound chat tab');
+  sendMode='observed';state.lastAt=0;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(state.attempted[job.sequence].state,'observed','after F5 and listener ready, deliver once');
+  // Recover only the original no-receiver error already stored by the older build.
+  state.attempted={[job.sequence]:{state:'unconfirmed',error:'Error: Could not establish connection. Receiving end does not exist.',task:job.task_id}};
+  state.lastAt=0;
+  const beforeSafeRecovery=calls.length;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(calls.length,beforeSafeRecovery+1,'old proven pre-send failure may safely retry');
+  assert.equal(state.attempted[job.sequence].state,'observed','safe recovery must preserve proof');
+  // An unknown transmission error must NOT be re-sent.
+  state.attempted={[job.sequence]:{state:'unconfirmed',error:'Error: The message port closed before a response was received.',task:job.task_id}};
+  state.lastAt=0;
+  const beforeUnknownError=calls.length;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(calls.length,beforeUnknownError,'unknown transmission outcome must remain blocked');
   let handlers=[];
   function probe(href,editor,options={}){
     handlers=[];
@@ -118,6 +149,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   }
   const clean=()=>({innerText:'',textContent:'',focus(){}});
   let answer=await probe('https://chatgpt.com/c/other',clean());
+  // Existing tests below continue to ensure wrong-chat isolation.
   assert.equal(answer.submitted,false,'wrong conversation must be denied');
   answer=await probe(conversation,{innerText:'I am typing',textContent:'I am typing',focus(){}});
   assert.equal(answer.submitted,false,'occupied user input must not be overwritten');
@@ -156,5 +188,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'new milestone must not be sent twice');
-  console.log('Browser handoff checks passed: exact chat, safe composer, no duplicates, automatic next task, clear local diagnostic states. Live sending remains unverified.');
+  console.log('Browser handoff checks passed: exact chat, absent-listener F5 recovery, legacy error safe retry, uncertain send never repeats, safe composer, automatic next task. Live sending remains unverified.');
 })().catch(e=>{console.error(e);process.exitCode=1});
