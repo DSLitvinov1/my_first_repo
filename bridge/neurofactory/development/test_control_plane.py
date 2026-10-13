@@ -23,6 +23,25 @@ class RoadmapTests(unittest.TestCase):
                 "verification_mode":"authorized_connector_checked",
                 "cloud_test_run":38317981561,"windows_bridge_run":38318013640,
                 "independent_review_run":38318188623}
+    def test_31_explicit_chat_pause_disables_delivery_but_keeps_next_work(self):
+        p=copy.deepcopy(self.p)
+        p["chat_delivery_paused"]=True
+        p["stage3_independent_of_chat"]=True
+        p["milestones"][0]["state"]="verified"
+        p["milestones"][1]["state"]="deferred"
+        p["milestones"][2]["state"]="active"
+        core.validate(p)
+        entry=core.outbox(p)
+        self.assertEqual(entry["task_id"],"NF-DEV-03")
+        self.assertEqual(entry["state"],"paused_by_user")
+        self.assertEqual(entry["delivery"],"no_chat_send")
+        self.assertFalse(entry["auto_send_enabled"])
+    def test_32_deferred_chat_without_explicit_pause_rejected(self):
+        p=copy.deepcopy(self.p)
+        p["milestones"][0]["state"]="verified"
+        p["milestones"][1]["state"]="deferred"
+        p["chat_delivery_paused"]=False
+        with self.assertRaises(core.PlanError):core.validate(p)
     def test_25_live_roadmap_remains_valid_after_advancement(self):
         self.assertEqual(core.validate(copy.deepcopy(PLAN))["mode"],"self_development")
     def test_26_outbox_tracks_live_active_task(self):
