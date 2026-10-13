@@ -134,7 +134,27 @@
         "Windows runner не закрывает пользовательские программы"
       ],
       "prompt": "Проверь реальное прерывание и восстановление нейрозавода. Подтверди сохранение состояния, целостность результатов, ограниченные повторы, отсутствие параллельного запуска тяжёлых задач.",
-      "active_scope": "Production queue checkpointing, atomic state save, lease expiry and recovery after actual interruption; no demo applications; independent model review and Windows bridge proof required."
+      "active_scope": "Independently approved pure recovery decision published and Windows checked. Next: durable atomic checkpoint journal, actual crash/restart exercise, lease and no-replay publication evidence.",
+      "progress_evidence": {
+        "first_verified_component": "Production recovery decision for interrupted tasks",
+        "source": "bridge/neurofactory/development/recovery_decision.py",
+        "proof": "bridge/neurofactory/development/recovery-verification.json",
+        "commit_sha": "9cfa27a00c6676eaee36a14ebca60eaa9b8bc07b",
+        "writer": "qwen2.5-coder:7b",
+        "reviewer": "qwen3:4b",
+        "review_verdict": "REVIEW_OK",
+        "cloud_run": 38421463570,
+        "windows_bridge_run": 38422237905,
+        "source_sha256": "05d20779e59447bf5f06f34c2ab52c7efeb9865c05f9312e7574ee8b1203b063",
+        "behavior_checks": 11,
+        "windows_checks": 6,
+        "stage_complete": false,
+        "next_requirements": [
+          "Durable atomic checkpoint journal for active task state",
+          "Resume after actual interruption, no duplicate publishes",
+          "Bounded lease retries and verified remote receipt reconciliation"
+        ]
+      }
     },
     {
       "id": "NF-DEV-05",
