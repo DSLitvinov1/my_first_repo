@@ -129,16 +129,24 @@ def generate():
     if not {WRITER, REVIEWER}.issubset(available):
         raise GateError("Both free local models must already exist; no model downloads")
     prompt = (
-        "Write only Python 3 source, no prose. Implement ONE PURE FUNCTION named "
-        "approved_registry(records): accepts a list of dictionaries with exactly id, "
-        "target, objective, checks duplicate ids and duplicate targets, rejects any "
-        "empty id and path traversal, allows targets ONLY under "
-        "bridge/neurofactory/development/, and returns an immutable tuple of "
-        "validated records plus a deterministic sha256 string. "
-        "Use hashlib and json standard-library imports if necessary. "
-        "DO NOT define classes, magic methods or access any attribute beginning "
-        "with double underscore. No filesystem, shell, network, dynamic execution, "
-        "GitHub, secrets or other project operations."
+        "Write ONLY Python 3 source for ONE PURE FUNCTION approved_registry(records), "
+        "no prose, no classes, no magic methods or dunder attribute access. "
+        "EXACT CONTRACT: records MUST be a list; each item MUST be a dict containing "
+        "exactly three nonempty STRING fields named id, target, objective; otherwise "
+        "raise ValueError, NEVER silently skip, continue or filter bad records. "
+        "Reject duplicate id AND duplicate target with ValueError. "
+        "Every target MUST start with the EXACT prefix "
+        "'bridge/neurofactory/development/' and MUST NOT contain backslash or "
+        "any empty, dot or dotdot path segment. Paths outside that exact prefix "
+        "must raise ValueError. "
+        "Return (immutable_rows, digest), where immutable_rows is a TUPLE of "
+        "3-element TUPLES (id, target, objective), sorted by id. NEVER return "
+        "mutable original dict objects, even inside a tuple. "
+        "Digest MUST equal hashlib.sha256(json.dumps(immutable_rows, "
+        "ensure_ascii=False, separators=(',', ':')).encode('utf-8')).hexdigest(). "
+        "Use ONLY Python stdlib hashlib and json. No filesystem/network/system "
+        "calls, no external services, no exec/eval, no other projects. "
+        "Do not make identifiers beginning with double underscores."
     )
     writer_attempts = 0
     for writer_attempts in range(1, 3):
@@ -155,13 +163,20 @@ def generate():
     writer_stats["attempts"] = writer_attempts
     digest = sha(candidate)
     review_prompt = (
-        "/no_think\nYou are an INDEPENDENT security/code reviewer, not the author. "
-        "Examine the ACTUAL Python candidate reproduced verbatim below. "
-        "Check task identity/target duplication, path traversal, immutability, "
-        "untrusted inputs and scope. Return ONLY JSON containing verdict "
-        "('APPROVE' or 'REJECT'), candidate_sha256 (exact supplied digest) and findings "
-        "(list of strings). Reject whenever requirements are not met. "
-        "Task: immutable stage5 Neurofactory approved-task registry. "
+        "/no_think\nYou are an INDEPENDENT security and correctness reviewer. "
+        "Examine EVERY LINE of the ACTUAL writer candidate below. "
+        "REQUIRE: reject non-list records; reject non-dict items; require exactly "
+        "three nonempty strings id/target/objective; reject any duplicate ids "
+        "AND any duplicate exact target paths; require exact target prefix "
+        "bridge/neurofactory/development/; reject backslashes, empty path parts, "
+        "dot and dotdot segments; reject invalid input instead of silently "
+        "skipping it; return fully immutable tuple-of-tuples, not original dicts; "
+        "compute deterministic digest from serialized immutable rows. "
+        "The same task has TWO uniqueness constraints: id uniqueness and target "
+        "uniqueness; do not invent a third type of duplicate. "
+        "Return ONLY JSON with keys verdict ('APPROVE' or 'REJECT'), "
+        "candidate_sha256 (repeat exact supplied digest) and findings (list of "
+        "concrete strings). REJECT on any actual failed invariant. "
         "Digest: " + digest + "\nACTUAL WRITER CANDIDATE:\n" + candidate
     )
     review_text, reviewer_stats = model_call(REVIEWER, review_prompt)
