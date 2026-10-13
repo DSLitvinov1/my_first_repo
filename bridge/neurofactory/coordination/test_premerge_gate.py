@@ -47,7 +47,8 @@ class PreMergeGateTests(unittest.TestCase):
         value = evaluate(pr if pr is not None else candidate(),
                          files if files is not None else FILES,
                          reviews if reviews is not None else approvals(),
-                         runs if runs is not None else checks(), POLICY)
+                         runs if runs is not None else checks(), POLICY,
+                         base_protected=True)
         self.assertFalse(value["integration_consideration_allowed"])
         if reason:
             self.assertIn(reason, value["blocking_reasons"])
@@ -55,10 +56,34 @@ class PreMergeGateTests(unittest.TestCase):
         return value
 
     def test_valid_complete_independent_evidence_is_only_considerable(self):
-        decision = evaluate(candidate(), FILES, approvals(), checks(), POLICY)
+        decision = evaluate(candidate(), FILES, approvals(), checks(), POLICY,
+                            base_protected=True)
         self.assertTrue(decision["integration_consideration_allowed"])
         self.assertFalse(decision["automerge"])
         self.assertTrue(decision["read_only"])
+
+    def test_unprotected_production_branch_blocks_even_clean_pr(self):
+        result = evaluate(candidate(), FILES, approvals(), checks(), POLICY)
+        self.assertFalse(result["integration_consideration_allowed"])
+        self.assertIn("production_branch_unprotected", result["blocking_reasons"])
+
+    def test_rejected_handoff_cannot_be_cleared_by_passing_ci(self):
+        p=candidate()
+        p["head"]["ref"]="neurofactory-model-handoff-owned-20261013"
+        f=[{"filename":"bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+            "status":"modified"}]
+        result=evaluate(p,f,approvals(),checks(),POLICY,base_protected=True,
+                        handoff_review={"blocked":True,"status":"REJECTED_CURRENT_SOURCE"})
+        self.assertFalse(result["integration_consideration_allowed"])
+        self.assertIn("handoff_independent_review_not_approved",result["blocking_reasons"])
+
+    def test_new_handoff_without_verdict_remains_blocked(self):
+        p=candidate()
+        p["head"]["ref"]="neurofactory-model-handoff-owned-20261013"
+        f=[{"filename":"bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+            "status":"modified"}]
+        result=evaluate(p,f,approvals(),checks(),POLICY,base_protected=True)
+        self.assertIn("handoff_independent_review_not_approved",result["blocking_reasons"])
 
     def test_draft_never_considered(self):
         p=candidate();p["draft"]=True
@@ -155,6 +180,7 @@ class PreMergeGateTests(unittest.TestCase):
             if "/files?" in url:return FILES
             if "/reviews?" in url:return approvals()
             if "/check-runs?" in url:return {"total_count":2,"check_runs":checks()}
+            if url==URL+"branches/"+BASE_BRANCH:return {"protected":True}
             raise AssertionError(url)
         fetch.count=0
         with self.assertRaisesRegex(MergeGateError,"changed during audit"):
@@ -167,6 +193,7 @@ class PreMergeGateTests(unittest.TestCase):
             if "/files?" in url:return FILES
             if "/reviews?" in url:return approvals()
             if "/check-runs?" in url:return {"total_count":100,"check_runs":checks()}
+            if url==URL+"branches/"+BASE_BRANCH:return {"protected":True}
             raise AssertionError(url)
         with self.assertRaises(MergeGateError):
             verify_pr(10,fetch,POLICY)
