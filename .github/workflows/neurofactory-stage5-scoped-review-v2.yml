@@ -1,0 +1,51 @@
+name: Neurofactory Stage5 Scoped Qwen3 Review v2
+on:
+  push:
+    branches: [neurofactory-stage5-review-isolated-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-scoped-review-v2.yml'
+      - 'bridge/neurofactory/development/stage5_independent_security_review_v2.py'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-v2-safety-review
+  cancel-in-progress: false
+jobs:
+  independent_qwen3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Fetch isolated immutable candidate without publishing credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Ensure existing Stage5 deterministic checks pass
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_development_queue.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_git_receipts.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_usage_ledger.py -v
+      - name: Initialize free independent Qwen3 model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf5-qwen3-v2.log" 2>&1 &)
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Review full source of each security critical module with strict JSON schema
+        env:
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -B bridge/neurofactory/development/stage5_independent_security_review_v2.py
+      - name: Preserve actual Qwen3 verdict, including rejection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-stage5-independent-qwen3-v2-report
+          path: bridge/neurofactory/development/stage5-independent-review-v2-result.json
+          if-no-files-found: warn
+          retention-days: 7
