@@ -79,6 +79,15 @@ class DevelopmentQueue:
     def prepare(self):
         with checkpoint._lock(self.lock):
             if not self.manifest.exists():
+                # An interrupted restore can leave uncommitted role files.
+                # Never initialize a fresh manifest over those files: this
+                # would silently adopt half of an older, unverified snapshot.
+                role_files = [p for lane in self.lanes.values()
+                              for p in lane.paths.values()]
+                if any(path.exists() for path in role_files):
+                    raise DevelopmentQueueError(
+                        "Incomplete restoration detected: no committed manifest; "
+                        "restore only into a fresh empty directory")
                 checkpoint.initialize(self.manifest, {
                     "id": "NF-DEV-05-QUEUE", "state": "queued",
                     "attempts": 0, "lease_until": None,
