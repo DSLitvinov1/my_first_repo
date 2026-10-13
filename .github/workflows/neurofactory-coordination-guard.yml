@@ -1,14 +1,16 @@
-name: Neurofactory Chat Lane Ownership Guard
+name: Neurofactory Parallel Chat Ownership Gate
 on:
   push:
-    branches: [neurofactory-chat-coordination-20261013]
-    paths:
-      - 'bridge/neurofactory/coordination/**'
-      - '.github/workflows/neurofactory-coordination-guard.yml'
+    branches:
+      - neurofactory-chat-coordination-20261013
+      - neurofactory-core-queue-owned-20261013
+      - neurofactory-model-handoff-owned-20261013
+      - neurofactory-review-owned-20261013
+      - neurofactory-providers-free-20261013
 permissions:
   contents: read
 concurrency:
-  group: neurofactory-coordination-ownership-validation
+  group: neurofactory-owner-${{ github.ref_name }}
   cancel-in-progress: false
 jobs:
   ownership_safety:
@@ -17,11 +19,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: Validate immutable role-to-branch path ownership
+      - name: Validate immutable ownership and changed files only
         env:
           PYTHONPATH: bridge/neurofactory/coordination
           PYTHONDONTWRITEBYTECODE: "1"
+          BRANCH_NAME: ${{ github.ref_name }}
+          PREVIOUS_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           python -B bridge/neurofactory/coordination/check_lanes.py --check-policy
           python -B -m unittest discover -s bridge/neurofactory/coordination -p test_check_lanes.py -v
+          python - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          from check_lanes import load_policy,check_change_set,OwnershipError
+          policy=load_policy()
+          branch=os.environ["BRANCH_NAME"]
+          owner={entry["branch"]:entry["id"] for entry in policy["chat_lanes"]}[branch]
+          previous=os.environ["PREVIOUS_SHA"]
+          current=os.environ["CURRENT_SHA"]
+          if previous=="0"*40:
+              # New branch points at tested immutable coordination HEAD, no work files.
+              print("NEUROFACTORY_BRANCH_CREATED_WITHOUT_DELTA")
+          else:
+              files=subprocess.check_output(["git","diff","--name-only",previous,current],text=True).splitlines()
+              if not files:
+                  print("NEUROFACTORY_NO_MODIFIED_FILES")
+              else:
+                  print(check_change_set(owner,files,policy))
+          PY
