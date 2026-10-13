@@ -128,6 +128,8 @@ def run():
       "Return JSON only with verdict REVIEW_OK or REVIEW_BAD and reason. "
       "Reject doubtful code. Candidate:\n"+code)
     review=json.loads(ask(REVIEWER,prompt,True))
+    print("REAL_NF_INDEPENDENT_REVIEW",str(review.get("verdict","NO_VERDICT"))[:35],
+          str(review.get("reason","NO_REASON"))[:420],flush=True)
     if review.get("verdict")!="REVIEW_OK":raise ValueError("Independent Qwen reviewer rejected candidate")
     info={"stage":"NF-DEV-03","scope":"neurofactory_only",
         "writer":WRITER,"reviewer":REVIEWER,"review_verdict":"REVIEW_OK",
