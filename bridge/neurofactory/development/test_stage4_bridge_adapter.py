@@ -25,6 +25,7 @@ class FakeGithub:
         self.publish_calls = 0
         self.ancestry = "ahead"
         self.source = SOURCE
+        self.extra_files = []
 
     def fetch(self, url):
         if "/compare/" in url:
@@ -35,7 +36,7 @@ class FakeGithub:
             if not self.published:
                 return None
             return {"sha": COMMIT,
-                    "files": [{"filename": TARGET, "status": "added"}]}
+                    "files": [{"filename": TARGET, "status": "added"}] + self.extra_files}
         if "/contents/" in url:
             if not self.published:
                 return None
@@ -145,6 +146,14 @@ class Stage4BridgeAdapterTests(unittest.TestCase):
         with self.assertRaises(adapter.ReceiptError):
             self.bridge.publish_trusted(200, TARGET, self.remote.publish)
         self.assertEqual(self.bridge.queue.prepare()["publisher"]["state"], "publishing")
+
+    def test_matching_candidate_with_unrelated_changes_is_rejected(self):
+        self.verified_first_two_agents()
+        self.remote.published = True
+        self.remote.extra_files = [{"filename": "bridge/other_project/private.py",
+                                    "status": "modified"}]
+        with self.assertRaises(adapter.ReceiptError):
+            self.receipts.verify(COMMIT, TARGET, DIGEST)
 
     def test_wrong_digest_blocks_receipt(self):
         self.verified_first_two_agents()
