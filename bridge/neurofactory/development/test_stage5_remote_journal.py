@@ -111,13 +111,14 @@ class JournalTests(unittest.TestCase):
             with self.assertRaises(journal.RemoteJournalError):
                 journal.checkpoint_to_github(another)
 
-    def test_external_write_does_not_get_token_from_model(self):
-        with mock.patch.dict(os.environ,{},clear=True):
-            with self.assertRaises(journal.RemoteJournalError):
-                with mock.patch.object(journal,"_request",wraps=journal._request):
-                    # The original callable is swapped by our fake server in setUp,
-                    # so verify the stated credential policy at source level instead.
-                    raise journal.RemoteJournalError("Trusted publisher token required")
+    def test_external_write_requires_trusted_publisher_token(self):
+        self.patcher.stop()
+        try:
+            with mock.patch.dict(os.environ,{},clear=True):
+                with self.assertRaises(journal.RemoteJournalError):
+                    journal._request("PUT",{"content":"not used"})
+        finally:
+            self.patcher.start()
 
 if __name__=="__main__":
     unittest.main(verbosity=2)
