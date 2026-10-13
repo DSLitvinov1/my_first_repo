@@ -47,7 +47,7 @@ jobs:
               print('ALREADY_PUBLISHED_CORE_IMPROVEMENT_SKIP_REPLAY')
           with open(__import__('os').environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
               f.write('ready='+str(status).lower()+'\n')
-          print('STAGE3_ACTUAL_CHAT_DELIVERY_GATE:', 'OPEN' if status else 'CLOSED')
+          print('STAGE3_APPROVED_CORE_DEVELOPMENT_GATE:', 'OPEN' if status else 'CLOSED')
           PY
   two_model_real_development:
     needs: stage3_gate_and_code_checks
