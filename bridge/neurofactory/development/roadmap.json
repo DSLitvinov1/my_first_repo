@@ -83,7 +83,7 @@
     },
     {
       "id": "NF-DEV-03",
-      "state": "active",
+      "state": "verified",
       "title": "Автономный исполнитель разработки самого нейрозавода",
       "depends_on": [
         "NF-DEV-01"
@@ -96,11 +96,32 @@
         "Неуспешные патчи не публикуются"
       ],
       "prompt": "Подключи два бесплатных ИИ-агента к улучшениям кода нейрозавода: первый создаёт ограниченный патч, второй проверяет его вместе с тестами. Не менять чужие проекты, не отправлять секреты модели, сохранять только проверенный результат.",
-      "active_scope": "Реальный код нейрозавода; две независимые бесплатные модели, сохранение только проверенных изменений; без учебных приложений."
+      "evidence": {
+        "repo": "DSLitvinov1/my_first_repo",
+        "branch": "neurofactory-public-lab-20261012",
+        "commit_sha": "5ec2f935c82a507102afe93b65642d6fdac8edda",
+        "tests_passed": true,
+        "independent_review": true,
+        "reviewer": "qwen3:4b",
+        "review_verdict": "REVIEW_OK",
+        "verification_mode": "authorized_connector_checked",
+        "cloud_test_run": 38418608193,
+        "windows_bridge_run": 38419545229,
+        "independent_review_run": 38418608193,
+        "windows_run_attempt": 2,
+        "writer": "qwen2.5-coder:7b",
+        "source_sha256": "138acf9b7668baeb603091c32a6bd8f3d017256c45d8cf2f5249e9e6325343ed",
+        "real_path_checks": 43,
+        "windows_unittests": 51,
+        "published_source": "bridge/neurofactory/development/path_policy.py",
+        "independent_review_proof": "bridge/neurofactory/development/path-policy-verification.json",
+        "published_bytes_checked": true,
+        "browser_live_delivery_verified": false
+      }
     },
     {
       "id": "NF-DEV-04",
-      "state": "pending",
+      "state": "active",
       "title": "Непрерывность и реальное восстановление",
       "depends_on": [
         "NF-DEV-03"
@@ -112,7 +133,8 @@
         "Пройдено несколько этапов разработки подряд",
         "Windows runner не закрывает пользовательские программы"
       ],
-      "prompt": "Проверь реальное прерывание и восстановление нейрозавода. Подтверди сохранение состояния, целостность результатов, ограниченные повторы, отсутствие параллельного запуска тяжёлых задач."
+      "prompt": "Проверь реальное прерывание и восстановление нейрозавода. Подтверди сохранение состояния, целостность результатов, ограниченные повторы, отсутствие параллельного запуска тяжёлых задач.",
+      "active_scope": "Production queue checkpointing, atomic state save, lease expiry and recovery after actual interruption; no demo applications; independent model review and Windows bridge proof required."
     },
     {
       "id": "NF-DEV-05",
@@ -135,5 +157,5 @@
   ],
   "chat_delivery_paused": true,
   "stage3_independent_of_chat": true,
-  "current_priority": "Реальное самостоятельное улучшение исходного кода нейрозавода двумя бесплатными ИИ-агентами, независимое тестирование и публикация только проверенных изменений"
+  "current_priority": "Реальная разработка механизма сохранения состояния и восстановления незавершённых задач после аварийного прерывания; независимая проверка и Windows-мост"
 }
