@@ -1,0 +1,85 @@
+name: Neurofactory Production Crash Recovery Two Independent Agents
+on:
+  push:
+    branches: [neurofactory-public-lab-20261012]
+    paths:
+      - 'bridge/neurofactory/development/recovery_proposal.py'
+      - 'bridge/neurofactory/development/publish_recovery.py'
+      - 'bridge/neurofactory/development/test_recovery_core.py'
+      - '.github/workflows/neurofactory-crash-recovery-real.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-production-crash-recovery-core
+  cancel-in-progress: false
+jobs:
+  real_recovery_gate:
+    if: ${{ github.repository == 'DSLitvinov1/my_first_repo' && github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+    steps:
+      - name: Checkout isolated free Neurofactory branch without token persistence
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Test new production crash recovery behavior only
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_recovery_core.py' -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+      - name: Verify real stage-four authorization and prevent repeated publications
+        id: gate
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          p=json.loads(pathlib.Path('bridge/neurofactory/development/roadmap.json').read_text('utf-8'))
+          m={x['id']:x for x in p['milestones']}
+          ready=(p.get('chat_delivery_paused') is True and
+                 m['NF-DEV-02']['state']=='deferred' and
+                 m['NF-DEV-03']['state']=='verified' and
+                 m['NF-DEV-04']['state']=='active' and
+                 p.get('free_only') is True and
+                 not pathlib.Path('bridge/neurofactory/development/recovery_decision.py').exists())
+          with open(os.environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as o:
+              o.write('ready='+str(ready).lower()+'\n')
+          print('REAL_RECOVERY_STAGE_GATE', 'OPEN' if ready else 'CLOSED')
+          PY
+  independent_recovery_development:
+    needs: real_recovery_gate
+    if: ${{ needs.real_recovery_gate.outputs.ready == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout production Neurofactory version without stored GitHub credentials
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Start two separate free offline models
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-neurofactory-recovery.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+      - name: First AI authors actual recovery decision and second AI independently reviews
+        env:
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          OLLAMA_KEEP_ALIVE: "0"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/recovery_proposal.py
+      - name: Atomically publish only reviewed recovery source and provenance
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NF_FREE_PUBLIC_CONFIRMED: "yes"
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/publish_recovery.py
