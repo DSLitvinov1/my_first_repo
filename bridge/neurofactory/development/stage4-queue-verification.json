@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "stage": "NF-DEV-04",
+  "scope": "neurofactory_only",
+  "component": "stage4_queue",
+  "candidate_commit": "73c7ecb64aba105c1a0fb38644878f874423a0d5",
+  "review_workflow_run": 38440527287,
+  "cloud_tests_passed": 21,
+  "independent_reviewer": "qwen3:4b",
+  "independent_verdict": "REVIEW_OK",
+  "independent_review_artifact_id": 11835107195,
+  "independent_review_reason": "No uncaught exceptions, mixed roles, data loss, replay, or missing proof equality. All states require prior verified steps. Publisher intent is not completion; receipt verification is mandatory.",
+  "publication_status": "independently_approved_windows_verification_pending",
+  "modes": {
+    "free_only": true,
+    "chat_delivery_paused": true,
+    "other_projects_untouched": true
+  },
+  "note": "Publisher operations remain external to this module. A trusted caller must independently verify a remote GitHub receipt before acknowledging completion."
+}
