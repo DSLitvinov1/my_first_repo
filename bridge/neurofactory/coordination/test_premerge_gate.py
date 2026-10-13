@@ -31,10 +31,14 @@ def approvals():
 
 def checks():
     return [
-        {"name": EXPECTED_OWNER_CHECK, "head_sha": SHA,
-         "status": "completed", "conclusion": "success"},
-        {"name": REVIEW_GATE, "head_sha": SHA,
-         "status": "completed", "conclusion": "success"}
+        {"id": 101, "name": EXPECTED_OWNER_CHECK, "head_sha": SHA,
+         "status": "completed", "conclusion": "success",
+         "app": {"slug": "github-actions"},
+         "details_url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/101/job/1"},
+        {"id": 102, "name": REVIEW_GATE, "head_sha": SHA,
+         "status": "completed", "conclusion": "success",
+         "app": {"slug": "github-actions"},
+         "details_url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/102/job/1"}
     ]
 
 
@@ -97,6 +101,27 @@ class PreMergeGateTests(unittest.TestCase):
         x=approvals()+[{"user":{"login":"independent_reviewer"},"state":"DISMISSED",
                         "commit_id":SHA}]
         self.assert_block(reviews=x,reason="no_fresh_independent_git_review")
+
+    def test_independent_change_request_overrides_other_approval(self):
+        extra = approvals() + [{
+            "user": {"login": "different_reviewer"},
+            "state": "CHANGES_REQUESTED", "commit_id": SHA
+        }]
+        self.assert_block(reviews=extra,reason="no_fresh_independent_git_review")
+
+    def test_latest_failed_check_overrides_older_pass(self):
+        c=checks()
+        newer=copy.deepcopy(c[0])
+        newer.update({"id": 999, "conclusion": "failure"})
+        self.assert_block(runs=c+[newer],reason="missing_current_owner_or_qwen3_check")
+
+    def test_foreign_check_app_and_run_url_denied(self):
+        c=checks()
+        c[1]["app"]["slug"]="foreign-ci"
+        self.assert_block(runs=c,reason="missing_current_owner_or_qwen3_check")
+        c=checks()
+        c[1]["details_url"]="https://github.com/attacker/other/actions/runs/2/job/1"
+        self.assert_block(runs=c,reason="missing_current_owner_or_qwen3_check")
 
     def test_reviewed_sha_mismatch_denied(self):
         c=checks();c[1]["head_sha"]="c"*40

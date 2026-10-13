@@ -83,6 +83,11 @@ def independent_github_review(pr, reviews):
         state = review.get("state")
         if reviewer and state in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED"):
             latest[reviewer] = review
+    # An unresolved changes-requested review blocks adoption even if another
+    # reviewer approved. Dismissal or a new approval by the same reviewer
+    # replaces that reviewer's previous verdict.
+    if any(record.get("state") == "CHANGES_REQUESTED" for record in latest.values()):
+        return False
     for reviewer, review in latest.items():
         if (reviewer != author and review.get("state") == "APPROVED"
                 and review.get("commit_id") == sha):
@@ -105,16 +110,25 @@ def required_checks(pr, check_runs):
         name = item.get("name")
         if not isinstance(name, str):
             continue
+        run_id = item.get("id")
+        if type(run_id) is not int or run_id < 1:
+            raise MergeGateError("Cannot order check runs without GitHub IDs")
         current = successful.get(name)
-        # GitHub serves newest checks first. Do not override the newest
-        # failure with an older success of the same name.
-        if current is None:
+        # Select the newest check by its real GitHub ID rather than trusting
+        # response ordering, which can otherwise hide a newer failure.
+        if current is None or run_id > current["id"]:
             successful[name] = item
     for name in (EXPECTED_OWNER_CHECK, REVIEW_GATE):
         run = successful.get(name)
+        details = "" if run is None else run.get("details_url", "")
+        app = {} if run is None else (run.get("app") or {})
         if (run is None or run.get("head_sha") != sha or
                 run.get("status") != "completed" or
-                run.get("conclusion") != "success"):
+                run.get("conclusion") != "success" or
+                app.get("slug") != "github-actions" or
+                not isinstance(details, str) or
+                not details.startswith(
+                    "https://github.com/DSLitvinov1/my_first_repo/actions/runs/")):
             return False
     return True
 
