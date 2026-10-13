@@ -1,0 +1,38 @@
+name: Neurofactory Stage5 Isolated Real GitHub Crossrun State
+on:
+  push:
+    branches: [neurofactory-stage5-isolated-journal-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-real-state-isolated.yml'
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-stage5-isolated-real-state-20261013
+  cancel-in-progress: false
+jobs:
+  first_free_runner_persist:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Persist one real scoped checkpoint to GitHub
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/stage5_isolated_acceptance.py write
+  second_fresh_runner_restore:
+    needs: first_free_runner_persist
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read prior checkpoint, reject replay, require identical GitHub blob
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/development/stage5_isolated_acceptance.py recover
