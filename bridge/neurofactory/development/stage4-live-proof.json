@@ -1,0 +1,20 @@
+{
+  "behavior_tests": 15,
+  "chat_delivery": "paused_by_user",
+  "review": {
+    "reason": "Code validates dict, 3 fields, exact repo/path/40-char hex sha. Handles non-dict, wrong length, invalid chars. No side effects. 15 cases checked: 1. dict, 2. 3 fields, 3. repo mismatch, 4. path mismatch, .sha mismatch, 5. non-str sha, 6. sha too short, 7. sha too long, 8. invalid chars, 9. valid sha, 10. missing field, 11. extra field, 12. non-hex char, 13. 40-char hex, 14. non-40-char hex, 15. correct fields. All pass.",
+    "reviewer": "qwen3:4b",
+    "source_sha256": "745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c",
+    "stage": "NF-DEV-04",
+    "test_count": 15,
+    "verdict": "REVIEW_OK",
+    "writer": "qwen2.5-coder:7b"
+  },
+  "reviewer": "qwen3:4b",
+  "scope": "neurofactory_only",
+  "source_sha256": "745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c",
+  "stage": "NF-DEV-04",
+  "task": "NF-DEV-04-LIVE-RECEIPT-20261013",
+  "verdict": "REVIEW_OK",
+  "writer": "qwen2.5-coder:7b"
+}
