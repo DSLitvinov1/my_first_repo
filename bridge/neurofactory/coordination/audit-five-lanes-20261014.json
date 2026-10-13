@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "owner_lane": "coordinator",
+  "policy_issue": 3,
+  "branch": "neurofactory-chat-coordination-20261013",
+  "baseline": "13bc0df6368472c45a34fc412f927dca7d2fd44e",
+  "audit_workflow_run": 38467151993,
+  "workflow_conclusion": "success",
+  "tests_passed": 34,
+  "approved_branches": 5,
+  "changed_file_count": 14,
+  "cross_lane_collisions": 0,
+  "checked_heads": [
+    {
+      "lane": "core",
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "observed_changed_files": [
+        "bridge/neurofactory/development/core_owned/README.md"
+      ]
+    },
+    {
+      "lane": "handoff",
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "observed_changed_files": [
+        "bridge/neurofactory/development/model_handoff_owned/README.md"
+      ]
+    },
+    {
+      "lane": "review",
+      "branch": "neurofactory-review-owned-20261013",
+      "observed_changed_files": [
+        "bridge/neurofactory/development/review_owned/README.md"
+      ]
+    },
+    {
+      "lane": "providers",
+      "branch": "neurofactory-providers-free-20261013",
+      "observed_changed_files": [
+        "bridge/neurofactory/providers/README.md"
+      ]
+    },
+    {
+      "lane": "coordinator",
+      "branch": "neurofactory-chat-coordination-20261013",
+      "note": "Coordinator-only policy, tests, workflows and resource audit files; exact filenames in workflow artifact"
+    }
+  ],
+  "blocked_conflicts": [
+    {
+      "pull_request": 2,
+      "type": "mixed_ownership_review_and_core",
+      "state": "open_draft",
+      "branch": "neurofactory-stage5-review-isolated-20261013",
+      "files_owned_by_core": [
+        "bridge/neurofactory/development/stage5_development_queue.py",
+        "bridge/neurofactory/development/test_stage5_development_queue.py"
+      ],
+      "review_scope": [
+        "bridge/neurofactory/development/stage5_concurrency_independent_qwen3.py",
+        "bridge/neurofactory/development/stage5_independent_security_review_v2.py"
+      ],
+      "unowned_workflow_files": [
+        ".github/workflows/neurofactory-stage5-restore-concurrency-qwen3.yml",
+        ".github/workflows/neurofactory-stage5-scoped-review-v2.yml"
+      ],
+      "recommended_resolution": "Split into isolated independently reviewed CORE and REVIEW changes; assign workflow ownership prefixes before any merge."
+    }
+  ],
+  "safety_gates": {
+    "chatgpt_delivery": "paused",
+    "paid_ai_models": "forbidden",
+    "merge_without_independent_review": "forbidden",
+    "other_projects": "untouched"
+  },
+  "limitations": [
+    "The scan proves only GitHub branch diffs and CI results, not which ChatGPT windows are open.",
+    "The push-time ownership guard is a status check, not GitHub branch protection; mandatory branch rules still require repository configuration.",
+    "Existing divergent historical branches remain read-only and were not merged."
+  ]
+}
