@@ -50,6 +50,7 @@ class LiveContractTests(unittest.TestCase):
             memory["saved"]=raw
             return {"content":{"sha":"b"*40}}
         def fake_read(path,branch):
+            if path==live.SOURCE_PATH:return None
             self.assertEqual(path,live.STATE_PATH)
             return None if "saved" not in memory else {"bytes":memory["saved"],"blob_sha":"b"*40}
         with tempfile.TemporaryDirectory() as d1, tempfile.TemporaryDirectory() as d2:
