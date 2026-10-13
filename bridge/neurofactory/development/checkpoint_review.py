@@ -34,11 +34,12 @@ def run():
       "crash or evident unguarded repeat; identify the exact function and concrete failing "
       "situation. Do NOT demand that this storage module call the GitHub API or run the model. "
       "Return a valid JSON object only with verdict 'REVIEW_OK' or 'REVIEW_BAD', and reason. "
+      "Keep your reason under 40 words. Return compact JSON with ONLY verdict and reason, never a long explanation. "
       "Reject if uncertainty remains. Candidate source follows:\n"+code[:13000]
     )
     payload={"model":"qwen3:4b","prompt":prompt,"stream":False,"think":False,
              "keep_alive":"0","format":"json",
-             "options":{"num_ctx":7000,"num_predict":380,"num_thread":3,"num_gpu":0,"temperature":0}}
+             "options":{"num_ctx":7000,"num_predict":950,"num_thread":3,"num_gpu":0,"temperature":0}}
     url="http://127.0.0.1:11434/api/generate"
     req=urllib.request.Request(url,data=json.dumps(payload).encode("utf-8"),method="POST",
                                headers={"Content-Type":"application/json"})
