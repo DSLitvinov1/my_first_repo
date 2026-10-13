@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Нейрозавод — проверка подключения</title>
+<style>
+body{font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;max-width:740px;margin:35px auto;padding:0 20px;color:#202124}
+h1{font-size:23px}article{border:1px solid #dadce0;border-radius:13px;padding:18px 23px}dl{display:grid;grid-template-columns:185px 1fr;gap:11px;margin:0}dt{color:#58606c}dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.info{color:#545b66;font-size:14px}.status{font-size:19px}.error{color:#a32b20}
+button{padding:10px 16px;margin-top:18px;cursor:pointer;background:#eef3ff;border:1px solid #c6d5f7;border-radius:9px}
+</style></head>
+<body><h1>Нейрозавод — состояние связи с чатом</h1>
+<p>Диагностика только для этого браузера. Она не отправляет сообщений и не сбрасывает защиту от повторов.</p>
+<article><dl>
+<dt>Привязка к беседе</dt><dd id="bound">Проверка…</dd>
+<dt>Последняя проверка</dt><dd id="time">—</dd>
+<dt>Состояние агента</dt><dd id="status" class="status">Проверка…</dd>
+<dt>Причина или подробность</dt><dd id="detail">—</dd>
+<dt>Повторное задание</dt><dd id="attempt">—</dd>
+</dl></article>
+<button type="button" id="refresh">Обновить сведения</button>
+<p class="info">Если сообщение уже пытались отправить, повторная отправка автоматически блокируется во избежание дублей. Статус «Сообщение увидено» означает, что оно появилось в открытой беседе, а не что GitHub завершил этап.</p>
+<script src="diagnostics.js"></script>
+</body></html>
