@@ -17,6 +17,7 @@ def main():
         raise RuntimeError("Wrong review repository")
     source = SOURCE.read_text("utf-8")
     digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    tests = (HERE / "test_stage4_queue.py").read_text("utf-8")
     prompt = (
         "Act as Qwen3 4b, independent safety reviewer of Neurofactory STAGE 4. "
         "This source is a candidate only, not deployed. Inspect it rather than trusting claims. "
@@ -24,15 +25,24 @@ def main():
         "and uses a global lock for claims. Three strict lanes: qwen2.5-coder writer, "
         "qwen3 reviewer, trusted publisher. ChatGPT auto-send must remain paused. "
         "A role's before_external_effect checkpoint is saved before any external operation. "
-        "After interruption at publishing the state goes to needs_receipt_check and no retry "
-        "or republication is allowed. A remote_verified Boolean is accepted only from a "
+        "IMPORTANT: the state named publishing means only a durable write-ahead INTENT, "
+        "not a completed or even started network publication. Before entering publishing "
+        "the trusted caller MUST have an intent checkpoint, so remote_verified CANNOT be "
+        "true yet. A crash there moves into needs_receipt_check, forbids replay, "
+        "and does NOT mark verified_done. The only completion method acknowledge "
+        "requires a separately verified receipt. A remote_verified Boolean is accepted only from a "
         "trusted separate publisher process; THIS module intentionally performs zero network "
         "operations and cannot claim independently that an arbitrary receipt was checked. "
         "It is also not itself a model executor. Evaluate whether the state machine has genuine "
         "uncaught ordinary exceptions, mixed-role claims, data-loss paths, accidental task replay "
         "or missing proof equality, and identify function and concrete counterexample if rejected. "
+        "Do not consider an INTENT state an acceptance of publication. Reject only with a "
+        "concrete runnable sequence that reaches verified_done without a verified receipt, "
+        "or causes replay or unsafe filesystem writes. The tested publisher recovery "
+        "scenario is included below; check it against actual implementation. "
         "Report only JSON with verdict REVIEW_OK or REVIEW_BAD and specific reason under 60 words. "
-        "Do not guess. Source below:\n" + source[:14500]
+        "Do not guess. Source below:\n" + source[:14500] +
+        "\nACTUAL REGRESSION TEST SOURCE:\n" + tests[:11500]
     )
     query = {"model": "qwen3:4b", "prompt": prompt, "stream": False,
              "think": False, "format": "json", "keep_alive": "0",
@@ -54,7 +64,7 @@ def main():
     OUTPUT.write_text(json.dumps({"stage": "NF-DEV-04", "component": "stage4_queue",
                                   "reviewer": "qwen3:4b", "verdict": verdict,
                                   "source_sha256": digest, "reason": reason,
-                                  "checks_required": 10, "scope": "neurofactory_only"},
+                                  "checks_required": 11, "scope": "neurofactory_only"},
                                  indent=2) + "\n", "utf-8")
 
 
