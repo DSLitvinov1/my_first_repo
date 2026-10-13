@@ -1,0 +1,14 @@
+{
+  "stage": "NF-DEV-04",
+  "component": "durable_checkpoint",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "source_sha256": "dc0309a017ab49e55f3987b84653f8b15623adf51aaf17e842f818084f95fa86",
+  "reason": "All tests passed; no data loss or silent failures; atomic replace with retries ensures integrity.",
+  "actual_interruption_checked": true,
+  "checks_passed": 10,
+  "scope": "neurofactory_only",
+  "publication_status": "approved_production",
+  "source_path": "bridge/neurofactory/development/durable_checkpoint.py",
+  "destination_branch": "neurofactory-public-lab-20261012"
+}
