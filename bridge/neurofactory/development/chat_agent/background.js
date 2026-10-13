@@ -3,6 +3,8 @@ const OUTBOX="https://api.github.com/repos/DSLitvinov1/my_first_repo/contents/br
 const CHAT=/^https:\/\/chatgpt\.com\/(?:g\/[^/]+\/)?c\/[A-Za-z0-9-]+\/?$/;
 const MIN_GAP=5*60*1000;
 const MAX_PROMPT=3900;
+const MISSING_RECEIVER="Could not establish connection. Receiving end does not exist.";
+function receiverMissing(error){return String(error||"").includes(MISSING_RECEIVER);}
 let pollInFlight=false;
 async function note(code,detail=''){await chrome.storage.local.set({nfDiagnostic:{code,detail:String(detail).slice(0,110),at:Date.now()}});}
 async function singlePoll(){if(pollInFlight)return;pollInFlight=true;try{await poll();}catch(err){await note('FETCH_ERROR',String(err));await view('!');}finally{pollInFlight=false;}}
@@ -34,7 +36,11 @@ async function poll() {
       !/^[a-f0-9]{24}$/.test(job.sequence||"") ||
       typeof job.prompt!=="string" || job.prompt.length<50 || job.prompt.length>MAX_PROMPT ||
       !(await verifyDigest(job))) {await note("REJECTED_OUTBOX","bad schema, prompt, state or digest");return;}
-  if (cfg.attempted?.[job.sequence]) {await note("ALREADY_ATTEMPTED",cfg.attempted[job.sequence].state||"unknown");return;}
+  // The exact no-listener error proves delivery could not even start. Other ambiguous
+  // errors, including a closed message port, remain permanently reserved.
+  const prior=cfg.attempted?.[job.sequence];
+  const safeRecovery=prior?.state==="unconfirmed"&&receiverMissing(prior.error);
+  if(prior&&!safeRecovery){await note("ALREADY_ATTEMPTED",prior.state||"unknown");return;}
   // A visible per-milestone handoff receipt can later be matched to the actual chat turn.
   // Only this one-stage sender adds it; clicking Send alone is never accepted as proof.
   const visibleReceipt=String.fromCharCode(10,10)+"Подтверждение отправки агентом нейрозавода: "+job.sequence+".";
@@ -43,7 +49,24 @@ async function poll() {
   const tabs=await chrome.tabs.query({});
   const matched=tabs.find(t=>t.url===cfg.chatUrl && t.id!==undefined);
   if (!matched){await note("BOUND_TAB_NOT_FOUND");return;}
+  // Probe the actual page listener before writing an irreversible attempt record.
+  try{
+    const health=await chrome.tabs.sendMessage(matched.id,{type:"NF_HEALTH_CHECK",boundUrl:cfg.chatUrl});
+    if(health?.ready!==true){await note("CHAT_REFRESH_REQUIRED","listener not ready");return;}
+  }catch(error){
+    if(receiverMissing(error)){
+      await note("CHAT_REFRESH_REQUIRED","refresh the bound ChatGPT tab with F5");
+      await view("WAIT");return;
+    }
+    await note("BRIDGE_ERROR",String(error));await view("?");return;
+  }
   const attempt={...(cfg.attempted||{})};
+  if(safeRecovery){
+    // Clear ONLY an old proven pre-send failure; preserve every other task record.
+    delete attempt[job.sequence];
+    await chrome.storage.local.set({attempted:attempt});
+    await note("SAFE_RETRY_READY","former error had no receiving content script");
+  }
   // Reserve the sequence BEFORE clicking Send; failures cannot silently duplicate user messages.
   attempt[job.sequence]={state:"attempted",task:job.task_id,at:Date.now()};
   await chrome.storage.local.set({attempted:attempt,lastAt:Date.now()});
