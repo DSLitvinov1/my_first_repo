@@ -1,0 +1,92 @@
+{
+  "schema": 2,
+  "project": "НЕЙРОЗАВОД",
+  "date": "2026-10-14",
+  "owner": "coordinator",
+  "usage_scope": "selected_verified_GitHub_Actions_runs_only",
+  "repository": "DSLitvinov1/my_first_repo",
+  "source": "GitHub Actions per-run metadata, each run inspected explicitly",
+  "metrics": {
+    "sampled_runs": 7,
+    "unique_run_ids": 7,
+    "successes": 6,
+    "failures": 1,
+    "observed_sum_wall_seconds": 507,
+    "coordinator_wall_seconds": 251,
+    "handoff_wall_seconds": 256
+  },
+  "costs": {
+    "currency": null,
+    "amount": null,
+    "billing_records_verified": false,
+    "proven_free": false,
+    "reason": "GitHub Actions elapsed wall time is not billable running cost; no charge records queried"
+  },
+  "permitted_actions": {
+    "paid_models": false,
+    "chatgpt_sending": false,
+    "repeat_finished_jobs": false,
+    "windows_reboot": false
+  },
+  "runs": [
+    {
+      "id": 38468460038,
+      "owner": "coordinator",
+      "name": "Immutable Head Audit",
+      "duration_sec": 13,
+      "conclusion": "success",
+      "commit": "6b8ee6e720e1bbb2aef97725d31e967bbbc558a5"
+    },
+    {
+      "id": 38468529439,
+      "owner": "coordinator",
+      "name": "Read-only premerge gate",
+      "duration_sec": 120,
+      "conclusion": "success",
+      "commit": "a35882a67216bd86530b688e210e2dcd7799195a"
+    },
+    {
+      "id": 38468841798,
+      "owner": "coordinator",
+      "name": "Five-lane overlap audit",
+      "duration_sec": 13,
+      "conclusion": "success",
+      "commit": "13072e1fbb574574320add8f2727732b0f145911"
+    },
+    {
+      "id": 38468841901,
+      "owner": "coordinator",
+      "name": "Read-only premerge gate",
+      "duration_sec": 16,
+      "conclusion": "success",
+      "commit": "13072e1fbb574574320add8f2727732b0f145911"
+    },
+    {
+      "id": 38468841843,
+      "owner": "coordinator",
+      "name": "Coordinator ownership audit",
+      "duration_sec": 89,
+      "conclusion": "success",
+      "commit": "13072e1fbb574574320add8f2727732b0f145911"
+    },
+    {
+      "id": 38468805460,
+      "owner": "handoff",
+      "name": "Handoff candidate gate",
+      "duration_sec": 13,
+      "conclusion": "success",
+      "commit": "9545b2d7d6b521fdc796f8cd2ffff165aa2044a8"
+    },
+    {
+      "id": 38468862784,
+      "owner": "handoff",
+      "name": "Real free two-model isolation",
+      "duration_sec": 243,
+      "conclusion": "failure",
+      "commit": "3c77eaa5467109444360594fc3974a9e370ad30e",
+      "failure_reason": "Reviewer omitted mandatory evidence; publishing was not authorized"
+    }
+  ],
+  "qualification": "This is an additive sample of recorded runs, not a lifetime utilization total. Runs can overlap and wall seconds cannot be summed as billing minutes.",
+  "checkpoint": "checkpoint-five-lanes-20261014-issue3.json"
+}
