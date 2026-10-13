@@ -15,9 +15,11 @@ PATHS = {
 }
 
 class Fake:
- def __init__(self, move=None, wrong=False):
+ def __init__(self, move=None, wrong=False, no_head=False, truncated=False):
   self.move=move
   self.wrong=wrong
+  self.no_head=no_head
+  self.truncated=truncated
   self.count={x:0 for x in LANES}
   self.calls=[]
  def __call__(self, url):
@@ -31,9 +33,13 @@ class Fake:
   if "/compare/" in url:
    sha=url.split("...")[1]
    lane=next(x for x in LANES if SHA[x]==sha)
-   return {"head_commit":{"sha":("a"*40 if self.wrong else sha)},
-    "status":"ahead","ahead_by":1,"behind_by":0,"total_commits":1,
+   result={"status":"ahead","ahead_by":1,"behind_by":0,"total_commits":1,
     "files":[{"filename":PATHS[lane],"status":"added"}]}
+   if self.no_head:
+    result["commits"]=([] if self.truncated else [{"sha":sha}])
+   else:
+    result["head_commit"]={"sha":("a"*40 if self.wrong else sha)}
+   return result
   raise AssertionError(url)
 
 class FrozenAuditTests(unittest.TestCase):
@@ -52,6 +58,12 @@ class FrozenAuditTests(unittest.TestCase):
  def test_wrong_compared_commit_denied(self):
   with self.assertRaisesRegex(LaneAuditError,"expected exact head"):
    frozen_scan(POLICY,Fake(wrong=True))
+ def test_connector_missing_head_uses_complete_commits(self):
+  report=frozen_scan(POLICY,Fake(no_head=True))
+  self.assertTrue(report["heads_verified_unchanged"])
+ def test_truncated_history_refused(self):
+  with self.assertRaisesRegex(LaneAuditError,"Truncated pinned comparison"):
+   frozen_scan(POLICY,Fake(no_head=True,truncated=True))
  def test_bad_sha_denied(self):
   with self.assertRaises(LaneAuditError):
    read_head(BRANCHES["core"],lambda _:{"commit":{"sha":"short"}})
