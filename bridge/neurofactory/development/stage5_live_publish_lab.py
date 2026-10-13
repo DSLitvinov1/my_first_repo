@@ -153,11 +153,14 @@ def commit_once(task_id,filename,code,proof):
     api("PATCH","git/refs/heads/"+BRANCH,{"sha":commit["sha"],"force":False})
     return verify_stored(task_id,filename,code,proof)
 
-def publish(scratch):
+def publish(scratch,selected_id):
+    if selected_id not in {x[0] for x in JOBS}:
+        raise ValueError("Single approved task required for publication")
     guard()
     scratch=pathlib.Path(scratch)
     if not scratch.is_dir():raise ValueError("Missing model artifacts")
     for index,(task_id,filename,function) in enumerate(JOBS):
+        if task_id!=selected_id:continue
         doc,sha=verified_journal()
         if doc is None:raise ValueError("Must initialize remote journal first")
         previous=JOBS[:index]
@@ -193,9 +196,9 @@ def publish(scratch):
         save(doc,sha)
         print("NF5_ONE_REAL_APPROVED_PUBLICATION",task_id,published,flush=True)
     doc,_=verified_journal()
-    if any(row["state"]!="verified_done" for row in doc["tasks"].values()):
-        raise ValueError("At least one approved task remains incomplete")
-    print("NF5_TWO_REAL_TASKS_PUBLISHED_SEQUENTIALLY",flush=True)
+    if doc["tasks"][selected_id]["state"]!="verified_done":
+        raise ValueError("Selected task not acknowledged")
+    print("NF5_ONE_APPROVED_TASK_DURABLY_PUBLISHED",selected_id,flush=True)
 
 def audit(scratch):
     guard()
@@ -214,7 +217,7 @@ if __name__=="__main__":
     try:
         if len(sys.argv)<2:raise ValueError("Missing command")
         if sys.argv[1]=="init":initialize()
-        elif sys.argv[1]=="publish":publish(sys.argv[2])
+        elif sys.argv[1]=="publish":publish(sys.argv[2],sys.argv[3])
         elif sys.argv[1]=="audit":audit(sys.argv[2])
         else:raise ValueError("Unknown trusted publishing action")
     except Exception as error:
