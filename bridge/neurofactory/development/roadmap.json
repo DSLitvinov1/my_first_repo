@@ -246,10 +246,14 @@
         "github_mock_cas_and_no_rewind_tested": true,
         "future_tasks_auto_execution_enabled": false,
         "extra_cost_ledger_runs": 4,
-        "qwen_stage5_security_review_run": 38455062233,
-        "qwen_stage5_security_review_status": "pending",
+        "qwen_stage5_security_review_run": 38456001161,
+        "qwen_stage5_security_review_status": "pending_independent_model",
         "full_stage_complete": false,
-        "deferred_chat_step_untouched": true
+        "deferred_chat_step_untouched": true,
+        "qwen_stage5_prior_attempt": {
+          "run_id": 38455062233,
+          "reason": "timeout_not_rejection"
+        }
       }
     }
   ],
