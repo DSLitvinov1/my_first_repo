@@ -1,0 +1,65 @@
+name: Neurofactory Coordinator Read-Only Premerge Gate
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/**'
+      - '.github/workflows/neurofactory-coordination-premerge.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+concurrency:
+  group: neurofactory-coordinator-premerge-readonly
+  cancel-in-progress: false
+jobs:
+  candidate_safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Independent coordination tests without any model or remote writes
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_*.py' -v
+      - name: Inspect open pull requests; draft conflicts stay blocked
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/nf-premerge"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          from premerge_gate import get_json,verify_pr,URL,MergeGateError
+          open_prs=get_json(URL+"pulls?state=open&per_page=100")
+          if not isinstance(open_prs,list) or len(open_prs)>=100:
+              raise MergeGateError("PR list unavailable or incomplete; fail closed")
+          reports=[]
+          for item in open_prs:
+              result=verify_pr(item["number"])
+              reports.append(result)
+              if not item.get("draft") and not result["integration_consideration_allowed"]:
+                  raise MergeGateError("Unsafe ready PR "+str(item["number"]))
+          output={"schema":1,"project":"НЕЙРОЗАВОД","automerge":False,
+                  "reviewed_prs":reports,"read_only":True}
+          out=Path(os.environ["RUNNER_TEMP"])/"nf-premerge"/"report.json"
+          out.write_text(json.dumps(output,ensure_ascii=False,indent=2)+"\n","utf-8")
+          print("NEUROFACTORY_PREMERGE_AUDIT_OK "+json.dumps({
+              "open":len(reports),"blocked":sum(not v["integration_consideration_allowed"] for v in reports)
+          }))
+          PY
+      - name: Keep isolated report only as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-coordinator-premerge-readonly
+          path: ${{ runner.temp }}/nf-premerge/report.json
+          if-no-files-found: warn
+          retention-days: 7
