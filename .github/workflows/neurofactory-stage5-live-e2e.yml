@@ -1,4 +1,5 @@
 name: Neurofactory Stage5 Isolated Live Two-Agent GitHub Acceptance
+# Retry only after strict first-author acceptance improvements; no publication on failure.
 on:
   push:
     branches: [neurofactory-stage5-live-e2e-20261013]
