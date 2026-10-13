@@ -53,11 +53,11 @@ class RealRecoveryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             core.acceptance(wrong)
 
-    def test_stage_four_real_state_active(self):
+    def test_stage_four_real_state_verified(self):
         from stage3_guard import read
         milestones={x["id"]:x for x in read()["milestones"]}
         self.assertEqual(milestones["NF-DEV-03"]["state"],"verified")
-        self.assertEqual(milestones["NF-DEV-04"]["state"],"active")
+        self.assertEqual(milestones["NF-DEV-04"]["state"],"verified")
         self.assertEqual(milestones["NF-DEV-02"]["state"],"deferred")
 
 if __name__=="__main__":
