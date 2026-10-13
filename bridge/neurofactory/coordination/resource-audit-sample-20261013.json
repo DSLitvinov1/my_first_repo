@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "owner_lane": "coordinator",
+  "audit_scope": "2026-10-13 sampled seven verified completed GitHub Actions runs, not total usage",
+  "source": "GitHub Actions run metadata independently read 2026-10-13",
+  "all_paid_api_calls": "not enabled by coordinator",
+  "monetary_billing": {
+    "verified_amount": null,
+    "currency": null,
+    "evidence": "No billing records checked; cannot claim zero cost"
+  },
+  "chatgpt_delivery": "paused",
+  "run_count": 7,
+  "unique_run_ids_verified": true,
+  "observed_total_elapsed_wall_seconds": 1861,
+  "runs": [
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38464998899,
+      "elapsed_wall_seconds": 433,
+      "conclusion": "success",
+      "summary": "Independent Qwen3 REVIEW_OK on exact Stage5 restore digest; isolated evidence"
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38464279396,
+      "elapsed_wall_seconds": 444,
+      "conclusion": "failure",
+      "summary": "Q002 Qwen2.5 rejected five times by exact behavior tests; no publish"
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38465783496,
+      "elapsed_wall_seconds": 9,
+      "conclusion": "success",
+      "summary": "Initial path ownership separation tests succeeded"
+    },
+    {
+      "repo": "DSLitvinov1/my_first_repo",
+      "run_id": 38466460792,
+      "elapsed_wall_seconds": 7,
+      "conclusion": "success",
+      "summary": "Owner branch guard succeeded"
+    },
+    {
+      "repo": "DSLitvinov1/lesson3.1",
+      "run_id": 38464557424,
+      "elapsed_wall_seconds": 112,
+      "conclusion": "success",
+      "summary": "Third Windows bridge 32 queue/journal/receipt tests"
+    },
+    {
+      "repo": "DSLitvinov1/lesson3.1",
+      "run_id": 38455676540,
+      "elapsed_wall_seconds": 716,
+      "conclusion": "success",
+      "summary": "All three Windows bridges separately acknowledged tests"
+    },
+    {
+      "repo": "DSLitvinov1/lesson3.1",
+      "run_id": 38463962239,
+      "elapsed_wall_seconds": 140,
+      "conclusion": "success",
+      "summary": "Real remote checkpoint recovery audit, no replay"
+    }
+  ],
+  "scope_warning": "Wall durations may overlap and are not billable machine time; not a statement of prices or total workload."
+}
