@@ -27,6 +27,7 @@ jobs:
           node --check bridge/neurofactory/development/chat_agent/background.js
           node --check bridge/neurofactory/development/chat_agent/content.js
           node --check bridge/neurofactory/development/chat_agent/test_sender.js
+          node --check bridge/neurofactory/development/chat_agent/diagnostics.js
           node bridge/neurofactory/development/chat_agent/test_sender.js
       - name: Package only installable extension files
         run: |
@@ -38,7 +39,7 @@ jobs:
           assert set(manifest['host_permissions'])=={'https://chatgpt.com/*','https://api.github.com/*'}
           assert set(manifest['permissions'])=={'storage','alarms','tabs'}
           assert 'webRequest' not in manifest['permissions'] and 'cookies' not in manifest['permissions']
-          files=('manifest.json','background.js','content.js','README.md')
+          files=('manifest.json','background.js','content.js','diagnostics.html','diagnostics.js','README.md')
           out=pathlib.Path('neurofactory-chat-agent-chrome-edge.zip')
           with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:
               for name in files:z.write(base/name,name)
