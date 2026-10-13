@@ -194,8 +194,6 @@ class DevelopmentQueue:
                 raise DevelopmentQueueError("Cannot restore over existing checkpoint")
             for name in expected:
                 doc = json.loads(body["files"][name])
-                value = checkpoint._load  # Validate canonical signed checkpoint before writing.
-                payload = json.dumps(doc,ensure_ascii=False).encode("utf-8")
                 if doc.get("schema") != 1 or not isinstance(doc.get("data"), dict):
                     raise DevelopmentQueueError("Checkpoint schema changed")
                 checkpoint.validate(doc["data"])
@@ -205,7 +203,11 @@ class DevelopmentQueue:
             # create a file after the existence preflight; never overwrite it.
             created = []
             try:
-                for name in sorted(expected):
+                # Manifest is an atomic commit marker: publish the role files
+                # first. Other coordinators acquire the same global process
+                # lock; readers must not see a committed, partial restore.
+                names = sorted(expected - {self.manifest.name}) + [self.manifest.name]
+                for name in names:
                     path = self.root / name
                     try:
                         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
