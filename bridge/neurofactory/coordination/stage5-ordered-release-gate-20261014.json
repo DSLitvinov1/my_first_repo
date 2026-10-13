@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue_number": 3,
+  "role": "COORDINATOR",
+  "kind": "ordered_stage5_integration_readiness_only",
+  "release_authorized": false,
+  "production_writes_allowed": false,
+  "handoff": {
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "head": "b205a495b51aa125dd8273955c202a177df7a173",
+    "source_file": "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+    "source_sha256": "75197baba20d14fcaa2cb47ad52b94971082d1b3220032d6909ea1886678e6dc",
+    "candidate_sha256": "3f8bcaa10c21eadc6d90250434f88b10f5d1598f2d01476f75931f6546fc5c32",
+    "artifact_id": 11850873678,
+    "verified_runs": [
+      38469770594,
+      38471390414,
+      38471630462,
+      38471630587
+    ],
+    "candidate_code_published": false
+  },
+  "review_owner": {
+    "branch": "neurofactory-review-owned-20261013",
+    "observed_head": "e0a6a915a2c17352f4f7a6d6a542dfc6b5718288",
+    "decision": "PENDING",
+    "reviewed_handoff_commit": null,
+    "reviewed_module_sha256": null,
+    "reviewed_artifact_id": null,
+    "evidence_run": null,
+    "signoff_ref": null
+  },
+  "core": {
+    "branch": "neurofactory-core-queue-owned-20261013",
+    "observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "integration_contract": "PENDING",
+    "approved_minimal_paths": [],
+    "own_tests": [],
+    "required_capabilities": [
+      "2_to_8_distinct_approved_tasks",
+      "single_owner_file_scope",
+      "durable_checkpoint_before_effect",
+      "remote_lease_and_compare_swap",
+      "read_back_github_receipt",
+      "fail_closed_on_unknown_receipt",
+      "no_replay_when_verified_done",
+      "runner_transfer_without_machine_reboot"
+    ]
+  },
+  "future_new_tasks": {
+    "identifiers_reserved": [],
+    "identifiers_approved": false,
+    "repeat_completed_Q090": false,
+    "require_independent_review": true
+  },
+  "protection": {
+    "branch": "neurofactory-public-lab-20261012",
+    "rules_enforced": false,
+    "observed_protected": false
+  },
+  "existing_conflict": {
+    "pull_request": 2,
+    "mixed_owners": [
+      "CORE",
+      "REVIEW"
+    ],
+    "draft": true,
+    "merged": false,
+    "allow_merge": false
+  },
+  "launch_order": [
+    "separate_REVIEW_owner_approves_exact_handoff",
+    "CORE_owns_and_tests_minimal_integration_contract",
+    "COORDINATOR_rechecks_exact_five_heads_and_branch_protection",
+    "COORDINATOR_authorizes_two_or_more_unique_never_finished_tasks",
+    "independent_approval_of_new_task_before_trusted_publisher",
+    "publish_once_then_fetch_receipt_and_persist_checkpoint",
+    "retry_delivery_must_be_noop_and_runner_failover_safe"
+  ],
+  "conditions": {
+    "paid_models_allowed": false,
+    "chatgpt_sending_enabled": false,
+    "restart_shared_windows_allowed": false,
+    "other_projects_writes": false
+  },
+  "evidence_limits": [
+    "Qwen3 model APPROVE is not a separate REVIEW-owner signoff",
+    "Previous 3-runner Windows tests do not validate a newly integrated publisher",
+    "This is an observed coordination snapshot, not a GitHub branch protection ruleset",
+    "No new IDs reserved and no actual new Github publication authorized"
+  ]
+}
