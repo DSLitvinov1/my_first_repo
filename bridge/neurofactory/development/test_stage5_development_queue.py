@@ -197,6 +197,88 @@ os._exit(73)
                               if p.is_file() and p != injected["path"]
                               and not p.name.endswith(".lock")], [])
 
+    def test_two_real_processes_restore_same_checkpoint_only_once(self):
+        # Exercise independent Python interpreters, not in-process threads.
+        self.finish_job(0)
+        original = self.queue.sealed_snapshot()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-concurrent-") as d:
+            home = pathlib.Path(d)
+            shared = home / "recover_to"
+            shared.mkdir()
+            payload = home / "sealed.json"
+            payload.write_text(json.dumps(original), "utf-8")
+            (shared / "foreign-unchanged.txt").write_text("foreign original", "utf-8")
+            barrier = home / "go.txt"
+            script = """
+import json, pathlib, sys, time
+from stage5_development_queue import DevelopmentQueue, DevelopmentQueueError
+from test_stage5_development_queue import PLAN, TASKS
+root, source, trigger, ready = [pathlib.Path(x) for x in sys.argv[1:]]
+ready.write_text('READY', 'utf-8')
+for _ in range(400):
+    if trigger.exists(): break
+    time.sleep(.01)
+else:
+    print('NO_BARRIER', flush=True)
+    sys.exit(7)
+q = DevelopmentQueue(root, PLAN, TASKS)
+try:
+    q.restore_snapshot(json.loads(source.read_text('utf-8')))
+except DevelopmentQueueError:
+    print('RESTORE_REFUSED', flush=True)
+    sys.exit(0)
+print('RESTORE_ACCEPTED', flush=True)
+"""
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(HERE) + os.pathsep + env.get("PYTHONPATH", "")
+            processes = [
+                subprocess.Popen([sys.executable, "-B", "-c", script, str(shared),
+                                  str(payload), str(barrier), str(home / ("ready" + str(i)))],
+                                 env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 text=True) for i in range(2)
+            ]
+            try:
+                for _ in range(200):
+                    if all((home / ("ready" + str(i))).exists() for i in range(2)):
+                        break
+                    __import__("time").sleep(.01)
+                self.assertTrue(all((home / ("ready" + str(i))).exists()
+                                    for i in range(2)), "workers did not reach barrier")
+                barrier.write_text("START", "utf-8")
+                outputs = [process.communicate(timeout=25) for process in processes]
+                self.assertEqual([p.returncode for p in processes], [0, 0],
+                                 outputs)
+                stdout = [pair[0].strip() for pair in outputs]
+                self.assertCountEqual(stdout, ["RESTORE_ACCEPTED", "RESTORE_REFUSED"])
+            finally:
+                for process in processes:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait(timeout=5)
+            self.assertEqual((shared / "foreign-unchanged.txt").read_text("utf-8"),
+                             "foreign original")
+            completed = stages.DevelopmentQueue(shared, PLAN, TASKS)
+            self.assertEqual(completed.sealed_snapshot()["sha256"],
+                             original["sha256"])
+            self.assertEqual(completed.next_job()["id"], TASKS[1]["id"])
+
+    def test_manifest_never_precedes_checkpoint_files(self):
+        original = self.queue.sealed_snapshot()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-manifest-last-") as d:
+            target = stages.DevelopmentQueue(d, PLAN, TASKS)
+            observed = []
+            open_original = stages.os.open
+            def inspect_creation(path, flags, *args, **kwargs):
+                if flags & os.O_EXCL and pathlib.Path(path).name == target.manifest.name:
+                    observed.append({p.name for p in pathlib.Path(d).iterdir()})
+                return open_original(path, flags, *args, **kwargs)
+            with mock.patch.object(stages.os, "open", side_effect=inspect_creation):
+                self.assertTrue(target.restore_snapshot(original))
+            expected_role_files = set(original["body"]["files"]) - {target.manifest.name}
+            self.assertEqual(len(observed), 1)
+            self.assertTrue(expected_role_files.issubset(observed[0]))
+            self.assertNotIn(target.manifest.name, observed[0])
+
     def test_chat_delivery_and_paid_services_remain_blocked(self):
         unsafe=copy.deepcopy(PLAN);unsafe["chat_delivery_paused"]=False
         with self.assertRaises(Exception):
