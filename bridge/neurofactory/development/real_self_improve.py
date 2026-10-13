@@ -96,7 +96,16 @@ def run():
        "or .github/workflows/neurofactory- ending with .yml. "
        "Reject empty segments, . or .., backslash, absolute Windows or Linux paths, "
        "newlines, emoji, question marks, empty file names, lengths over 240, nonstring input. "
-       "Must reject all other projects. Single function, no explanation, no markdown."
+       "IMPORTANT: there are TWO independent allowed path families, not just bridge/neurofactory/. "
+       "The exact valid workflow .github/workflows/neurofactory-real-self-improvement.yml "
+       "MUST return True. The exact valid workflow "
+       ".github/workflows/neurofactory-development-plan.yml MUST also return True. "
+       "The .github directory is not an invalid dot segment: reject only segments "
+       "equal to . or .., never all segments that start with a dot. "
+       "The workflow branch must verify both the required .github/workflows/neurofactory- "
+       "prefix AND the .yml suffix; the source branch must allow bridge/neurofactory/. "
+       "Reject everything else, including other-project.yml and traversals. "
+       "Return a pure single Python function with no explanation and no markdown."
     )
     code=None
     feedback=""
