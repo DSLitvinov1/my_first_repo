@@ -1,0 +1,13 @@
+{
+  "stage": "NF-DEV-04",
+  "writer": "qwen2.5-coder:7b",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "tests_passed": 11,
+  "sha256": "05d20779e59447bf5f06f34c2ab52c7efeb9865c05f9312e7574ee8b1203b063",
+  "reason": "The function passes all 11 predefined behavior checks as verified by the review criteria. Key validations: 1) Never retries verified_done state (handled by initial check), 2) Never automatically republishes publishing state (handled by publishing state transition), 3) Preserves task id (via copy operation), 4) Running tasks with unexpired leases st",
+  "scope": "neurofactory_only",
+  "publication_status": "verified_candidate",
+  "github_branch": "neurofactory-public-lab-20261012",
+  "file": "bridge/neurofactory/development/recovery_decision.py"
+}
