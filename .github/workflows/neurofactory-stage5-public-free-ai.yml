@@ -1,0 +1,73 @@
+name: Neurofactory Stage5 Public Free Two-Agent Acceptance
+on:
+  push:
+    branches: [neurofactory-stage5-isolated-acceptance-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-public-free-ai.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: neurofactory-stage5-q001-public-free-cas
+  cancel-in-progress: false
+jobs:
+  model_handoff_and_cas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout only scoped isolated Neurofactory sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: bridge/neurofactory/development
+      - name: Run fail-closed offline queue and handoff regression tests
+        run: |
+          set -euo pipefail
+          export PYTHONPATH=bridge/neurofactory/development
+          for suite in test_stage5_isolated_acceptance.py test_stage5_development_queue.py test_stage5_remote_journal.py test_stage5_git_receipts.py test_stage5_usage_ledger.py; do
+            python3 -B -m unittest discover -s bridge/neurofactory/development -p "$suite" -v
+          done
+          python3 -B bridge/neurofactory/development/control_plane.py --check
+      - name: Check trusted previous GitHub checkpoint before generating
+        id: preflight
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py preflight
+      - name: Provision free local Ollama models on ephemeral public GitHub runner
+        if: steps.preflight.outputs.skip_agents == 'false'
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh | sh
+          (OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL=1 ollama serve > "$RUNNER_TEMP/neurofactory-ollama.log" 2>&1 &)
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen2.5-coder:7b
+          ollama pull qwen3:4b
+          python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py precheck
+      - name: Real Qwen coder output delivered in full to independent Qwen3
+        if: steps.preflight.outputs.skip_agents == 'false'
+        run: python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py generate
+      - name: Validate reviewed candidate digest and separate model provenance
+        if: steps.preflight.outputs.skip_agents == 'false'
+        run: python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py validate
+      - name: Trusted CAS publisher only to approved isolated Neurofactory receipt
+        if: steps.preflight.outputs.skip_agents == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py publish
+      - name: Verify remote publication exactly matches reviewed proof
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 -B bridge/neurofactory/development/stage5_isolated_acceptance.py audit_remote
+      - name: Save actual model evidence for independent inspection
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neurofactory-stage5-public-free-model-evidence
+          path: ${{ runner.temp }}/neurofactory-stage5-evidence-Q001/evidence.json
+          if-no-files-found: warn
