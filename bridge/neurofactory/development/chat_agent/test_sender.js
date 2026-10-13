@@ -17,7 +17,7 @@ const job={schema:1,task_id:'NF-DEV-02',sequence:digest.slice(0,24),
 const state={};
 const subscribers={};
 const calls=[];
-let badge='', remote=job, sendMode='sent';
+let badge='', remote=job, sendMode='observed';
 const api={
   storage:{local:{
     async get(keys){return Object.fromEntries(keys.filter(k=>k in state).map(k=>[k,state[k]]));},
@@ -29,7 +29,7 @@ const api={
   runtime:{onInstalled:{addListener(fn){subscribers.install=fn}},
     onStartup:{addListener(fn){subscribers.startup=fn}}},
   tabs:{async query(){return [{id:11,url:conversation}]},
-    async sendMessage(id,msg){if(sendMode==='busy')return {submitted:false,reason:'user is actively using composer'};calls.push({id,msg});return {submitted:true}}}
+    async sendMessage(id,msg){if(sendMode==='busy')return {submitted:false,reason:'user is actively using composer'};calls.push({id,msg});return sendMode==='unconfirmed'?{submitted:false,reason:'clicked but own message not observed; do not auto-retry'}:{submitted:true,observed_user_turn:true}}}
 };
 const context={
   chrome:api,crypto:crypto.webcrypto,TextEncoder,TextDecoder,Date,
@@ -47,7 +47,7 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(calls[0].id,11);
   assert.equal(calls[0].msg.text.startsWith(prompt),true);
   assert.equal(calls[0].msg.text.includes('Подтверждение отправки агентом нейрозавода: '+job.sequence+'.'),true);
-  assert.equal(state.attempted[job.sequence].state,'submitted');
+  assert.equal(state.attempted[job.sequence].state,'observed');
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,1,'alarm must not replay same prompt');
   await subscribers.clicked({url:conversation});
@@ -63,32 +63,42 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.attempted={};state.lastAt=0;sendMode='busy';
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(state.attempted[job.sequence],undefined,'pre-send busy state is not permanently locked');
-  sendMode='sent';state.lastAt=0;
+  sendMode='observed';state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
-  assert.equal(state.attempted[job.sequence].state,'submitted','idle composer allows later delivery');
+  assert.equal(state.attempted[job.sequence].state,'observed','idle composer allows later delivery');
+  state.attempted={};state.lastAt=0;sendMode='unconfirmed';
+  const unconfirmedCalls=calls.length;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(state.attempted[job.sequence].state,'unconfirmed','uncertain send is reserved');
+  state.lastAt=0;
+  await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
+  assert.equal(calls.length,unconfirmedCalls+1,'uncertain send must never replay');
   let handlers=[];
   function probe(href,editor,options={}){
     handlers=[];
+    let clickOccurred=false;
+    const deliveredText=prompt+'\n\nПодтверждение отправки агентом нейрозавода: '+job.sequence+'.';
     const fakeDoc={
       activeElement:options.focused?editor:null,
+      querySelectorAll(selector){return clickOccurred && options.visible!==false && selector==='[data-message-author-role="user"]'? [{textContent:deliveredText}]:[];},
       querySelector(selector){
         if(options.generating && selector.includes('stop-button'))return {disabled:false};
         if(selector.includes('prompt-textarea'))return editor;
-        if(selector.includes('send-button'))return {disabled:false,click(){calls.push({sent:true})}};
+        if(selector.includes('send-button'))return {disabled:false,click(){clickOccurred=true;calls.push({sent:true})}};
         return null
       },
       createRange(){return {selectNodeContents(){},collapse(){}}},
-      execCommand(){editor.textContent=prompt;editor.innerText=prompt;return true}
+      execCommand(){editor.textContent=deliveredText;editor.innerText=deliveredText;return true}
     };
     vm.runInNewContext(contentScript,{
       chrome:{runtime:{onMessage:{addListener(f){handlers.push(f)}}}},
       location:{href},document:fakeDoc,
       window:{getSelection(){return {removeAllRanges(){},addRange(){}}}},
-      setTimeout,
+      setTimeout:(fn)=>{setImmediate(fn);return 0},
       InputEvent:class{},
     },{filename:'content.js'});
     return new Promise(resolve=>handlers[0](
-       {type:'NF_SEND_APPROVED_PROMPT',boundUrl:conversation,sequence:job.sequence,text:prompt},
+       {type:'NF_SEND_APPROVED_PROMPT',boundUrl:conversation,sequence:job.sequence,text:deliveredText},
        {},resolve));
   }
   const clean=()=>({innerText:'',textContent:'',focus(){}});
@@ -102,7 +112,11 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(answer.submitted,false,'must not interrupt existing ChatGPT response');
   const before=calls.length;
   answer=await probe(conversation,clean());
-  assert.equal(answer.submitted,true,'known composer can click send');
+  assert.equal(answer.submitted,true,'visible own turn confirms the attempt');
+  assert.equal(answer.observed_user_turn,true,'visible user message must have exact receipt');
   assert.equal(calls.length,before+1,'exactly one UI click');
-  console.log('14 browser handoff checks passed including visible receipt and safe busy retry; actual ChatGPT send not tested');
+  const noReceipt=await probe(conversation,clean(),{visible:false});
+  assert.equal(noReceipt.submitted,false,'button click alone is not proof of visible delivery');
+  assert.equal(noReceipt.observed_user_turn,false,'absence of own turn cannot be accepted');
+  console.log('18 browser handoff assertions passed: observed own turn, no replay, user text protected; live authenticated send not tested');
 })().catch(e=>{console.error(e);process.exitCode=1});
