@@ -125,7 +125,10 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
       },
       querySelector(selector){
         if(options.generating && selector.includes('stop-button'))return {disabled:false};
-        if(selector.includes('prompt-textarea'))return editor;
+        if(options.noEditor && (selector.includes('prompt-textarea')||selector.includes('composer-text-input')))return null;
+        if(options.altWrapper && selector.includes('#prompt-textarea'))return null;
+        if(options.altWrapper && selector.includes('prompt-textarea'))return {querySelector(){return editor;}};
+        if(selector.includes('prompt-textarea')||selector.includes('composer-text-input'))return editor;
         if(selector.includes('send-button'))return {disabled:false,click(){clickOccurred=true;calls.push({sent:true})}};
         return null
       },
@@ -147,7 +150,9 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
        {type:'NF_SEND_APPROVED_PROMPT',boundUrl:conversation,sequence:job.sequence,text:deliveredText},
        {},resolve));
   }
-  const clean=()=>({innerText:'',textContent:'',focus(){}});
+  const clean=()=>({tagName:'DIV',innerText:'',textContent:'',
+    getAttribute(key){return key==='contenteditable'?'true':null},focus(){},
+    dispatchEvent(){}});
   let answer=await probe('https://chatgpt.com/c/other',clean());
   // Existing tests below continue to ensure wrong-chat isolation.
   assert.equal(answer.submitted,false,'wrong conversation must be denied');
@@ -157,6 +162,13 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   assert.equal(answer.submitted,false,'focused composer must be left alone');
   answer=await probe(conversation,clean(),{generating:true});
   assert.equal(answer.submitted,false,'must not interrupt existing ChatGPT response');
+  const noEditorCalls=calls.length;
+  answer=await probe(conversation,clean(),{noEditor:true});
+  assert.equal(answer.submitted,false,'missing composer must not initiate a send');
+  assert.equal(answer.reason,'composer not found in current ChatGPT interface');
+  assert.equal(calls.length,noEditorCalls,'no false send for missing editor');
+  answer=await probe(conversation,clean(),{altWrapper:true});
+  assert.equal(answer.submitted,true,'contenteditable nested in wrapper is supported');
   const before=calls.length;
   answer=await probe(conversation,clean());
   assert.equal(answer.submitted,true,'visible own turn confirms the attempt');
@@ -188,5 +200,5 @@ const tick=()=>new Promise(r=>setTimeout(r,20));
   state.lastAt=0;
   await subscribers.alarm({name:'nf-roadmap-poll'});await tick();
   assert.equal(calls.length,previousCount+1,'new milestone must not be sent twice');
-  console.log('Browser handoff checks passed: exact chat, absent-listener F5 recovery, legacy error safe retry, uncertain send never repeats, safe composer, automatic next task. Live sending remains unverified.');
+  console.log('Browser handoff checks passed: exact chat, alternate composer detection, missing input diagnosed, nested editor, no duplicates, safe message editing, independent next task. Live sending remains unverified.');
 })().catch(e=>{console.error(e);process.exitCode=1});
