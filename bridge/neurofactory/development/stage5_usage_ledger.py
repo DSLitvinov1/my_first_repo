@@ -43,8 +43,22 @@ def append_checked(ledger,entry):
     existing=ledger.get("runs")
     if not isinstance(existing,list) or not isinstance(entry,dict):
         raise UsageError("Unsupported usage")
-    if entry.get("repo") not in ALLOWED_REPOS or entry.get("kind")!="verified_actions_run":
+    if (entry.get("repo") not in ALLOWED_REPOS or
+            entry.get("kind")!="verified_actions_run" or
+            type(entry.get("run_id")) is not int or entry["run_id"] < 1000000 or
+            type(entry.get("elapsed_wall_seconds")) is not int or
+            not 0 <= entry["elapsed_wall_seconds"] <= 86400 or
+            entry.get("conclusion") not in ("success","failure","cancelled","timed_out")):
         raise UsageError("Unverified run evidence")
+    for historic in existing:
+        if (not isinstance(historic,dict) or
+                type(historic.get("run_id")) is not int or
+                type(historic.get("elapsed_wall_seconds")) is not int or
+                historic["elapsed_wall_seconds"] < 0):
+            raise UsageError("Corrupt prior resource evidence")
+    billing=ledger.get("monetary_charges")
+    if not isinstance(billing,dict) or billing.get("verified_amount") is not None:
+        raise UsageError("Billing must remain independently unverified")
     for item in existing:
         if item.get("run_id")==entry.get("run_id"):
             if all(item.get(k)==entry.get(k) for k in ("repo","conclusion","elapsed_wall_seconds")):
@@ -59,6 +73,4 @@ def append_checked(ledger,entry):
     changed["observed_total_elapsed_wall_minutes"]=round(
         changed["observed_total_elapsed_wall_seconds"]/60,2)
     changed["unique_run_ids_verified"]=True
-    if changed.get("monetary_charges",{}).get("verified_amount") is not None:
-        raise UsageError("Do not fabricate monetary billing")
     return changed,True
