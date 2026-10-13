@@ -10,6 +10,22 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
       !/^[a-f0-9]{24}$/.test(req.sequence||"")){
     respond({submitted:false,reason:"unapproved prompt envelope"});return;
   }
+  const receipt="Подтверждение отправки агентом нейрозавода: "+req.sequence+".";
+  if(!prompt.endsWith(receipt)){
+    respond({submitted:false,reason:"missing expected delivery receipt"});return;
+  }
+  // The sender may record delivery only after its own message is visible in
+  // the bound thread. Never inspect assistant or other conversations.
+  async function waitForOwnVisibleTurn(){
+    for(let attempt=0;attempt<12;attempt++){
+      const userTurns=Array.from(document.querySelectorAll('[data-message-author-role="user"]')||[]);
+      if(userTurns.slice(-4).some(element=>(element.textContent||"").includes(receipt))){
+        return true;
+      }
+      await new Promise(resolve=>setTimeout(resolve,500));
+    }
+    return false;
+  }
   const editor=document.querySelector("#prompt-textarea[contenteditable='true']")||
                document.querySelector("[data-testid='prompt-textarea'][contenteditable='true']");
   if(!editor||editor.innerText.trim()||editor.textContent.trim()){
@@ -54,8 +70,9 @@ chrome.runtime.onMessage.addListener((req, _sender, respond)=>{
         respond({submitted:false,reason:"send button missing or disabled"});return;
       }
       send.click();
-      // Click is not proof of acceptance by ChatGPT; caller records only the attempt.
-      respond({submitted:true,reason:"clicked; server delivery remains unverified"});
+      const visible=await waitForOwnVisibleTurn();
+      respond({submitted:visible,observed_user_turn:visible,
+        reason:visible?"own user message visible in bound chat":"clicked but own message not observed; do not auto-retry"});
     }catch(err){respond({submitted:false,reason:String(err).slice(0,110)});}
   })();
   return true;
