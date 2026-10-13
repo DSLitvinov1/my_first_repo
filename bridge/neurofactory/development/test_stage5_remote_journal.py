@@ -175,6 +175,35 @@ class JournalTests(unittest.TestCase):
             coord.recover(120)
         self.assertEqual(self.remote.writes,2)
 
+    def test_independent_reviewer_alleged_attempt_rewind_is_rejected(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        stale=self.queue.sealed_snapshot()
+        coord.claim(JOBS[0]["id"],"writer",100,10)
+        newer=journal.read()[0]
+        with self.assertRaises(journal.RemoteJournalError):
+            journal._no_rewind(newer,stale)
+        self.assertEqual(self.remote.writes,2)
+
+    def test_independent_reviewer_alleged_renamed_task_is_rejected(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        before=self.queue.sealed_snapshot()
+        altered=copy.deepcopy(before)
+        key="nf-dev-05-q001-writer.json"
+        entry=json.loads(altered["body"]["files"][key])
+        entry["data"]["id"]="NF-DEV-05-Q999-writer"
+        altered["body"]["files"][key]=json.dumps(entry)
+        with self.assertRaises(journal.RemoteJournalError):
+            journal._no_rewind(before,altered)
+
+    def test_invented_top_level_attempts_not_valid_remote_checkpoint(self):
+        invented={"body":{"schema":1,"identity_sha256":"a1b2c3",
+                 "attempts":3,"scope":"neurofactory_only",
+                 "chat_delivery":"paused_by_user"},"sha256":"bad"}
+        with self.assertRaises(journal.RemoteJournalError):
+            journal._validate(invented)
+
     def test_external_write_requires_trusted_publisher_token(self):
         self.patcher.stop()
         try:
