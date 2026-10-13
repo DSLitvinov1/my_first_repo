@@ -4,7 +4,7 @@
   "record_type": "sampled_execution_and_expense_audit",
   "period": "2026-10-13",
   "source": "read-only GitHub Actions run metadata and two validated Windows logs",
-  "scope": "Fifteen named Stage4/Stage5 runs, including failures and security review timeout; not a billing invoice.",
+  "scope": "22 named verified Stage4/5 runs, including failed isolated Qwen attempts, Windows recovery checks and independent security reviews; not an account invoice.",
   "runs": [
     {
       "run_id": 38444910309,
@@ -110,11 +110,67 @@
       "repo": "DSLitvinov1/my_first_repo",
       "conclusion": "failure",
       "elapsed_wall_seconds": 361
+    },
+    {
+      "run_id": 38457825623,
+      "kind": "isolated_live_pair_first_writer_safe_failure",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 232
+    },
+    {
+      "run_id": 38458469436,
+      "kind": "isolated_first_model_pass_second_model_rejected",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 347
+    },
+    {
+      "run_id": 38458998710,
+      "kind": "independent_security_review_initial_actionable_rejection",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 249
+    },
+    {
+      "run_id": 38459785108,
+      "kind": "independent_security_review_post_recovery_fix",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 229
+    },
+    {
+      "run_id": 38460117024,
+      "kind": "windows_137_regressions_and_recovery_safety",
+      "repo": "DSLitvinov1/lesson3.1",
+      "platform": "self-hosted Windows runner",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 177
+    },
+    {
+      "run_id": 38460498376,
+      "kind": "independent_security_review_incorrect_schema_counterexample",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "failure",
+      "elapsed_wall_seconds": 174
+    },
+    {
+      "run_id": 38460887419,
+      "kind": "no_cost_writer_reviewer_contract_preflight",
+      "repo": "DSLitvinov1/my_first_repo",
+      "platform": "GitHub Actions hosted",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 10
     }
   ],
   "unique_run_ids_verified": true,
-  "observed_total_elapsed_wall_seconds": 1873,
-  "observed_total_elapsed_wall_minutes": 31.22,
+  "observed_total_elapsed_wall_seconds": 3291,
+  "observed_total_elapsed_wall_minutes": 54.85,
   "usage_note": "Wall-clock durations are not billable minutes and cannot establish monetary charges.",
   "new_paid_ai_api_calls_during_stage5_windows_audits": 0,
   "model_usage": "Previously executed Qwen2.5-Coder 7B and Qwen3 4B with local Ollama; two new stage5 Windows jobs invoked no models.",
