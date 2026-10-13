@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "task_id": "NF-DEV-05-Q001",
+  "source_run": 38461121295,
+  "decision": "REJECT",
+  "writer_model": "qwen2.5-coder:7b",
+  "reviewer_model": "qwen3:4b",
+  "candidate_sha256": "98757c588173a62234d2b466915243e3d86abd2edf6b0b254d2a5c514b3303cb",
+  "exact_digest_reviewed": true,
+  "publication_attempted": false,
+  "reason_categories": [
+    "invalid inputs are silently skipped instead of rejected",
+    "path validation permits targets outside the required project subdirectory",
+    "tuple of original mutable dictionaries does not make registry immutable",
+    "field types and list shape are not validated",
+    "independent reviewer reported duplicate-handling concerns"
+  ],
+  "safety": {
+    "main_untouched": true,
+    "no_paid_services": true,
+    "chat_sender_paused": true
+  },
+  "next": "Run isolated public free acceptance after strict writer/reviewer requirements; publish only after distinct independent APPROVE and static checks."
+}
