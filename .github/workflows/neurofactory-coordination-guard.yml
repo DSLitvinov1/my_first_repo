@@ -1,0 +1,27 @@
+name: Neurofactory Chat Lane Ownership Guard
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/**'
+      - '.github/workflows/neurofactory-coordination-guard.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordination-ownership-validation
+  cancel-in-progress: false
+jobs:
+  ownership_safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate immutable role-to-branch path ownership
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B bridge/neurofactory/coordination/check_lanes.py --check-policy
+          python -B -m unittest discover -s bridge/neurofactory/coordination -p test_check_lanes.py -v
