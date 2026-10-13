@@ -52,7 +52,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Recover previous first-model proof from exact GitHub checkpoint
+        id: prior
+        run: |
+          mkdir -p nf5-one-proof
+          python -B bridge/neurofactory/development/stage5_live_restore_artifact.py NF-DEV-05-Q001 nf5-one-proof
       - name: Install two free local Qwen models without tokens
+        if: steps.prior.outputs.restored != 'true'
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
           (ollama serve > "$RUNNER_TEMP/nf5-one.log" 2>&1 &)
@@ -64,6 +70,7 @@ jobs:
           ollama pull qwen2.5-coder:7b
           ollama pull qwen3:4b
       - name: Writer creates first task, independent reviewer checks exact code
+        if: steps.prior.outputs.restored != 'true'
         env:
           PYTHONDONTWRITEBYTECODE: '1'
           OLLAMA_MAX_LOADED_MODELS: '1'
@@ -124,7 +131,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Restore second approved task if already verified in GitHub
+        id: prior
+        run: |
+          mkdir -p nf5-two-proof
+          python -B bridge/neurofactory/development/stage5_live_restore_artifact.py NF-DEV-05-Q002 nf5-two-proof
       - name: Start two no-cost local independent Qwen models
+        if: steps.prior.outputs.restored != 'true'
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
           (ollama serve > "$RUNNER_TEMP/nf5-two.log" 2>&1 &)
@@ -136,6 +149,7 @@ jobs:
           ollama pull qwen2.5-coder:7b
           ollama pull qwen3:4b
       - name: First agent writes second distinct task; reviewer sees actual source
+        if: steps.prior.outputs.restored != 'true'
         env:
           PYTHONDONTWRITEBYTECODE: '1'
           OLLAMA_MAX_LOADED_MODELS: '1'
