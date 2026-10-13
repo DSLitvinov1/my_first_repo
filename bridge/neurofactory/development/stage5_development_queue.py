@@ -5,6 +5,7 @@ publisher. No models, paid APIs, ChatGPT sender, or GitHub writes occur in this 
 """
 import hashlib
 import json
+import os
 import pathlib
 import re
 
@@ -200,7 +201,26 @@ class DevelopmentQueue:
                 checkpoint.validate(doc["data"])
                 if doc.get("sha256") != hashlib.sha256(_canonical(doc["data"])).hexdigest():
                     raise DevelopmentQueueError("Tampered role checkpoint")
-            for name in sorted(expected):
-                (self.root / name).write_text(body["files"][name], "utf-8")
-            self._snapshot()
+            # Reserve every checkpoint with O_EXCL. A concurrent initializer may
+            # create a file after the existence preflight; never overwrite it.
+            created = []
+            try:
+                for name in sorted(expected):
+                    path = self.root / name
+                    try:
+                        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    except FileExistsError as exc:
+                        raise DevelopmentQueueError(
+                            "Concurrent checkpoint initialization; restore refused") from exc
+                    created.append(path)
+                    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as stream:
+                        stream.write(body["files"][name])
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                self._snapshot()
+            except BaseException:
+                # Only remove checkpoints created by this restore invocation.
+                for path in reversed(created):
+                    path.unlink(missing_ok=True)
+                raise
             return True
