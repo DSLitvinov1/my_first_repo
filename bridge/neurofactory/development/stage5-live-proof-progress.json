@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "stage": "NF-DEV-05",
+  "scope": "isolated_non_chat_real_queue",
+  "branch": "neurofactory-stage5-live-e2e-20261013",
+  "status": "independent_security_gate_pending",
+  "chat_delivery_paused": true,
+  "paid_ai_services_used": false,
+  "main_branch_modified": false,
+  "other_projects_modified": false,
+  "actual_remote_journal": {
+    "path": "bridge/neurofactory/development/stage5-live-e2e-journal.json",
+    "commit": "5e7a9b5de55503cb2cc090ec67a1758036636a7a",
+    "persisted_across_workflow_runs": true,
+    "commit_count": 1,
+    "states": [
+      "queued",
+      "queued"
+    ]
+  },
+  "previous_agent_runs": [
+    {
+      "id": 38457825623,
+      "conclusion": "failure",
+      "reason": "first code failed bounded acceptance",
+      "no_publication": true
+    },
+    {
+      "id": 38458469436,
+      "conclusion": "failure",
+      "first_task_result": "Qwen2.5-created helper passed 12 tests and Qwen3 REVIEW_OK",
+      "second_task_result": "Qwen2.5 proposed code failed test case repeatedly",
+      "no_publication": true
+    }
+  ],
+  "windows": {
+    "run": 38461128712,
+    "conclusion": "success",
+    "total_regressions": 140,
+    "security_adversarial_tests": "passed",
+    "exact_checkpoint_recovery": "passed"
+  },
+  "independent_security": {
+    "first_run": 38458998710,
+    "second_run": 38459785108,
+    "third_run": 38460498376,
+    "latest_run": 38461101666,
+    "latest_status": "in_progress",
+    "acceptance": "not_yet_granted"
+  },
+  "publication_guard": {
+    "accepted_tasks_published": 0,
+    "replay_commits": 0,
+    "live_publisher_enabled": false,
+    "prepared_new_workflow": "bridge/neurofactory/development/stage5-live-workflow-prepared.yml"
+  },
+  "dependency": "Stage02 ChatGPT delivery intentionally deferred; do not close Stage05."
+}
