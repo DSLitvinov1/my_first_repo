@@ -25,8 +25,8 @@ def run():
       "Publisher's remote receipt verification happens in a DIFFERENT trusted component; "
       "checkpoint state 'needs_receipt_check' intentionally forbids automatic republishing. "
       "One test forcibly kills its OWN small child process after saving a running checkpoint, "
-      "then reopens the checkpoint and resumes the task. Another test forces a crash BEFORE os.replace and proves the original checkpoint remains intact. The standard POSIX durability sequence is: fsync temporary file, atomic rename within same directory, fsync parent directory. Before rename the old valid checkpoint remains. After rename the new valid checkpoint exists. Do not claim that fsync and rename need to be one syscall. A real reserve Windows runner already passed the earlier seven own-process crash tests, GitHub run 38429217358. An eighth check simulates Windows os.replace raising PermissionError while the target is in use; the valid old checkpoint must remain untouched. This checkpoint is scoped to abrupt PROCESS termination, not arbitrary power loss during NTFS filesystem metadata updates. Failure to replace never marks the new task state completed, and the prior file remains intact. If rejecting, specify a concrete counterexample or function and mode of failure. No user programs are touched. "
-      "Acceptance behavior: eight tests passed, including actual subprocess termination, "
+      "then reopens the checkpoint and resumes the task. Another test forces a crash BEFORE os.replace and proves the original checkpoint remains intact. The standard POSIX durability sequence is: fsync temporary file, atomic rename within same directory, fsync parent directory. Before rename the old valid checkpoint remains. After rename the new valid checkpoint exists. Do not claim that fsync and rename need to be one syscall. A real reserve Windows runner already passed the earlier seven own-process crash tests, GitHub run 38429217358. Two further tests prove a temporary sharing violation is retried once and a permanently locked file fails with an explicit exception while the last valid checkpoint remains intact. The implementation uses at most three replacement attempts and never silently treats a failed replace as a successful checkpoint. An earlier eighth check simulates Windows os.replace raising PermissionError while the target is in use; the valid old checkpoint must remain untouched. This checkpoint is scoped to abrupt PROCESS termination, not arbitrary power loss during NTFS filesystem metadata updates. Failure to replace never marks the new task state completed, and the prior file remains intact. If rejecting, specify a concrete counterexample or function and mode of failure. No user programs are touched. "
+      "Acceptance behavior: nine tests passed, including actual subprocess termination, "
       "duplicate claim denial, irreversible verified_done, bounded retries, detecting changed "
       "checkpoint contents and no duplicate publication after interrupted publishing. "
       "You must independently inspect source and assess these exact properties. "
@@ -56,7 +56,7 @@ def run():
             "reviewer":"qwen3:4b","review_verdict":"REVIEW_OK",
             "source_sha256":digest,"reason":reason,
             "actual_interruption_checked":True,
-            "checks_passed":8,"scope":"neurofactory_only"}
+            "checks_passed":9,"scope":"neurofactory_only"}
     OUTPUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n","utf-8")
     print("NEUROFACTORY_CHECKPOINT_INDEPENDENT_APPROVED",digest,flush=True)
 

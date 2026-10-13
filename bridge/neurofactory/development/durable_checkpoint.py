@@ -4,6 +4,7 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 from contextlib import contextmanager
 from recovery_decision import resume_unfinished
 
@@ -76,7 +77,17 @@ def _save(target, task):
             stream.write(payload)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(name, target)
+        last_error = None
+        for trial in range(3):
+            try:
+                os.replace(name, target)
+                break
+            except PermissionError as error:
+                last_error = error
+                if trial < 2:
+                    time.sleep(0.05 * (trial + 1))
+        else:
+            raise CheckpointError("Checkpoint replacement was blocked; old state retained") from last_error
         if os.name != "nt":
             fd = os.open(str(target.parent), os.O_RDONLY)
             try:

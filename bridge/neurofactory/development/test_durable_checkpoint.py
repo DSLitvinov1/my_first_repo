@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import durable_checkpoint as store
 
 
@@ -56,6 +57,27 @@ store.transition(Path(sys.argv[1]),'queued','running',lease_until=120)
                 store.transition(self.path, "queued", "running", lease_until=120)
         old = store.load(self.path)
         self.assertEqual((old["state"], old["attempts"]), ("queued", 0))
+
+    def test_permanent_file_lock_preserves_previous_state(self):
+        with mock.patch.object(store.os, "replace", side_effect=PermissionError("busy")):
+            with self.assertRaises(store.CheckpointError):
+                store.transition(self.path, "queued", "running", lease_until=130)
+        record = store.load(self.path)
+        self.assertEqual((record["state"], record["attempts"]), ("queued", 0))
+
+    def test_temporary_file_lock_retries_and_commits_once(self):
+        original = store.os.replace
+        count = [0]
+        def transient(src, dst):
+            count[0] += 1
+            if count[0] == 1:
+                raise PermissionError("temporary sharing violation")
+            return original(src, dst)
+        with mock.patch.object(store.os, "replace", side_effect=transient):
+            updated = store.transition(self.path, "queued", "running", lease_until=130)
+        self.assertEqual(count[0], 2)
+        self.assertEqual(updated["attempts"], 1)
+        self.assertEqual(store.load(self.path)["state"], "running")
 
     def test_publishing_interruption_never_resubmits(self):
         store.transition(self.path, "queued", "running", lease_until=100)
