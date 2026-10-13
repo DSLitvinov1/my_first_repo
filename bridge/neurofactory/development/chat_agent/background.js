@@ -75,7 +75,8 @@ async function poll() {
     const reply=await chrome.tabs.sendMessage(matched.id,{type:"NF_SEND_APPROVED_PROMPT",boundUrl:cfg.chatUrl,
       sequence:job.sequence,text:outgoingText});
     const safeBeforeSend=new Set([
-      "composer unavailable or occupied","user is actively using composer",
+      "composer unavailable or occupied","composer not found in current ChatGPT interface",
+      "composer contains user text","user is actively using composer",
       "response currently generating","wrong conversation","conversation changed before send",
       "generation began before send"
     ]);
@@ -85,7 +86,8 @@ async function poll() {
     }else if(safeBeforeSend.has(reply?.reason)){
       // Explicit pre-send cancellation is safe to retry later. Ambiguous failures stay reserved.
       delete attempt[job.sequence];
-      await note("COMPOSER_BUSY",reply?.reason||"");
+      await note(reply?.reason==="composer not found in current ChatGPT interface"?
+                 "COMPOSER_NOT_FOUND":"COMPOSER_BUSY",reply?.reason||"");
     }else{
       attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now()};
       await note("UNCONFIRMED",reply?.reason||"no response");
