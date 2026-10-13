@@ -1,4 +1,5 @@
 name: Neurofactory Stage4 One Real Two-Agent Durable Execution
+# Recheck strict publication payload type before launching real agents.
 on:
   push:
     branches: [neurofactory-stage4-live-integration-20261013]
