@@ -11,8 +11,8 @@
   ],
   "roles": {
     "writer": {
-      "model": "qwen2.5-coder:1.5b",
-      "work": "Propose narrow improvements of Neurofactory itself according to current approved roadmap",
+      "model": "qwen2.5-coder:3b",
+      "work": "Propose bounded changes to real Neurofactory source only, starting with path policy; independent Qwen3 review and tests required before publishing",
       "allowed_actions": [
         "read_public_neurofactory",
         "propose_patch"
@@ -40,7 +40,7 @@
     },
     "chat_sender": {
       "work": "Read only approved roadmap outbox and deliver exactly once to explicitly bound conversation",
-      "activation": "requires_user_bound_authenticated_chat",
+      "activation": "paused_by_user_until_explicit_resumption",
       "allowed_actions": [
         "send_approved_prompt_once"
       ],
@@ -62,7 +62,9 @@
     "no_task_replays": true,
     "no_parallel_heavy_workers": true,
     "do_not_fake_chat_delivery": true,
-    "report_ready_prompt_every_reply": true
+    "report_ready_prompt_every_reply": true,
+    "chat_delivery_paused_by_user": true,
+    "core_development_may_continue_independently": true
   },
   "current_stage_source": "bridge/neurofactory/development/roadmap.json",
   "stage_resolution": "Read active milestone at each cycle; never use a stale cached stage or replay verified work"
