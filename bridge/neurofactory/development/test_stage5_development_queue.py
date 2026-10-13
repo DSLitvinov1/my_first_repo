@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import stage5_development_queue as stages
 import stage4_queue as stage4
@@ -173,6 +174,28 @@ os._exit(73)
         snapshot=self.queue.sealed_snapshot()
         with self.assertRaises(stages.DevelopmentQueueError):
             self.queue.restore_snapshot(snapshot)
+
+    def test_concurrent_checkpoint_creation_cannot_be_overwritten(self):
+        snapshot = self.queue.sealed_snapshot()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-race-") as directory:
+            restored = stages.DevelopmentQueue(directory, PLAN, TASKS)
+            actual_open = stages.os.open
+            injected = {"happened": False, "path": None}
+            def concurrent_create(path, flags, *args, **kwargs):
+                if not injected["happened"] and flags & os.O_EXCL:
+                    injected["happened"] = True
+                    injected["path"] = pathlib.Path(path)
+                    injected["path"].write_text("other_worker_checkpoint", "utf-8")
+                return actual_open(path, flags, *args, **kwargs)
+            with mock.patch.object(stages.os, "open", side_effect=concurrent_create):
+                with self.assertRaises(stages.DevelopmentQueueError):
+                    restored.restore_snapshot(snapshot)
+            self.assertTrue(injected["happened"])
+            self.assertEqual(injected["path"].read_text("utf-8"),
+                             "other_worker_checkpoint")
+            self.assertEqual([p for p in pathlib.Path(directory).iterdir()
+                              if p.is_file() and p != injected["path"]
+                              and not p.name.endswith(".lock")], [])
 
     def test_chat_delivery_and_paid_services_remain_blocked(self):
         unsafe=copy.deepcopy(PLAN);unsafe["chat_delivery_paused"]=False
