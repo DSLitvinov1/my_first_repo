@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "stage": "NF-DEV-05",
+  "kind": "three_task_queue_incremental_acceptance",
+  "status": "windows_fixture_sequence_verified_external_model_and_journal_gates_pending",
+  "deployment_branch": "neurofactory-public-lab-20261012",
+  "scope": "bridge/neurofactory only",
+  "auto_run_models": false,
+  "chat_delivery_paused": true,
+  "other_projects_modified": false,
+  "workflow_runs": [
+    {
+      "id": 38453645510,
+      "conclusion": "success"
+    },
+    {
+      "id": 38454125178,
+      "conclusion": "success"
+    },
+    {
+      "id": 38454351739,
+      "conclusion": "success"
+    },
+    {
+      "id": 38454958275,
+      "conclusion": "success"
+    }
+  ],
+  "full_test_suite": {
+    "last_windows_run": 38454958275,
+    "passed": 134,
+    "conclusion": "success"
+  },
+  "verified_behaviors": [
+    "Three distinct approved task identities processed sequentially in Windows fixtures",
+    "Independent writer/reviewer/publisher role checkpoints",
+    "Actual owned child exit and restricted retry",
+    "Cross-process local state persistence and sealed restore",
+    "GitHub CAS journal conflict and stale rewind protections validated using mocked GitHub API",
+    "No replay after task completion",
+    "Wrong repo, wrong path, failed reviewer and untrusted receipt rejected",
+    "Archived Stage4 verified state supported by old and updated tests"
+  ],
+  "verified_historical_models": [
+    "qwen2.5-coder:7b",
+    "qwen3:4b"
+  ],
+  "new_live_model_tasks_executed": 0,
+  "actual_github_stage5_state_write_tested": false,
+  "reviewer_workflow_run": 38455062233,
+  "reviewer_verdict": "pending",
+  "future_approved_jobs": [
+    "NF-DEV-05-Q001",
+    "NF-DEV-05-Q002",
+    "NF-DEV-05-Q003"
+  ],
+  "limitations": [
+    "Stage5 tasks were fixture-backed validations and have not each been executed by live Qwen models.",
+    "Production GitHub CAS state write has mock transport verification, not a real end-to-end write in the approved branch.",
+    "Live model dispatcher is intentionally disabled until an independent security verdict and explicit new-task integration gate.",
+    "GitHub billing not available; no claim of zero total expenses.",
+    "ChatGPT delivery is still user-deferred, so full milestone cannot close."
+  ]
+}

@@ -4,7 +4,7 @@
   "record_type": "sampled_execution_and_expense_audit",
   "period": "2026-10-13",
   "source": "read-only GitHub Actions run metadata and two validated Windows logs",
-  "scope": "Ten explicitly recorded Stage4/Stage5 and legacy workflow maintenance runs only, including failed runs. Not a billing invoice or all project runs.",
+  "scope": "Fourteen individually identified, verified Stage4/5 and historical CI maintenance runs, not an invoice or all project compute.",
   "runs": [
     {
       "run_id": 38444910309,
@@ -70,11 +70,43 @@
       "platform": "GitHub Actions hosted",
       "conclusion": "success",
       "elapsed_wall_seconds": 7
+    },
+    {
+      "run_id": 38453645510,
+      "kind": "stage5_three_task_durable_windows_baseline",
+      "platform": "self-hosted Windows runner",
+      "repo": "DSLitvinov1/lesson3.1",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 86
+    },
+    {
+      "run_id": 38454125178,
+      "kind": "stage5_remote_journal_windows_integration",
+      "platform": "self-hosted Windows runner",
+      "repo": "DSLitvinov1/lesson3.1",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 167
+    },
+    {
+      "run_id": 38454351739,
+      "kind": "stage5_full_121_regressions_windows",
+      "platform": "self-hosted Windows runner",
+      "repo": "DSLitvinov1/lesson3.1",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 185
+    },
+    {
+      "run_id": 38454958275,
+      "kind": "stage5_full_134_regressions_and_receipts_windows",
+      "platform": "self-hosted Windows runner",
+      "repo": "DSLitvinov1/lesson3.1",
+      "conclusion": "success",
+      "elapsed_wall_seconds": 127
     }
   ],
   "unique_run_ids_verified": true,
-  "observed_total_elapsed_wall_seconds": 947,
-  "observed_total_elapsed_wall_minutes": 15.78,
+  "observed_total_elapsed_wall_seconds": 1512,
+  "observed_total_elapsed_wall_minutes": 25.2,
   "usage_note": "Wall-clock durations are not billable minutes and cannot establish monetary charges.",
   "new_paid_ai_api_calls_during_stage5_windows_audits": 0,
   "model_usage": "Previously executed Qwen2.5-Coder 7B and Qwen3 4B with local Ollama; two new stage5 Windows jobs invoked no models.",
@@ -85,5 +117,11 @@
     "reason": "GitHub Actions account billing, Windows power/equipment and any plan charges were not accessible; do not declare zero spending."
   },
   "on_going_ledger_rule": "Append only confirmed distinct run IDs, record measured wall time separately from verified provider charges; never infer a price from public/free assumptions.",
-  "legacy_workflows_note": "Automatic old tests mistakenly assumed Stage4 active; historical workflows now scoped so completion does not restart old AI jobs or outbox."
+  "legacy_workflows_note": "Automatic old tests mistakenly assumed Stage4 active; historical workflows now scoped so completion does not restart old AI jobs or outbox.",
+  "latest_windows_stage5_runs": [
+    38453645510,
+    38454125178,
+    38454351739,
+    38454958275
+  ]
 }
