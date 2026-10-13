@@ -111,6 +111,33 @@ class JournalTests(unittest.TestCase):
             with self.assertRaises(journal.RemoteJournalError):
                 journal.checkpoint_to_github(another)
 
+    def test_stale_queue_cannot_rewind_verified_remote_checkpoint(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-old-state-") as dir_old:
+            stale=tasks.DevelopmentQueue(dir_old,PLAN,JOBS)
+            stale.restore_snapshot(self.queue.sealed_snapshot())
+            coord.claim(JOBS[0]["id"],"writer",100,10)
+            coord.before_effect(JOBS[0]["id"],"writer",source_sha256="a"*64)
+            self.queue.acknowledge(JOBS[0]["id"],"writer","1"*40,
+                                   verify_remote=lambda *args:True)
+            journal.checkpoint_to_github(self.queue)
+            old_count=self.remote.writes
+            with self.assertRaises(journal.RemoteJournalError):
+                journal.checkpoint_to_github(stale)
+            self.assertEqual(self.remote.writes,old_count)
+
+    def test_old_running_snapshot_cannot_undo_publishing_intent(self):
+        coord=journal.DurableCoordinator(self.queue)
+        coord.restore_if_exists()
+        coord.claim(JOBS[0]["id"],"writer",100,10)
+        with tempfile.TemporaryDirectory(prefix="nf-stage5-unresolved-") as earlier_dir:
+            earlier=tasks.DevelopmentQueue(earlier_dir,PLAN,JOBS)
+            earlier.restore_snapshot(self.queue.sealed_snapshot())
+            coord.before_effect(JOBS[0]["id"],"writer",source_sha256="a"*64)
+            with self.assertRaises(journal.RemoteJournalError):
+                journal.checkpoint_to_github(earlier)
+
     def test_external_write_requires_trusted_publisher_token(self):
         self.patcher.stop()
         try:
