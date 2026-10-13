@@ -90,7 +90,7 @@ def ask(model,prompt):
         raise ValueError("Publisher token must not reach a model")
     request_body={"model":model,"prompt":prompt[:7500],"stream":False,
        "keep_alive":"0","think":False,
-       "options":{"num_ctx":3500,"num_predict":400,"num_thread":4,"num_gpu":0,"temperature":0}}
+       "options":{"num_ctx":4500,"num_predict":650,"num_thread":4,"num_gpu":0,"temperature":0}}
     if model=="qwen3:4b":request_body["format"]="json"
     request=urllib.request.Request("http://127.0.0.1:11434/api/generate",
         data=json.dumps(request_body).encode(),method="POST",
@@ -110,6 +110,10 @@ def write(function,objective):
         "For task IDs, use len(set(items)) to reject duplicates (do NOT call set.add). "
         "The required prefix is exactly NF-DEV-05-Q followed by 3 digits, total length 14. "
         "For receipt flags compare with is True / is False, never trust truthy integers. "
+        "CRITICAL: numeric 1 is NOT Boolean True! In Python (1 == True) is True, "
+        "so NEVER use == for a Boolean flag, and NEVER use bool(published). "
+        "Use object identity conditions: published is True, published is False, "
+        "hash_matches is True, or hash_matches is False. All other values block. "
         "For reconcile_receipt implement this exact decision table: "
         "state publishing and flags True,True -> verify; "
         "state needs_receipt_check and True,True -> verify; "
@@ -119,7 +123,7 @@ def write(function,objective):
         "queued with published False -> ready; all other situations -> block. "
         "Use literal string outputs, never Booleans.")
     failure=""
-    for attempt in range(3):
+    for attempt in range(5):
         raw=ask("qwen2.5-coder:7b",prompt+failure)
         pattern=re.search(r"(?m)^def "+function+r"\(",raw)
         if not pattern:
@@ -130,7 +134,7 @@ def write(function,objective):
         try:return source,check_source(source,function)
         except (SyntaxError,ValueError,TypeError,NameError) as exc:
             print("NF5_WRITER_RETRY",function,attempt+1,type(exc).__name__,str(exc)[:160],flush=True)
-            failure="\nLast candidate failed: "+str(exc)[:140]+". Correct it. Avoid banned calls/imports."
+            failure="\nLast candidate failed: "+str(exc)[:300]+". CRITICAL IDENTITY RULE: use (published is True) not (published == True) and (hash_matches is True), numeric 1 must BLOCK. Correct it. Avoid banned calls/imports."
     raise RuntimeError("Unaccepted writer candidate; safe stop")
 
 def review(function,source,proof):
