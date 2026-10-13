@@ -1,4 +1,5 @@
 name: Neurofactory HANDOFF Real Free Two-Model Isolation
+# Retry after strict structured Qwen3 verdict and raw response evidence hardening.
 on:
   push:
     branches:
