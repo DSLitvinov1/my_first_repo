@@ -1,0 +1,38 @@
+name: Neurofactory Coordination Five Branch Overlap Audit
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/**'
+      - '.github/workflows/neurofactory-coordination-branch-overlap.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordination-five-branch-readonly
+  cancel-in-progress: false
+jobs:
+  audited_branch_heads:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate all coordination security and ownership regression tests
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_*.py' -v
+      - name: Read real GitHub branch heads and reject mixed ownership or divergent commits
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B bridge/neurofactory/coordination/audit_lane_heads.py --output "$RUNNER_TEMP/neurofactory-coordination-five-branch-audit.json"
+      - name: Publish local read-only audit artifact, not a repository commit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-coordination-five-branch-readonly
+          path: ${{ runner.temp }}/neurofactory-coordination-five-branch-audit.json
+          if-no-files-found: warn
