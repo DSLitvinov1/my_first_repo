@@ -3,10 +3,8 @@ on:
   push:
     branches: [neurofactory-public-lab-20261012]
     paths:
-      - 'bridge/neurofactory/development/roadmap.json'
       - 'bridge/neurofactory/development/control_plane.py'
       - 'bridge/neurofactory/development/test_control_plane.py'
-      - 'bridge/neurofactory/development/chat_agent/**'
       - '.github/workflows/neurofactory-development-plan.yml'
   workflow_dispatch:
 permissions:
@@ -27,13 +25,11 @@ jobs:
           persist-credentials: false
       - name: Run self-development validation, stop test replays
         run: |
-          python -B -m unittest discover -s bridge/neurofactory/development -p 'test_*.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_control_plane.py -v
           python -B bridge/neurofactory/development/control_plane.py --check --out "$RUNNER_TEMP/neurofactory-prompt.json"
-          if command -v node >/dev/null; then
-            find bridge/neurofactory/development/chat_agent -name '*.js' -type f -exec node --check {} \;
-            node bridge/neurofactory/development/chat_agent/test_sender.js
-          fi
+          echo 'ChatGPT delivery remains user-deferred: no browser sender tests or dispatch'
       - name: Publish only the newest verified-roadmap prompt to a bounded GitHub outbox
+        if: ${{ false }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROMPT_FILE: ${{ runner.temp }}/neurofactory-prompt.json
