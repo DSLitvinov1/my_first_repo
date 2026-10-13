@@ -45,12 +45,20 @@ def checkpoint(stage, *, error=None, **values):
     os.replace(temporary, destination)
     return doc
 
+def review_format(subject_sha):
+    return {"type": "object", "properties": {
+        "verdict": {"type": "string", "enum": ["APPROVE", "REJECT"]},
+        "candidate_sha256": {"type": "string", "enum": [subject_sha]},
+        "findings": {"type": "array", "items": {"type": "string"}, "maxItems": 25}},
+        "required": ["verdict", "candidate_sha256", "findings"],
+        "additionalProperties": False}
+
 def local_model(model, prompt, *, formatted=False):
     payload = {"model": model, "prompt": prompt, "stream": False, "think": False,
                "options": {"temperature": 0, "num_predict": 560,
                            "num_ctx": 8192}, "keep_alive": 0}
     if formatted:
-        payload["format"] = "json"
+        payload["format"] = formatted if isinstance(formatted, dict) else "json"
     req = urllib.request.Request(ENDPOINT + "generate", data=json_bytes(payload),
                                  method="POST",
                                  headers={"Content-Type": "application/json",
@@ -107,6 +115,28 @@ def review_module(source, reviewer_reply):
             "verdict": result["verdict"], "findings": result["findings"],
             "release_authorized": False, "independent_review_owner_pending": True}
 
+def call_independent_review(prompt, subject_sha, parser, phase):
+    """Up to two attempts; never approve malformed responses or lose raw evidence."""
+    for attempt in range(1, MAX_RETRIES + 1):
+        checkpoint(phase + "_attempt", attempts=attempt, subject_sha256=subject_sha)
+        try:
+            raw, stats = local_model(gate.REVIEWER, prompt, formatted=review_format(subject_sha))
+            evidence = {"model": gate.REVIEWER, "subject_sha256": subject_sha,
+                        "phase": phase, "attempt": attempt,
+                        "raw_model_reply": raw, "publication_enabled": False}
+            with (OUT / (phase + "-response-" + str(attempt) + ".json")).open("xb") as stream:
+                stream.write(json_bytes(evidence) + b"\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            result = parser(raw)
+            return result, {**stats, "attempts": attempt}
+        except (LiveError, gate.HandoffError) as error:
+            checkpoint(phase + "_failed", attempts=attempt, subject_sha256=subject_sha,
+                       error=str(error))
+            if attempt == MAX_RETRIES:
+                raise LiveError("Independent review failed in both bounded attempts") from error
+    raise LiveError("Reviewer retry limit exhausted")
+
 def run():
     OUT.mkdir(parents=True, exist_ok=True)
     models_request = urllib.request.Request(ENDPOINT + "tags",
@@ -129,10 +159,14 @@ def run():
     packet = prepare_candidate(raw)
     checkpoint("candidate_validated", writer=gate.WRITER,
                candidate_sha256=packet["candidate_sha256"])
-    review_prompt = gate.review_request(packet)
-    reply, reviewer_stats = call_bounded(gate.REVIEWER, review_prompt,
-                                        formatted=True, phase="candidate_review")
-    review = gate.review_packet(packet, reply, model=gate.REVIEWER)
+    review_prompt = (
+        "Return ONLY JSON with exactly verdict, candidate_sha256 and findings. "
+        "The candidate_sha256 MUST be " + packet["candidate_sha256"] +
+        ". Reject when uncertain.\n" + gate.review_request(packet))
+    review, reviewer_stats = call_independent_review(
+        review_prompt, packet["candidate_sha256"],
+        lambda raw: gate.review_packet(packet, raw, model=gate.REVIEWER),
+        "candidate_review")
     checkpoint("candidate_reviewed", candidate_sha256=packet["candidate_sha256"],
                verdict=review["verdict"])
     proofs = gate.persist_handoff(OUT, packet, review)
@@ -154,9 +188,9 @@ def run():
             "reasons). Reject any meaningful security flaw or uncertainty."
         ), "source_sha256": module_sha, "actual_module_source": module_source
     }, ensure_ascii=False)
-    module_reply, audit_stats = call_bounded(gate.REVIEWER, audit_prompt,
-                                            formatted=True, phase="module_review")
-    module_result = review_module(module_source, module_reply)
+    module_result, audit_stats = call_independent_review(
+        audit_prompt, module_sha, lambda raw: review_module(module_source, raw),
+        "module_review")
     (OUT / "module_review.json").write_bytes(json_bytes(module_result) + b"\n")
     record = {"task_id": TASK, "writer": author_stats, "reviewer": reviewer_stats,
               "module_reviewer": audit_stats, "candidate_sha256": packet["candidate_sha256"],
