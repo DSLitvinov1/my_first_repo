@@ -1,0 +1,40 @@
+{
+  "project": "НЕЙРОЗАВОД",
+  "milestone": "stage5",
+  "scope": "isolated_failure_supervisor_only",
+  "date": "2026-10-13",
+  "isolation": {
+    "branch": "neurofactory-stage5-isolated-acceptance-20261013",
+    "files": [
+      "bridge/neurofactory/development/stage5_isolated_failure_supervisor.py",
+      "bridge/neurofactory/development/test_stage5_isolated_failure_supervisor.py",
+      ".github/workflows/neurofactory-isolated-fault-unit-tests.yml"
+    ],
+    "other_chats_touched": false,
+    "main_touched": false,
+    "chat_sender_enabled": false,
+    "paid_apis_used": false
+  },
+  "verified": {
+    "github_actions_run": 38465521648,
+    "workflow_result": "success",
+    "test_count": 19,
+    "test_result": "pass",
+    "owned_child_terminated": true,
+    "checkpoint_reopened_after_child_exit": true,
+    "failover_policy_tested": true,
+    "review_digest_guard_tested": true,
+    "receipt_reconciliation_mocked": true,
+    "duplicate_publication_blocked_in_logic": true,
+    "retry_limit": 2
+  },
+  "limitations": [
+    "GitHub production publisher not activated; publication guard tested with fixtures, not a real new published artifact.",
+    "GitHub API outage and external runner loss were fault-injected, not genuine outages.",
+    "No full operating-system reboot or sudden power loss.",
+    "Qwen 2.5 and Qwen 3 were not invoked by this isolated unit-test run.",
+    "Second model has not independently audited this new source; cannot close stage 5.",
+    "Checkpoint evidence is durable on local filesystem only for this isolated test; remote GitHub CAS integration belongs to its separate live journal workstream."
+  ],
+  "release_decision": "BLOCKED_PENDING_INDEPENDENT_REAL_AGENT_ACCEPTANCE"
+}
