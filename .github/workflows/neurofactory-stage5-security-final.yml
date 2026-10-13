@@ -1,0 +1,56 @@
+name: Neurofactory Stage5 Independent Final Usage Safety Gate
+on:
+  push:
+    branches: [neurofactory-stage5-security-check-20261013]
+    paths:
+      - '.github/workflows/neurofactory-stage5-security-final.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-independent-final-usage
+  cancel-in-progress: false
+jobs:
+  ledger_and_prior_evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate malformed row, missing run list and unverified billing denials
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_usage_ledger.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_remote_journal.py -v
+  independent_qwen_security:
+    needs: ledger_and_prior_evidence
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Start free Qwen3 with no GitHub write token
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf5-final-security.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Independent exact ledger code review with grounded attack fixtures
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+          OLLAMA_MAX_LOADED_MODELS: '1'
+        run: python -B bridge/neurofactory/development/stage5_independent_usage_recheck.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neurofactory-stage5-final-security-verdict
+          path: bridge/neurofactory/development/stage5-security-final-review.json
+          if-no-files-found: warn
