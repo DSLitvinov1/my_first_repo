@@ -23,7 +23,10 @@ def github(path):
     req=urllib.request.Request("https://api.github.com"+path,
       headers={"Accept":"application/vnd.github+json","User-Agent":"NeurofactoryStage4WindowsEvidence"})
     with urllib.request.urlopen(req,timeout=25) as r:return json.load(r)
-def read(base,name):return (pathlib.Path(base)/name).read_bytes()
+def read(base,name):
+    # Windows Git checkout may convert repository LF text to CRLF.
+    # Normalize only line endings before comparing Linux-issued GitHub evidence.
+    return (pathlib.Path(base)/name).read_bytes().replace(b"\r\n",b"\n")
 def audit(prod,staging,original):
     candidate=read(staging,CANDIDATE)
     first=read(original,SOURCE)
