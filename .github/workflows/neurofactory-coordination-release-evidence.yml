@@ -1,0 +1,40 @@
+name: Neurofactory Coordinator Exact Review Release Block
+on:
+  push:
+    branches: [neurofactory-chat-coordination-20261013]
+    paths:
+      - 'bridge/neurofactory/coordination/**'
+      - '.github/workflows/neurofactory-coordination-release-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordinator-release-readonly
+  cancel-in-progress: false
+jobs:
+  verify_negative_review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test historical REJECT and fail-safe for new unreviewed HANDOFF commits
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -B -m unittest discover -s bridge/neurofactory/coordination -p test_review_release_gate.py -v
+      - name: Read live exact HANDOFF and REVIEW sources from GitHub without write credentials
+        env:
+          PYTHONPATH: bridge/neurofactory/coordination
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B bridge/neurofactory/coordination/review_release_gate.py --output "$RUNNER_TEMP/neurofactory-release-block.json"
+      - name: Preserve read-only evidence independent of producer
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: neurofactory-stage5-coordinator-release-block
+          path: ${{ runner.temp }}/neurofactory-release-block.json
+          if-no-files-found: warn
+          retention-days: 7
