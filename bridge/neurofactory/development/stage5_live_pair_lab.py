@@ -15,7 +15,7 @@ JOBS=(
   "For state publishing or needs_receipt_check, return verify if published and hash_matches are True; wait if published is False; otherwise block. For verified_done return done only with both flags True. For queued return ready only with published False. For all other states or invalid flags return block.")
 )
 P="bridge/neurofactory/development/"
-BUILTINS={"isinstance":isinstance,"len":len,"all":all,"set":set,"str":str}
+BUILTINS={"isinstance":isinstance,"len":len,"all":all,"set":set,"str":str,"list":list,"bool":bool,"any":any}
 METHODS={"startswith","isdigit","get"}
 BANNED=(ast.Import,ast.ImportFrom,ast.ClassDef,ast.Global,ast.Nonlocal,
         ast.With,ast.AsyncWith,ast.Try,ast.Raise,ast.Delete,ast.Lambda,
@@ -101,7 +101,7 @@ def write(function,objective):
         "function named "+function+". "+objective+" Use parameter names exactly: "+
         ("items" if function=="valid_task_ids" else "state,published,hash_matches")+
         ". ONLY Python source, no imports or explanation, no I/O, no nested definitions. "
-        "Allowed builtins isinstance,len,all,set,str; string methods startswith,isdigit.")
+        "Allowed builtins isinstance,len,all,set,str,list,bool,any; string methods startswith,isdigit.")
     failure=""
     for attempt in range(3):
         raw=ask("qwen2.5-coder:7b",prompt+failure)
