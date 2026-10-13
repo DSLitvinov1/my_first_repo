@@ -45,7 +45,8 @@ const context={
   fetch:async()=>({ok:true,json:async()=>({content:Buffer.from(JSON.stringify(remote)).toString('base64')})})
 };
 vm.runInNewContext(source,context,{filename:'background.js'});
-const tick=()=>new Promise(r=>setTimeout(r,20));
+// Allow the asynchronous storage and SHA-256 microtasks to settle on shared runners.
+const tick=()=>new Promise(r=>setTimeout(r,160));
 (async()=>{
   assert.equal(typeof subscribers.clicked,'function');
   await subscribers.clicked({url:'https://example.net/c/123'});
