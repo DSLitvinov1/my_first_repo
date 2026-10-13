@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "status": "coordination_proposal_requires_all_chat_adoption",
+  "canonical_repo": "DSLitvinov1/my_first_repo",
+  "reference_branch": "neurofactory-public-lab-20261012",
+  "mode": "single_owner_per_path_review_before_any_integration",
+  "gates": {
+    "chatgpt_delivery": "paused",
+    "paid_api": "forbidden",
+    "autopublish_without_independent_Qwen3": "forbidden",
+    "repeat_finished_jobs": "forbidden",
+    "production_branch_direct_writes": "forbidden",
+    "windows_bridge_restart": "forbidden"
+  },
+  "chat_lanes": [
+    {
+      "id": "core",
+      "chat": "Нейрозавод 1 / Основное ядро",
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "task": "Очередь, блокировки, контрольные точки, восстановление и защита от дублей между Windows-мостами",
+      "include": [
+        "bridge/neurofactory/development/stage4_queue.py",
+        "bridge/neurofactory/development/durable_checkpoint.py",
+        "bridge/neurofactory/development/stage5_development_queue.py",
+        "bridge/neurofactory/development/stage5_remote_journal.py",
+        "bridge/neurofactory/development/test_stage4_queue.py",
+        "bridge/neurofactory/development/test_durable_checkpoint.py",
+        "bridge/neurofactory/development/test_stage5_development_queue.py",
+        "bridge/neurofactory/development/test_stage5_remote_journal.py",
+        "bridge/neurofactory/development/core_owned/",
+        ".github/workflows/neurofactory-core-owned-"
+      ],
+      "forbid_live_publication": true
+    },
+    {
+      "id": "handoff",
+      "chat": "Восстановление очереди нейрозавода",
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "task": "Qwen2.5 Coder → Qwen3, реальные кандидаты, независимый verdict, публикация только по разрешённому receipt",
+      "include": [
+        "bridge/neurofactory/development/stage5_live_",
+        "bridge/neurofactory/development/stage5_isolated_",
+        "bridge/neurofactory/development/stage5_q002_",
+        "bridge/neurofactory/development/model_handoff_owned/",
+        ".github/workflows/neurofactory-handoff-owned-"
+      ],
+      "forbid_live_publication": false
+    },
+    {
+      "id": "review",
+      "chat": "Контроль очереди нейрозавода / независимая приёмка",
+      "branch": "neurofactory-review-owned-20261013",
+      "task": "Независимая проверка Qwen3, безопасность, аудит гонок и квитанций; отчёты, а не правки чужого ядра",
+      "include": [
+        "bridge/neurofactory/development/stage5_independent_",
+        "bridge/neurofactory/development/stage5_concurrency_",
+        "bridge/neurofactory/development/stage5_multiqueue_review.py",
+        "bridge/neurofactory/development/stage5_git_receipts.py",
+        "bridge/neurofactory/development/test_stage5_git_receipts.py",
+        "bridge/neurofactory/development/review_owned/",
+        ".github/workflows/neurofactory-review-owned-"
+      ],
+      "forbid_live_publication": true
+    },
+    {
+      "id": "providers",
+      "chat": "Подключение DeepSeek",
+      "branch": "neurofactory-providers-free-20261013",
+      "task": "Бесплатные модели и адаптеры провайдеров, Claude Free/DeepSeek только после проверки доступности; не изменять ядро и не запускать платный API",
+      "include": [
+        "bridge/neurofactory/providers/",
+        ".github/workflows/neurofactory-providers-owned-"
+      ],
+      "forbid_live_publication": true
+    },
+    {
+      "id": "coordinator",
+      "chat": "Этот чат — координация и учёт",
+      "branch": "neurofactory-chat-coordination-20261013",
+      "task": "Единая карта владения, аудит пересечений, учёт расходов, согласование приёмки и подготовка интеграции; никакой прямой правки кода агентов",
+      "include": [
+        "bridge/neurofactory/coordination/",
+        "bridge/neurofactory/development/stage5_usage_ledger.py",
+        "bridge/neurofactory/development/test_stage5_usage_ledger.py",
+        "bridge/neurofactory/development/stage5-cost-ledger.json",
+        "bridge/neurofactory/development/stage5-approved-jobs.json",
+        "bridge/neurofactory/development/roadmap.json",
+        "bridge/neurofactory/development/PLAN_RU.md",
+        ".github/workflows/neurofactory-coordination-"
+      ],
+      "forbid_live_publication": true
+    }
+  ],
+  "optional_lane": {
+    "id": "skills",
+    "chat": "Нейрозавод. Интеллект и навыки",
+    "repo": "DSLitvinov1/lesson3.1",
+    "branch": "neurofactory-skill-master-isolated",
+    "task": "Мастер навыков и библиотека навыков; не менять ядро очереди, журнал и модели продакшена",
+    "status": "historical_scope_not_confirmed_currently_running"
+  },
+  "existing_branches_read_only_until_adoption": [
+    "neurofactory-stage5-live-e2e-20261013",
+    "neurofactory-stage5-isolated-acceptance-20261013",
+    "neurofactory-stage5-pair-recovery-20261013",
+    "neurofactory-stage5-q002-writer-lab-20261013",
+    "neurofactory-stage5-review-isolated-20261013",
+    "neurofactory-stage5-security-check-20261013"
+  ],
+  "identified_conflict_files": [
+    "bridge/neurofactory/development/stage5_remote_journal.py",
+    "bridge/neurofactory/development/stage5_usage_ledger.py",
+    "bridge/neurofactory/development/stage5_development_queue.py"
+  ],
+  "source_of_truth": "Only reviewed integration into production branch after isolated Windows tests and independent approval; do not cherry-pick whole divergent branches."
+}
