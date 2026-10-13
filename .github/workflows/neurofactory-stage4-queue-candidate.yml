@@ -1,0 +1,59 @@
+name: Neurofactory Stage4 Role Queue Isolated Crash and Two-Agent Review
+on:
+  push:
+    branches: [neurofactory-stage4-queue-guard-20261013]
+    paths:
+      - 'bridge/neurofactory/development/stage4_queue.py'
+      - 'bridge/neurofactory/development/test_stage4_queue.py'
+      - 'bridge/neurofactory/development/stage4_queue_review.py'
+      - '.github/workflows/neurofactory-stage4-queue-candidate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage4-queue-candidate-only
+  cancel-in-progress: false
+jobs:
+  isolated_crash_tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Actual child termination, durable resumption and duplicate prevention
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage4_queue.py -v
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_durable_checkpoint.py -v
+          python -B bridge/neurofactory/development/control_plane.py --check
+  second_agent_review:
+    needs: isolated_crash_tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install no-cost local Qwen3 reviewer
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/ollama-stage4-queue.log" 2>&1 &)
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Independent reviewer of exact candidate without publisher access
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          OLLAMA_MAX_LOADED_MODELS: "1"
+          OLLAMA_NUM_PARALLEL: "1"
+        run: python -B bridge/neurofactory/development/stage4_queue_review.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-stage4-queue-independent-verdict
+          path: bridge/neurofactory/development/stage4-queue-review-result.json
+          if-no-files-found: error
