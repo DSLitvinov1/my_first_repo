@@ -1,0 +1,13 @@
+{
+  "stage": "NF-DEV-03",
+  "scope": "neurofactory_only",
+  "writer": "qwen2.5-coder:7b",
+  "reviewer": "qwen3:4b",
+  "review_verdict": "REVIEW_OK",
+  "tests_passed": 43,
+  "sha256": "138acf9b7668baeb603091c32a6bd8f3d017256c45d8cf2f5249e9e6325343ed",
+  "reason": "The candidate code correctly implements the allowlist as per the specified Neurofactory source-and-workflow allowlist. All stated failure modes are handled, and the code passes the positive tested case. No concrete counterexample was found that contradicts the policy.",
+  "publication_status": "verified_candidate",
+  "github_branch": "neurofactory-public-lab-20261012",
+  "file": "bridge/neurofactory/development/path_policy.py"
+}
