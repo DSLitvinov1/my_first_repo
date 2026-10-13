@@ -11,7 +11,7 @@ permissions:
   contents: read
 concurrency:
   group: neurofactory-stage4-queue-candidate-only
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   isolated_crash_tests:
     runs-on: ubuntu-24.04
