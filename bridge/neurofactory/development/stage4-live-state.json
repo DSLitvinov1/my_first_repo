@@ -7,7 +7,7 @@
   },
   "meta": {
     "candidate_sha": null,
-    "crash_injected": false,
+    "crash_injected": true,
     "published_commit": null,
     "review_sha": null
   },
