@@ -2,7 +2,7 @@
   "chat_delivery": "paused_by_user",
   "files": {
     "publisher": "{\"data\": {\"actor\": \"trusted-github-publisher\", \"attempts\": 0, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-publisher\", \"lease_until\": null, \"role\": \"publisher\", \"scope\": \"neurofactory_only\", \"state\": \"queued\"}, \"schema\": 1, \"sha256\": \"f669055cc4f9404e9bb41dd783c67f6647dc7e41f683f74c3b0e7f1e137c8ddc\"}\n",
-    "reviewer": "{\"data\": {\"actor\": \"qwen3:4b\", \"attempts\": 1, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-reviewer\", \"lease_until\": null, \"proof\": {\"source_sha256\": \"745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c\", \"verdict\": \"REVIEW_OK\"}, \"role\": \"reviewer\", \"scope\": \"neurofactory_only\", \"state\": \"needs_receipt_check\"}, \"schema\": 1, \"sha256\": \"324b1a2e5f6214c100f332a542edd4a00befd765e610a494438c7c43f4060308\"}\n",
+    "reviewer": "{\"data\": {\"actor\": \"qwen3:4b\", \"attempts\": 1, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-reviewer\", \"lease_until\": null, \"proof\": {\"source_sha256\": \"745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c\", \"verdict\": \"REVIEW_OK\"}, \"publication_sha\": \"6767cb4500db3a453e0ad1b3d5ffcbd1d584fed2\", \"role\": \"reviewer\", \"scope\": \"neurofactory_only\", \"state\": \"verified_done\"}, \"schema\": 1, \"sha256\": \"8dae1dbaae71fb49ac9119485787edf79c4fbf24f65935bccb975afbabf01ad8\"}\n",
     "writer": "{\"data\": {\"actor\": \"qwen2.5-coder:7b\", \"attempts\": 2, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-writer\", \"lease_until\": null, \"proof\": {\"source_sha256\": \"745d04659a60589ae808bffcd386a9eb6ae71da8f2222141c854294a5a08ed8c\"}, \"publication_sha\": \"091bb110cca9e05b32c46fc9822d0856010b389d\", \"role\": \"writer\", \"scope\": \"neurofactory_only\", \"state\": \"verified_done\"}, \"schema\": 1, \"sha256\": \"332e9fb71194d813f78f143f04302591f121ed35ca125fae45c73d8c4d228d6d\"}\n"
   },
   "meta": {
@@ -10,6 +10,7 @@
     "crash_injected": true,
     "published_commit": null,
     "review_sha": null,
+    "reviewer_commit": "6767cb4500db3a453e0ad1b3d5ffcbd1d584fed2",
     "writer_commit": "091bb110cca9e05b32c46fc9822d0856010b389d"
   },
   "schema": 1,
