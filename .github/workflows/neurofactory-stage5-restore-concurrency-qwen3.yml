@@ -1,0 +1,49 @@
+name: Neurofactory Stage5 Exact Concurrent Recovery Qwen3 Gate
+on:
+  push:
+    branches: [neurofactory-stage5-review-isolated-20261013]
+    paths:
+      - 'bridge/neurofactory/development/stage5_concurrency_independent_qwen3.py'
+      - '.github/workflows/neurofactory-stage5-restore-concurrency-qwen3.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-stage5-concurrency-exact-review
+  cancel-in-progress: false
+jobs:
+  exact_review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 27
+    env:
+      PYTHONPATH: bridge/neurofactory/development
+    steps:
+      - name: Checkout exact unmerged Stage5 candidate without GitHub credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify cross-process restoration and hard-crash replay denial
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development -p test_stage5_development_queue.py -v
+      - name: Install free Qwen3 locally for independent exact-source assessment
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          (ollama serve > "$RUNNER_TEMP/nf5-concurrency-independent.log" 2>&1 &)
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+          ollama pull qwen3:4b
+      - name: Independent safety review of exact candidate, OS locking, and crash interleavings
+        env:
+          OLLAMA_MAX_LOADED_MODELS: '1'
+          OLLAMA_NUM_PARALLEL: '1'
+        run: python -B bridge/neurofactory/development/stage5_concurrency_independent_qwen3.py
+      - name: Save authentic verdict even on rejection; never auto-merge
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-stage5-concurrency-independent-verdict
+          path: bridge/neurofactory/development/stage5-restore-independent-concurrency-verdict.json
+          if-no-files-found: warn
+          retention-days: 7
