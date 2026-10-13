@@ -104,7 +104,15 @@ def write(function,objective):
         "Allowed builtins isinstance,len,all,set,str,list,bool,any; string methods startswith,isdigit. "
         "For task IDs, use len(set(items)) to reject duplicates (do NOT call set.add). "
         "The required prefix is exactly NF-DEV-05-Q followed by 3 digits, total length 14. "
-        "For receipt flags compare with is True / is False, never trust truthy integers.")
+        "For receipt flags compare with is True / is False, never trust truthy integers. "
+        "For reconcile_receipt implement this exact decision table: "
+        "state publishing and flags True,True -> verify; "
+        "state needs_receipt_check and True,True -> verify; "
+        "publishing or needs_receipt_check and published False -> wait; "
+        "publishing or needs_receipt_check with published True and hash_matches False -> block; "
+        "verified_done with True,True -> done; "
+        "queued with published False -> ready; all other situations -> block. "
+        "Use literal string outputs, never Booleans.")
     failure=""
     for attempt in range(3):
         raw=ask("qwen2.5-coder:7b",prompt+failure)
@@ -135,11 +143,15 @@ def review(function,source,proof):
     return {"verdict":verdict,"reason":reason,"reviewer":"qwen3:4b",
             "source_sha256":proof["source_sha256"]}
 
-def run(directory):
+def run(directory,selected_id):
     out=pathlib.Path(directory)
     if not out.is_dir() or out.is_symlink():
         raise ValueError("Use precreated isolated scratch")
+    if selected_id not in {item[0] for item in JOBS}:
+        raise ValueError("Only one approved task may be generated per durable job")
     for job_id,filename,function,objective in JOBS:
+        if selected_id != job_id:
+            continue
         source,proof=write(function,objective)
         verdict=review(function,source,proof)
         (out/filename).write_text(source,"utf-8")
@@ -150,7 +162,8 @@ def run(directory):
              "chat_delivery":"paused_by_user"}
         (out/(filename+".proof.json")).write_text(json.dumps(evidence,indent=2)+"\n","utf-8")
         print("NF5_REAL_BOTH_MODELS_APPROVED",job_id,proof["source_sha256"],flush=True)
-    print("NF5_TWO_DIFFERENT_NEW_TASKS_PASSED",flush=True)
+    print("NF5_ONE_REVIEWED_TASK_READY",selected_id,flush=True)
 
 if __name__=="__main__":
-    run(sys.argv[1])
+    if len(sys.argv)!=3:raise ValueError("Need scratch dir and exact task ID")
+    run(sys.argv[1],sys.argv[2])
