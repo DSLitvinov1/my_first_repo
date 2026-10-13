@@ -39,11 +39,13 @@ jobs:
           sys.path.insert(0,'bridge/neurofactory/development')
           from stage3_guard import approved_stage3,read
           from pathlib import Path
-          status=approved_stage3(read())
-          # A second writer/reviewer run must not repeat an already accepted code change.
+          # First check immutable published artifact; historical Stage3 gate cannot
+          # evaluate completed Stage4/Stage5 milestones as if Stage3 were active.
           if Path('bridge/neurofactory/development/path_policy.py').exists():
               status=False
               print('ALREADY_PUBLISHED_CORE_IMPROVEMENT_SKIP_REPLAY')
+          else:
+              status=approved_stage3(read())
           with open(__import__('os').environ['GITHUB_OUTPUT'],'a',encoding='utf-8') as f:
               f.write('ready='+str(status).lower()+'\n')
           print('STAGE3_APPROVED_CORE_DEVELOPMENT_GATE:', 'OPEN' if status else 'CLOSED')
