@@ -101,18 +101,23 @@ def write(function,objective):
         "function named "+function+". "+objective+" Use parameter names exactly: "+
         ("items" if function=="valid_task_ids" else "state,published,hash_matches")+
         ". ONLY Python source, no imports or explanation, no I/O, no nested definitions. "
-        "Allowed builtins isinstance,len,all,set,str,list,bool,any; string methods startswith,isdigit.")
+        "Allowed builtins isinstance,len,all,set,str,list,bool,any; string methods startswith,isdigit. "
+        "For task IDs, use len(set(items)) to reject duplicates (do NOT call set.add). "
+        "The required prefix is exactly NF-DEV-05-Q followed by 3 digits, total length 14. "
+        "For receipt flags compare with is True / is False, never trust truthy integers.")
     failure=""
     for attempt in range(3):
         raw=ask("qwen2.5-coder:7b",prompt+failure)
         pattern=re.search(r"(?m)^def "+function+r"\(",raw)
         if not pattern:
+            print("NF5_WRITER_RETRY",function,attempt+1,"missing_function_header",flush=True)
             failure="\nReturn a single def only, not Markdown."
             continue
         source=raw[pattern.start():].split(chr(96)*3,1)[0].strip()+"\n"
         try:return source,check_source(source,function)
-        except (SyntaxError,ValueError) as exc:
-            failure="\nLast candidate failed: "+str(exc)[:100]+". Correct it."
+        except (SyntaxError,ValueError,TypeError,NameError) as exc:
+            print("NF5_WRITER_RETRY",function,attempt+1,type(exc).__name__,str(exc)[:160],flush=True)
+            failure="\nLast candidate failed: "+str(exc)[:140]+". Correct it. Avoid banned calls/imports."
     raise RuntimeError("Unaccepted writer candidate; safe stop")
 
 def review(function,source,proof):
