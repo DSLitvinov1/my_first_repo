@@ -44,7 +44,11 @@ async function poll() {
   // errors, including a closed message port, remain permanently reserved.
   const prior=cfg.attempted?.[job.sequence];
   const safeRecovery=prior?.state==="unconfirmed"&&receiverMissing(prior.error);
-  if(prior&&!safeRecovery){await note("ALREADY_ATTEMPTED",prior.state||"unknown");return;}
+  if(prior&&!safeRecovery){
+    await note("ALREADY_ATTEMPTED",
+      String(prior.state||"unknown")+(prior.reason||prior.error?": "+String(prior.reason||prior.error).slice(0,80):""));
+    return;
+  }
   // A visible per-milestone handoff receipt can later be matched to the actual chat turn.
   // Only this one-stage sender adds it; clicking Send alone is never accepted as proof.
   const visibleReceipt=String.fromCharCode(10,10)+"Подтверждение отправки агентом нейрозавода: "+job.sequence+".";
@@ -103,7 +107,8 @@ async function poll() {
                  "COMPOSER_NOT_FOUND":reply?.reason==="composer contains pending attachments"?
                  "PENDING_ATTACHMENTS":"COMPOSER_BUSY",reply?.reason||"");
     }else{
-      attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now()};
+      attempt[job.sequence]={state:"unconfirmed",task:job.task_id,at:Date.now(),
+        reason:String(reply?.reason||"unknown delivery outcome").slice(0,150)};
       await note("UNCONFIRMED",reply?.reason||"no response");
     }
     await chrome.storage.local.set({attempted:attempt});
