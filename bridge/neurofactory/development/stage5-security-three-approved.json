@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "scope": "neurofactory_only",
+  "chat_delivery_paused": true,
+  "component_verdicts": [
+    {
+      "component": "stage5_remote_journal.py",
+      "git_blob_sha": "294bc5a163b25e862865a45f9f2477f398ba4182",
+      "review_run": 38461101666,
+      "verdict": "REVIEW_OK"
+    },
+    {
+      "component": "stage5_development_queue.py",
+      "git_blob_sha": "4a0a1cd35a92cf5ad9d08d06408a22eb0efb9b4c",
+      "review_run": 38461965930,
+      "verdict": "REVIEW_OK"
+    },
+    {
+      "component": "stage5_git_receipts.py",
+      "git_blob_sha": "2688e4b521b21995347ed00c5a0267db11e9fc85",
+      "review_run": 38461965930,
+      "verdict": "REVIEW_OK"
+    }
+  ],
+  "remaining_component": "stage5_usage_ledger.py",
+  "remaining_status": "corrected_pending_independent_reassessment",
+  "full_stage_security_verdict": "NOT_YET_APPROVED"
+}
