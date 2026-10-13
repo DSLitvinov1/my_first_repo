@@ -1,0 +1,17 @@
+{
+  "chat_delivery": "paused_by_user",
+  "files": {
+    "publisher": "{\"data\": {\"actor\": \"trusted-github-publisher\", \"attempts\": 0, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-publisher\", \"lease_until\": null, \"role\": \"publisher\", \"scope\": \"neurofactory_only\", \"state\": \"queued\"}, \"schema\": 1, \"sha256\": \"f669055cc4f9404e9bb41dd783c67f6647dc7e41f683f74c3b0e7f1e137c8ddc\"}\n",
+    "reviewer": "{\"data\": {\"actor\": \"qwen3:4b\", \"attempts\": 0, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-reviewer\", \"lease_until\": null, \"role\": \"reviewer\", \"scope\": \"neurofactory_only\", \"state\": \"queued\"}, \"schema\": 1, \"sha256\": \"b071869c4ecef2e816a7c15f2054e89ffc8c4a48b7fedd268090f58f651eab90\"}\n",
+    "writer": "{\"data\": {\"actor\": \"qwen2.5-coder:7b\", \"attempts\": 0, \"chat_delivery\": \"paused_by_user\", \"id\": \"NF-DEV-04-writer\", \"lease_until\": null, \"role\": \"writer\", \"scope\": \"neurofactory_only\", \"state\": \"queued\"}, \"schema\": 1, \"sha256\": \"16f71d2e8301599db2a8a73c1e5eb3a7203f29322898fa36e86dcecefc809d58\"}\n"
+  },
+  "meta": {
+    "candidate_sha": null,
+    "crash_injected": false,
+    "published_commit": null,
+    "review_sha": null
+  },
+  "schema": 1,
+  "scope": "neurofactory_only",
+  "task_id": "NF-DEV-04-LIVE-RECEIPT-20261013"
+}
