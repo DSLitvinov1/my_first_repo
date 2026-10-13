@@ -83,7 +83,7 @@ jobs:
             sleep 2
           done
           curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
-          ollama pull qwen2.5-coder:3b
+          ollama pull qwen2.5-coder:7b
           ollama pull qwen3:4b
       - name: Qwen writer proposes actual Neurofactory safety improvement; Qwen reviewer independently accepts
         env:

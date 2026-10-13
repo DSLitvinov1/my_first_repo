@@ -11,7 +11,7 @@
   ],
   "roles": {
     "writer": {
-      "model": "qwen2.5-coder:3b",
+      "model": "qwen2.5-coder:7b",
       "work": "Propose bounded changes to real Neurofactory source only, starting with path policy; independent Qwen3 review and tests required before publishing",
       "allowed_actions": [
         "read_public_neurofactory",
