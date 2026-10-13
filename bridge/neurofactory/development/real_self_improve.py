@@ -19,6 +19,21 @@ GOOD=[
 BAD=[
 ".github/workflows/other-project.yml","bridge/other_project/file.py",
 "other_project/file.py","bridge/neurofactory/../other_project/main.py",
+"bridge/neurofactory/sub/./safe.py",
+"bridge/neurofactory/a/..",
+"bridge/neurofactory/a//b.py",
+"bridge/neurofactory/a/b.py/",
+".github/workflows/neurofactory-ok.yml/",
+".github/workflows/neurofactory-x.yml/secret",
+".github/workflows/neurofactory-.yml/other",
+"bridge/neurofactory/file.py%2f..",
+"bridge/neurofactory/file.py#fragment",
+"bridge/neurofactory/file.py?mode=unsafe",
+"bridge/neurofactory/name\tbad.py",
+"bridge/neurofactory/name\rbad.py",
+"bridge/neurofactory/name:bad.py",
+"bridge/neurofactory/name\\bad.py",
+"bridge/neurofactory/name\x00bad.py",
 "bridge/neurofactory/sub/../../secret.txt","bridge/neurofactory//bad.py",
 "bridge/neurofactory/./bad.py","bridge\\neurofactory\\bad.py",
 "/bridge/neurofactory/main.py","C:\\Users\\file.py",
@@ -121,12 +136,39 @@ def run():
                       +"The next proposal must not repeat the failed candidate.")
             print("REAL_NF_WRITER_REPAIR",i+1,str(e)[:120],flush=True)
     if code is None:raise ValueError("Unverified model output; no publication")
-    prompt=("You are the second independent reviewer Qwen3. Review this REAL new "
-      "GitHub file path safety function for an autonomous developer. It passed "
-      "the trusted boundary tests. Does it prevent writing outside the Neurofactory "
-      "allowlist, traversal, executable IO and unsafe strings? "
-      "Return JSON only with verdict REVIEW_OK or REVIEW_BAD and reason. "
-      "Reject doubtful code. Candidate:\n"+code)
+    prompt=(
+      "You are Qwen3, the INDEPENDENT SECURITY REVIEWER, NOT the code author. "
+      "You have veto power, and cannot edit or publish the proposed module. "
+      "Judge the following exact, user-approved permission policy, not a more "
+      "restrictive policy of your own invention. "
+      "TRUE ALLOWLIST FAMILY A: safe relative paths starting with "
+      "'bridge/neurofactory/' are deliberately ALLOWED (source files may end in .py). "
+      "TRUE ALLOWLIST FAMILY B: safe relative paths starting with "
+      "'.github/workflows/neurofactory-' AND ending in '.yml' are deliberately ALLOWED. "
+      "The literal segment '.github' is allowed; ONLY '.' and '..' segments are denied. "
+      "A path outside both families must be REJECTED, as must path traversal, "
+      "empty segments, trailing slash, backslash, non-ASCII, bad characters, "
+      "absolute paths or length >240. Non-string inputs must return False. "
+      "Execution safety is assessed by trusted AST checks that already denied "
+      "imports, IO calls, eval/exec and mutable globals; the candidate cannot "
+      "import or invoke arbitrary functions. "
+      "TRUSTED TEST REPORT: 6 real expected-True production paths and "
+      "38 forbidden or wrong-type inputs accepted by independent checks. "
+      "Positive examples include 'bridge/neurofactory/development/control_plane.py' "
+      "and '.github/workflows/neurofactory-real-self-improvement.yml'. "
+      "Negative examples include 'bridge/neurofactory/../other_project/main.py', "
+      "'bridge/neurofactory//bad.py', and '.github/workflows/other-project.yml'. "
+      "Rigorously examine the CANDIDATE source. A rejection MUST identify a "
+      "specific executable counterexample path and why the code incorrectly "
+      "accepts or rejects it. Do not call the explicitly approved source family "
+      "a violation. Do not assert missing traversal checks if the source checks "
+      "all path segments for '..'. A generic objection is not a code defect. "
+      "Return JSON with verdict REVIEW_OK or REVIEW_BAD, reason, "
+      "counterexample (empty string if none). "
+      "Reject any demonstrated vulnerability, missing check, ambiguous behavior "
+      "or inconsistency with the stated production requirements. "
+      "Candidate source:\n"+code
+    )
     review=json.loads(ask(REVIEWER,prompt,True))
     print("REAL_NF_INDEPENDENT_REVIEW",str(review.get("verdict","NO_VERDICT"))[:35],
           str(review.get("reason","NO_REASON"))[:420],flush=True)
