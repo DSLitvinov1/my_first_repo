@@ -47,7 +47,7 @@ def publish():
         report.get("scope")!="neurofactory_only",
         report.get("component")!="durable_checkpoint",
         report.get("actual_interruption_checked") is not True,
-        report.get("checks_passed")!=9,
+        report.get("checks_passed")!=10,
         report.get("source_sha256")!=hashlib.sha256(data).hexdigest()
     )):
         raise ValueError("Missing independent approval of exact source bytes")

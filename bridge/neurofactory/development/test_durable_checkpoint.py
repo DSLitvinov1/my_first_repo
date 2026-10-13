@@ -53,7 +53,7 @@ store.transition(Path(sys.argv[1]),'queued','running',lease_until=120)
     def test_windows_replace_failure_preserves_old_checkpoint(self):
         from unittest import mock
         with mock.patch.object(store.os, "replace", side_effect=PermissionError("file in use")):
-            with self.assertRaises(PermissionError):
+            with self.assertRaises(store.CheckpointError):
                 store.transition(self.path, "queued", "running", lease_until=120)
         old = store.load(self.path)
         self.assertEqual((old["state"], old["attempts"]), ("queued", 0))
