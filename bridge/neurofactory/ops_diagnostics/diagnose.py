@@ -10,6 +10,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from secure_input import SafeInputError, read_snapshot
 
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -233,12 +234,9 @@ def main(argv=None):
     parser.add_argument("snapshot", help="Input JSON snapshot; never production checkpoint files")
     args = parser.parse_args(argv)
     try:
-        f = Path(args.snapshot)
-        if not f.is_file() or f.stat().st_size > MAX_BYTES:
-            raise SnapshotError("Missing/oversized snapshot")
-        result = diagnose(_parse_unique(f.read_text(encoding="utf-8")))
+        result = diagnose(_parse_unique(read_snapshot(args.snapshot, MAX_BYTES)))
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    except (SnapshotError, OSError) as exc:
+    except (SnapshotError, SafeInputError, OSError) as exc:
         print("DIAGNOSIS_REFUSED: " + str(exc), file=sys.stderr)
         return 2
     return 0
