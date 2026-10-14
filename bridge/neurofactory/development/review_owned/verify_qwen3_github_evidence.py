@@ -64,6 +64,7 @@ def _check_run(run, jobs, artifact, expected_commit, artifact_id):
     if not SHA40.fullmatch(expected_commit):
         raise ReviewProofError("Expected HEAD SHA invalid")
     if (not isinstance(run, dict) or type(run.get("id")) is not int
+            or type(run.get("run_attempt")) is not int
             or run["id"] <= 0 or run.get("status") != "completed"
             or run.get("conclusion") != "success"
             or run.get("run_attempt") != 1
@@ -227,8 +228,13 @@ def _github_api_json(resource):
     if token:
         headers["Authorization"] = "Bearer " + token
     req = urllib.request.Request(url, headers=headers, method="GET")
+    class RefuseRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, fp, code, msg, headers, newurl):
+            # Never forward an Actions read-token to a different host.
+            raise ReviewProofError("GitHub API redirect refused")
+    opener = urllib.request.build_opener(RefuseRedirect)
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
+        with opener.open(req, timeout=20) as response:
             raw = response.read(1200000 + 1)
         if len(raw) > 1200000:
             raise ReviewProofError("GitHub reply exceeded safe limit")
