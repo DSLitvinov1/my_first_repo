@@ -25,7 +25,7 @@ _SUMMARY_FIELDS = {
 }
 
 _ALLOWED_EXTENSIONS = (".py", ".md", ".txt", ".json")
-_SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]{1,160}\\Z")
+_SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]{1,160}\Z")
 
 
 def _safe_proposal_path(path):
