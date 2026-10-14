@@ -128,6 +128,13 @@ class EvidenceHardeningTests(unittest.TestCase):
         with self.assertRaises(e.EvidenceError):
             e.verify_model_evidence(self.dir, self.task)
 
+    @unittest.skipUnless(os.name=="nt", "Windows reparse attribute failure handling")
+    def test_windows_signed_attribute_failure_stops(self):
+        with patch.object(e.ctypes.windll.kernel32, "GetFileAttributesW",
+                          return_value=-1):
+            with self.assertRaises(e.EvidenceError):
+                e._check_windows_reparse(self.dir)
+
     @unittest.skipUnless(os.name=="posix", "POSIX pinned directory inode security")
     def test_directory_swap_to_external_symlink_rejected_after_open(self):
         outside = self.root / "outside"
