@@ -31,12 +31,22 @@ jobs:
         run: |
           python3 -B bridge/neurofactory/ops_diagnostics/diagnose.py bridge/neurofactory/ops_diagnostics/examples/stage5_issue3_selected_evidence_20261014.json > "$RUNNER_TEMP/nf-ops-diagnostic.json"
           python3 -B -c 'import json,os; d=json.load(open(os.environ["RUNNER_TEMP"]+"/nf-ops-diagnostic.json")); assert d["release_authorized"] is False and d["diagnosis"]=="BLOCKED" and "BRANCH_PROTECTION_MISSING" in d["blockers"]'
+      - name: Offline Russian OPS worker and queue report from selected snapshot
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json > "$RUNNER_TEMP/nf-ops-status.json"
+          python3 -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json --format text > "$RUNNER_TEMP/nf-ops-status-ru.txt"
+          python3 -B -c 'import json,os; d=json.load(open(os.environ["RUNNER_TEMP"]+"/nf-ops-status.json")); assert d["source_trust"]=="UNTRUSTED_OFFLINE_SNAPSHOTS" and d["actions_allowed"]["publish"] is False and d["worker_inventory"]==[] and d["queue_inventory"]==[]'
       - name: Preserve only the isolated read-only diagnostic report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: neurofactory-ops-candidate-readonly-diagnosis
-          path: ${{ runner.temp }}/nf-ops-diagnostic.json
+          path: |
+            ${{ runner.temp }}/nf-ops-diagnostic.json
+            ${{ runner.temp }}/nf-ops-status.json
+            ${{ runner.temp }}/nf-ops-status-ru.txt
           if-no-files-found: warn
           retention-days: 14
   offline_windows:
