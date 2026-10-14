@@ -201,11 +201,14 @@ def checkpoint(state):
     _valid_state(state)
     return {"body": copy.deepcopy(state), "sha256": _digest(state)}
 
-def restore(record):
+def restore(record, *, trusted_checkpoint_check=None):
     if (not _exact(record, {"body", "sha256"}) or
         not _hex(record["sha256"], SHA64) or _digest(record["body"]) != record["sha256"]):
         raise ExchangeError("tampered checkpoint")
     _valid_state(record["body"])
+    if (not callable(trusted_checkpoint_check) or
+        trusted_checkpoint_check(copy.deepcopy(record)) is not True):
+        raise ExchangeError("externally trusted checkpoint provenance missing")
     return copy.deepcopy(record["body"])
 
 def project(state):
@@ -215,7 +218,7 @@ def project(state):
     return {"schema": 1, "task_id": p["task_id"], "project_id": p["project_id"],
             "source_sha": p["source_sha"], "stage": state["status"],
             "result_digest": state["result"]["text_sha256"] if state["result"] else None,
-            "review_provenance": "HOST_ATTESTATION_REQUIRED",
-            "source_verified_by_host": state["status"] == "SOURCE_VERIFIED",
+            "review_provenance": "NOT_ATTESTED_BY_PROJECTION",
+            "source_verified_by_host": False,
             "external_execution_allowed": False, "publication_allowed": False,
             "automatic_retry_allowed": False, "handoff": "PAUSED_BY_USER"} 
