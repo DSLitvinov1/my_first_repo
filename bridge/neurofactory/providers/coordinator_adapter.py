@@ -6,6 +6,7 @@ CORE host must admit the proposal and reserve lease before using these objects.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 import re
 
@@ -115,9 +116,12 @@ def coordinator_result(candidate: PreparedProviderCall, provider_result: dict) -
             item.get("relative_path") != candidate.task.target_path or
             item.get("applied") is not False or
             item.get("verified_by_core") is not False or
+            type(item.get("content_sha256")) is not str or
             type(item.get("content")) is not str or not item["content"].strip() or
             len(item["content"]) > 12000):
         raise ValueError("invalid candidate proposal")
+    if sha256(item["content"].encode("utf-8")).hexdigest() != item["content_sha256"]:
+        raise ValueError("proposed file digest mismatch")
     # The coordinator currently stores digest of candidate text, not files.
     # Files still go ONLY through CORE's authenticated sandbox writer.
     return {
