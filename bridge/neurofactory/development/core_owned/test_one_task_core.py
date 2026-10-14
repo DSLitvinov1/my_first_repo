@@ -46,6 +46,13 @@ class CoreOnceTests(unittest.TestCase):
         }
         self.approver = lambda p: p == self.spec  # TEST STUB, not real approval
 
+    def secure_parents(self, target):
+        current = self.q.sandbox
+        for component in pathlib.PurePosixPath(TARGET).parts[:-1]:
+            current = current / component
+            current.mkdir(mode=0o700, exist_ok=True)
+            current.chmod(0o700)
+
     def admit(self):
         return self.q.enqueue(copy.deepcopy(self.spec), trusted_approval_check=self.approver)
 
@@ -67,6 +74,17 @@ class CoreOnceTests(unittest.TestCase):
         self.assertIs(receipt["model_invoked"], False)
         self.assertIs(receipt["published"], False)
         self.assertEqual(self.q.snapshot()["state"], "CHECKPOINTED_TEST")
+        evidence_dir = os.environ.get("NF_CORE_EVIDENCE_DIR")
+        if evidence_dir:
+            pathlib.Path(evidence_dir).mkdir(parents=True, exist_ok=True)
+            summary = {"schema": 1, "evidence_type": "synthetic_offline_test",
+                       "model_executed": False, "github_published": False,
+                       "checkout_source_sha": self.spec["source_sha"],
+                       "checkpoint_state": self.q.snapshot()["state"],
+                       "receipt": receipt,
+                       "sandbox_file_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            (pathlib.Path(evidence_dir) / "offline-test-checkpoint.json").write_text(
+                json.dumps(summary, sort_keys=True, indent=2) + "\n", "utf8")
         self.assertEqual(self.q.recover(now=2000)["state"], "CHECKPOINTED_TEST")
         self.assertEqual(OneTaskCore(self.workspace, self.repo).snapshot()["receipt"], receipt)
         with self.assertRaises(CoreSafetyError):
@@ -142,7 +160,7 @@ except CoreSafetyError:
 
     def test_existing_symlink_path_refused(self):
         dest = self.q.sandbox / TARGET
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        self.secure_parents(dest)
         external = self.base / "foreign"
         external.write_text("protected")
         try:
@@ -174,7 +192,7 @@ except CoreSafetyError:
         self.admit()
         claim = self.q.claim("worker", now=100)
         target = self.q.sandbox / TARGET
-        target.parent.mkdir(parents=True, exist_ok=True)
+        self.secure_parents(target)
         target.write_text("intruder")
         with self.assertRaises(CoreSafetyError):
             self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=101)
@@ -221,7 +239,7 @@ except CoreSafetyError:
         self.spec["source_sha"] = self.spec["approval_commit"] = sha
         self.spec["source_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
         sandbox = self.q.sandbox / TARGET
-        sandbox.parent.mkdir(parents=True, exist_ok=True)
+        self.secure_parents(sandbox)
         sandbox.write_bytes(path.read_bytes())
         self.admit()
         self.assertEqual(sandbox.read_text(), "BASE = 1\n")
