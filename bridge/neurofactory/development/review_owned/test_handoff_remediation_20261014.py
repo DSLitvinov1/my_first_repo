@@ -33,6 +33,8 @@ import json,os,pathlib,sys,time
 from model_handoff_owned import handoff_gate as gate
 root,marker,release=map(pathlib.Path,sys.argv[1:])
 native=os.open
+supported=gate._secure_storage_available()
+assert supported,"POSIX directory-handle prerequisites absent"
 def blocked_open(path, flags, *args, **kw):
     if path=="candidate.json" and flags & os.O_CREAT:
         marker.write_text("about-to-create")
@@ -43,6 +45,8 @@ def blocked_open(path, flags, *args, **kw):
             raise RuntimeError("Interleaving did not complete")
     return native(path,flags,*args,**kw)
 os.open=blocked_open
+# Preserve the real platform capability decision while instrumenting os.open.
+gate._secure_storage_available=lambda: supported
 try:
     v=gate.store_once(root,"NF-DEV-05-Q098","candidate.json",{"value":"must-not-escape"})
     print("CREATED:"+str(v["created"]),flush=True)
