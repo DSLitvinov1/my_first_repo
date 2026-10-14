@@ -14,6 +14,7 @@
     "attest_source",
     "checkpoint",
     "restore",
+    "stop_notice",
     "project"
   ],
   "properties": {
@@ -26,7 +27,9 @@
     "external_approval_callback_required": true,
     "external_source_readback_callback_required": true,
     "checkpoint_restore_external_verifier_required": true,
-    "handoff_paused": true
+    "handoff_paused": true,
+    "no_automatic_retry_on_stop": true,
+    "status_card_never_authorizes_action": true
   },
   "compatibility": [
     {
@@ -67,5 +70,13 @@
     "initial_state": "queued",
     "new_dispatch": false
   },
-  "release_status": "BLOCKED_PENDING_OWNER_CONTRACTS_AND_INDEPENDENT_REVIEW"
+  "release_status": "INTEGRATION_CANDIDATE_ONLY_NO_APPROVAL_NO_PUBLICATION",
+  "new_view_adapter": "bridge/neurofactory/coordination/mvp_task_view.py",
+  "new_view_tests": "bridge/neurofactory/coordination/test_mvp_task_view.py",
+  "test_evidence": {
+    "exchange": "22 targeted Python tests SAVED, NOT RUN",
+    "view": "10/10 local Python unittest PASS and py_compile PASS; exact git blobs verified",
+    "readback": "13/13 ownership/source presence checks on prior exchange version",
+    "windows": "PR12 existing run 38643604899 QUEUED, not rerun"
+  }
 }
