@@ -1,5 +1,5 @@
 {
-  "schema": 5,
+  "schema": 6,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -41,14 +41,16 @@
         "deny_foreign_scope"
       ],
       "last_observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
-      "exact_sha_still": "a86ad93046f739db03f80013b6498a0bb0d2eb7b"
+      "exact_sha_still": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "linked_issue": 9,
+      "next": "No additional job or test before new CORE exact SHA; define durable lease, CAS, unknown external receipt STOP and one approved sandbox transaction"
     },
     {
       "id": "NF-COORD-REVIEW-CORE-20261014",
       "owner": "review",
       "chat": "Контроль очереди нейрозавода",
       "branch": "neurofactory-review-owned-20261013",
-      "status": "RESERVED_FOR_NEW_CORE_ONLY",
+      "status": "WAITING_NEW_CORE_SHA",
       "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "scope": [
         "bridge/neurofactory/development/review_owned/",
@@ -70,14 +72,15 @@
       ],
       "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval.",
       "last_observed_head": "c2510f1f35c946dea0c7a33786960e4875984ace",
-      "latest_review_commit": "c2510f1f35c946dea0c7a33786960e4875984ace"
+      "latest_review_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "linked_issue": 11
     },
     {
       "id": "NF-COORD-PROVIDERS-MOCK-20261014",
       "owner": "providers",
       "chat": "Подключение DeepSeek",
       "branch": "neurofactory-providers-free-20261013",
-      "status": "OWNED_RESILIENCE_CANDIDATE_WINDOWS_AND_INDEPENDENT_REVIEW_MISSING",
+      "status": "P0_SCOPE_HOLD_WORKFLOW_PREFIX_UNAUTHORIZED",
       "scope": [
         "bridge/neurofactory/providers/",
         ".github/workflows/neurofactory-providers-owned-"
@@ -92,8 +95,8 @@
         "user_region_and_entitlement_uncertainty_not_ignored",
         "fallback_never_uses_paid_endpoint"
       ],
-      "candidate_branch": "neurofactory-providers-safe-local-20261014",
-      "candidate_sha": "8d4723a95808df1d66d7a49152c441960da6b1a5",
+      "candidate_branch": "neurofactory-providers-resilience-20261014",
+      "candidate_sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
       "self_reported_tests": {
         "linux_local": 29,
         "linux_ci": "NOT_VERIFIED",
@@ -102,7 +105,7 @@
         "network": "localhost_stub_only",
         "paid_api_called": false
       },
-      "next": "PROVIDERS owner only: collect Windows offline evidence and independent reviewer signoff on exact new SHA; no real API or merge",
+      "next": "Provider owner: remediate workflow scope discrepancy, obtain exact replacement SHA, targeted Windows/Linux evidence and independent external review, zero paid endpoints; do not merge",
       "pr": 5,
       "active_draft_pr": 5,
       "original_candidate_sha": "8d4723a95808df1d66d7a49152c441960da6b1a5",
@@ -114,14 +117,26 @@
       ],
       "independent_review_request": "PR #5 comment 6178478458",
       "windows_result": "NOT_VERIFIED",
-      "independent_verdict": "NONE"
+      "independent_verdict": "NONE",
+      "draft_pr": 7,
+      "owned_tests_report": {
+        "linux_local": 71,
+        "windows_hosted": "NOT_CONFIRMED",
+        "independent_review": "NOT_CONFIRMED"
+      },
+      "scope_exception": {
+        "unexpected_file": ".github/workflows/neurofactory-providers-isolated-regression.yml",
+        "authorized_workflow_prefix": ".github/workflows/neurofactory-providers-owned-",
+        "decision": "P0 procedural hold until PROVIDERS owner renames in own candidate OR explicitly approved scope change first",
+        "pr7_comment_id": 6179204821
+      }
     },
     {
       "id": "NF-COORD-SKILLS-RECONCILE-20261014",
       "owner": "skills",
       "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
       "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
-      "status": "ELEVEN_CANDIDATES_NO_RECONCILIATION_TRUSTED_APPROVAL_MISSING",
+      "status": "UNIFIED_12_INACTIVE_CANDIDATES_INDEPENDENT_TESTS_WAITING",
       "repository": "DSLitvinov1/lesson3.1",
       "inputs": [
         {
@@ -159,23 +174,30 @@
         "pr515": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b",
         "pr528": "ecbdc6fb8e5e4f433628746447ede4f0217095f9"
       },
-      "next": "Single SKILLS writer base on PR 540, add GOD MODE from PR 514, 12 candidates all disabled; trust external review identity outside mutable registry before approval; full real tests",
+      "next": "Only own scope, no new skills catalog; independent reviewer in issue 543 verifies exact SHA, windows/linux tests, digests, forged reviewer; rollout only after proof",
       "latest_frontend_pr": 540,
       "latest_frontend_sha": "f45805d4fc22beef7e4a308d70d5097349a26781",
-      "candidate_count_latest": 11,
+      "candidate_count_latest": 12,
       "activation_blocked_due_to_spoofable_registry_review": true,
       "one_writer_only": true,
       "unrelated_godmode_autonomy_branch": "neurofactory-godmode-autonomy-isolated-20261014",
       "unrelated_godmode_autonomy_branch_merge": "FORBIDDEN_IN_CANDIDATE_CONTAINS_FOREIGN_WORKFLOWS",
       "trusted_external_reviewer_approval": "MISSING",
-      "independent_review_request": "PR #540 comment 6178480450"
+      "independent_review_request": "PR #540 comment 6178480450",
+      "candidate_branch": "neurofactory-skills-unified-profiles-20261015",
+      "candidate_sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
+      "draft_pr": 542,
+      "independent_issue": 543,
+      "candidate_approved_count": 0,
+      "trusted_review_boundary": "fail_closed_without_host_verifier_but_external_reviewer_implementation_pending",
+      "full_python_tests": "44 test cases saved, run NOT_CONFIRMED"
     },
     {
       "id": "NF-COORD-OPS-REVIEW-20261014",
       "owner": "ops",
       "chat": "OPS diagnostics",
       "branch": "neurofactory-ops-diagnostics-candidate-20261014",
-      "status": "20_JOB_CI_VERIFIED_INDEPENDENT_AUDIT_PENDING",
+      "status": "STABLE_20_JOB_CI_SUCCESS_EXPERIMENTAL_SECURE_READER_AUDIT_WAITING",
       "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
       "scope": [
         "bridge/neurofactory/ops_diagnostics/",
@@ -203,7 +225,7 @@
         "github_jobs": "BOTH_SUCCESS",
         "independent_review": "NOT_OBTAINED"
       },
-      "next": "External qualified verifier independent from OPS author and CORE REVIEW; audit exact b908.. read-only; preserve previous tests, no new matrix re-run",
+      "next": "Issue6 reviewer distinct from OPS+CORE REVIEW, exact version assessed, no previous 20-job rerun, do not integrate any experiment",
       "independent_review_issue": 6,
       "latest_workflow": "20 GitHub hosted matrix jobs proposed/defined; completion of new SHA not verified",
       "independent_verdict": "PENDING_NOT_GRANTED",
@@ -216,7 +238,11 @@
       },
       "independent_review_request_comment": 6178479442,
       "auditor_identity": "UNASSIGNED",
-      "release_authorized": false
+      "release_authorized": false,
+      "stable_head": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "experimental_branch": "neurofactory-ops-completion-20261015",
+      "experimental_sha": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
+      "experimental_claims": "own Linux 10 targeted PASS, no independent Windows run or separate audit"
     },
     {
       "id": "NF-COORD-HANDOFF-PAUSE-20261014",
@@ -234,6 +260,28 @@
         "no_publication"
       ],
       "last_observed_head": "279995e7fa252882fceec7ee2e955884382c4f54"
+    },
+    {
+      "id": "NF-COORD-UI-RESERVE-20261015",
+      "owner": "ui",
+      "chat": "Нейрозавод — интерфейс (unassigned, requires explicit chat adoption)",
+      "repository": "DSLitvinov1/my_first_repo",
+      "branch": "NOT_CREATED",
+      "status": "P2_WAITING_SINGLE_OWNER_ADOPTION",
+      "linked_issue": 10,
+      "scope": [
+        "bridge/neurofactory/control_ui/",
+        ".github/workflows/neurofactory-control-ui-"
+      ],
+      "deliverable": "isolated mock-only read-only responsive UI; no live GitHub/auth/queue writes",
+      "acceptance": [
+        "single_owner",
+        "mock_only",
+        "unknown_status_not_green",
+        "no_live_side_effects",
+        "no_production_publish",
+        "independent_acceptance_before_live_binding"
+      ]
     }
   ],
   "blockers": [
@@ -286,7 +334,11 @@
     "OPS_independent_owner_review": "MISSING",
     "HANDOFF": "PAUSED_BY_USER",
     "branch_ruleset": "NOT_VERIFIED",
-    "release": "BLOCKED"
+    "release": "BLOCKED",
+    "PROVIDERS_SCOPE": "P0_HOLD",
+    "SKILLS_12_CANDIDATE": "PREPARED_NOT_REVIEWED",
+    "UI": "OWNER_NOT_ASSIGNED",
+    "OPS_ISSUE6": "INDEPENDENT_REVIEW_PENDING"
   },
   "runs_not_to_repeat": [
     "REVIEW historical receipt spoof #38630845464",
@@ -362,5 +414,7 @@
       "auto_deploy_or_merge",
       "treat_self_test_as_independent_approval"
     ]
-  }
+  },
+  "priority_vs_incident_ambiguity": "Issue #8 P0/P1 are priority ranks; escalation P0/P1/P2 in coordination are incident severity and must not be conflated.",
+  "new_mvp_scope_contract": "bridge/neurofactory/coordination/MVP_READ_ONLY_INTERFACE_CONTRACT_20261015_RU.md"
 }
