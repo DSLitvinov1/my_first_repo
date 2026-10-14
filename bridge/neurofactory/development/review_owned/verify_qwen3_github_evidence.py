@@ -8,6 +8,8 @@ import hashlib
 import io
 import json
 import re
+import os
+import urllib.request
 import stat
 import zipfile
 
@@ -203,9 +205,76 @@ def inspect_evidence(run, jobs, artifact, artifact_id, archive_bytes,
             "model_opinion": verdict["verdict"],
             "model_digest": result["ollama_model_digest_claim"],
             "github_metadata_consistent": True,
+            "github_api_retrieved_independently": False,
             "raw_bytes_integrity_verified": True,
             "model_process_cryptographically_authenticated": False,
             "independent_review_owner_approved": False,
             "release_authorized": False,
             "merge_authorized": False,
             "publisher_allowed": False}
+
+
+def _github_api_json(resource):
+    """Fixed GitHub REST host; no arbitrary caller-supplied URL/redirect target."""
+    if not isinstance(resource, str) or not re.fullmatch(
+            r"actions/runs/[0-9]+(?:/jobs\?per_page=100|/artifacts\?per_page=100)?",
+            resource):
+        raise ReviewProofError("Foreign GitHub API endpoint")
+    url = "https://api.github.com/repos/" + REPO + "/" + resource
+    token = os.environ.get("GITHUB_TOKEN")
+    headers = {"Accept": "application/vnd.github+json",
+               "User-Agent": "Neurofactory-Independent-Review-ReadOnly"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            raw = response.read(1200000 + 1)
+        if len(raw) > 1200000:
+            raise ReviewProofError("GitHub reply exceeded safe limit")
+        doc = strict_json(raw)
+        return doc
+    except (OSError, UnicodeError) as exc:
+        raise ReviewProofError("GitHub metadata cannot be independently retrieved") from exc
+
+
+def inspect_trusted_github_artifact(run_id, artifact_id, archive_bytes,
+                                    expected_commit, exact_source_bytes):
+    """Retrieve immutable evidence metadata via GitHub, never a caller callback.
+
+    Does NOT download evidence (archive bytes are separately SHA256 recorded),
+    identify a human reviewer, attest model weights, or authorize publication.
+    """
+    if (type(run_id) is not int or run_id < 1
+            or type(artifact_id) is not int or artifact_id < 1):
+        raise ReviewProofError("Untrusted GitHub run/artifact identifier")
+    run = _github_api_json("actions/runs/" + str(run_id))
+    jobs_data = _github_api_json("actions/runs/" + str(run_id) +
+                                 "/jobs?per_page=100")
+    artifact_data = _github_api_json("actions/runs/" + str(run_id) +
+                                     "/artifacts?per_page=100")
+    if (type(jobs_data.get("total_count")) is not int
+            or jobs_data["total_count"] > 100
+            or not isinstance(jobs_data.get("jobs"), list)
+            or len(jobs_data["jobs"]) != jobs_data["total_count"]):
+        raise ReviewProofError("GitHub job list incomplete or unverified")
+    if (type(artifact_data.get("total_count")) is not int
+            or artifact_data["total_count"] > 100
+            or not isinstance(artifact_data.get("artifacts"), list)
+            or len(artifact_data["artifacts"]) != artifact_data["total_count"]):
+        raise ReviewProofError("GitHub artifact list incomplete or unverified")
+    artifacts = [a for a in artifact_data["artifacts"]
+                 if isinstance(a, dict) and a.get("id") == artifact_id]
+    if len(artifacts) != 1:
+        raise ReviewProofError("Artifact ID missing in the exact trusted run")
+    result = inspect_evidence(
+        run, jobs_data["jobs"], artifacts[0], artifact_id,
+        archive_bytes, expected_commit, exact_source_bytes)
+    result["github_api_retrieved_independently"] = True
+    result["github_metadata_consistent"] = True
+    result["independent_review_owner_approved"] = False
+    result["model_process_cryptographically_authenticated"] = False
+    result["release_authorized"] = False
+    result["merge_authorized"] = False
+    result["publisher_allowed"] = False
+    return result
