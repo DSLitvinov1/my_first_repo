@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -21,7 +21,7 @@
       "owner": "core",
       "chat": "Нейрозавод 1",
       "branch": "neurofactory-core-queue-owned-20261013",
-      "status": "ASSIGNED_NOT_VERIFIED",
+      "status": "ASSIGNED_AWAITING_OWNER_COMMIT",
       "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "scope": [
         "bridge/neurofactory/development/core_owned/",
@@ -39,14 +39,15 @@
         "idempotent_reconcile",
         "cross_runner_checkpoint_readback",
         "deny_foreign_scope"
-      ]
+      ],
+      "last_observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b"
     },
     {
       "id": "NF-COORD-REVIEW-CORE-20261014",
       "owner": "review",
       "chat": "Контроль очереди нейрозавода",
       "branch": "neurofactory-review-owned-20261013",
-      "status": "WAITING_FOR_CORE_EXACT_SHA",
+      "status": "WAITING_FOR_NEW_CORE_EXACT_SHA",
       "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "scope": [
         "bridge/neurofactory/development/review_owned/",
@@ -66,14 +67,15 @@
         "38630121475",
         "38630845464"
       ],
-      "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval."
+      "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval.",
+      "last_observed_head": "c2510f1f35c946dea0c7a33786960e4875984ace"
     },
     {
       "id": "NF-COORD-PROVIDERS-MOCK-20261014",
       "owner": "providers",
       "chat": "Подключение DeepSeek",
       "branch": "neurofactory-providers-free-20261013",
-      "status": "ASSIGNED_NO_LIVE_CALLS",
+      "status": "MOCK_CANDIDATE_LOCAL_TESTS_REPORTED_NOT_ACCEPTED",
       "scope": [
         "bridge/neurofactory/providers/",
         ".github/workflows/neurofactory-providers-owned-"
@@ -87,14 +89,23 @@
         "quota_stop",
         "user_region_and_entitlement_uncertainty_not_ignored",
         "fallback_never_uses_paid_endpoint"
-      ]
+      ],
+      "candidate_branch": "neurofactory-providers-offline-20261014",
+      "candidate_sha": "691edb1b1283a928e3d032b571f3e053f0f80d31",
+      "self_reported_tests": {
+        "linux_local_passed": 21,
+        "windows_ci": "NOT_VERIFIED",
+        "independent_review": "NOT_VERIFIED",
+        "paid_api_calls_claimed": 0
+      },
+      "next": "No new network access: independent code review, owned Windows/offline test on exact candidate commit, document cost entitlements. No merge."
     },
     {
       "id": "NF-COORD-SKILLS-RECONCILE-20261014",
       "owner": "skills",
       "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
       "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
-      "status": "CONFLICT_MAPPED_CODE_CHANGE_PENDING",
+      "status": "THREE_DRAFTS_UNRECONCILED",
       "repository": "DSLitvinov1/lesson3.1",
       "inputs": [
         {
@@ -126,14 +137,20 @@
         "independent_security_review",
         "no_activation_no_merge"
       ],
-      "note": "Actual Git conflict remains until SKILLS owner creates tested reconciled commit."
+      "note": "Actual Git conflict remains until SKILLS owner creates tested reconciled commit.",
+      "verified_heads": {
+        "pr514": "1d970fcea560f59289c871f3f6dafdf1e89b0dce",
+        "pr515": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b",
+        "pr528": "ecbdc6fb8e5e4f433628746447ede4f0217095f9"
+      },
+      "next": "Create one new SKILLS-only reconciled candidate based on #528 with GOD MODE entry from #514, 12 candidates all inactive, one unified suite; owner-only full unittest and independent review first."
     },
     {
       "id": "NF-COORD-OPS-REVIEW-20261014",
       "owner": "ops",
       "chat": "OPS diagnostics",
       "branch": "neurofactory-ops-diagnostics-candidate-20261014",
-      "status": "PROVISIONAL_ISOLATED",
+      "status": "UPDATED_OFFLINE_CANDIDATE_SELF_TESTED_AWAITING_INDEPENDENT_REVIEW",
       "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
       "scope": [
         "bridge/neurofactory/ops_diagnostics/",
@@ -152,7 +169,16 @@
         "no_external_API",
         "no_secret_access",
         "no_core_or_coordinator_writes"
-      ]
+      ],
+      "last_observed_head": "984a1e516549960a0b51e137c804dea3a064bf3f",
+      "self_reported_tests": {
+        "run": 38633767111,
+        "linux_passed": 68,
+        "windows_passed": 68,
+        "github_jobs": "BOTH_SUCCESS",
+        "independent_review": "NOT_OBTAINED"
+      },
+      "next": "Need independently chosen external verifier to inspect immutable OPS SHA in read-only mode; no auto-recovery, live status claims or shared gate modifications."
     },
     {
       "id": "NF-COORD-HANDOFF-PAUSE-20261014",
@@ -168,7 +194,8 @@
         "no_manual_workflow_dispatch",
         "no_integration",
         "no_publication"
-      ]
+      ],
+      "last_observed_head": "279995e7fa252882fceec7ee2e955884382c4f54"
     }
   ],
   "blockers": [
@@ -198,5 +225,19 @@
       "id": "HANDOFF_ON_HOLD",
       "status": "USER_PAUSED"
     }
+  ],
+  "last_coordinator_review": "2026-10-14",
+  "last_roadmap_update_commit": "b4dd49e63870a43440bcf0221e7a99b01cb26fc0",
+  "next_dependency_chain": [
+    "CORE new exact SHA",
+    "REVIEW independent verdict on new CORE SHA",
+    "COORDINATOR check branch protection and all owner boundaries",
+    "No HANDOFF release while user pause remains"
+  ],
+  "no_duplicate_testing": [
+    "REVIEW historical receipt spoof #38630845464",
+    "REVIEW historic external proof checks #38630121475",
+    "OPS existing own CI #38629788051 #38633528805 #38633767111",
+    "HANDOFF original Q090 and failed Qwen3 review"
   ]
 }
