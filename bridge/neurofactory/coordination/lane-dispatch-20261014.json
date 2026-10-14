@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -21,7 +21,7 @@
       "owner": "core",
       "chat": "Нейрозавод 1",
       "branch": "neurofactory-core-queue-owned-20261013",
-      "status": "ASSIGNED_AWAITING_OWNER_COMMIT",
+      "status": "AWAITING_NEW_CORE_CONTRACT_SHA",
       "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "scope": [
         "bridge/neurofactory/development/core_owned/",
@@ -47,7 +47,7 @@
       "owner": "review",
       "chat": "Контроль очереди нейрозавода",
       "branch": "neurofactory-review-owned-20261013",
-      "status": "WAITING_FOR_NEW_CORE_EXACT_SHA",
+      "status": "PENDING_ONLY_ON_NEW_CORE_SHA",
       "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "scope": [
         "bridge/neurofactory/development/review_owned/",
@@ -75,7 +75,7 @@
       "owner": "providers",
       "chat": "Подключение DeepSeek",
       "branch": "neurofactory-providers-free-20261013",
-      "status": "MOCK_CANDIDATE_LOCAL_TESTS_REPORTED_NOT_ACCEPTED",
+      "status": "SAFE_LOCAL_CANDIDATE_AWAITING_WINDOWS_AND_EXTERNAL_REVIEW",
       "scope": [
         "bridge/neurofactory/providers/",
         ".github/workflows/neurofactory-providers-owned-"
@@ -90,22 +90,25 @@
         "user_region_and_entitlement_uncertainty_not_ignored",
         "fallback_never_uses_paid_endpoint"
       ],
-      "candidate_branch": "neurofactory-providers-offline-20261014",
-      "candidate_sha": "691edb1b1283a928e3d032b571f3e053f0f80d31",
+      "candidate_branch": "neurofactory-providers-safe-local-20261014",
+      "candidate_sha": "8d4723a95808df1d66d7a49152c441960da6b1a5",
       "self_reported_tests": {
-        "linux_local_passed": 21,
+        "linux_local": 29,
+        "linux_ci": "NOT_VERIFIED",
         "windows_ci": "NOT_VERIFIED",
         "independent_review": "NOT_VERIFIED",
-        "paid_api_calls_claimed": 0
+        "network": "localhost_stub_only",
+        "paid_api_called": false
       },
-      "next": "No new network access: independent code review, owned Windows/offline test on exact candidate commit, document cost entitlements. No merge."
+      "next": "Check Windows offline and independent network/isolation review exact SHA; paid endpoints blocked",
+      "pr": 5
     },
     {
       "id": "NF-COORD-SKILLS-RECONCILE-20261014",
       "owner": "skills",
       "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
       "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
-      "status": "THREE_DRAFTS_UNRECONCILED",
+      "status": "FOUR_DRAFTS_UNRECONCILED_REVIEW_PROVENANCE_RISK",
       "repository": "DSLitvinov1/lesson3.1",
       "inputs": [
         {
@@ -143,14 +146,18 @@
         "pr515": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b",
         "pr528": "ecbdc6fb8e5e4f433628746447ede4f0217095f9"
       },
-      "next": "Create one new SKILLS-only reconciled candidate based on #528 with GOD MODE entry from #514, 12 candidates all inactive, one unified suite; owner-only full unittest and independent review first."
+      "next": "Single SKILLS writer base on PR 540, add GOD MODE from PR 514, 12 candidates all disabled; trust external review identity outside mutable registry before approval; full real tests",
+      "latest_frontend_pr": 540,
+      "latest_frontend_sha": "f45805d4fc22beef7e4a308d70d5097349a26781",
+      "candidate_count_latest": 11,
+      "activation_blocked_due_to_spoofable_registry_review": true
     },
     {
       "id": "NF-COORD-OPS-REVIEW-20261014",
       "owner": "ops",
       "chat": "OPS diagnostics",
       "branch": "neurofactory-ops-diagnostics-candidate-20261014",
-      "status": "UPDATED_OFFLINE_CANDIDATE_SELF_TESTED_AWAITING_INDEPENDENT_REVIEW",
+      "status": "EXTERNAL_INDEPENDENT_AUDIT_REQUESTED_UNASSIGNED",
       "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
       "scope": [
         "bridge/neurofactory/ops_diagnostics/",
@@ -170,7 +177,7 @@
         "no_secret_access",
         "no_core_or_coordinator_writes"
       ],
-      "last_observed_head": "984a1e516549960a0b51e137c804dea3a064bf3f",
+      "last_observed_head": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
       "self_reported_tests": {
         "run": 38633767111,
         "linux_passed": 68,
@@ -178,7 +185,10 @@
         "github_jobs": "BOTH_SUCCESS",
         "independent_review": "NOT_OBTAINED"
       },
-      "next": "Need independently chosen external verifier to inspect immutable OPS SHA in read-only mode; no auto-recovery, live status claims or shared gate modifications."
+      "next": "External qualified verifier independent from OPS author and CORE REVIEW; audit exact b908.. read-only; preserve previous tests, no new matrix re-run",
+      "independent_review_issue": 6,
+      "latest_workflow": "20 GitHub hosted matrix jobs proposed/defined; completion of new SHA not verified",
+      "independent_verdict": "PENDING_NOT_GRANTED"
     },
     {
       "id": "NF-COORD-HANDOFF-PAUSE-20261014",
@@ -227,7 +237,7 @@
     }
   ],
   "last_coordinator_review": "2026-10-14",
-  "last_roadmap_update_commit": "b4dd49e63870a43440bcf0221e7a99b01cb26fc0",
+  "last_roadmap_update_commit": "13fd99d1f526a12917511d983bb73f8c754e4c7b",
   "next_dependency_chain": [
     "CORE new exact SHA",
     "REVIEW independent verdict on new CORE SHA",
@@ -239,5 +249,15 @@
     "REVIEW historic external proof checks #38630121475",
     "OPS existing own CI #38629788051 #38633528805 #38633767111",
     "HANDOFF original Q090 and failed Qwen3 review"
-  ]
+  ],
+  "approval_gates": {
+    "core_exact_sha_and_tests": "MISSING",
+    "review_of_new_core_exact_sha": "MISSING",
+    "providers_windows_independent": "MISSING",
+    "skills_reconciliation_12_candidates_and_trusted_review": "MISSING",
+    "ops_issue_6_owner_approved": "MISSING",
+    "handoff_paused": "YES",
+    "production_branch_protection": "NOT_VERIFIED",
+    "release": "BLOCKED"
+  }
 }
