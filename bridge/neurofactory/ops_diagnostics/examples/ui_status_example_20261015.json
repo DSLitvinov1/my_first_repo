@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "neurofactory-ops-status",
+  "observed_at": "2026-10-15T01:00:00Z",
+  "project": {
+    "id": "NF-OPS-SANDBOX",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-ops-completion-20261015",
+    "head_sha": "b908b78f35dcdd7a88eb0d939c748df0c5856328"
+  },
+  "bridge": {
+    "state": "UNKNOWN",
+    "heartbeat_at": null
+  },
+  "workers": [],
+  "queue": [
+    {
+      "task_id": "NF-OPS-EXAMPLE-1",
+      "state": "BLOCKED",
+      "worker_id": null,
+      "attempt": 1,
+      "last_progress_at": "2026-10-15T00:35:00Z",
+      "checkpoint": {
+        "state": "PARTIAL",
+        "sha256": null,
+        "durable_readback": false
+      },
+      "run_id": null
+    }
+  ],
+  "runs": [
+    {
+      "id": 38635575264,
+      "state": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "head_sha": "b908b78f35dcdd7a88eb0d939c748df0c5856328"
+    }
+  ],
+  "problems": [
+    {
+      "code": "CHECKPOINT_PARTIAL",
+      "task_id": "NF-OPS-EXAMPLE-1",
+      "run_id": null
+    }
+  ]
+}
