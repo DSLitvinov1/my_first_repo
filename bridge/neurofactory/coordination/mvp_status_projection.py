@@ -45,7 +45,7 @@ def projection(observations):
                 ".." in branch or "//" in branch or not SHA.fullmatch(sha) or
                 not GITHUB.fullmatch(url) or phase not in PHASES):
             raise InvalidSnapshot("unsafe, unpinned or unverifiable observation")
-        if url.split("/")[3] != repo.split("/")[1]:
+        if url.split("/")[4] != repo.split("/")[1]:
             raise InvalidSnapshot("evidence repository mismatch")
         if lane == "HANDOFF" and phase != "paused":
             raise InvalidSnapshot("HANDOFF must remain paused")
