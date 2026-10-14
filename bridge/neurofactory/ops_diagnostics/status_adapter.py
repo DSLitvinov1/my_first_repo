@@ -116,8 +116,10 @@ def snapshot_to_status(snapshot):
                                      optional=True))
     bridge_view = {
         "reported_state": bridge_claim,
-        "display_state": "UNKNOWN" if bridge_age is None or bridge_age > WORKER_AGE
-            or bridge_claim in ("UNKNOWN", "OFFLINE") else bridge_claim,
+        # A claimed heartbeat is not platform-attested provenance.
+        "display_state": "UNKNOWN" if bridge_claim == "RUNNING" or bridge_age is None
+            or bridge_age > WORKER_AGE or bridge_claim in ("UNKNOWN", "OFFLINE")
+            else bridge_claim,
         "seconds_since_heartbeat": bridge_age,
         "source_verified": False
     }
@@ -137,7 +139,8 @@ def snapshot_to_status(snapshot):
             "id": wid, "role": token(w["role"], IDENT, "worker role"),
             "reported_state": raw_state,
             "display_state": raw_state if sec is not None and sec <= WORKER_AGE
-                and raw_state not in ("OFFLINE", "UNKNOWN") else "UNKNOWN",
+                and raw_state not in ("RUNNING", "OFFLINE", "UNKNOWN")
+                else "UNKNOWN",
             "seconds_since_heartbeat": sec,
             "run_id": optional_number(w["run_id"], "worker run id"),
             "source_verified": False
@@ -175,8 +178,7 @@ def snapshot_to_status(snapshot):
         stale = state in ("RUNNING", "CLAIMED") and (progress_age is None
                  or progress_age > TASK_AGE)
         status = "BLOCKED" if state == "BLOCKED" or cp_state == "PARTIAL" else (
-            "UNKNOWN" if state in ("RUNNING", "CLAIMED") and progress_age is None
-            else state)
+            "UNKNOWN" if state in ("RUNNING", "CLAIMED", "CHECKED") else state)
         counts[status] = counts.get(status, 0) + 1
         if cp_state == "PARTIAL":
             findings.append({"code": "CHECKPOINT_PARTIAL", "task_id": tid,
