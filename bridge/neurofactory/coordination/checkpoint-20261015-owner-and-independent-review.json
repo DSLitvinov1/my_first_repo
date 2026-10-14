@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "captured_at_local": "2026-10-15 00:02 Europe/Bucharest",
+  "kind": "VERIFIED_HEAD_DIFF_AND_EXISTING_JOB_METADATA_NO_NEW_TEST_EXECUTION",
+  "previous_checkpoint": "f98adf18ce94d56e20a22ef3274bc849f74add96",
+  "roadmap_commit": "7c6ebfc5ed4499f8b62b21e56a63f979324c8748",
+  "dispatch_commit": "995ef94e90963d45df2354571bb1c587ba0ffb68",
+  "evidence": {
+    "CORE": {
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "changed": false,
+      "safe_contract_new": false,
+      "review_of_new_head": false
+    },
+    "REVIEW": {
+      "branch": "neurofactory-review-owned-20261013",
+      "head": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "changed": false,
+      "reserved_for_core": true,
+      "legacy_security_findings": [
+        "forged claimed Qwen REVIEW_OK",
+        "last duplicate JSON key overrides first"
+      ],
+      "new_audit": false
+    },
+    "PROVIDERS": {
+      "active_draft_pr": 5,
+      "head": "8d4723a95808df1d66d7a49152c441960da6b1a5",
+      "own_branch": "neurofactory-providers-resilience-20261014",
+      "new_head": "676764ac6db99218cbbbc9194d6b7b6ade8d8588",
+      "commit_delta": 2,
+      "changed_paths": [
+        "bridge/neurofactory/providers/durable_budget.py",
+        "bridge/neurofactory/providers/local_qwen.py"
+      ],
+      "old_owner_linux_mock_tests": 29,
+      "old_owner_windows_test": "NOT_VERIFIED",
+      "new_own_branch_windows_test": "NOT_VERIFIED",
+      "independent_pr_reviews_count": 0,
+      "independent_auditor": "UNASSIGNED",
+      "no_live_paid_api_called_by_coordinator": true,
+      "release_authorized": false
+    },
+    "SKILLS": {
+      "repo": "DSLitvinov1/lesson3.1",
+      "tracked_prs": [
+        514,
+        515,
+        528,
+        540
+      ],
+      "latest_pr_head": "f45805d4fc22beef7e4a308d70d5097349a26781",
+      "latest_candidate_skill_count": 11,
+      "expected_count": 12,
+      "all_candidates_disabled": true,
+      "combined_single_owner_commit": false,
+      "untrusted_self_approval_issue": true,
+      "independent_pr540_review_count": 0,
+      "external_approval": "MISSING",
+      "divergent_godmode_branch": "neurofactory-godmode-autonomy-isolated-20261014",
+      "merge_divergent_branch": "BLOCKED_CONTAINS_UNRELATED_BRIDGE_WORKFLOWS"
+    },
+    "OPS": {
+      "issue": 6,
+      "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+      "head": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "changed": false,
+      "run_id": 38635575264,
+      "github_jobs_observed": 20,
+      "github_jobs_completed_success": 20,
+      "unit_tests_per_job_claimed_by_owner": 93,
+      "total_claimed_executions": 1860,
+      "authentic_independent_review": "NONE",
+      "issue6_external_review_comment": "6178479442",
+      "issue6_assignee": "UNASSIGNED",
+      "release_authorized": false
+    },
+    "HANDOFF": {
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "changed": false,
+      "status": "PAUSED_BY_USER",
+      "new_runs_by_coordinator": 0
+    }
+  },
+  "issue_comments": {
+    "providers_pr5": 6178478458,
+    "ops_issue6": 6178479442,
+    "skills_pr540": 6178480450
+  },
+  "blocked_release_reasons": [
+    "CORE no new exact contract",
+    "REVIEW no exact new CORE approval",
+    "Untrusted historic reviewer receipt",
+    "PROVIDERS no Windows and separate approval for latest",
+    "SKILLS only 11 candidates and spoofable review identity",
+    "OPS independent verifier unassigned",
+    "HANDOFF held by user",
+    "Production branch ruleset not independently verified",
+    "Historical mixed PR #2 remains draft"
+  ],
+  "limits": {
+    "new_workflow_dispatched": 0,
+    "new_python_unit_tests_run": 0,
+    "new_model_requests": 0,
+    "paid_api_requests_by_coordinator": 0,
+    "other_owned_source_edits": 0,
+    "branch_merges": 0,
+    "real_queue_jobs_created": 0,
+    "chatgpt_sends": 0,
+    "windows_bridge_restart": 0
+  },
+  "next_gate": "Await new CORE contract SHA before REVIEW; independent specialist for OPS issue6; PROVIDERS owner Windows checks on chosen exact SHA and independent external review; SKILLS single owner reconcile #540 plus #514 with trusted reviewer; otherwise BLOCKED"
+}
