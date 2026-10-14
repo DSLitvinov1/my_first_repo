@@ -1,0 +1,31 @@
+name: Neurofactory CORE single-task targeted offline checks
+on:
+  push:
+    branches: [neurofactory-core-queue-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/one_task_core.py'
+      - 'bridge/neurofactory/development/core_owned/test_one_task_core.py'
+      - '.github/workflows/neurofactory-core-owned-once-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  core-offline-test:
+    name: deterministic single-task sandbox tests (NO Ollama)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout pinned candidate commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Targeted Python offline tests
+        run: python3 -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py
+      - name: Source tree remains unmodified
+        run: git diff --exit-code
