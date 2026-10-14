@@ -166,16 +166,59 @@ def report(document):
         ]
     }
 
+
+def render_russian_text(value):
+    """Human-readable view of a validated OFFLINE report; no trusted status."""
+    if not isinstance(value, dict) or value.get("report_type") != "isolated_offline_ops_observation":
+        raise SnapshotError("Unrecognized or unchecked report")
+    lines = [
+        "НЕЙРОЗАВОД — ИЗОЛИРОВАННАЯ ДИАГНОСТИКА OPS",
+        "Только предоставленные снимки, а не живой мониторинг GitHub.",
+        "Последний снимок: " + value["latest_observation_id"],
+        "Количество снимков: " + str(value["observation_count"]),
+        "Состояние: " + value["latest_diagnosis"],
+        "ИСПОЛНИТЕЛИ:"
+    ]
+    for x in value["worker_inventory"]:
+        lines.append("  " + x["id"] + " / " + x["role"] + " — " + x["state"])
+    if not value["worker_inventory"]:
+        lines.append("  Неизвестно: список исполнителей не предоставлен.")
+    lines.append("ОЧЕРЕДЬ:")
+    for x in value["queue_inventory"]:
+        lines.append("  " + x["task_id"] + ": " + x["state"] +
+                     ", попытка " + str(x["attempt"]))
+    if not value["queue_inventory"]:
+        lines.append("  Неизвестно: список задач не предоставлен.")
+    lines.append("БЛОКИРУЮЩИЕ ПРОБЛЕМЫ:")
+    for code in value["latest_blockers"]:
+        lines.append("  " + code)
+    if not value["latest_blockers"]:
+        lines.append("  Не обнаружено внутри снимка; разрешения на выпуск всё равно нет.")
+    lines.append("ПОВТОРЯЮЩИЕСЯ ОТКАЗЫ (различные номера запусков):")
+    for entry in value["recurrent_failures"]:
+        lines.append("  " + entry["component"] + " / " + entry["code"] +
+                     " — " + str(entry["distinct_failed_runs"]) + " запусков")
+        lines.append("  Рекомендация: " + entry["recovery_recommendation"])
+    if not value["recurrent_failures"]:
+        lines.append("  Повторов в предоставленных записях не обнаружено.")
+    lines.append("АВТОВОССТАНОВЛЕНИЕ, ПОВТОР, ПУБЛИКАЦИЯ И MERGE ЗАПРЕЩЕНЫ.")
+    lines.append("Внешняя приёмка CORE/REVIEW/COORDINATOR и проверка GitHub обязательны.")
+    return "\n".join(lines)
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only OPS summary of local saved observations")
     parser.add_argument("observations", help="Local JSON report envelope; never a live CORE journal")
+    parser.add_argument("--format", choices=("json", "text"), default="json")
     args = parser.parse_args(argv)
     try:
         path = Path(args.observations)
         if not path.is_file() or path.stat().st_size > MAX_BYTES:
             raise SnapshotError("Input is missing or exceeds the size limit")
         result = report(_parse_unique(path.read_text(encoding="utf-8")))
-        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        if args.format == "text":
+            print(render_russian_text(result))
+        else:
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
     except (SnapshotError, OSError) as exc:
         print("OPS_REPORT_REFUSED: " + str(exc), file=sys.stderr)
