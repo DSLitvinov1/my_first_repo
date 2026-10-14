@@ -23,6 +23,20 @@ _SUMMARY_FIELDS = {
     "proposed_path", "proposed_content_sha256", "model_output_digest",
     "source_verified", "automatic_retry_allowed", "publication_allowed",
 }
+
+_ALLOWED_EXTENSIONS = (".py", ".md", ".txt", ".json")
+_SAFE_RELATIVE = re.compile(r"[A-Za-z0-9_./-]{1,160}\\Z")
+
+
+def _safe_proposal_path(path):
+    if (type(path) is not str or _SAFE_RELATIVE.fullmatch(path) is None or
+        not path.startswith(("src/", "docs/")) or
+        not path.endswith(_ALLOWED_EXTENSIONS)):
+        return False
+    return all(segment and segment not in (".", "..") and
+               not segment.startswith(".") for segment in path.split("/"))
+
+
 _METADATA_FIELDS = {
     "evidence_filename", "evidence_sha256", "response_sha256",
     "observed_at_utc", "elapsed_ms",
@@ -40,7 +54,7 @@ def bind_reported_receipt(summary, metadata):
         raise EvidenceBindingError("unexpected fields or leaked raw response")
     task_id = summary["task_id"]
     digest = summary["model_output_digest"]
-    if (summary["schema"] != 1 or
+    if (type(summary["schema"]) is not int or summary["schema"] != 1 or
         summary["status"] != "RESPONSE_UNVERIFIED" or
         summary["provider_status"] != "PROPOSED_UNVERIFIED" or
         type(task_id) is not str or _TASK.fullmatch(task_id) is None or
@@ -49,8 +63,7 @@ def bind_reported_receipt(summary, metadata):
         type(digest) is not str or _SHA64.fullmatch(digest) is None or
         type(summary["proposed_content_sha256"]) is not str or
         _SHA64.fullmatch(summary["proposed_content_sha256"]) is None or
-        type(summary["proposed_path"]) is not str or
-        not summary["proposed_path"].startswith(("src/", "docs/")) or
+        not _safe_proposal_path(summary["proposed_path"]) or
         summary["source_verified"] is not False or
         summary["automatic_retry_allowed"] is not False or
         summary["publication_allowed"] is not False):
