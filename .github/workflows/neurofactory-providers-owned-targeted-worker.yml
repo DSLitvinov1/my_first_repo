@@ -11,6 +11,7 @@ on:
       - bridge/neurofactory/providers/local_qwen.py
       - bridge/neurofactory/providers/coordinator_adapter.py
       - bridge/neurofactory/providers/test_coordinator_adapter.py
+      - bridge/neurofactory/providers/test_coordinator_wire.py
       - .github/workflows/neurofactory-providers-owned-targeted-worker.yml
 permissions:
   contents: read
@@ -30,7 +31,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Validate only touched worker paths
-        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py
-      - name: Targeted local resource fail-closed regression only
+        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_wire.py
+      - name: Targeted current coordinator wire data-only regression
         run: |
-          python -m unittest discover -s bridge/neurofactory/providers -p "test_ollama_worker.py" -v
+          python -m unittest discover -s bridge/neurofactory/providers -p "test_coordinator_wire.py" -v
