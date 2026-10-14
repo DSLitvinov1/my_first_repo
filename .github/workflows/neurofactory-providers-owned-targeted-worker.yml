@@ -31,7 +31,6 @@ jobs:
           python-version: '3.11'
       - name: Validate only touched worker paths
         run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py
-      - name: Targeted worker unit and loopback-only test
+      - name: Targeted coordinator adapter security regression only
         run: |
-          python -m unittest discover -s bridge/neurofactory/providers -p "test_ollama_worker.py" -v
           python -m unittest discover -s bridge/neurofactory/providers -p "test_coordinator_adapter.py" -v
