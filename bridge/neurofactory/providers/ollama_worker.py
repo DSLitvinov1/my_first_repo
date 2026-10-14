@@ -110,13 +110,16 @@ def installed_model_info(model: str) -> dict:
 
 
 def check_resources(model: str) -> dict:
-    info = installed_model_info(model)
+    # No local Ollama HTTP lookup if physical RAM is already inadequate.
     available = physical_free_memory_bytes()
+    if available < 2 * ONE_GIB:
+        raise PreflightBlocked("BLOCKED_RESOURCE")
+    info = installed_model_info(model)
     # Deliberately conservative. Disk model size is only a proxy for memory.
     minimum = max(2 * ONE_GIB, (info["model_disk_bytes"] * 2) + 512 * 1024 ** 2)
     info["free_ram_bytes"] = available
     info["required_ram_bytes"] = minimum
-    if not available or available < minimum:
+    if available < minimum:
         raise PreflightBlocked("BLOCKED_RESOURCE")
     return info
 
