@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "REVIEW",
+  "issue": 3,
+  "category": "HISTORIC_GITHUB_PUBLISHING_RECEIPT_THREAT_CHECK",
+  "status": "CONFIRMED_REPRODUCIBLE_LIMITATION_IN_HISTORIC_MODULE_NOT_PRODUCTION_DEPLOYMENT",
+  "target": {
+    "repository": "DSLitvinov1/my_first_repo",
+    "review_branch": "neurofactory-review-owned-20261013",
+    "source_file": "bridge/neurofactory/development/stage5_git_receipts.py",
+    "source_git_blob": "2688e4b521b21995347ed00c5a0267db11e9fc85",
+    "historical_workflow_only": true,
+    "production_use_confirmed": false
+  },
+  "independent_tests": {
+    "run": 38630845464,
+    "conclusion": "success",
+    "test_count": 5,
+    "test_pass": 5,
+    "test_failure": 0,
+    "network_requests": 0,
+    "github_writes": 0,
+    "tests_path": "bridge/neurofactory/development/review_owned/test_historic_receipt_forgery.py",
+    "workflow": ".github/workflows/neurofactory-review-owned-receipt-spoof.yml"
+  },
+  "reproduced": [
+    {
+      "id": "REVIEW-GITHUB-RECEIPT-001",
+      "finding": "Legacy receipt verifier accepts an attacker-constructed reviewer JSON containing task_id, source_sha256, verdict REVIEW_OK and reviewer name qwen3:4b without verifying an actual model invocation or an independent REVIEW-owner signature.",
+      "entry": "stage5_git_receipts.verify(... role='reviewer')",
+      "scope": "Mocked GitHub read-only responses satisfying the expected commit-path and branch ancestry; attacker would need control of the trusted published receipt, so not proof of unauthorized writes to real GitHub."
+    },
+    {
+      "id": "REVIEW-GITHUB-RECEIPT-002",
+      "finding": "Duplicate JSON keys in reviewer receipt are parsed last-wins, allowing a REVIEW_BAD then REVIEW_OK override without duplicate-key rejection.",
+      "entry": "stage5_git_receipts.verify(... role='reviewer')",
+      "scope": "Mocked accepted evidence, not a verified real publisher or real branch exploit."
+    }
+  ],
+  "positive_controls": [
+    "Historical writer source byte digest remains checked.",
+    "Explicit REVIEW_BAD is rejected.",
+    "Tests use local mocked API and never access real GitHub publishing endpoints."
+  ],
+  "requirements_before_integration": [
+    "Do not rely on reviewer-model string and REVIEW_OK receipt fields as independent approval.",
+    "Use exact immutable GitHub Actions run/job/artifact with original raw Qwen output and source-bound bytes; owner REVIEW must issue separate tracked approval.",
+    "Use strict duplicate-key rejecting JSON and fixed schema, validate source and provenance before giving CORE a trusted boolean.",
+    "Do not use any historic module or mixed draft PR #2 as a production publisher without refreshed independent tests and coordinator approval.",
+    "Separately verify exact once-only publication with one unique task id and readback after uncertain response; old tests do not prove this."
+  ],
+  "independent_review_support": {
+    "qwen_github_verifier": "bridge/neurofactory/development/review_owned/verify_qwen3_github_evidence.py",
+    "adversarial_run": 38630121475,
+    "adversarial_tests_passed": 22,
+    "github_api_lookup_mode": "fixed https GitHub REST read only, owner approval never granted automatically"
+  },
+  "release_allowed": false,
+  "publisher_allowed": false,
+  "merge_allowed": false,
+  "paid_api_used": false,
+  "chatgpt_sending": false,
+  "no_other_owner_writes": true
+}
