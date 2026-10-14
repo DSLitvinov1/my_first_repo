@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": "НЕЙРОЗАВОД",
   "as_of": "2026-10-14",
   "authority": "COORDINATOR assignment, adoption by each ChatGPT chat must be explicitly confirmed",
@@ -110,6 +110,21 @@
         "neurofactory-skill-master/"
       ],
       "next": "Не вести параллельные правки registry.json/test_skill_master.py в PR 514 и 515. Подготовить единый reconciled кандидат, провести настоящие unit-тесты и отдельный review; не активировать кандидат до приёмки"
+    },
+    {
+      "id": "ops",
+      "primary_chat": "OPS diagnostics (отдельный чат, по запросу в Issue 3)",
+      "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "PROVISIONAL_ISOLATED_AWAITING_INDEPENDENT_REVIEW",
+      "last_observed_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
+      "responsibility": "Offline read-only diagnostics of caller supplied snapshots; no live GitHub API access and no production authorizations",
+      "allowed": [
+        "bridge/neurofactory/ops_diagnostics/",
+        ".github/workflows/neurofactory-ops-candidate-diagnostics.yml"
+      ],
+      "next": "Only isolated read-only local test and independent audit of exact existing candidate; no overlap with coordinator-owned release checks",
+      "cannot": "No coordinator/CORE/REVIEW ownership, no real-time live checks, no merge, no model runner or trusted publisher"
     }
   ],
   "conflicts_and_holds": [
@@ -142,6 +157,23 @@
       "target": "Production branch protection",
       "state": "NOT_CONFIRMED_ENFORCED",
       "action": "Администратор должен включить GitHub ruleset; CI-гейт не заменяет защиту"
+    },
+    {
+      "target": "SKILLS #528 dependent on #515 and unrelated #514",
+      "state": "THREE_DRAFT_INTEGRATION_SEQUENCE_REQUIRED",
+      "action": "SKILLS is sole writer; use #528 tip as canonical feature source, append single GOD MODE candidate from #514, reconcile registry/tests, recalculate digest, do not merge 514 and 515 independently"
+    },
+    {
+      "target": "REVIEW-GITHUB-RECEIPT-001 and 002",
+      "state": "CONFIRMED_HISTORIC_MOCK_REPRODUCTIONS",
+      "action": "Never use historic receipt verifier alone for trusted model approval; CORE owns integration fix, REVIEW independently validates"
+    },
+    {
+      "target": "OPS diagnostic candidate",
+      "state": "PROVISIONAL_SCOPE_ONLY",
+      "action": "Ownership approved for isolated offline diagnostics; production integration blocked pending exact-SHA independent review"
     }
-  ]
+  ],
+  "updated_at": "2026-10-14",
+  "coordinator_addendum": "See ROADMAP_LANES_20261014_RU.md and lane-dispatch-20261014.json; do not adopt without the corresponding chat reading the assignment"
 }
