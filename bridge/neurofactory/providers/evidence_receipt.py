@@ -31,7 +31,7 @@ def evidence_name(task_id: str) -> str:
 
 
 def check_evidence_directory(directory: Path) -> None:
-    if type(directory) is not Path or not directory.is_dir() or directory.is_symlink():
+    if not isinstance(directory, Path) or not directory.is_dir() or directory.is_symlink():
         raise EvidenceError("trusted pre-existing provider-owned evidence directory required")
     # Untrusted shared directories are not acceptable for raw model text.
     # On Windows ACL ownership is external and MUST be supplied by the host.
