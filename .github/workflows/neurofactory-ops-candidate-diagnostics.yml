@@ -1,0 +1,40 @@
+name: Neurofactory OPS Candidate Read-only Diagnostics
+on:
+  push:
+    branches:
+      - neurofactory-ops-diagnostics-candidate-20261014
+    paths:
+      - 'bridge/neurofactory/ops_diagnostics/**'
+      - '.github/workflows/neurofactory-ops-candidate-diagnostics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-ops-candidate-diagnostics
+  cancel-in-progress: false
+jobs:
+  offline_linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only diagnostic unit tests on Linux
+        env:
+          PYTHONPATH: bridge/neurofactory/ops_diagnostics
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
+  offline_windows:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only diagnostic unit tests on isolated Windows hosted runner
+        shell: pwsh
+        env:
+          PYTHONPATH: bridge/neurofactory/ops_diagnostics
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: py -3 -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
