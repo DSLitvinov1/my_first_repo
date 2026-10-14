@@ -4,7 +4,7 @@ import unittest
 
 from mvp_task_exchange import (
     ExchangeError, start, authorize, prepare_request,
-    record_provider_result, attest_source, checkpoint, restore, project
+    record_provider_result, attest_source, checkpoint, restore, project, stop_notice
 )
 
 A = "a"*40
@@ -185,6 +185,21 @@ class ExchangeTests(unittest.TestCase):
         self.assertFalse(a["source_verified_by_host"])
         self.assertEqual(a["review_provenance"],"NOT_ATTESTED_BY_PROJECTION")
         self.assertNotIn("text",a)
+
+
+    def test_unknown_model_result_creates_blocked_notice(self):
+        notice=stop_notice(request_state(),"UNKNOWN_MODEL_RESULT")
+        self.assertEqual(notice["status"],"BLOCKED")
+        self.assertFalse(notice["automatic_retry_allowed"])
+        self.assertFalse(notice["publication_allowed"])
+        self.assertFalse(notice["live_execution_allowed"])
+        self.assertEqual(notice["handoff"],"PAUSED_BY_USER")
+        with self.assertRaises(ExchangeError):
+            restore(notice["last_safe_checkpoint"])
+
+    def test_unknown_stop_reason_rejected(self):
+        with self.assertRaises(ExchangeError):
+            stop_notice(request_state(),"RETRY_ANYWAY")
 
 if __name__=="__main__":
     unittest.main()
