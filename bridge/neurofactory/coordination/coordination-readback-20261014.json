@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "captured_date": "2026-10-14",
+  "role": "COORDINATOR",
+  "kind": "coordination_manifest_consistency_readback_not_CI",
+  "files": {
+    "ownership": "f5d1c510b08f2b2cdd9be9d985d2b1443542cb36",
+    "dispatch": "c50bc5af2b82abd7dce97bafc540471aa4829281",
+    "roadmap": "10dd5e295344e7fe1a88ff28ab8a236e8621f86e",
+    "historical_stage5_roadmap_unchanged": "7c42b0fd32383490d0ced308db3b136eebf7e35c"
+  },
+  "checks": {
+    "performed": 13,
+    "passed": 13,
+    "failed": 0,
+    "method": "readback of GitHub file blobs parsed and checked with deterministic in-session JavaScript; not remote CI",
+    "properties": [
+      "files existence",
+      "single owner per lane",
+      "task owner membership",
+      "one HANDOFF pause",
+      "no release publisher",
+      "no paid API",
+      "all three SKILLS drafts cited",
+      "SKILLS not auto-approved",
+      "OPS provisional",
+      "no duplicate task owner",
+      "roadmap records receipt spoof limitation",
+      "roadmap retains HANDOFF pause",
+      "no assignments to paused HANDOFF"
+    ]
+  },
+  "source_observations": {
+    "core_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "review_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
+    "handoff_commit": "279995e7fa252882fceec7ee2e955884382c4f54",
+    "skills_prs": [
+      {
+        "number": 514,
+        "head": "1d970fcea560f59289c871f3f6dafdf1e89b0dce"
+      },
+      {
+        "number": 515,
+        "head": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b"
+      },
+      {
+        "number": 528,
+        "head": "ecbdc6fb8e5e4f433628746447ede4f0217095f9"
+      }
+    ],
+    "ops_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
+    "provider_note": "Readme only; no live adapter test confirmed"
+  },
+  "restrictions": [
+    "no merge",
+    "no new stage5 queue IDs",
+    "no paid API",
+    "no Q090 replay",
+    "no HANDOFF changes or reruns",
+    "no ChatGPT sending",
+    "no Windows reboot"
+  ],
+  "limitations": [
+    "No new CORE, PROVIDERS or SKILLS test runs performed in this coordination turn",
+    "No independent SKILLS review or final merge performed",
+    "Branch ruleset enforcement not newly verified",
+    "User-opened ChatGPT windows are not controlled by this record",
+    "All test counts from earlier Actions are cited observations, not new tests"
+  ]
+}
