@@ -106,7 +106,14 @@ def coordinator_result(candidate: PreparedProviderCall, provider_result: dict) -
             provider_result.get("provider") != "ollama-loopback" or
             provider_result.get("offline_mock") is not False or
             provider_result.get("published") is not False or
-            provider_result.get("review_approved") is not False):
+            provider_result.get("review_approved") is not False or
+            provider_result.get("observed_local_reply") is not True or
+            provider_result.get("attempt_consumed") is not True or
+            type(provider_result.get("prompt_sha256")) is not str or
+            not _SHA64.fullmatch(provider_result["prompt_sha256"]) or
+            type(provider_result.get("response_sha256")) is not str or
+            not _SHA64.fullmatch(provider_result["response_sha256"]) or
+            provider_result.get("api_cost_usd") != 0):
         raise ValueError("blocked or untrusted provider result")
     files = provider_result.get("proposed_files")
     if type(files) is not list or len(files) != 1:
