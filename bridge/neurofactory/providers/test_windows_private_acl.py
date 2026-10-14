@@ -44,6 +44,16 @@ class PrivateDirectoryGateTests(unittest.TestCase):
         else:
             self.assertTrue(self.directory.is_dir())
 
+    @unittest.skipUnless(os.name == "nt", "Windows DACL only")
+    def test_acl_revocation_during_write_fails_closed(self):
+        # Simulate a malicious DACL alteration after the first open.
+        with patch.object(receipt, "require_private_windows_acl",
+                          side_effect=[None, WindowsAclError("ACL changed")]) as verify:
+            with self.assertRaises(receipt.EvidenceError):
+                with receipt._pinned_directory(self.directory):
+                    pass
+            self.assertEqual(verify.call_count, 2)
+
     def test_no_untrusted_symlink_directory(self):
         alias = self.root / "alias"
         try:
