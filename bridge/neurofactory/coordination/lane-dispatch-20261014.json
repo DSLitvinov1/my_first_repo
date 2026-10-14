@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -21,7 +21,7 @@
       "owner": "core",
       "chat": "Нейрозавод 1",
       "branch": "neurofactory-core-queue-owned-20261013",
-      "status": "AWAITING_NEW_CORE_CONTRACT_SHA",
+      "status": "WAITING_CORE_OWNED_COMMIT",
       "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "scope": [
         "bridge/neurofactory/development/core_owned/",
@@ -40,14 +40,15 @@
         "cross_runner_checkpoint_readback",
         "deny_foreign_scope"
       ],
-      "last_observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b"
+      "last_observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "exact_sha_still": "a86ad93046f739db03f80013b6498a0bb0d2eb7b"
     },
     {
       "id": "NF-COORD-REVIEW-CORE-20261014",
       "owner": "review",
       "chat": "Контроль очереди нейрозавода",
       "branch": "neurofactory-review-owned-20261013",
-      "status": "PENDING_ONLY_ON_NEW_CORE_SHA",
+      "status": "RESERVED_FOR_NEW_CORE_ONLY",
       "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "scope": [
         "bridge/neurofactory/development/review_owned/",
@@ -68,14 +69,15 @@
         "38630845464"
       ],
       "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval.",
-      "last_observed_head": "c2510f1f35c946dea0c7a33786960e4875984ace"
+      "last_observed_head": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "latest_review_commit": "c2510f1f35c946dea0c7a33786960e4875984ace"
     },
     {
       "id": "NF-COORD-PROVIDERS-MOCK-20261014",
       "owner": "providers",
       "chat": "Подключение DeepSeek",
       "branch": "neurofactory-providers-free-20261013",
-      "status": "SAFE_LOCAL_CANDIDATE_AWAITING_WINDOWS_AND_EXTERNAL_REVIEW",
+      "status": "OWNED_RESILIENCE_CANDIDATE_WINDOWS_AND_INDEPENDENT_REVIEW_MISSING",
       "scope": [
         "bridge/neurofactory/providers/",
         ".github/workflows/neurofactory-providers-owned-"
@@ -100,15 +102,26 @@
         "network": "localhost_stub_only",
         "paid_api_called": false
       },
-      "next": "Check Windows offline and independent network/isolation review exact SHA; paid endpoints blocked",
-      "pr": 5
+      "next": "PROVIDERS owner only: collect Windows offline evidence and independent reviewer signoff on exact new SHA; no real API or merge",
+      "pr": 5,
+      "active_draft_pr": 5,
+      "original_candidate_sha": "8d4723a95808df1d66d7a49152c441960da6b1a5",
+      "new_owned_branch": "neurofactory-providers-resilience-20261014",
+      "new_owned_sha": "676764ac6db99218cbbbc9194d6b7b6ade8d8588",
+      "new_branch_change_paths": [
+        "bridge/neurofactory/providers/durable_budget.py",
+        "bridge/neurofactory/providers/local_qwen.py"
+      ],
+      "independent_review_request": "PR #5 comment 6178478458",
+      "windows_result": "NOT_VERIFIED",
+      "independent_verdict": "NONE"
     },
     {
       "id": "NF-COORD-SKILLS-RECONCILE-20261014",
       "owner": "skills",
       "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
       "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
-      "status": "FOUR_DRAFTS_UNRECONCILED_REVIEW_PROVENANCE_RISK",
+      "status": "ELEVEN_CANDIDATES_NO_RECONCILIATION_TRUSTED_APPROVAL_MISSING",
       "repository": "DSLitvinov1/lesson3.1",
       "inputs": [
         {
@@ -150,14 +163,19 @@
       "latest_frontend_pr": 540,
       "latest_frontend_sha": "f45805d4fc22beef7e4a308d70d5097349a26781",
       "candidate_count_latest": 11,
-      "activation_blocked_due_to_spoofable_registry_review": true
+      "activation_blocked_due_to_spoofable_registry_review": true,
+      "one_writer_only": true,
+      "unrelated_godmode_autonomy_branch": "neurofactory-godmode-autonomy-isolated-20261014",
+      "unrelated_godmode_autonomy_branch_merge": "FORBIDDEN_IN_CANDIDATE_CONTAINS_FOREIGN_WORKFLOWS",
+      "trusted_external_reviewer_approval": "MISSING",
+      "independent_review_request": "PR #540 comment 6178480450"
     },
     {
       "id": "NF-COORD-OPS-REVIEW-20261014",
       "owner": "ops",
       "chat": "OPS diagnostics",
       "branch": "neurofactory-ops-diagnostics-candidate-20261014",
-      "status": "EXTERNAL_INDEPENDENT_AUDIT_REQUESTED_UNASSIGNED",
+      "status": "20_JOB_CI_VERIFIED_INDEPENDENT_AUDIT_PENDING",
       "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
       "scope": [
         "bridge/neurofactory/ops_diagnostics/",
@@ -188,7 +206,17 @@
       "next": "External qualified verifier independent from OPS author and CORE REVIEW; audit exact b908.. read-only; preserve previous tests, no new matrix re-run",
       "independent_review_issue": 6,
       "latest_workflow": "20 GitHub hosted matrix jobs proposed/defined; completion of new SHA not verified",
-      "independent_verdict": "PENDING_NOT_GRANTED"
+      "independent_verdict": "PENDING_NOT_GRANTED",
+      "verified_github_actions": {
+        "run_id": 38635575264,
+        "total_jobs": 20,
+        "completed_success": 20,
+        "reported_tests_per_job": 93,
+        "independent_audit": false
+      },
+      "independent_review_request_comment": 6178479442,
+      "auditor_identity": "UNASSIGNED",
+      "release_authorized": false
     },
     {
       "id": "NF-COORD-HANDOFF-PAUSE-20261014",
@@ -236,8 +264,8 @@
       "status": "USER_PAUSED"
     }
   ],
-  "last_coordinator_review": "2026-10-14",
-  "last_roadmap_update_commit": "13fd99d1f526a12917511d983bb73f8c754e4c7b",
+  "last_coordinator_review": "2026-10-15",
+  "last_roadmap_update_commit": "7c6ebfc5ed4499f8b62b21e56a63f979324c8748",
   "next_dependency_chain": [
     "CORE new exact SHA",
     "REVIEW independent verdict on new CORE SHA",
@@ -251,13 +279,20 @@
     "HANDOFF original Q090 and failed Qwen3 review"
   ],
   "approval_gates": {
-    "core_exact_sha_and_tests": "MISSING",
-    "review_of_new_core_exact_sha": "MISSING",
-    "providers_windows_independent": "MISSING",
-    "skills_reconciliation_12_candidates_and_trusted_review": "MISSING",
-    "ops_issue_6_owner_approved": "MISSING",
-    "handoff_paused": "YES",
-    "production_branch_protection": "NOT_VERIFIED",
+    "CORE_new_trusted_contract": "MISSING",
+    "REVIEW_new_CORE_exact_SHA_verdict": "MISSING",
+    "PROVIDERS_Windows_and_external_review": "MISSING",
+    "SKILLS_12_candidate_reconcile_and_external_identity": "MISSING",
+    "OPS_independent_owner_review": "MISSING",
+    "HANDOFF": "PAUSED_BY_USER",
+    "branch_ruleset": "NOT_VERIFIED",
     "release": "BLOCKED"
-  }
+  },
+  "runs_not_to_repeat": [
+    "REVIEW historical receipt spoof #38630845464",
+    "REVIEW historic external proof checks #38630121475",
+    "OPS existing own CI #38629788051 #38633528805 #38633767111",
+    "HANDOFF original Q090 and failed Qwen3 review",
+    "OPS multi-OS exact SHA b908b... run 38635575264 20/20 PASS"
+  ]
 }
