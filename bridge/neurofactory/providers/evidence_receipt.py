@@ -7,6 +7,10 @@ Never writes project source files, never calls networks, never retries.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from contextlib import contextmanager
+import ctypes
+import hmac
+import stat
 from hashlib import sha256
 import json
 import os
@@ -42,6 +46,71 @@ def check_evidence_directory(directory: Path) -> None:
         except OSError as exc:
             raise EvidenceError("cannot inspect evidence directory") from exc
 
+
+
+def _check_windows_reparse(path: Path) -> None:
+    """Reject existing NTFS symlink/junction/reparse components, fail closed."""
+    if os.name != "nt":
+        return
+    # A Windows trusted CORE owner must still restrict directory ACLs:
+    # a privileged actor can replace paths despite all local read-only checks.
+    try:
+        for component in (path.absolute(), *path.absolute().parents):
+            flags = ctypes.windll.kernel32.GetFileAttributesW(str(component))
+            if flags == 0xFFFFFFFF or flags & 0x400:
+                raise EvidenceError("Windows reparse or inaccessible evidence path")
+    except (OSError, AttributeError, ValueError) as exc:
+        raise EvidenceError("Windows evidence reparse status unknown") from exc
+
+
+@contextmanager
+def _pinned_directory(directory: Path):
+    """POSIX dirfd pins inode across path replacement; NT uses trusted ACLs."""
+    check_evidence_directory(directory)
+    if os.name != "posix":
+        _check_windows_reparse(directory)
+        yield None
+        _check_windows_reparse(directory)
+        return
+    try:
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        parent_fd = os.open(directory, flags)
+    except OSError as exc:
+        raise EvidenceError("cannot pin evidence directory inode") from exc
+    try:
+        info = os.fstat(parent_fd)
+        if not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o077:
+            raise EvidenceError("evidence directory inode is not private")
+        yield parent_fd
+        try:
+            now = directory.lstat()
+        except OSError as exc:
+            raise EvidenceError("evidence directory replaced after write") from exc
+        if (not stat.S_ISDIR(now.st_mode) or
+                (info.st_dev, info.st_ino) != (now.st_dev, now.st_ino)):
+            raise EvidenceError("evidence directory switched during operation")
+    finally:
+        os.close(parent_fd)
+
+
+def _open_local_record(directory: Path, filename: str, *, create: bool,
+                       directory_fd: int | None):
+    """Only regular files under a pinned, trusted directory are accepted."""
+    if directory_fd is not None:
+        flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL) if create else os.O_RDONLY
+        flags |= os.O_NOFOLLOW
+        descriptor = os.open(filename, flags, 0o600, dir_fd=directory_fd)
+    else:
+        path = directory / filename
+        _check_windows_reparse(directory)
+        if not create and path.is_symlink():
+            raise EvidenceError("symlink record prohibited")
+        flags = (os.O_WRONLY | os.O_CREAT | os.O_EXCL) if create else os.O_RDONLY
+        descriptor = os.open(path, flags, 0o600)
+    if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+        os.close(descriptor)
+        raise EvidenceError("evidence record must be a regular file")
+    return os.fdopen(descriptor, "wb" if create else "rb")
 
 def persist_model_evidence(
     directory: Path, *,
@@ -104,23 +173,22 @@ def persist_model_evidence(
                       sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
     if len(raw) > MAX_RECORD_BYTES:
         raise EvidenceError("oversized model evidence")
-    path = directory / filename
-    # Exclusive create prevents both accidental overwrite and symlink targets.
-    # An interrupted write leaves a broken file that is deliberately NOT retried.
+    # Crash during creation leaves a partial final record, intentionally
+    # retaining its identity so NO second attempt can silently overwrite it.
     try:
-        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        if os.name == "posix":
-            parent_fd = os.open(directory, os.O_RDONLY)
-            try:
+        with _pinned_directory(directory) as parent_fd:
+            with _open_local_record(directory, filename, create=True,
+                                    directory_fd=parent_fd) as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if parent_fd is not None:
                 os.fsync(parent_fd)
-            finally:
-                os.close(parent_fd)
-        with path.open("rb") as stream:
-            readback = stream.read(MAX_RECORD_BYTES + 1)
+            # Never follow a symlink introduced between initial path check
+            # and readback. POSIX uses the same pinned directory inode.
+            with _open_local_record(directory, filename, create=False,
+                                    directory_fd=parent_fd) as stream:
+                readback = stream.read(MAX_RECORD_BYTES + 1)
     except (OSError, ValueError) as exc:
         raise EvidenceError("evidence write/readback uncertain; no model retry") from exc
     if readback != raw:
@@ -134,17 +202,29 @@ def persist_model_evidence(
     }
 
 
-def verify_model_evidence(directory: Path, task_id: str) -> dict:
-    """Independently reread exact author-owned bytes, check digests/invariants."""
-    check_evidence_directory(directory)
-    path = directory / evidence_name(task_id)
-    if path.is_symlink():
-        raise EvidenceError("symlink evidence prohibited")
+def verify_model_evidence(directory: Path, task_id: str, *,
+                          expected_evidence_sha256: str | None = None) -> dict:
+    """Locally reread and optionally bind bytes to a trusted external digest.
+
+    Without an externally recorded expected SHA, locally self-consistent
+    evidence is NOT tamper-proof and MUST NOT be trusted for approval.
+    """
+    if (expected_evidence_sha256 is not None and
+            (type(expected_evidence_sha256) is not str or
+             not _SHA256.fullmatch(expected_evidence_sha256))):
+        raise EvidenceError("invalid external digest")
+    filename = evidence_name(task_id)
     try:
-        with path.open("rb") as stream:
-            raw = stream.read(MAX_RECORD_BYTES + 1)
+        with _pinned_directory(directory) as parent_fd:
+            with _open_local_record(directory, filename, create=False,
+                                    directory_fd=parent_fd) as stream:
+                raw = stream.read(MAX_RECORD_BYTES + 1)
     except OSError as exc:
         raise EvidenceError("missing or unreadable evidence") from exc
+    actual_evidence_digest = sha256(raw).hexdigest()
+    if (expected_evidence_sha256 is not None and not
+            hmac.compare_digest(actual_evidence_digest, expected_evidence_sha256)):
+        raise EvidenceError("record differs from independently anchored digest")
     if len(raw) > MAX_RECORD_BYTES:
         raise EvidenceError("oversized evidence")
     try:
@@ -181,8 +261,8 @@ def verify_model_evidence(directory: Path, task_id: str) -> dict:
         )):
         raise EvidenceError("evidence invariant mismatch")
     return {
-        "evidence_filename": path.name,
-        "evidence_sha256": sha256(raw).hexdigest(),
+        "evidence_filename": filename,
+        "evidence_sha256": actual_evidence_digest,
         "response_sha256": item["response_sha256"],
         "observed_at_utc": item["observed_at_utc"],
         "elapsed_ms": item["elapsed_ms"],
