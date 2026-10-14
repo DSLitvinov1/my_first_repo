@@ -4,6 +4,7 @@ on:
     branches: [neurofactory-review-owned-20261013]
     paths:
       - 'bridge/neurofactory/development/review_owned/test_handoff_independent_security.py'
+      - 'bridge/neurofactory/development/review_owned/test_handoff_independent_process_crash.py'
       - '.github/workflows/neurofactory-review-owned-handoff-security.yml'
 permissions:
   contents: read
@@ -43,7 +44,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/inspected-handoff/bridge/neurofactory/development
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -B -m unittest discover -s reviewer/bridge/neurofactory/development/review_owned -p 'test_handoff_independent_security.py' -v
+          python -B -m unittest discover -s reviewer/bridge/neurofactory/development/review_owned -p 'test_handoff_independent_*.py' -v
       - name: Save read-only independent REVIEW counterexample evidence
         if: success()
         run: |
@@ -57,10 +58,10 @@ jobs:
             "reviewed_handoff_head":"b205a495b51aa125dd8273955c202a177df7a173",
             "reviewed_module_sha256":hashlib.sha256(p.read_bytes()).hexdigest(),
             "reviewed_original_artifact_id":11850873678,
-            "independent_unit_tests":8,
-            "critical_reproduced":"writable parent allows taskdir symlink swap after check; store_once writes outside isolated evidence root",
+            "independent_unit_tests":11,
+            "critical_reproduced":"writable parent allows taskdir symlink swap after check; store_once writes outside isolated evidence root; separate real OS-process interleaving confirmed",
             "model_provenance_limitation":"caller-supplied qwen3:4b verdict is not independently authenticated",
-            "other_findings":"existing symlink target rejected; same-task conflicting two-process writes fail closed; release authorization remains false",
+            "other_findings":"existing symlink target rejected; conflicting two-process writes fail closed; incomplete hard-crash proof blocks replay; incomplete three-part dossier has no commit marker; release authorization remains false",
             "production_publish_authorized":False,"merges_authorized":False
           }
           pathlib.Path("review-evidence/independent-handoff-counterexample.json").write_text(
