@@ -33,5 +33,5 @@ class MockClaudeToLocalQwen:
             reply = self.mock_claude.generate(request)
             return SafeFallbackResult(reply.text, "claude", True, False)
         except QuotaExhausted:
-            backup: LocalReply = self.local_qwen.generate(request.prompt)
+            backup: LocalReply = self.local_qwen.generate(request.prompt, task_id=request.task_id)
             return SafeFallbackResult(backup.text, backup.model, True, True)
