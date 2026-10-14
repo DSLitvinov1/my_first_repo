@@ -368,9 +368,13 @@ def verify_trusted_runner_origin(candidate, review, receipt, *, verify_github):
         raise HandoffError("Untrusted model origin claim or mismatched candidate")
     if not callable(verify_github) or verify_github(receipt, candidate, review) is not True:
         raise HandoffError("Independent GitHub runner provenance not verified")
-    return {"origin_attested_by_external_verifier": True,
+    # A caller can pass a fake callback returning True. Correlation is NOT
+    # cryptographically authenticated provenance. Only a separate REVIEW owner
+    # with trusted GitHub access may attest the exact run/artifact externally.
+    return {"receipt_correlated_by_callback": True,
+            "origin_attested_by_external_verifier": False,
             "candidate_sha256": candidate["candidate_sha256"],
-            "reviewer_model": REVIEWER,
+            "reviewer_model_claim": REVIEWER,
             "needs_independent_review_owner": True,
             "release_authorized": False}
 
