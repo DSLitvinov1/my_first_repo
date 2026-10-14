@@ -84,6 +84,34 @@ class TrustedAPIReviewTests(unittest.TestCase):
                             run, artifact, b"", HEAD, SOURCE)
                     net.assert_not_called()
 
+    def test_boolean_run_attempt_does_not_equal_a_trusted_first_run(self):
+        api=staged_api()
+        api["actions/runs/"+str(RUN_ID)]["run_attempt"]=True
+        with self.assertRaises(attestation.ReviewProofError):
+            check(api)
+
+    def test_http_redirect_to_another_host_is_refused(self):
+        import io
+        import os
+        def forged_opener(*handlers):
+            self.assertEqual(len(handlers), 1)
+            handler=handlers[0]()
+            with self.assertRaises(attestation.ReviewProofError):
+                handler.redirect_request(None,None,302,"Found",{},
+                                         "https://attacker.invalid/steal")
+            class ReadOnlyOpener:
+                def open(self, request, timeout=20):
+                    self_request=request
+                    self.assertTrue(self_request.full_url.startswith(
+                        "https://api.github.com/repos/DSLitvinov1/my_first_repo/"))
+                    return io.BytesIO(b'{"verified":true}')
+            return ReadOnlyOpener()
+        with mock.patch.object(attestation.urllib.request,"build_opener",
+                               side_effect=forged_opener), mock.patch.dict(
+                                   os.environ,{"GITHUB_TOKEN":"fake-read-only-token"}):
+            result=attestation._github_api_json("actions/runs/42")
+        self.assertTrue(result["verified"])
+
     def test_api_cannot_be_redirected_to_untrusted_host(self):
         for path in ("https://attacker.invalid/x",
                      "../actions/runs/3", "actions/runs/1/../secret",
