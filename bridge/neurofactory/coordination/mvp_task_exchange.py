@@ -211,6 +211,25 @@ def restore(record, *, trusted_checkpoint_check=None):
         raise ExchangeError("externally trusted checkpoint provenance missing")
     return copy.deepcopy(record["body"])
 
+
+STOP_REASONS = frozenset(("UNKNOWN_MODEL_RESULT", "CHECKPOINT_CORRUPTED",
+                          "LEASE_CONFLICT", "REVIEW_REJECTED",
+                          "UNKNOWN_PUBLISHER_RECEIPT", "FOREIGN_SCOPE"))
+
+def stop_notice(state, reason):
+    """Serializable terminal STOP notice for the trusted state owner to persist.
+
+    Does not itself mutate CORE or durably store a checkpoint. Its included
+    snapshot requires independent host-side provenance on restoration.
+    """
+    _valid_state(state)
+    if type(reason) is not str or reason not in STOP_REASONS:
+        raise ExchangeError("unknown stop reason")
+    return {"schema": 1, "status": "BLOCKED", "reason": reason,
+            "last_safe_checkpoint": checkpoint(state),
+            "automatic_retry_allowed": False, "publication_allowed": False,
+            "live_execution_allowed": False, "handoff": "PAUSED_BY_USER"}
+
 def project(state):
     """Bounded UI/OPS projection with no authorization, even at SOURCE_VERIFIED."""
     _valid_state(state)
