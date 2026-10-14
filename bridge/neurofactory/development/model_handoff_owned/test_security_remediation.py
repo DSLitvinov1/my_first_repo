@@ -127,5 +127,13 @@ class SecuredHandoffTests(unittest.TestCase):
                     gate.store_once(td,TASK,"candidate.json",{"value":"not written"})
                 self.assertFalse((Path(td)/TASK/"candidate.json").exists())
 
+
+    @unittest.skipUnless(os.name == "nt", "Native Windows fail-closed check")
+    def test_real_windows_evidence_write_must_fail_closed(self):
+        with tempfile.TemporaryDirectory() as td:
+            with self.assertRaises(gate.HandoffError):
+                gate.store_once(td,TASK,"candidate.json",{"value":"blocked on Windows"})
+            self.assertFalse((Path(td)/TASK/"candidate.json").exists())
+
 if __name__=="__main__":
     unittest.main()
