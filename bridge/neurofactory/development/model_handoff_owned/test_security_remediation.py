@@ -117,6 +117,8 @@ class SecuredHandoffTests(unittest.TestCase):
         attestation=gate.verify_trusted_runner_origin(c,r,evidence,
             verify_github=lambda receipt,candidate,review:
                  receipt["candidate_sha256"] == candidate["candidate_sha256"])
+        self.assertTrue(attestation["receipt_correlated_by_callback"])
+        self.assertFalse(attestation["origin_attested_by_external_verifier"])
         self.assertFalse(attestation["release_authorized"])
         self.assertTrue(attestation["needs_independent_review_owner"])
 
