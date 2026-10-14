@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 4,
+  "coordination_issue": 3,
+  "owner": "REVIEW",
+  "report_type": "independent_remediation_gate_exact_latest_source",
+  "verdict": "REMEDIATION_CHECKS_PASS_RELEASE_STILL_BLOCKED",
+  "full_independent_release_approval": false,
+  "allow_merge": false,
+  "allow_core_handoff_integration": false,
+  "allow_publication": false,
+  "reviewed": {
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "head": "6c8938869afb4e1d6c6ef562f6aa04ec712256b6",
+    "module": "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py",
+    "module_sha256": "ba0c34cee37700b5ff127757ed1e348f3dcc8b77a675d45f35e38d23614549e3",
+    "fix_baseline": "f91803cda42448f75b390313af99aa00d14fd4df",
+    "original_rejected_head": "b205a495b51aa125dd8273955c202a177df7a173",
+    "identical_module_to_preceding_head": "a08af89b8105aa58be403385c043ccd5d666772d"
+  },
+  "independent_tests": {
+    "run_id": 38576681323,
+    "status": "SUCCESS",
+    "passed": 4,
+    "skipped": 1,
+    "failed": 0,
+    "artifact_id": 11900746247,
+    "test_cases": [
+      "real two-process directory swap blocked by pinned POSIX directory handles",
+      "partial three-file checkpoint denied until complete",
+      "fake negative provenance callback refused",
+      "fake positive provenance callback cannot assert authenticated origin or grant release"
+    ],
+    "qualification": "Linux-only source tests. Windows test in this independent Ubuntu run skipped and is not independent Windows execution."
+  },
+  "owner_tests": {
+    "run_id": 38576309331,
+    "status": "SUCCESS",
+    "linux_discovered": 52,
+    "linux_passed": 51,
+    "linux_skipped": 1,
+    "windows_discovered": 9,
+    "windows_passed": 4,
+    "windows_skipped": 5,
+    "window_safety": "native Windows filesystem storage intentionally fail-closed; this is denial test, not successful Windows checkpoint persistence",
+    "ownership_gate": 38576309238
+  },
+  "status_of_original_findings": [
+    {
+      "id": "REVIEW-HANDOFF-001",
+      "status": "MITIGATED_POSIX_SCOPE_ONLY",
+      "evidence": "Forced separate real-process directory swap did not produce foreign file. The writer failed closed and cleaned its pinned directory handle."
+    },
+    {
+      "id": "REVIEW-HANDOFF-002",
+      "status": "MITIGATED_FALSE_AUTHENTICATION_CLAIM",
+      "evidence": "Caller-supplied callback can correlate but returned origin_attested_by_external_verifier is strictly false, needs_independent_review_owner true, release_authorized false."
+    }
+  ],
+  "residual_gates": [
+    "No positive independent Qwen3 source review of the new module digest in current evidence.",
+    "Windows native secure storage is not implemented; Windows workers currently must refuse HANDOFF evidence persistence. Do not claim cross-Windows integration.",
+    "Trusted external GitHub runner and artifact verifier is an unimplemented integration boundary. A caller-supplied positive callback is not an authenticated origin certificate.",
+    "Historical source Q090 may not be rerun; original 8-file proof belongs to the old rejected module.",
+    "No jointly approved CORE queue + trusted publisher contract and no new approved unique tasks.",
+    "No one-time real GitHub publisher receipt or cross-run replay and recovery proof.",
+    "GitHub production branch protection / required independent checks still not enforced."
+  ],
+  "permissions": {
+    "no_other_owner_files_modified": true,
+    "production_writes": false,
+    "chatgpt_sender": false,
+    "paid_api": false,
+    "windows_reboot": false
+  },
+  "next_steps": {
+    "handoff": "Obtain independent Qwen3 exact code review for the new module, retain Windows safe refusal unless a reviewed Windows implementation is supplied, and deliver trusted-runner provenance contract without treating callback True as model authentication.",
+    "review": "Recheck exact fresh HEAD/digest on any change. Revalidate callback integration once implemented. Do not issue unqualified release APPROVE without missing proofs.",
+    "core": "Do not integrate yet.",
+    "coordinator": "Keep Issue #3 release gate and mixed draft PR #2 blocked until all gates are met."
+  }
+}
