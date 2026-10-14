@@ -1,0 +1,28 @@
+name: Neurofactory REVIEW Historical GitHub Receipt Spoof Tests
+on:
+  push:
+    branches: [neurofactory-review-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/review_owned/test_historic_receipt_forgery.py'
+      - '.github/workflows/neurofactory-review-owned-receipt-spoof.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-review-only-receipt-threat-test
+  cancel-in-progress: false
+jobs:
+  historical_receipt_readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Checkout independent REVIEW branch without Git write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm historical receipt verifier's trust limitations using only local mocked reads
+        env:
+          PYTHONPATH: bridge/neurofactory/development:bridge/neurofactory/development/review_owned
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/development/review_owned -p 'test_historic_receipt_forgery.py' -v
+          echo 'REVIEW_HISTORIC_RECEIPT_FORGERY_REPRODUCED_NO_RELEASE'
