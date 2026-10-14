@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "project": "НЕЙРОЗАВОД",
   "as_of": "2026-10-14",
   "authority": "COORDINATOR assignment, adoption by each ChatGPT chat must be explicitly confirmed",
@@ -125,6 +125,21 @@
       ],
       "next": "Only isolated read-only local test and independent audit of exact existing candidate; no overlap with coordinator-owned release checks",
       "cannot": "No coordinator/CORE/REVIEW ownership, no real-time live checks, no merge, no model runner or trusted publisher"
+    },
+    {
+      "id": "ui",
+      "primary_chat": "Нейрозавод — интерфейс (чат-владелец ещё не подтвердил принятие)",
+      "repository": "DSLitvinov1/my_first_repo",
+      "branch": "NOT_CREATED_OWNER_MUST_CREATE_AFTER_ADOPTION",
+      "status": "PROVISIONAL_UNASSIGNED_READ_ONLY_DEMO_ONLY",
+      "issue": 10,
+      "responsibility": "A strictly isolated read-only UI candidate showing sandbox task/project/evidence states; no live controls or API credentials",
+      "allowed": [
+        "bridge/neurofactory/control_ui/",
+        ".github/workflows/neurofactory-control-ui-"
+      ],
+      "next": "Only after one designated chat accepts role: create isolated branch; develop mock-only Russian PC/mobile UI with zero launch controls; independent review before any live bindings",
+      "cannot": "No writes to CORE, OPS, providers, coordination, production or real GitHub; no run/queue publisher, no paid services"
     }
   ],
   "conflicts_and_holds": [
@@ -172,8 +187,24 @@
       "target": "OPS diagnostic candidate",
       "state": "PROVISIONAL_SCOPE_ONLY",
       "action": "Ownership approved for isolated offline diagnostics; production integration blocked pending exact-SHA independent review"
+    },
+    {
+      "target": "PROVIDERS PR #7 at f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+      "state": "P0_SCOPE_HOLD",
+      "action": "Existing allowlist .github/workflows/neurofactory-providers-owned- excludes new .github/workflows/neurofactory-providers-isolated-regression.yml; hold candidate, tell providers author to rename within authorized prefix or seek prior coordinator approval; no retroactive merge. Review PR #7 issuecomment 6179204821."
+    },
+    {
+      "target": "SKILLS 12 candidate unified PR #542",
+      "state": "CANDIDATE_SELF_VALIDATED_INDEPENDENT_REVIEW_MISSING",
+      "action": "Exact d2f4ed71efd2d253b0a6e048fe0da884a70dba24, all 12 candidate, host trusted reviewer callback defaults to deny; still needs independent reviewer, Windows/Linux tests and signed reviewer evidence issue 543."
+    },
+    {
+      "target": "Experimental OPS read-only secure input 08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
+      "state": "EXPERIMENT_SEPARATE_FROM_PROVEN_B908",
+      "action": "No evidence to apply previous 20-job CI to experimental OPS commit; issue 6 independent review still pending."
     }
   ],
-  "updated_at": "2026-10-14",
-  "coordinator_addendum": "See ROADMAP_LANES_20261014_RU.md and lane-dispatch-20261014.json; do not adopt without the corresponding chat reading the assignment"
+  "updated_at": "2026-10-15",
+  "coordinator_addendum": "See ROADMAP_LANES_20261014_RU.md and lane-dispatch-20261014.json; do not adopt without the corresponding chat reading the assignment",
+  "new_roles_require_chat_adoption": true
 }
