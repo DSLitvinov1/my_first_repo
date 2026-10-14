@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "checked_date": "2026-10-15",
+  "previous_coordinator_checkpoint": "dcb99419e1cf31db9fdf35c8767a53a9685bf766",
+  "source": "GitHub exact branch compare, Issue 3/6/8/9/10/11 and lesson3.1 Issue 543, PR 7/542 review list, exact file readback",
+  "owners": {
+    "core": {
+      "sha": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "new_contract": false,
+      "status": "P2_WAITING_NEW_EXACT_SHA",
+      "issue": 9
+    },
+    "review": {
+      "sha": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "new_core_review": false,
+      "issue": 11,
+      "status": "P2_WAITING_CORE"
+    },
+    "providers": {
+      "sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+      "pr": 7,
+      "local_linux_owner_tests_reported": "71/71",
+      "hosted_windows_success": "NOT_VERIFIED",
+      "independent_pr_review_count": 0,
+      "new_workflow_file": ".github/workflows/neurofactory-providers-isolated-regression.yml",
+      "approved_workflow_prefix": ".github/workflows/neurofactory-providers-owned-",
+      "scope_compliant": false,
+      "status": "P0_PROCEDURAL_SCOPE_HOLD",
+      "user_impact": "No observed leakage, paid requests, production merge or foreign overwrite; do not assume none without evidence",
+      "action": "Hold candidate and require owner rename or prior explicit scope amendment",
+      "comment_id": 6179204821
+    },
+    "skills": {
+      "sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
+      "pr": 542,
+      "issue": 543,
+      "registered_candidate_count": 12,
+      "approved_count": 0,
+      "trust_gate": "DEFAULT_DENY_WITHOUT_HOST_VERIFIER",
+      "actual_host_reviewer": "NONE_VERIFIED",
+      "saved_python_test_count_reported": 44,
+      "full_python_suite_run": "NOT_VERIFIED",
+      "independent_reviewer": "UNASSIGNED",
+      "status": "P2_WAITING_INDEPENDENT_SECURITY_REVIEW"
+    },
+    "ops": {
+      "stable_sha": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "stable_run": 38635575264,
+      "completed_jobs_success": 20,
+      "experimental_sha": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
+      "experimental_changed_paths": [
+        "bridge/neurofactory/ops_diagnostics/secure_input.py",
+        "bridge/neurofactory/ops_diagnostics/diagnose.py"
+      ],
+      "experimental_windows_review": "NOT_VERIFIED",
+      "independent_issue": 6,
+      "independent_reviewer": "UNASSIGNED",
+      "independent_review": "NONE",
+      "status": "P2_WAITING_EXTERNAL_REVIEW"
+    },
+    "ui": {
+      "issue": 10,
+      "owner": "UNASSIGNED",
+      "branch": "NOT_CREATED_BY_COORDINATOR",
+      "scope": "bridge/neurofactory/control_ui/ only",
+      "status": "P2_PROVISIONAL_READ_ONLY"
+    },
+    "handoff": {
+      "sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "status": "PAUSED_BY_USER",
+      "new_run_dispatched": false
+    }
+  },
+  "new_developments": [
+    "PROVIDERS three new commits on PR7 and offline workflow outside authorized path prefix: P0 procedural hold",
+    "SKILLS unified 12 candidates and default-deny review callback but no authenticated reviewer",
+    "OPS experimental secure input in independent branch and 20-job stable older CI not transferable",
+    "Issue8 new MVP plan and Issue9 CORE/Issue11 REVIEW/Issue10 UI, no automatic chat activation"
+  ],
+  "coordinator_new_documents": [
+    "bridge/neurofactory/coordination/MVP_READ_ONLY_INTERFACE_CONTRACT_20261015_RU.md",
+    "bridge/neurofactory/coordination/chat-assignments-and-handoff-pause-20261014.json",
+    "bridge/neurofactory/coordination/lane-dispatch-20261014.json",
+    "bridge/neurofactory/coordination/ROADMAP_LANES_20261014_RU.md"
+  ],
+  "no_unauthorized_actions": {
+    "no_paid_api_calls_by_coordinator": true,
+    "no_live_model_calls": true,
+    "no_new_tasks_executed": true,
+    "no_merge": true,
+    "no_production_writes": true,
+    "no_external_automation": true,
+    "no_replayed_test_matrix": true,
+    "no_foreign_branch_changes": true
+  },
+  "release": {
+    "status": "BLOCKED",
+    "reasons": [
+      "CORE and external REVIEW absent",
+      "PROVIDERS P0 scope hold, Windows and independent review missing",
+      "SKILLS host-trusted verifier not implemented and independent review absent",
+      "OPS external reviewer not assigned",
+      "HANDOFF paused",
+      "branch protection and real publisher receipt unverified"
+    ]
+  },
+  "next_trigger": "Only after new exact owner commits, authorized reviewer evidence, P0 ownership remedy, or explicit user decision; avoid duplicate status-only commits on unchanged scan."
+}
