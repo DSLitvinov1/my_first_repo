@@ -67,7 +67,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(record["response_sha256"], sha256(answer.encode()).hexdigest())
         meta = e.verify_model_evidence(self.private, self.task.task_id)
         self.assertEqual(meta, record)
-        raw = (self.private / record["evidence_filename"]).read_text()
+        raw = (self.private / record["evidence_filename"]).read_text(encoding="utf-8")
         data = json.loads(raw)
         self.assertEqual(data["response_text"], answer)
         self.assertFalse(data["independent_provenance_verified"])
@@ -86,15 +86,15 @@ class EvidenceTests(unittest.TestCase):
     def test_tampered_response_fails_readback(self):
         record = self.put()
         path = self.private / record["evidence_filename"]
-        path.write_text(path.read_text().replace("def f(a,b)", "def z(a,b)"))
+        path.write_text(path.read_text(encoding="utf-8").replace("def f(a,b)", "def z(a,b)"), encoding="utf-8")
         with self.assertRaises(e.EvidenceError):
             e.verify_model_evidence(self.private, self.task.task_id)
 
     def test_duplicate_json_key_rejected_on_verify(self):
         record = self.put()
         path = self.private / record["evidence_filename"]
-        raw = path.read_text().replace('"schema":', '"schema":"forged","schema":', 1)
-        path.write_text(raw)
+        raw = path.read_text(encoding="utf-8").replace('"schema":', '"schema":"forged","schema":', 1)
+        path.write_text(raw, encoding="utf-8")
         with self.assertRaises(e.EvidenceError):
             e.verify_model_evidence(self.private, self.task.task_id)
 
@@ -127,7 +127,7 @@ class EvidenceTests(unittest.TestCase):
         meta = e.verify_model_evidence(self.private, self.task.task_id)
         self.assertEqual(result["response_sha256"], meta["response_sha256"])
         self.assertEqual(result["prompt_sha256"],
-                         json.loads((self.private / meta["evidence_filename"]).read_text())["prompt_sha256"])
+                         json.loads((self.private / meta["evidence_filename"]).read_text(encoding="utf-8"))["prompt_sha256"])
         self.assertFalse((self.root / "src" / "example.py").exists())
 
     def test_inference_duplicate_id_does_not_call_http_again(self):
