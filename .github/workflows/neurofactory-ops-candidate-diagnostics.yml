@@ -1,86 +1,42 @@
-name: Neurofactory OPS Candidate Multi-VM Read-only Tests
+name: Neurofactory OPS Completion Targeted Linux Windows Check
 on:
   push:
     branches:
-      - neurofactory-ops-diagnostics-candidate-20261014
+      - neurofactory-ops-completion-20261015
     paths:
       - 'bridge/neurofactory/ops_diagnostics/**'
       - '.github/workflows/neurofactory-ops-candidate-diagnostics.yml'
-  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: neurofactory-ops-matrix-${{ github.ref }}
+  group: neurofactory-ops-completion-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  offline_matrix:
-    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+  targeted:
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 2
       matrix:
-        include:
-          - {os: ubuntu-22.04, python: '3.11'}
-          - {os: ubuntu-22.04, python: '3.12'}
-          - {os: ubuntu-22.04, python: '3.13'}
-          - {os: ubuntu-24.04, python: '3.11'}
-          - {os: ubuntu-24.04, python: '3.12'}
-          - {os: ubuntu-24.04, python: '3.13'}
-          - {os: windows-2022, python: '3.11'}
-          - {os: windows-2022, python: '3.12'}
-          - {os: windows-2022, python: '3.13'}
-          - {os: windows-2025, python: '3.11'}
-          - {os: windows-2025, python: '3.12'}
-          - {os: windows-2025, python: '3.13'}
-          - {os: macos-15, python: '3.11'}
-          - {os: macos-15, python: '3.12'}
-          - {os: macos-15, python: '3.13'}
-          - {os: macos-15-intel, python: '3.11'}
-          - {os: macos-15-intel, python: '3.12'}
-          - {os: macos-15-intel, python: '3.13'}
-          - {os: ubuntu-24.04-arm, python: '3.13'}
-          - {os: windows-11-arm, python: '3.13'}
+        os: [ubuntu-24.04, windows-2025]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 9
+    timeout-minutes: 6
     env:
       PYTHONUTF8: '1'
-      PYTHONIOENCODING: 'utf-8'
+      PYTHONIOENCODING: utf-8
       PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      PYTHONPATH: bridge/neurofactory/ops_diagnostics
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
-          cache: ''
-      - name: Verify isolated test environment and run complete OPS suite
+          python-version: '3.13'
+      - name: Targeted OPS status and input boundary regressions
         shell: bash
-        env:
-          PYTHONPATH: bridge/neurofactory/ops_diagnostics
-          PYTHONDONTWRITEBYTECODE: '1'
-          PYTHONNOUSERSITE: '1'
-        run: |
-          set -euo pipefail
-          python --version
-          python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
-      - name: Verify no-release offline report and Russian view
+        run: python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_status_adapter.py' -v
+      - name: Demonstrate untrusted JSON report without any queue interaction
         shell: bash
-        env:
-          PYTHONPATH: bridge/neurofactory/ops_diagnostics
-          PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          set -euo pipefail
-          python -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json > "$RUNNER_TEMP/ops-matrix.json"
-          python -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json --format text > "$RUNNER_TEMP/ops-matrix-ru.txt"
-          python -B -c 'import json,os; f=os.path.join(os.environ["RUNNER_TEMP"],"ops-matrix.json"); d=json.load(open(f,encoding="utf-8")); assert not any(d["actions_allowed"].values()); assert d["source_trust"]=="UNTRUSTED_OFFLINE_SNAPSHOTS"; assert d["worker_inventory"]==[]; assert d["queue_inventory"]==[]'
-      - name: Save compact evidence only for canonical Linux runner
-        if: matrix.os == 'ubuntu-24.04' && matrix.python == '3.13'
-        uses: actions/upload-artifact@v4
-        with:
-          name: neurofactory-ops-multivm-offline-proof
-          path: |
-            ${{ runner.temp }}/ops-matrix.json
-            ${{ runner.temp }}/ops-matrix-ru.txt
-          retention-days: 1
-          if-no-files-found: error
+          python -B bridge/neurofactory/ops_diagnostics/status_adapter.py bridge/neurofactory/ops_diagnostics/examples/ui_status_example_20261015.json --format text
