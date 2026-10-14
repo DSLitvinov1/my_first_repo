@@ -18,6 +18,7 @@ from pathlib import Path
 import re
 
 from local_qwen import ALLOWED_MODELS, _no_duplicate_pairs
+from windows_private_acl import WindowsAclError, require_private_windows_acl
 
 _TASK = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -45,6 +46,11 @@ def check_evidence_directory(directory: Path) -> None:
                 raise EvidenceError("evidence directory must be private (0700)")
         except OSError as exc:
             raise EvidenceError("cannot inspect evidence directory") from exc
+    if os.name == "nt":
+        try:
+            require_private_windows_acl(directory)
+        except WindowsAclError as exc:
+            raise EvidenceError("Windows evidence directory ACL not private") from exc
 
 
 
