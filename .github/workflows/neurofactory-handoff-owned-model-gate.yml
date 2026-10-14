@@ -39,3 +39,18 @@ jobs:
           PYTHONPATH: bridge/neurofactory/development
           PYTHONDONTWRITEBYTECODE: '1'
         run: python3 -B -m unittest discover -s bridge/neurofactory/development/model_handoff_owned -p 'test_*.py' -v
+
+  isolated_windows_fail_closed:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows refusal to store untrusted evidence without native secure handles
+        shell: pwsh
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          py -3 -B -m unittest discover -s bridge/neurofactory/development/model_handoff_owned -p test_security_remediation.py -v
