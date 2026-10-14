@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 
 BRANCH = "neurofactory-model-handoff-owned-20261013"
 WRITER = "qwen2.5-coder:7b"
@@ -183,33 +184,196 @@ def verify_dossier(candidate, review, dossier):
         raise HandoffError("Candidate/review/dossier mismatch or forged approval")
     return True
 
+def _secure_storage_available():
+    """Windows evidence writes must fail closed until native handle support exists."""
+    return (os.name == "posix"
+            and os.open in os.supports_dir_fd
+            and os.mkdir in os.supports_dir_fd
+            and os.stat in os.supports_dir_fd
+            and os.unlink in os.supports_dir_fd
+            and hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY"))
+
+
+def _verified_root_fd(folder):
+    if not _secure_storage_available():
+        raise HandoffError("Secure no-follow directory handles unavailable; use approved Linux evidence runner")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    fd = os.open(folder, flags)
+    try:
+        info = os.fstat(fd)
+        if (not stat.S_ISDIR(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)):
+            raise HandoffError("Evidence root must be owned by this user and not writable by others")
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _task_fd(root_fd, task_id):
+    """Resolve through a pinned private root, never through an unchecked path."""
+    try:
+        os.mkdir(task_id, 0o700, dir_fd=root_fd)
+    except FileExistsError:
+        pass
+    fd = os.open(task_id, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                 dir_fd=root_fd)
+    try:
+        info = os.fstat(fd)
+        if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid()
+                or info.st_mode & (stat.S_IRWXG | stat.S_IRWXO)):
+            raise HandoffError("Task directory must be private and owned by this user")
+        _check_task_anchor(root_fd, fd, task_id)
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _check_task_anchor(root_fd, task_fd, task_id):
+    """Abort if another actor replaced the directory entry during the operation."""
+    current = os.stat(task_id, dir_fd=root_fd, follow_symlinks=False)
+    opened = os.fstat(task_fd)
+    if (not stat.S_ISDIR(current.st_mode)
+            or current.st_dev != opened.st_dev
+            or current.st_ino != opened.st_ino):
+        raise HandoffError("Task directory was replaced during evidence write")
+
+
+def _read_existing(task_fd, filename):
+    flags = os.O_RDONLY | os.O_NOFOLLOW
+    fd = os.open(filename, flags, dir_fd=task_fd)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 100000:
+            raise HandoffError("Unsafe existing evidence entry")
+        return os.read(fd, info.st_size + 1)
+    finally:
+        os.close(fd)
+
+
 def store_once(root, task_id, filename, document):
-    """Write immutable scoped proof once; never overwrite another chat's checkpoint."""
+    """Immutable POSIX directory-relative write; never follow task symlinks.
+
+    Trust assumption: root and its parent are managed by the trusted runner,
+    not replaceable by a malicious same-UID process. On Windows fail closed.
+    """
     if not isinstance(task_id, str) or not TASK_ID.fullmatch(task_id):
         raise HandoffError("Unapproved task identity")
     if filename not in ("candidate.json", "review.json", "handoff.json"):
         raise HandoffError("Unapproved evidence filename")
-    folder = Path(root)
-    if not folder.is_dir() or folder.is_symlink():
-        raise HandoffError("Pre-existing nonsymlink isolated root required")
-    destination = folder / task_id
-    destination.mkdir(exist_ok=True)
-    if destination.is_symlink():
-        raise HandoffError("Symlink task evidence forbidden")
-    target = destination / filename
     raw = encoded(document) + b"\n"
-    if target.exists() or target.is_symlink():
-        if target.is_symlink() or target.read_bytes() != raw:
-            raise HandoffError("Conflicting evidence already exists: stop and notify coordinator")
-        return {"created": False, "sha256": digest(raw)}
+    if len(raw) > 100000:
+        raise HandoffError("Evidence size cap exceeded")
+    root_fd = task_fd = None
     try:
-        with target.open("xb") as stream:
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-    except FileExistsError as exc:
-        raise HandoffError("Concurrent evidence writer detected") from exc
-    return {"created": True, "sha256": digest(raw)}
+        root_fd = _verified_root_fd(Path(root))
+        task_fd = _task_fd(root_fd, task_id)
+        _check_task_anchor(root_fd, task_fd, task_id)
+        try:
+            existing = _read_existing(task_fd, filename)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None:
+            _check_task_anchor(root_fd, task_fd, task_id)
+            if existing != raw:
+                raise HandoffError("Conflicting evidence already exists: stop and notify coordinator")
+            return {"created": False, "sha256": digest(raw)}
+        try:
+            fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                         0o600, dir_fd=task_fd)
+        except FileExistsError:
+            _check_task_anchor(root_fd, task_fd, task_id)
+            if _read_existing(task_fd, filename) != raw:
+                raise HandoffError("Concurrent conflicting evidence writer: stop")
+            return {"created": False, "sha256": digest(raw)}
+        try:
+            with os.fdopen(fd, "wb", closefd=True) as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            _check_task_anchor(root_fd, task_fd, task_id)
+        except BaseException:
+            # No outside-path operations: remove only through the pinned task handle.
+            try:
+                os.unlink(filename, dir_fd=task_fd)
+            except OSError:
+                pass
+            raise
+        return {"created": True, "sha256": digest(raw)}
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, HandoffError):
+            raise
+        raise HandoffError("Secure evidence storage refused unsafe directory or file") from exc
+    finally:
+        if task_fd is not None:
+            os.close(task_fd)
+        if root_fd is not None:
+            os.close(root_fd)
+
+
+def verify_complete_handoff(root, candidate, review):
+    """A partial three-file checkpoint is never valid completion evidence."""
+    validate_packet(candidate)
+    validate_review(candidate, review)
+    expected = (("candidate.json", candidate),
+                ("review.json", review),
+                ("handoff.json", handoff_dossier(candidate, review)))
+    if not _secure_storage_available():
+        raise HandoffError("Cannot securely verify evidence on this platform")
+    root_fd = task_fd = None
+    try:
+        root_fd = _verified_root_fd(Path(root))
+        task_fd = _task_fd(root_fd, candidate["task_id"])
+        for filename, value in expected:
+            _check_task_anchor(root_fd, task_fd, candidate["task_id"])
+            if _read_existing(task_fd, filename) != encoded(value) + b"\n":
+                raise HandoffError("Incomplete or altered evidence checkpoint")
+        _check_task_anchor(root_fd, task_fd, candidate["task_id"])
+        return True
+    except (OSError, ValueError) as exc:
+        if isinstance(exc, HandoffError):
+            raise
+        raise HandoffError("Incomplete or inaccessible evidence checkpoint") from exc
+    finally:
+        if task_fd is not None:
+            os.close(task_fd)
+        if root_fd is not None:
+            os.close(root_fd)
+
+
+def verify_trusted_runner_origin(candidate, review, receipt, *, verify_github):
+    """A caller-supplied model tag is NOT provenance; require an external receipt.
+
+    verify_github is owned by REVIEW/COORDINATOR, not the model or HANDOFF.
+    Even successful external attestation never authorizes publishing here.
+    """
+    validate_packet(candidate)
+    validate_review(candidate, review)
+    if not isinstance(receipt, dict) or set(receipt) != {
+            "run_id", "head_sha", "artifact_id", "artifact_sha256",
+            "candidate_sha256", "reviewer_model", "raw_reply_sha256"}:
+        raise HandoffError("Missing trusted runner evidence fields")
+    if (type(receipt["run_id"]) is not int or receipt["run_id"] <= 0
+            or type(receipt["artifact_id"]) is not int or receipt["artifact_id"] <= 0
+            or not isinstance(receipt["head_sha"], str)
+            or not re.fullmatch(r"[0-9a-f]{40}", receipt["head_sha"])
+            or not isinstance(receipt["artifact_sha256"], str)
+            or not SHA256.fullmatch(receipt["artifact_sha256"])
+            or not isinstance(receipt["raw_reply_sha256"], str)
+            or not SHA256.fullmatch(receipt["raw_reply_sha256"])
+            or receipt["reviewer_model"] != REVIEWER
+            or receipt["candidate_sha256"] != candidate["candidate_sha256"]):
+        raise HandoffError("Untrusted model origin claim or mismatched candidate")
+    if not callable(verify_github) or verify_github(receipt, candidate, review) is not True:
+        raise HandoffError("Independent GitHub runner provenance not verified")
+    return {"origin_attested_by_external_verifier": True,
+            "candidate_sha256": candidate["candidate_sha256"],
+            "reviewer_model": REVIEWER,
+            "needs_independent_review_owner": True,
+            "release_authorized": False}
+
 
 def persist_handoff(root, candidate, review):
     """Persist only checked HANDOFF artifacts; never modify CORE checkpoint files."""
@@ -220,4 +384,5 @@ def persist_handoff(root, candidate, review):
     for filename, doc in (("candidate.json", candidate),
                           ("review.json", review), ("handoff.json", dossier)):
         saved[filename] = store_once(root, candidate["task_id"], filename, doc)
+    verify_complete_handoff(root, candidate, review)
     return saved
