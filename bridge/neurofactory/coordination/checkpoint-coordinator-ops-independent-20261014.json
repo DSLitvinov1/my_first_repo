@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "date": "2026-10-14",
+  "kind": "GITHUB_REAL_STATE_AUDIT_WITH_SEPARATE_OPS_REVIEW_REQUEST",
+  "previous_checkpoint": "3988a055ea7777cdd9e16a37d7ebdf88b11c03b6",
+  "roadmap_update_commit": "13fd99d1f526a12917511d983bb73f8c754e4c7b",
+  "dispatch_update_commit": "d60f02da13e8028a6096d4d19a90d40872fcb6ef",
+  "ops_independent_issue": "https://github.com/DSLitvinov1/my_first_repo/issues/6",
+  "actual": {
+    "CORE": {
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "new_commit": false,
+      "new_secure_recovery_contract": false,
+      "independent_review_of_new_core": false
+    },
+    "REVIEW": {
+      "branch": "neurofactory-review-owned-20261013",
+      "head": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "new_review_of_core": false,
+      "known_historical_defects": [
+        "forged REVIEW_OK acceptance",
+        "duplicate JSON keys override"
+      ],
+      "older_tests_not_to_repeat": [
+        38630845464,
+        38630121475
+      ]
+    },
+    "PROVIDERS": {
+      "base_offline_sha": "691edb1b1283a928e3d032b571f3e053f0f80d31",
+      "new_branch": "neurofactory-providers-safe-local-20261014",
+      "head": "8d4723a95808df1d66d7a49152c441960da6b1a5",
+      "draft_pr": 5,
+      "files_changed": 5,
+      "all_changes_inside_owned": true,
+      "new_local_qwen_adapter_present": true,
+      "default_off": true,
+      "only_loopback_network_adapter": true,
+      "developer_reported_linux_tests": 29,
+      "independently_rerun": false,
+      "hosted_ci_confirmed": false,
+      "windows_tests_confirmed": false,
+      "live_ollama_test": false,
+      "paid_api_enabled": false,
+      "approval": false
+    },
+    "SKILLS": {
+      "repository": "DSLitvinov1/lesson3.1",
+      "new_pr": 540,
+      "new_head": "f45805d4fc22beef7e4a308d70d5097349a26781",
+      "old_drafts": [
+        514,
+        515,
+        528
+      ],
+      "latest_registry_candidates": 11,
+      "unified_12_candidate_version": false,
+      "full_python_suite_confirmed": false,
+      "independent_security_review": false,
+      "untrusted_review_info_from_editable_registry": true,
+      "activation_permitted": false,
+      "merge_permitted": false
+    },
+    "OPS": {
+      "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+      "previous": "984a1e516549960a0b51e137c804dea3a064bf3f",
+      "current_head": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "changed_since_previous": 4,
+      "changed_paths": [
+        ".github/workflows/neurofactory-ops-candidate-diagnostics.yml",
+        "bridge/neurofactory/ops_diagnostics/test_adversarial_matrix.py"
+      ],
+      "prior_owner_run": 38633767111,
+      "prior_owner_linux": 68,
+      "prior_owner_windows": 68,
+      "workflow_matrix_job_count": 20,
+      "last_sha_matrix_result": "NOT_CONFIRMED",
+      "independent_audit_issue": 6,
+      "independent_audit_assignee": "NONE",
+      "independent_verdict": "PENDING",
+      "integrated": false
+    },
+    "HANDOFF": {
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "new_commit": false,
+      "status": "PAUSED_BY_USER",
+      "run_new_job": false
+    }
+  },
+  "safety": {
+    "changed_only_coordinator_roadmap": true,
+    "core_code_untouched": true,
+    "review_code_untouched": true,
+    "providers_code_untouched": true,
+    "skills_untouched": true,
+    "ops_untouched": true,
+    "handoff_untouched": true,
+    "no_paid_model_api_called": true,
+    "no_new_live_queue_jobs": true,
+    "no_new_code_release": true,
+    "no_pr_merged": true,
+    "no_new_actions_dispatched_by_coordinator": true,
+    "prod_branch_protection_enforced": "NOT_VERIFIED",
+    "future_actions_autorun_possible": true
+  },
+  "stop_reasons": [
+    "No new CORE contract SHA for independent REVIEW",
+    "Historic forged reviewer approval/duplicate JSON findings unresolved",
+    "SKILLS registry owner review is forgeable as currently structured",
+    "OPS independent reviewer not assigned; no verdict",
+    "PROVIDERS Windows and independent local safety review missing",
+    "Stage5 HANDOFF paused and production branch protection unconfirmed",
+    "Existing mixed PR #2 remains draft"
+  ],
+  "next": "Await exact new CORE commit, then request CORE-own REVIEW; seek actually independent reviewer for OPS issue 6; perform PROVIDERS Windows safe offline and security review; one SKILLS writer creates twelve disabled candidates plus unforgeable reviewer proof, actual tests and separate signoff. No merges/releases."
+}
