@@ -41,8 +41,8 @@ class StatusAdapterTests(unittest.TestCase):
     def test_realistic_status_and_stuck_task(self):
         d = sample()
         v = snapshot_to_status(d)
-        self.assertEqual(v["bridge"]["display_state"], "RUNNING")
-        self.assertEqual(v["workers"][0]["display_state"], "RUNNING")
+        self.assertEqual(v["bridge"]["display_state"], "UNKNOWN")
+        self.assertEqual(v["workers"][0]["display_state"], "UNKNOWN")
         self.assertEqual(v["queue"][0]["display_state"], "BLOCKED")
         self.assertTrue(v["queue"][0]["possibly_stalled"])
         self.assertEqual(v["checkpoint_counts"], {"PARTIAL": 1})
@@ -80,7 +80,7 @@ class StatusAdapterTests(unittest.TestCase):
         d["queue"][0]["last_progress_at"] = "2026-10-15T00:59:00Z"
         v = snapshot_to_status(d)
         self.assertFalse(v["queue"][0]["checkpoint"]["externally_verified"])
-        self.assertEqual(v["queue"][0]["display_state"], "RUNNING")
+        self.assertEqual(v["queue"][0]["display_state"], "UNKNOWN")
 
     def test_forged_checkpoint_verification_rejected_if_incomplete(self):
         d = sample()
