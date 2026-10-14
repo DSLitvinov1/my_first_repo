@@ -86,5 +86,27 @@ class ReceiptBindingTests(unittest.TestCase):
         with self.assertRaises(EvidenceBindingError):
             bind_reported_receipt(s, receipt())
 
+    def test_path_traversal_and_hidden_segments_rejected(self):
+        for unsafe in ("src/../escape.py", "src/./task.py", "docs/.hidden.py",
+                       "src//gap.py", "docs/report.exe", "src/other\\\\escape.py",
+                       "docs/folder/../../secret.json"):
+            s = summary()
+            s["proposed_path"] = unsafe
+            with self.subTest(path=unsafe), self.assertRaises(EvidenceBindingError):
+                bind_reported_receipt(s, receipt())
+
+    def test_boolean_schema_must_not_pass_as_integer_one(self):
+        s = summary()
+        s["schema"] = True
+        with self.assertRaises(EvidenceBindingError):
+            bind_reported_receipt(s, receipt())
+
+    def test_nested_approved_and_shell_unsafe_field_rejected(self):
+        for field in ("review_approved", "execute", "response_text"):
+            s = summary()
+            s[field] = True
+            with self.subTest(field=field), self.assertRaises(EvidenceBindingError):
+                bind_reported_receipt(s, receipt())
+
 if __name__ == "__main__":
     unittest.main()
