@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "date": "2026-10-15",
+  "previous_commit": "122b3a0e0b5a7bcfda0b869d7fda3dc6acb74f31",
+  "branch": "neurofactory-coordinator-mvp-status-20261015",
+  "draft_pr": 12,
+  "new_own_implementation": {
+    "module": "bridge/neurofactory/coordination/mvp_provider_evidence_view.py",
+    "tests": "bridge/neurofactory/coordination/test_mvp_provider_evidence_view.py",
+    "workflow": ".github/workflows/neurofactory-coordination-private-evidence-targeted.yml",
+    "behavior": "Pure read-only metadata binding to a previously unverified provider result. Rejects mismatched task, response digest, private evidence filename and forged permissions. Always keeps origin unverified and publication/retry false. Never sees raw response text or accesses disk/network.",
+    "not_authentication": true
+  },
+  "new_test_evidence": {
+    "run_id": 38655276877,
+    "job_id": 116163437434,
+    "head_sha": "ef3403676ac20b15610916d3bb4d79438a9a4198",
+    "host": "GitHub-hosted Ubuntu",
+    "tests_passed": 8,
+    "tests_total": 8,
+    "conclusion": "completed/success",
+    "logs_checked": true,
+    "self_test_not_independent": true
+  },
+  "previous_own_tests": {
+    "exchange_and_task_view": {
+      "run_id": 38650279255,
+      "head_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+      "pass": 32,
+      "total": 32
+    },
+    "provider_wire": {
+      "run_id": 38650127588,
+      "head_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "pass": 12,
+      "total": 12
+    },
+    "old_windows": {
+      "run_id": 38643604899,
+      "status": "queued",
+      "job_id": 116124933092,
+      "rerun": false
+    },
+    "total_unique_cases_after_new": 52
+  },
+  "actual_owners": {
+    "CORE": {
+      "head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "new_commit": false,
+      "issue": 9,
+      "status": "P2_WAIT_NEW_SAFE_SINGLE_JOB_LEASE_CAS_CHECKPOINT"
+    },
+    "PROVIDERS": {
+      "head": "abc1e7cfb0a640aaeb50807ccee9d1f95b48ff3d",
+      "pr": 13,
+      "own_receipt_code_sha": "c6a933e7d9e92d29f5bf8ca1a14d90473e9c48de",
+      "own_ci": 38653360508,
+      "windows_host_resources": {
+        "run_id": 38652410062,
+        "physical_free_bytes": 934338560,
+        "model_process": "NOT_OBSERVED",
+        "different_runner_profiles": true
+      },
+      "live_model_response": false,
+      "reviewers": 0,
+      "status": "P2_BLOCKED_RESOURCE_AND_INDEPENDENT_ORIGIN"
+    },
+    "OPS": {
+      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "run_id": 38652940146,
+      "tests_windows": "34 PASS",
+      "tests_linux": "34 PASS",
+      "issue": 6,
+      "independent_review": "NOT_FOUND",
+      "layers": [
+        "coordinator_lane_board",
+        "ops_project_detail",
+        "coordinator_task_card"
+      ],
+      "live_status_trusted": false
+    },
+    "SKILLS": {
+      "latest_pr": 548,
+      "head": "a57c39d2ffc12c0d2fb95a7031c660023eb34fa5",
+      "registered_candidates": 12,
+      "active": 0,
+      "profiles": 19,
+      "independent_review": "NOT_FOUND",
+      "full_original_repo_tests_on_exact_sha": "NOT_RUN",
+      "core_intake_format": "PROVISIONAL_NOT_CORE_ACCEPTED"
+    },
+    "REVIEW": {
+      "issue": 11,
+      "status": "WAIT_CORE_SHA"
+    },
+    "HANDOFF": {
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "status": "PAUSED_BY_USER"
+    }
+  },
+  "provisional_decisions": {
+    "source_of_authority": "Issue #3 leader comment 6180624724; applies only to data schema, not execution",
+    "provider_packet": "neurofactory.coordination.provider_bridge.v1 accepted as read-only/passive schema with permissions all false, exact request/binding",
+    "model_evidence": "Private PROVIDERS receipt is optional observation metadata for genuine inference claim, must never be mirrored into GitHub; a self-owned digest/receipt is not signed independent Ollama provenance, cannot authorize source verification/publication/retry",
+    "source_verification": "Only a new CORE single-job source writer and independent trusted GitHub readback can advance to verified source; provider receipt alone not sufficient",
+    "windows": "resource below 2 GiB from trusted read-only job; no new model requests before fresh resource change",
+    "ops_ui": "three layers remain strictly separate and untrusted, unknown without independently verified provenance",
+    "skills": "preview only until owner CORE explicitly accepts machine format and separate signed independent review on exact PR548 SHA"
+  },
+  "stops": {
+    "live_end_to_end": "BLOCKED",
+    "paid_api": "FORBIDDEN",
+    "model_download": "FORBIDDEN",
+    "provider_retry_after_unknown": "FORBIDDEN",
+    "owner_merge": "FORBIDDEN",
+    "source_publication": "FORBIDDEN",
+    "core_work": "AWAIT_NEW_SHA",
+    "review": "AWAIT_NEW_CORE_SHA",
+    "handoff": "PAUSED_BY_USER"
+  },
+  "next_event": "new CORE SHA OR verified change of Windows resource/Ollama OR independent OPS/SKILLS review OR author-owned contract change; do not create status-only further commit without event"
+}
