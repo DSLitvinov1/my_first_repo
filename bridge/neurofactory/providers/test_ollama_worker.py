@@ -38,7 +38,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_target_traversal_rejected(self):
         for candidate in ("../x.py", "src/../main.py", "/etc/a.py",
-                          "src\\evil.py", "src/.hidden.py", "other/hi.py"):
+                          "src\\evil.py", "src/.hidden.py", "src//double.py", "other/hi.py"):
             with self.subTest(candidate=candidate):
                 with self.assertRaises(ValueError):
                     w.validate_target(candidate)
