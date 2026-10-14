@@ -214,13 +214,23 @@ except CoreSafetyError:
         self.assertFalse(preview["permissions"]["execution"])
         self.assertFalse(preview["permissions"]["publication"])
         self.assertFalse(preview["permissions"]["paid_api"])
-        self.assertEqual(preview["task_id"], self.spec["task_id"])
+        self.assertEqual(preview["request"]["task_id"], self.spec["task_id"])
+        self.assertEqual(set(preview["request"]), {
+            "schema", "task_id", "project_id", "input_sha256", "target_path", "instruction"})
+        self.assertEqual(preview["request"]["input_sha256"],
+                         hashlib.sha256(_canonical(self.spec)).hexdigest())
         claim = self.q.claim("worker", now=100)
         fake = self.proposal()
         fake["mode"] = "PROVIDER_UNVERIFIED"
         with self.assertRaises(CoreSafetyError):
             self.q.apply_offline_test(self.spec["task_id"], claim["token"], fake, now=101)
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
+
+    def test_non_string_model_is_safely_rejected(self):
+        bad = copy.deepcopy(self.spec)
+        bad["model"] = ["qwen3:4b"]
+        with self.assertRaises(CoreSafetyError):
+            self.q.enqueue(bad, trusted_approval_check=lambda s: True)
 
     def test_corrupt_checkpoint_identity_stops(self):
         self.admit()
