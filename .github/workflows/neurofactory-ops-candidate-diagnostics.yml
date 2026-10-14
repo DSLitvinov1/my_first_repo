@@ -35,8 +35,15 @@ jobs:
           python-version: '3.13'
       - name: Targeted OPS status and input boundary regressions
         shell: bash
-        run: python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_status_adapter.py' -v
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_status_adapter.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_ui_readonly_bundle.py' -v
       - name: Demonstrate untrusted JSON report without any queue interaction
         shell: bash
         run: |
           python -B bridge/neurofactory/ops_diagnostics/status_adapter.py bridge/neurofactory/ops_diagnostics/examples/ui_status_example_20261015.json --format text
+      - name: Verify two-layer OPS UI output always refuses release
+        shell: bash
+        run: |
+          python -B bridge/neurofactory/ops_diagnostics/ui_readonly_bundle.py --project bridge/neurofactory/ops_diagnostics/examples/ui_status_example_20261015.json --board bridge/neurofactory/ops_diagnostics/examples/ui_two_layer_lane_board_synthetic.json > "$RUNNER_TEMP/ops-ui.json"
+          python -B -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"ops-ui.json"); j=json.load(open(p,encoding="utf-8")); assert j["consistency"]["status"]=="MATCHES_UNVERIFIED_DECLARATIONS"; assert j["project_detail"]["bridge"]["display_state"]=="UNKNOWN"; assert not any(j["actions_allowed"].values())'
