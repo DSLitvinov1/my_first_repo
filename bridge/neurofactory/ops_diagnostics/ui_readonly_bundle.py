@@ -11,6 +11,7 @@ import sys
 from diagnose import SnapshotError, _parse_unique
 from secure_input import SafeInputError, read_snapshot
 from status_adapter import snapshot_to_status, concise_text
+from ops_projection_guard import guard_project_view
 
 LANES = ("CORE", "PROVIDERS", "COORDINATOR", "REVIEW", "OPS",
          "SKILLS", "UI", "HANDOFF", "GODMODE")
@@ -90,6 +91,7 @@ def join_readonly_views(lane_board=None, project_status=None):
     """Construct an interface payload, NEVER an authorization or live status."""
     lanes = _validate_board(lane_board)
     if project_status is not None:
+        project_status = guard_project_view(project_status)
         if (type(project_status) is not dict or
                 project_status.get("schema") != 1 or
                 project_status.get("type") != "neurofactory.ops.status_view" or
