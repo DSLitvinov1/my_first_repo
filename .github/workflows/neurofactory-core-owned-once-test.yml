@@ -26,6 +26,15 @@ jobs:
         with:
           persist-credentials: false
       - name: Targeted Python offline tests
+        env:
+          NF_CORE_EVIDENCE_DIR: ${{ runner.temp }}/core-once-evidence
         run: python3 -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py
+      - name: Preserve synthetic sandbox checkpoint receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-once-synthetic-receipt
+          path: ${{ runner.temp }}/core-once-evidence/offline-test-checkpoint.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Source tree remains unmodified
         run: git diff --exit-code
