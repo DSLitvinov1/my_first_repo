@@ -93,6 +93,7 @@ class TrustedAPIReviewTests(unittest.TestCase):
     def test_http_redirect_to_another_host_is_refused(self):
         import io
         import os
+        test_case=self
         def forged_opener(*handlers):
             self.assertEqual(len(handlers), 1)
             handler=handlers[0]()
@@ -102,7 +103,7 @@ class TrustedAPIReviewTests(unittest.TestCase):
             class ReadOnlyOpener:
                 def open(self, request, timeout=20):
                     self_request=request
-                    self.assertTrue(self_request.full_url.startswith(
+                    test_case.assertTrue(self_request.full_url.startswith(
                         "https://api.github.com/repos/DSLitvinov1/my_first_repo/"))
                     return io.BytesIO(b'{"verified":true}')
             return ReadOnlyOpener()
