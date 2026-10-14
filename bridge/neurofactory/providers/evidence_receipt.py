@@ -57,7 +57,8 @@ def _check_windows_reparse(path: Path) -> None:
     try:
         for component in (path.absolute(), *path.absolute().parents):
             flags = ctypes.windll.kernel32.GetFileAttributesW(str(component))
-            if flags == 0xFFFFFFFF or flags & 0x400:
+            # ctypes may return GetFileAttributesW failure as signed -1.
+            if flags in (-1, 0xFFFFFFFF) or flags & 0x400:
                 raise EvidenceError("Windows reparse or inaccessible evidence path")
     except (OSError, AttributeError, ValueError) as exc:
         raise EvidenceError("Windows evidence reparse status unknown") from exc
