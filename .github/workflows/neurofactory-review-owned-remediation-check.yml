@@ -23,12 +23,12 @@ jobs:
       - name: Checkout exact new HANDOFF commit for read-only testing
         uses: actions/checkout@v4
         with:
-          ref: a08af89b8105aa58be403385c043ccd5d666772d
+          ref: 6c8938869afb4e1d6c6ef562f6aa04ec712256b6
           path: inspected-handoff
           persist-credentials: false
       - name: Pin immutable Git source and hash
         run: |
-          test "$(git -C inspected-handoff rev-parse HEAD)" = "a08af89b8105aa58be403385c043ccd5d666772d"
+          test "$(git -C inspected-handoff rev-parse HEAD)" = "6c8938869afb4e1d6c6ef562f6aa04ec712256b6"
           python -B - <<'PY'
           import hashlib,pathlib
           source=pathlib.Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
@@ -49,7 +49,7 @@ jobs:
           src=pathlib.Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
           report={
               "owner":"REVIEW",
-              "reviewed_handoff_head":"a08af89b8105aa58be403385c043ccd5d666772d",
+              "reviewed_handoff_head":"6c8938869afb4e1d6c6ef562f6aa04ec712256b6",
               "new_module_sha256":hashlib.sha256(src.read_bytes()).hexdigest(),
               "linux_readonly_security_tests":5,
               "linux_security_tests_result":"PASS",
