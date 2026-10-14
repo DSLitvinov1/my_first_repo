@@ -10,6 +10,7 @@ import re
 import sys
 
 from diagnose import SnapshotError, diagnose, _parse_unique
+from secure_input import SafeInputError, read_snapshot
 
 MAX_BYTES = 500000
 MAX_OBSERVATIONS = 40
@@ -211,16 +212,13 @@ def main(argv=None):
     parser.add_argument("--format", choices=("json", "text"), default="json")
     args = parser.parse_args(argv)
     try:
-        path = Path(args.observations)
-        if not path.is_file() or path.stat().st_size > MAX_BYTES:
-            raise SnapshotError("Input is missing or exceeds the size limit")
-        result = report(_parse_unique(path.read_text(encoding="utf-8")))
+        result = report(_parse_unique(read_snapshot(args.observations, MAX_BYTES)))
         if args.format == "text":
             print(render_russian_text(result))
         else:
             print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return 0
-    except (SnapshotError, OSError) as exc:
+    except (SnapshotError, SafeInputError, OSError) as exc:
         print("OPS_REPORT_REFUSED: " + str(exc), file=sys.stderr)
         return 2
 
