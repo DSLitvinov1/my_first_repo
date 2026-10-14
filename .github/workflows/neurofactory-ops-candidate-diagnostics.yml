@@ -38,6 +38,7 @@ jobs:
         run: |
           python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_status_adapter.py' -v
           python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_ui_readonly_bundle.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_ops_projection_guard.py' -v
       - name: Demonstrate untrusted JSON report without any queue interaction
         shell: bash
         run: |
