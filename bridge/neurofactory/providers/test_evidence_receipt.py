@@ -21,6 +21,12 @@ class EvidenceTests(unittest.TestCase):
         temp = tempfile.TemporaryDirectory(prefix="nf-provider-evidence-")
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
+        # Fixture-only: tests exercise receipts, not a real user-specific
+        # Windows DACL. Actual Windows ACL is never bypassed in production.
+        if os.name == "nt":
+            win_acl = patch.object(e, "require_private_windows_acl", return_value=None)
+            win_acl.start()
+            self.addCleanup(win_acl.stop)
         self.private = self.root / "private"
         self.private.mkdir(mode=0o700)
         self.ledger = self.root / "ledger"
