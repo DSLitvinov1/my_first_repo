@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "project": "НЕЙРОЗАВОД",
   "date": "2026-10-15",
   "candidate_branch": "neurofactory-coordinator-mvp-status-20261015",
@@ -41,21 +41,29 @@
     {
       "lane": "PROVIDERS",
       "sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
-      "incompatible": "LocalReply lacks task_id/source_sha and provenance even though generate() accepts task_id; durable_budget is local process/dir ledger not CORE remote lease. Isolated workflow filename outside authorized prefix.",
-      "owner_action": "Return envelope bound to task_id and CORE input SHA, durable attempt ID and outcome; rename workflow into authorized prefix; collect Windows and independent review."
+      "incompatible": "Resolved: own workflow path scope in PR13; still mismatched CORE input hash definition (input_sha256 is task/snapshot, not source file) and CORE target relative namespace; provider is proposal-only and returns no verified source commit.",
+      "owner_action": "Return envelope bound to task_id and CORE input SHA, durable attempt ID and outcome; rename workflow into authorized prefix; collect Windows and independent review.",
+      "head": "33c8df8cc579698c937fc008dfe06bf9581d37a6",
+      "current_pr": 13,
+      "local_contract_response": "mvp_provider_wire.py is pure validated translation requiring separate trusted CORE mapping, returns unverified proposal digest only; no actual CORE access",
+      "owner_fix": "Confirm with CORE #9 trusted request digest semantics, target allowlist, durable task id, independent readback. PR13 Windows hosted 19/19 per owner but not real Ollama, no independent approval."
     },
     {
       "lane": "OPS",
       "stable": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
       "experimental": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
-      "incompatible": "OPS consumes offline snapshots of observations/workers/queue/incidents, while new coordinator project() emits single-task status and source SHA. Neither attests live workers.",
-      "owner_action": "Add isolated read-only conversion for task projection, mark untrusted source as UNKNOWN, no recovery or release permission; review issue #6."
+      "incompatible": "OPS now has its own verified-by-syntax two-layer read-only board bundle; our new single-task card is a third distinct schema and must not be silently treated as attested live data.",
+      "owner_action": "Add isolated read-only conversion for task projection, mark untrusted source as UNKNOWN, no recovery or release permission; review issue #6.",
+      "experimental_head": "c41cb9ee0d91964cdf81bfd9052ca7e03b9b381f",
+      "owner_fix": "OPS #6 owner decides an optional task-card read-only add-on. Its targeted run #38649341882 Windows+Linux successful, independently signed verdict still absent."
     },
     {
       "lane": "SKILLS",
       "sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
-      "incompatible": "12 skills remain candidate and external host reviewer authentication is unavailable; cannot use registry string to authorize execution.",
-      "owner_action": "Keep all inactive until independently authenticated exact-SHA verdict, run full stored Python tests."
+      "incompatible": "PR545 extends 12 skills and 19 profiles with executor profiles and review attestation but never substitutes for trusted external host reviewer; no approved active skill or verified deployment.",
+      "owner_action": "Keep all inactive until independently authenticated exact-SHA verdict, run full stored Python tests.",
+      "head": "7852d1bb8017b2bd646d0e52979e12a80ed063d4",
+      "owner_fix": "Independent SKILLS audit exact PR545 SHA, verify signed external reviewer; keep preview-only and no CORE integration."
     },
     {
       "lane": "UI",
@@ -78,5 +86,67 @@
     "view": "10/10 local Python unittest PASS and py_compile PASS; exact git blobs verified",
     "readback": "13/13 ownership/source presence checks on prior exchange version",
     "windows": "PR12 existing run 38643604899 QUEUED, not rerun"
+  },
+  "rechecked": "2026-10-15",
+  "actual_owner_heads": {
+    "CORE": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "PROVIDERS_PR13": "33c8df8cc579698c937fc008dfe06bf9581d37a6",
+    "OPS": "c41cb9ee0d91964cdf81bfd9052ca7e03b9b381f",
+    "SKILLS_PR545": "7852d1bb8017b2bd646d0e52979e12a80ed063d4",
+    "HANDOFF": "279995e7fa252882fceec7ee2e955884382c4f54"
+  },
+  "latest_provider_pr": 13,
+  "provider_pr13_changes": {
+    "base": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+    "scope_fix": "removed .github/workflows/neurofactory-providers-isolated-regression.yml; added allowed .github/workflows/neurofactory-providers-owned-targeted-worker.yml",
+    "result": "PROPOSED_UNVERIFIED with input_sha256, model, proposed_files; no actual CORE source SHA",
+    "tests": {
+      "run_id": 38648742867,
+      "windows_job_id": 116142008817,
+      "linux_job_id": 116142009150,
+      "status": "both jobs SUCCESS; own tests 19 each; no live Qwen"
+    }
+  },
+  "bridge": {
+    "path": "bridge/neurofactory/coordination/mvp_provider_wire.py",
+    "tests": "bridge/neurofactory/coordination/test_mvp_provider_wire.py",
+    "exact_provider_schema": "neurofactory.providers.request.v1 / neurofactory.providers.result.v1",
+    "request_contract": "Requires independent authenticated CORE path mapping and input digest; does not turn into live invocation",
+    "reply_contract": "Checks proposal content SHA256, source binding, zero paid API, no publish or self-approval; strips raw content; returns only UNVERIFIED or BLOCKED",
+    "new_test_evidence": {
+      "run_id": 38650127588,
+      "job_id": 116146567101,
+      "exact_source_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "tests": 12,
+      "conclusion": "success"
+    }
+  },
+  "updated_test_evidence": {
+    "exchange": {
+      "run_id": 38649785184,
+      "job_id": 116145446509,
+      "head_sha": "8681a18feff94e4537be5b703efb746a8adc188d",
+      "cases": 22,
+      "conclusion": "success"
+    },
+    "view": {
+      "run_id": 38649785184,
+      "cases": 10,
+      "conclusion": "success"
+    },
+    "wire": {
+      "run_id": 38650127588,
+      "job_id": 116146567101,
+      "cases": 12,
+      "conclusion": "success"
+    },
+    "total_cases": 44,
+    "scope": "targeted GitHub-hosted Ubuntu tests, not independent source review",
+    "old_windows_run": {
+      "run_id": 38643604899,
+      "job_id": 116124933092,
+      "status": "queued; no rerun",
+      "scope": "old status projector only"
+    }
   }
 }
