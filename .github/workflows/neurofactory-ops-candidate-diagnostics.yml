@@ -1,4 +1,4 @@
-name: Neurofactory OPS Candidate Read-only Diagnostics
+name: Neurofactory OPS Candidate Multi-VM Read-only Tests
 on:
   push:
     branches:
@@ -10,55 +10,67 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: neurofactory-ops-candidate-diagnostics
+  group: neurofactory-ops-matrix-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  offline_linux:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 6
+  offline_matrix:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - {os: ubuntu-22.04, python: '3.11'}
+          - {os: ubuntu-22.04, python: '3.13'}
+          - {os: ubuntu-24.04, python: '3.11'}
+          - {os: ubuntu-24.04, python: '3.13'}
+          - {os: windows-2022, python: '3.11'}
+          - {os: windows-2022, python: '3.13'}
+          - {os: windows-2025, python: '3.11'}
+          - {os: windows-2025, python: '3.13'}
+          - {os: macos-15, python: '3.11'}
+          - {os: macos-15, python: '3.13'}
+          - {os: macos-15-intel, python: '3.11'}
+          - {os: macos-15-intel, python: '3.13'}
+          - {os: ubuntu-24.04-arm, python: '3.13'}
+          - {os: windows-11-arm, python: '3.13'}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Read-only diagnostic unit tests on Linux
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: ''
+      - name: Verify isolated test environment and run complete OPS suite
+        shell: bash
         env:
           PYTHONPATH: bridge/neurofactory/ops_diagnostics
           PYTHONDONTWRITEBYTECODE: '1'
-        run: python3 -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
-      - name: Diagnose an observed selective Stage5 snapshot without network writes
+          PYTHONNOUSERSITE: '1'
+        run: |
+          set -euo pipefail
+          python --version
+          python -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
+      - name: Verify no-release offline report and Russian view
+        shell: bash
         env:
+          PYTHONPATH: bridge/neurofactory/ops_diagnostics
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python3 -B bridge/neurofactory/ops_diagnostics/diagnose.py bridge/neurofactory/ops_diagnostics/examples/stage5_issue3_selected_evidence_20261014.json > "$RUNNER_TEMP/nf-ops-diagnostic.json"
-          python3 -B -c 'import json,os; d=json.load(open(os.environ["RUNNER_TEMP"]+"/nf-ops-diagnostic.json")); assert d["release_authorized"] is False and d["diagnosis"]=="BLOCKED" and "BRANCH_PROTECTION_MISSING" in d["blockers"]'
-      - name: Offline Russian OPS worker and queue report from selected snapshot
-        env:
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: |
-          python3 -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json > "$RUNNER_TEMP/nf-ops-status.json"
-          python3 -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json --format text > "$RUNNER_TEMP/nf-ops-status-ru.txt"
-          python3 -B -c 'import json,os; d=json.load(open(os.environ["RUNNER_TEMP"]+"/nf-ops-status.json")); assert d["source_trust"]=="UNTRUSTED_OFFLINE_SNAPSHOTS" and d["actions_allowed"]["publish"] is False and d["worker_inventory"]==[] and d["queue_inventory"]==[]'
-      - name: Preserve only the isolated read-only diagnostic report
-        if: always()
+          set -euo pipefail
+          python -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json > "$RUNNER_TEMP/ops-matrix.json"
+          python -B bridge/neurofactory/ops_diagnostics/ops_report.py bridge/neurofactory/ops_diagnostics/examples/ops_stage5_selected_observation_20261014.json --format text > "$RUNNER_TEMP/ops-matrix-ru.txt"
+          python -B -c 'import json,os; f=os.path.join(os.environ["RUNNER_TEMP"],"ops-matrix.json"); d=json.load(open(f,encoding="utf-8")); assert not any(d["actions_allowed"].values()); assert d["source_trust"]=="UNTRUSTED_OFFLINE_SNAPSHOTS"; assert d["worker_inventory"]==[]; assert d["queue_inventory"]==[]'
+      - name: Save compact evidence only for canonical Linux runner
+        if: matrix.os == 'ubuntu-24.04' && matrix.python == '3.13'
         uses: actions/upload-artifact@v4
         with:
-          name: neurofactory-ops-candidate-readonly-diagnosis
+          name: neurofactory-ops-multivm-offline-proof
           path: |
-            ${{ runner.temp }}/nf-ops-diagnostic.json
-            ${{ runner.temp }}/nf-ops-status.json
-            ${{ runner.temp }}/nf-ops-status-ru.txt
-          if-no-files-found: warn
-          retention-days: 14
-  offline_windows:
-    runs-on: windows-2022
-    timeout-minutes: 8
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Read-only diagnostic unit tests on isolated Windows hosted runner
-        shell: pwsh
-        env:
-          PYTHONPATH: bridge/neurofactory/ops_diagnostics
-          PYTHONDONTWRITEBYTECODE: '1'
-        run: py -3 -B -m unittest discover -s bridge/neurofactory/ops_diagnostics -p 'test_*.py' -v
+            ${{ runner.temp }}/ops-matrix.json
+            ${{ runner.temp }}/ops-matrix-ru.txt
+          retention-days: 1
+          if-no-files-found: error
