@@ -1,0 +1,74 @@
+name: Neurofactory REVIEW Fixed HANDOFF Source Security Tests
+on:
+  push:
+    branches: [neurofactory-review-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/review_owned/test_handoff_remediation_20261014.py'
+      - '.github/workflows/neurofactory-review-owned-remediation-check.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-review-fixed-handoff-lab
+  cancel-in-progress: false
+jobs:
+  fixed_source_readonly_review:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - name: Checkout only REVIEW test harness
+        uses: actions/checkout@v4
+        with:
+          path: reviewer
+          persist-credentials: false
+      - name: Checkout exact new HANDOFF commit for read-only testing
+        uses: actions/checkout@v4
+        with:
+          ref: f91803cda42448f75b390313af99aa00d14fd4df
+          path: inspected-handoff
+          persist-credentials: false
+      - name: Pin immutable Git source and hash
+        run: |
+          test "$(git -C inspected-handoff rev-parse HEAD)" = "f91803cda42448f75b390313af99aa00d14fd4df"
+          python -B - <<'PY'
+          import hashlib,pathlib
+          source=pathlib.Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
+          print("REVIEW_NEW_HANDOFF_MODULE_SHA256",hashlib.sha256(source.read_bytes()).hexdigest(),flush=True)
+          PY
+      - name: Independently test fixed source with OS-process directory swap and forged runner origin
+        env:
+          PYTHONPATH: ${{ github.workspace }}/inspected-handoff/bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m unittest discover -s reviewer/bridge/neurofactory/development/review_owned -p 'test_handoff_remediation_20261014.py' -v
+      - name: Record strict no-publish review evidence for exact new source
+        if: success()
+        run: |
+          mkdir -p review-remediation-evidence
+          python -B - <<'PY'
+          import hashlib,json,pathlib
+          src=pathlib.Path("inspected-handoff/bridge/neurofactory/development/model_handoff_owned/handoff_gate.py")
+          report={
+              "owner":"REVIEW",
+              "reviewed_handoff_head":"f91803cda42448f75b390313af99aa00d14fd4df",
+              "new_module_sha256":hashlib.sha256(src.read_bytes()).hexdigest(),
+              "linux_readonly_security_tests":5,
+              "linux_security_tests_result":"PASS",
+              "independent_review_verdict":"PENDING",
+              "new_live_qwen3_exact_source_review":"NOT_YET_VERIFIED",
+              "separate_windows_native_handles":"FAIL_CLOSED_BY_DESIGN; NO PERSISTENCE ON WINDOWS",
+              "provenance_trust_boundary":"CALLER_SUPPLIED_VERIFIER_MUST_BE_TRUSTED; NOT CRYPTOGRAPHIC_SIGNATURE",
+              "publication_authorized":False,
+              "merge_authorized":False,
+          }
+          pathlib.Path("review-remediation-evidence/partial-remediation.json").write_text(
+              json.dumps(report,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+          print("REVIEW_REMEDIATION_TESTS_SUCCESS_NO_RELEASE",report["new_module_sha256"])
+          PY
+      - name: Preserve isolated evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-review-fixed-handoff-readonly
+          path: review-remediation-evidence/
+          if-no-files-found: warn
+          retention-days: 7
