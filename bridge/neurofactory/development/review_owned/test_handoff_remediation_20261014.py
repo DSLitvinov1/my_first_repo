@@ -17,7 +17,7 @@ from model_handoff_owned import handoff_gate as gate
 TASK = "NF-DEV-05-Q098"
 TARGET = "bridge/neurofactory/development/model_handoff_owned/review_only.py"
 SOURCE = "def normalize_label(value):\n    return str(value).strip().lower()\n"
-FIXED_COMMIT = "f91803cda42448f75b390313af99aa00d14fd4df"
+FIXED_COMMIT = "a08af89b8105aa58be403385c043ccd5d666772d"
 
 def make_packet():
     p = gate.candidate_packet(TASK,TARGET,SOURCE)
@@ -125,7 +125,8 @@ except gate.HandoffError as exc:
               "reviewer_model":"qwen3:4b","raw_reply_sha256":"3"*64}
         outcome=gate.verify_trusted_runner_origin(
             candidate,review,fake,verify_github=lambda *args: True)
-        self.assertTrue(outcome["origin_attested_by_external_verifier"])
+        self.assertTrue(outcome["receipt_correlated_by_callback"])
+        self.assertFalse(outcome["origin_attested_by_external_verifier"])
         self.assertFalse(outcome["release_authorized"])
         self.assertTrue(outcome["needs_independent_review_owner"])
 
