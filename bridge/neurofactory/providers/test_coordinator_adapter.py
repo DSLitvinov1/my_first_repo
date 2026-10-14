@@ -74,6 +74,8 @@ class CoordinatorBoundaryTests(unittest.TestCase):
             "input_sha256":candidate.task.input_sha256,
             "model":candidate.model,"provider":"ollama-loopback",
             "offline_mock":False,"published":False,"review_approved":False,
+            "observed_local_reply":True,"attempt_consumed":True,"api_cost_usd":0,
+            "prompt_sha256":"c"*64,"response_sha256":"d"*64,
             "proposed_files":[{
                 "relative_path":candidate.task.target_path,
                 "content":content,
@@ -93,6 +95,10 @@ class CoordinatorBoundaryTests(unittest.TestCase):
         mocked=copy.deepcopy(source)
         mocked["offline_mock"]=True
         with self.assertRaises(ValueError):a.coordinator_result(candidate,mocked)
+
+        forged_receipt=copy.deepcopy(source)
+        forged_receipt["observed_local_reply"]=False
+        with self.assertRaises(ValueError):a.coordinator_result(candidate,forged_receipt)
 
     def test_truncated_or_invalid_schema_rejected(self):
         for raw in (b"",b'{}',b'{"schema":',b"x"*16385):
