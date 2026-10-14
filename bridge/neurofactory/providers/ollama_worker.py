@@ -127,7 +127,7 @@ def validate_target(path: str) -> str:
     if "\\" in path or ":" in path or "\x00" in path or path.startswith("/"):
         raise ValueError("unsafe target path")
     posix = PurePosixPath(path)
-    if (not path.startswith(("src/", "docs/")) or
+    if (not path.startswith(("src/", "docs/", "bridge/neurofactory/development/core_owned/")) or
             any(not part or part in (".", "..") or part.startswith(".") for part in path.split("/")) or
             not re.fullmatch(r"[A-Za-z0-9_./-]+", path) or
             posix.suffix not in (".py", ".md", ".txt", ".json")):
