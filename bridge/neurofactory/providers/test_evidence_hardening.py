@@ -20,6 +20,12 @@ class EvidenceHardeningTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="provider-evidence-security-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        # Fixture-only Windows ACL bypass for synthetic receipt files.
+        # Production checks always run through the OS DACL gate.
+        if os.name == "nt":
+            win_acl = patch.object(e, "require_private_windows_acl", return_value=None)
+            win_acl.start()
+            self.addCleanup(win_acl.stop)
         self.dir = self.root / "private"
         self.dir.mkdir(mode=0o700)
         self.task = "NF-DEV-05-Q931"
