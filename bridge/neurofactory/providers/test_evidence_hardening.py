@@ -54,12 +54,12 @@ class EvidenceHardeningTests(unittest.TestCase):
     def test_crash_between_record_write_and_seal_is_uncommitted(self):
         base_fsync = e.os.fsync
         calls = [0]
-        def fail_second(fd):
+        def fail_first(fd):
             calls[0] += 1
-            if calls[0] == 2:
-                raise OSError("simulated fsync failure before commit seal")
+            if calls[0] == 1:
+                raise OSError("simulated first file fsync failure before commit seal")
             return base_fsync(fd)
-        with patch.object(e.os, "fsync", side_effect=fail_second):
+        with patch.object(e.os, "fsync", side_effect=fail_first):
             with self.assertRaises(e.EvidenceError):
                 self.write()
         record, seal = self.files()
