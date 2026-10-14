@@ -50,7 +50,7 @@ def _validate_packet(packet):
     if (r["schema"] != REQ_SCHEMA or
         not _hex(b["task_id"], TASK) or not _hex(b["source_sha"], SHA40) or
         not _hex(b["source_sha256"], SHA64) or not _hex(b["input_sha256"], SHA64) or
-        not _safe_path(b["provider_target"]) or b["model"] not in LOCAL_MODELS or
+        not _safe_path(b["provider_target"]) or type(b["model"]) is not str or b["model"] not in LOCAL_MODELS or
         not isinstance(b["project_id"], str) or
         re.fullmatch(r"[a-z][a-z0-9-]{2,39}", b["project_id"]) is None or
         not isinstance(b["core_target"], str) or
@@ -103,7 +103,7 @@ def summarize_reply(packet, result):
         result["project_id"] != r["project_id"] or
         result["input_sha256"] != r["input_sha256"] or
         result["model"] != b["model"] or result["provider"] != "ollama-loopback" or
-        result["offline_mock"] is not False or result["api_cost_usd"] != 0 or
+        result["offline_mock"] is not False or type(result["api_cost_usd"]) is not int or result["api_cost_usd"] != 0 or
         result["review_approved"] is not False or result["published"] is not False or
         type(result["attempt_consumed"]) is not bool or
         type(result["proposed_files"]) is not list):
@@ -120,6 +120,7 @@ def summarize_reply(packet, result):
                 "automatic_retry_allowed":False,"publication_allowed":False,
                 "source_verified":False,"model_output_digest":None}
     if (result["error_code"] is not None or len(proposed)!=1 or
+        result.get("observed_local_reply") is not True or
         result["attempt_consumed"] is not True or
         not _hex(result["prompt_sha256"],SHA64) or
         not _hex(result["response_sha256"],SHA64)):
