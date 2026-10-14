@@ -14,6 +14,7 @@ on:
       - bridge/neurofactory/providers/test_coordinator_wire.py
       - bridge/neurofactory/providers/evidence_receipt.py
       - bridge/neurofactory/providers/test_evidence_receipt.py
+      - bridge/neurofactory/providers/test_evidence_hardening.py
       - .github/workflows/neurofactory-providers-owned-targeted-worker.yml
 permissions:
   contents: read
@@ -33,7 +34,8 @@ jobs:
         with:
           python-version: '3.11'
       - name: Validate only touched worker paths
-        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_wire.py bridge/neurofactory/providers/evidence_receipt.py bridge/neurofactory/providers/test_evidence_receipt.py
-      - name: Targeted write-once evidence and no-retry security regression
+        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_wire.py bridge/neurofactory/providers/evidence_receipt.py bridge/neurofactory/providers/test_evidence_receipt.py bridge/neurofactory/providers/test_evidence_hardening.py
+      - name: Targeted crash seal and trusted digest regression
         run: |
           python -m unittest discover -s bridge/neurofactory/providers -p "test_evidence_receipt.py" -v
+          python -m unittest discover -s bridge/neurofactory/providers -p "test_evidence_hardening.py" -v
