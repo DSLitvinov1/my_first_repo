@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "checkpoint_date": "2026-10-14",
+  "scope": "coordinator_readonly_assignment",
+  "supersedes": "bridge/neurofactory/coordination/chat-assignments-and-handoff-pause-20261014.json (role descriptions only; pause still enforced)",
+  "canonical_roadmap": "bridge/neurofactory/coordination/ROADMAP_LANES_20261014_RU.md",
+  "restrictions": {
+    "handoff_paused": true,
+    "chat_delivery_paused": true,
+    "paid_api_allowed": false,
+    "model_sender_allowed": false,
+    "live_publisher_allowed": false,
+    "new_task_ids_allowed": false,
+    "merge_allowed": false,
+    "windows_restart_allowed": false
+  },
+  "tasks": [
+    {
+      "id": "NF-COORD-CORE-CONTRACT-20261014",
+      "owner": "core",
+      "chat": "Нейрозавод 1",
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "status": "ASSIGNED_NOT_VERIFIED",
+      "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "scope": [
+        "bridge/neurofactory/development/core_owned/",
+        "bridge/neurofactory/development/stage5_development_queue.py",
+        "bridge/neurofactory/development/stage5_remote_journal.py",
+        ".github/workflows/neurofactory-core-owned-"
+      ],
+      "deliverable": "isolated lease/CAS/receipt recovery contract and tests, no publisher",
+      "acceptance": [
+        "2_to_8_distinct_approved_jobs",
+        "exclusive_lease_one_owner",
+        "two_restart_race",
+        "crash_before_intent",
+        "unknown_receipt_stop",
+        "idempotent_reconcile",
+        "cross_runner_checkpoint_readback",
+        "deny_foreign_scope"
+      ]
+    },
+    {
+      "id": "NF-COORD-REVIEW-CORE-20261014",
+      "owner": "review",
+      "chat": "Контроль очереди нейрозавода",
+      "branch": "neurofactory-review-owned-20261013",
+      "status": "WAITING_FOR_CORE_EXACT_SHA",
+      "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "scope": [
+        "bridge/neurofactory/development/review_owned/",
+        ".github/workflows/neurofactory-review-owned-"
+      ],
+      "deliverable": "independent adversarial tests only once exact CORE patch exists",
+      "acceptance": [
+        "forged_Qwen3_REVIEW_OK_rejected",
+        "duplicate_JSON_keys_rejected",
+        "wrong_commit_and_branch_rejected",
+        "partial_checkpoint_rejected",
+        "competing_restore_safe",
+        "ambiguous_receipt_never_republished",
+        "independent_owner_attestation_required"
+      ],
+      "existing_tests_not_to_repeat": [
+        "38630121475",
+        "38630845464"
+      ],
+      "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval."
+    },
+    {
+      "id": "NF-COORD-PROVIDERS-MOCK-20261014",
+      "owner": "providers",
+      "chat": "Подключение DeepSeek",
+      "branch": "neurofactory-providers-free-20261013",
+      "status": "ASSIGNED_NO_LIVE_CALLS",
+      "scope": [
+        "bridge/neurofactory/providers/",
+        ".github/workflows/neurofactory-providers-owned-"
+      ],
+      "deliverable": "no-cost availability matrix and mocked safe model adapter",
+      "acceptance": [
+        "strict_no_paid_api",
+        "no_secret_logging",
+        "bounded_timeout_backoff",
+        "model_identity_schema",
+        "quota_stop",
+        "user_region_and_entitlement_uncertainty_not_ignored",
+        "fallback_never_uses_paid_endpoint"
+      ]
+    },
+    {
+      "id": "NF-COORD-SKILLS-RECONCILE-20261014",
+      "owner": "skills",
+      "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
+      "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
+      "status": "CONFLICT_MAPPED_CODE_CHANGE_PENDING",
+      "repository": "DSLitvinov1/lesson3.1",
+      "inputs": [
+        {
+          "pr": 514,
+          "sha": "1d970fcea560f59289c871f3f6dafdf1e89b0dce"
+        },
+        {
+          "pr": 515,
+          "sha": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b"
+        },
+        {
+          "pr": 528,
+          "sha": "ecbdc6fb8e5e4f433628746447ede4f0217095f9"
+        }
+      ],
+      "strategy": "Base from #528 descendant of #515, then select only GOD MODE manifest + unique registry candidate + non-overlapping new tests from #514; never whole-branch merge",
+      "touch_by_owner_only": [
+        "neurofactory-skill-master/skills/registry.json",
+        "neurofactory-skill-master/tests/test_skill_master.py",
+        "neurofactory-skill-master/skills/professional-developer-god-mode/SKILL.md"
+      ],
+      "acceptance": [
+        "exactly_12_skill_candidates",
+        "zero_active_skills_before_review",
+        "manifest_sha256_match_all",
+        "frontend_reference_digests_match",
+        "single_reconciled_test_file",
+        "real_unittest",
+        "independent_security_review",
+        "no_activation_no_merge"
+      ],
+      "note": "Actual Git conflict remains until SKILLS owner creates tested reconciled commit."
+    },
+    {
+      "id": "NF-COORD-OPS-REVIEW-20261014",
+      "owner": "ops",
+      "chat": "OPS diagnostics",
+      "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+      "status": "PROVISIONAL_ISOLATED",
+      "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
+      "scope": [
+        "bridge/neurofactory/ops_diagnostics/",
+        ".github/workflows/neurofactory-ops-candidate-diagnostics.yml"
+      ],
+      "evidence": {
+        "run": 38629788051,
+        "linux": "33/33",
+        "windows": "33/33",
+        "independent_review": false
+      },
+      "deliverable": "separate exact-SHA independent review before any production integration",
+      "acceptance": [
+        "read_only_offline",
+        "never_release_authorized",
+        "no_external_API",
+        "no_secret_access",
+        "no_core_or_coordinator_writes"
+      ]
+    },
+    {
+      "id": "NF-COORD-HANDOFF-PAUSE-20261014",
+      "owner": "handoff",
+      "chat": "Восстановление очереди нейрозавода",
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "status": "PAUSED_BY_USER",
+      "input_commit": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "deliverable": "none until user explicitly resumes",
+      "acceptance": [
+        "no_new_commit_from_coordinator",
+        "no_Q090_repeat",
+        "no_manual_workflow_dispatch",
+        "no_integration",
+        "no_publication"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "id": "HISTORIC_RECEIPT_FORGERY",
+      "verified_by_review_run": 38630845464,
+      "status": "BLOCKING_CORE_INTEGRATION"
+    },
+    {
+      "id": "SKILLS_DRAFT_COLLISION",
+      "prs": [
+        514,
+        515,
+        528
+      ],
+      "status": "ONE_OWNER_RECONCILIATION_REQUIRED"
+    },
+    {
+      "id": "MIXED_DRAFT_PR_2",
+      "status": "BLOCKED"
+    },
+    {
+      "id": "PRODUCTION_BRANCH_PROTECTION",
+      "status": "NOT_CONFIRMED_CURRENTLY_ENFORCED"
+    },
+    {
+      "id": "HANDOFF_ON_HOLD",
+      "status": "USER_PAUSED"
+    }
+  ]
+}
