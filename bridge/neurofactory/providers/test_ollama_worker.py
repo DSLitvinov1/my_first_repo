@@ -69,6 +69,14 @@ class WorkerTests(unittest.TestCase):
                     w.check_resources(self.model)
         self.assertEqual(ctx.exception.code, "BLOCKED_RESOURCE")
 
+    def test_low_ram_short_circuits_ollama_tags(self):
+        with patch.object(w, "physical_free_memory_bytes", return_value=515497984):
+            with patch.object(w, "installed_model_info") as tags:
+                with self.assertRaises(w.PreflightBlocked) as error:
+                    w.check_resources(self.model)
+                self.assertEqual(error.exception.code, "BLOCKED_RESOURCE")
+                tags.assert_not_called()
+
     def test_success_proposal_is_not_approved_or_written(self):
         with patch.object(w, "check_resources",
                           return_value={"model": self.model, "free_ram_bytes": 4 * w.ONE_GIB}):
