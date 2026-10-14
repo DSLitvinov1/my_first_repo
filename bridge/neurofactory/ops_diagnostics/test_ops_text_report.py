@@ -19,7 +19,7 @@ class RussianReportTests(unittest.TestCase):
         self.assertIn("runner-A",text)
         self.assertIn("ОЧЕРЕДЬ",text)
         self.assertIn("NF-DEV-05-Q091",text)
-        self.assertIn("не живой мониторинг GitHub",text.lower())
+        self.assertIn("не живой мониторинг github",text.lower())
 
     def test_recurrent_error_and_safe_advice_is_visible(self):
         value=report(envelope(observation("one",run=4,code="RECEIPT_UNKNOWN"),
