@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "as_of": "2026-10-14",
+  "author_role": "COORDINATOR",
+  "checkpoint_kind": "READ_ONLY_AUDIT_AND_OWNED_ROADMAP_UPDATE",
+  "previous_checkpoint_commit": "70acac0ad30325142c0c3a6f6143e815cbbe7993",
+  "updated_roadmap_commit": "b4dd49e63870a43440bcf0221e7a99b01cb26fc0",
+  "updated_dispatch_commit": "ce3a08b16b8694d4ea08543a44c52538a880339a",
+  "scopes": {
+    "core": {
+      "head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "changed_since_previous": false,
+      "contract_delivered": false,
+      "extra_ci_executed": false,
+      "status": "AWAITING_OWNER_SECURE_LEASE_CAS_UNKNOWN_RECEIPT_PATCH",
+      "next": "Owner-only recovery/checkpoint/once-only tests, then exact-SHA REVIEW"
+    },
+    "review": {
+      "head": "c2510f1f35c946dea0c7a33786960e4875984ace",
+      "changed_since_previous": false,
+      "new_core_review": false,
+      "historic_receipt_findings": [
+        "forged REVIEW_OK accepted from JSON label without trusted run",
+        "duplicate JSON keys last-wins parsing"
+      ],
+      "older_runs": [
+        {
+          "id": 38630121475,
+          "claim": "22 pass, historic external proof verifier"
+        },
+        {
+          "id": 38630845464,
+          "claim": "5 pass reproduced two historic vulnerabilities"
+        }
+      ],
+      "status": "BLOCKED_WAITING_NEW_CORE_SHA"
+    },
+    "providers": {
+      "original_branch": "neurofactory-providers-free-20261013",
+      "candidate_branch": "neurofactory-providers-offline-20261014",
+      "candidate_head": "691edb1b1283a928e3d032b571f3e053f0f80d31",
+      "compare": "4 commits only three provider-owned files",
+      "source_blob": "4d2df763743152237c737f8dbfe5ec520af6907e",
+      "test_blob": "d833cab2470dd66aeed4ca62704d16e78819e6d8",
+      "author_reported_local_unittest": "21/21 PASS Linux",
+      "hosted_windows_run": "NONE_VERIFIED",
+      "actual_paid_api": "NONE_CALLED_BY_COORDINATOR",
+      "live_model_integration": false,
+      "independent_review": false,
+      "release_authorized": false,
+      "status": "MOCK_ONLY_ISOLATED_AWAITING_EXTERNAL_AUDIT"
+    },
+    "skills": {
+      "repository": "DSLitvinov1/lesson3.1",
+      "prs": [
+        {
+          "number": 514,
+          "head": "1d970fcea560f59289c871f3f6dafdf1e89b0dce",
+          "draft": true
+        },
+        {
+          "number": 515,
+          "head": "af9ec0ef9c221e6dcba484b196a2e1de72461b9b",
+          "draft": true
+        },
+        {
+          "number": 528,
+          "head": "ecbdc6fb8e5e4f433628746447ede4f0217095f9",
+          "draft": true
+        }
+      ],
+      "reconciled_12_candidates": false,
+      "independent_review": false,
+      "new_head_in_designed_branches": false,
+      "release_authorized": false,
+      "status": "CONFLICTED_SEPARATE_DRAFTS"
+    },
+    "ops": {
+      "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+      "old_head": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
+      "head": "984a1e516549960a0b51e137c804dea3a064bf3f",
+      "all_changed_paths_owned": true,
+      "features": [
+        "untrusted snapshot inventory of workers and queue",
+        "repeated incident classification across distinct reported run IDs",
+        "advisory Russian recommendations only"
+      ],
+      "owner_reported_tests": {
+        "run": 38633767111,
+        "linux_passed": 68,
+        "windows_passed": 68,
+        "workflow_jobs_verified_completed_success": true
+      },
+      "independent_review": false,
+      "permission": "PROVISIONAL_OFFLINE_ONLY",
+      "auto_recovery": false,
+      "production_integration": false,
+      "status": "WAITING_INDEPENDENT_OPS_SECURITY_SIGNOFF"
+    },
+    "handoff": {
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "changed_since_previous": false,
+      "status": "PAUSED_BY_USER",
+      "new_jobs": 0,
+      "new_model_calls_by_coordinator": 0,
+      "allow_user_resume_only": true
+    }
+  },
+  "release_gates": {
+    "prod_branch_protection": "NOT_NEWLY_VERIFIED_ENFORCED",
+    "independent_approval_new_CORE": "MISSING",
+    "legacy_receipt_authentication": "NOT_TRUSTED",
+    "once_only_real_publisher": "NOT_PROVEN",
+    "handoff": "PAUSED",
+    "old_draft_pr2": "BLOCKED_NO_MERGE",
+    "skills_prs": "ALL_DRAFT_NO_MERGE",
+    "output": "DO_NOT_RELEASE"
+  },
+  "coordinator_actions": {
+    "github_changes_only_prefix": "bridge/neurofactory/coordination/",
+    "new_execution_jobs": 0,
+    "merge_count": 0,
+    "new_queue_ids": 0,
+    "new_paid_api_calls": 0,
+    "chatgpt_sends": 0,
+    "runner_restarts": 0,
+    "new_independent_review_claims": 0
+  },
+  "next": "Do not repeat historic tests; await new CORE exact commit, independent REVIEW of it, providers candidate review without networks, single-owner SKILLS 12-skill reconciliation, independent OPS candidate review. Retain HANDOFF pause."
+}
