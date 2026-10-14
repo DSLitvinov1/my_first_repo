@@ -214,6 +214,22 @@ def snapshot_to_status(snapshot):
                    "/actions/runs/" + str(rid),
             "source_verified": False
         })
+    # Run numbers are only a ranking of unverified input IDs, not verified times.
+    # Exclude foreign source SHA from current-source outcome summaries.
+    same_source_runs = [r for r in runs if r["matches_project_head"]]
+    def _newest(claims):
+        return max(claims, key=lambda r: r["id"]) if claims else None
+    run_highlights = {
+        "selection": "HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED",
+        "latest_reported": _newest(same_source_runs),
+        "last_reported_success": _newest(
+            [r for r in same_source_runs if r["state"] == "COMPLETED"
+             and r["conclusion"] == "SUCCESS"]),
+        "last_reported_failure": _newest(
+            [r for r in same_source_runs if r["state"] == "COMPLETED"
+             and r["conclusion"] in ("FAILURE", "TIMED_OUT", "CANCELLED")]),
+        "source_verified": False
+    }
     incidents = {}
     for item in bounded_list(snapshot["problems"], MAX_PROBLEMS, "problems"):
         problem = expect_dict(item, ("code", "task_id", "run_id"), "problem")
@@ -241,7 +257,11 @@ def snapshot_to_status(snapshot):
         "bridge": bridge_view, "workers": workers,
         "queue": tasks, "queue_counts": dict(sorted(counts.items())),
         "checkpoint_counts": dict(sorted(checkpoint_counts.items())),
-        "runs": runs, "problems": findings,
+        "runs": runs, "run_highlights": run_highlights, "problems": findings,
+        "stopped_tasks": [q["task_id"] for q in tasks
+                          if q["display_state"] == "BLOCKED"],
+        "possibly_stalled_tasks": [q["task_id"] for q in tasks
+                                    if q["possibly_stalled"]],
         "integrity": {"independent_review": "NOT_VERIFIED",
                       "publisher_receipt": "UNKNOWN",
                       "snapshot_authenticated": False},
@@ -269,6 +289,14 @@ def concise_text(view):
     for q in view["queue"]:
         suffix = " / возможное зависание" if q["possibly_stalled"] else ""
         lines.append("  " + q["task_id"] + ": " + q["display_state"] + suffix)
+    last_good = view["run_highlights"]["last_reported_success"]
+    last_bad = view["run_highlights"]["last_reported_failure"]
+    lines.append("Последний заявленный успешный запуск: " +
+                 (str(last_good["id"]) if last_good else "UNKNOWN"))
+    lines.append("Последний заявленный отказ: " +
+                 (str(last_bad["id"]) if last_bad else "UNKNOWN"))
+    lines.append("Остановленные задания: " +
+                 (", ".join(view["stopped_tasks"]) if view["stopped_tasks"] else "не заявлены"))
     lines.append("Контрольные точки: " + json.dumps(
         view["checkpoint_counts"], ensure_ascii=False, sort_keys=True))
     lines.append("Обнаруженные признаки проблем: " + str(len(view["problems"])))
