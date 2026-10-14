@@ -1,0 +1,66 @@
+name: Neurofactory HANDOFF Exact Repaired Source Qwen3 Review
+on:
+  push:
+    branches:
+      - neurofactory-model-handoff-owned-20261013
+    paths:
+      - '.github/workflows/neurofactory-handoff-owned-qwen3-remediation.yml'
+      - 'bridge/neurofactory/development/model_handoff_owned/live_qwen3_remediation_review.py'
+      - 'bridge/neurofactory/development/model_handoff_owned/test_live_qwen3_remediation_review.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-handoff-only-qwen3-remediation
+  cancel-in-progress: false
+jobs:
+  offline_safety_tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Source bound offline tests
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python3 -B -m unittest model_handoff_owned.test_live_qwen3_remediation_review -v
+          python3 -B bridge/neurofactory/coordination/check_lanes.py --check-policy
+  real_qwen3_review:
+    needs: offline_safety_tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Start official local Ollama on disposable isolated runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://ollama.com/install.sh -o "$RUNNER_TEMP/ollama-install.sh"
+          bash "$RUNNER_TEMP/ollama-install.sh"
+          ollama serve > "$RUNNER_TEMP/ollama-qwen3-review.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:11434/api/tags >/dev/null
+      - name: Acquire exact free Qwen3 locally, no paid API
+        shell: bash
+        run: ollama pull qwen3:4b
+      - name: Independently inspect exact repaired source and save raw evidence
+        env:
+          PYTHONPATH: bridge/neurofactory/development
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -B -m model_handoff_owned.live_qwen3_remediation_review
+      - name: Preserve read-only reviewer evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurofactory-handoff-owned-remediation-qwen3-evidence
+          path: ${{ runner.temp }}/neurofactory-handoff-qwen3-remediation/
+          if-no-files-found: warn
+          retention-days: 14
