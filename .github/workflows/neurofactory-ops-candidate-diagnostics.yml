@@ -36,6 +36,10 @@ jobs:
           - {os: windows-11-arm, python: '3.13'}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 9
+    env:
+      PYTHONUTF8: '1'
+      PYTHONIOENCODING: 'utf-8'
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
