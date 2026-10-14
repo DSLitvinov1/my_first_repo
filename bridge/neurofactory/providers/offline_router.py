@@ -9,7 +9,7 @@ from typing import Iterable, Mapping
 import re
 
 SUPPORTED_PROVIDERS = frozenset(("claude", "qwen", "deepseek"))
-_TASK_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\\Z")
+_TASK_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
 
 
 class ProviderFailure(RuntimeError):
