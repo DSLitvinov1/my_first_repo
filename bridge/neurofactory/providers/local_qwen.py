@@ -13,7 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request as URLRequest, ProxyHandler, HTTPRedirectHandler, build_opener
 
 ENDPOINT = "http://127.0.0.1:11434/api/generate"
-ALLOWED_MODELS = frozenset({"qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:7b"})
+ALLOWED_MODELS = frozenset({"qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:1.5b", "qwen2.5-coder:7b"})
 MAX_PROMPT_CHARS = 12000
 MAX_REPLY_BYTES = 131072
 
