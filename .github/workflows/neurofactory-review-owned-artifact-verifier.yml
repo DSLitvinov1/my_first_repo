@@ -5,6 +5,7 @@ on:
     paths:
       - 'bridge/neurofactory/development/review_owned/verify_qwen3_github_evidence.py'
       - 'bridge/neurofactory/development/review_owned/test_verify_qwen3_github_evidence.py'
+      - 'bridge/neurofactory/development/review_owned/test_verify_qwen3_github_remote.py'
       - '.github/workflows/neurofactory-review-owned-artifact-verifier.yml'
 permissions:
   contents: read
@@ -25,7 +26,7 @@ jobs:
           PYTHONPATH: bridge/neurofactory/development/review_owned
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -B -m unittest discover -s bridge/neurofactory/development/review_owned -p 'test_verify_qwen3_github_evidence.py' -v
+          python -B -m unittest discover -s bridge/neurofactory/development/review_owned -p 'test_verify_qwen3_github_*.py' -v
       - name: Confirm reviewer cannot modify external project state
         run: |
           python -B - <<'PY'
