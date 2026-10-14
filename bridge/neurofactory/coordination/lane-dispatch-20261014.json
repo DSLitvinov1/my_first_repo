@@ -1,5 +1,5 @@
 {
-  "schema": 4,
+  "schema": 5,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -294,5 +294,73 @@
     "OPS existing own CI #38629788051 #38633528805 #38633767111",
     "HANDOFF original Q090 and failed Qwen3 review",
     "OPS multi-OS exact SHA b908b... run 38635575264 20/20 PASS"
-  ]
+  ],
+  "escalation_policy": {
+    "revised": "2026-10-15",
+    "source": "bridge/neurofactory/coordination/ROADMAP_LANES_20261014_RU.md#правила-остановки-и-эскалации--координатор-15102026",
+    "severity": {
+      "P0": {
+        "name": "STOP_AND_ALERT",
+        "criteria": [
+          "foreign_owned_write_or_unapproved_production_merge",
+          "secret_exposure_or_unauthorized_access",
+          "paid_external_call_without_verified_free_entitlement",
+          "HANDOFF_Q090_or_model_restart_during_pause",
+          "unknown_or_duplicate_external_publication",
+          "forged_external_reviewer_or_artifact_tamper"
+        ],
+        "reaction": "Freeze implicated lane and release; preserve evidence; notify user in same reply and update Issue 3; no automatic retry or rollback."
+      },
+      "P1": {
+        "name": "BLOCK_CANDIDATE",
+        "criteria": [
+          "new_exact_SHA_negative_test_or_independent_reject",
+          "lease_double_owner_or_partial_checkpoint",
+          "untrusted_review_provenance",
+          "SKILLS_registry_self_approval",
+          "OPS_untrusted_snapshot_falsely_presented_as_live"
+        ],
+        "reaction": "Block affected candidate, assign owner and report reproducible evidence; no merge. Other isolated lanes may proceed."
+      },
+      "P2": {
+        "name": "WAITING_EVIDENCE",
+        "criteria": [
+          "no_new_CORE_SHA",
+          "missing_independent_approver",
+          "missing_Windows_CI",
+          "missing_reconciled_SKILLS_12",
+          "branch_protection_unconfirmed"
+        ],
+        "reaction": "Record owner and next triggering event; avoid stale reruns and new status-only commits after two consecutive identical snapshots."
+      }
+    },
+    "escalation_record_required": [
+      "severity",
+      "owner_lane",
+      "exact_sha_branch_run_artifact",
+      "verified_facts_and_unverified_claims",
+      "impact_scope",
+      "actions_stopped",
+      "unaffected_lanes_continuing",
+      "evidence_location",
+      "resume_decision_required"
+    ],
+    "resume_rules": [
+      "exact_new_owner_sha_for_fixes",
+      "relevant_owner_tests",
+      "independent_authenticated_review_of_exact_sha",
+      "coordinator_authorization_where_required",
+      "production_branch_protection_confirmed_before_release",
+      "exactly_once_external_receipt_trusted_before_publisher",
+      "user_explicitly_resumes_HANDOFF"
+    ],
+    "forbidden": [
+      "auto_retry_unknown_publication",
+      "silent_secret_log_in_issue",
+      "cancel_other_running_CI_without_permission",
+      "paid_API_without_explicit_verified_no_cost",
+      "auto_deploy_or_merge",
+      "treat_self_test_as_independent_approval"
+    ]
+  }
 }
