@@ -19,7 +19,7 @@ class RussianReportTests(unittest.TestCase):
         self.assertIn("runner-A",text)
         self.assertIn("ОЧЕРЕДЬ",text)
         self.assertIn("NF-DEV-05-Q091",text)
-        self.assertIn("НЕ живой мониторинг".lower().split()[1],text.lower())
+        self.assertIn("не живой мониторинг GitHub",text.lower())
 
     def test_recurrent_error_and_safe_advice_is_visible(self):
         value=report(envelope(observation("one",run=4,code="RECEIPT_UNKNOWN"),
@@ -34,7 +34,7 @@ class RussianReportTests(unittest.TestCase):
         obs["workers"]=[]
         obs["queue"]=[]
         rendered=render_russian_text(report(envelope(obs)))
-        self.assertIn("состояние очереди",rendered.lower()) if False else self.assertIn("список задач не предоставлен",rendered.lower())
+        self.assertIn("список задач не предоставлен",rendered.lower())
         self.assertIn("список исполнителей не предоставлен",rendered.lower())
 
     def test_cannot_render_forged_arbitrary_dict(self):
