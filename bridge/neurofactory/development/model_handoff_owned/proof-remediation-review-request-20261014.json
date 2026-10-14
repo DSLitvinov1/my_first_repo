@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue": 4,
+  "coordination_issue": 3,
+  "lane": "HANDOFF",
+  "baseline_rejected_commit": "b205a495b51aa125dd8273955c202a177df7a173",
+  "original_review_rejection": {
+    "verdict": "REJECT",
+    "issue_comment": 6157264196,
+    "independent_review_commit": "6b71680d3ce7e6f83565fed3e915b8ffc793ae6b",
+    "run": 38483261300,
+    "reproductions": [
+      "REVIEW-HANDOFF-001",
+      "REVIEW-HANDOFF-002"
+    ]
+  },
+  "remediation_tested_commit": "a08af89b8105aa58be403385c043ccd5d666772d",
+  "workflow_run": 38575976484,
+  "workflow_conclusion": "success",
+  "code_blobs": {
+    "bridge/neurofactory/development/model_handoff_owned/handoff_gate.py": "3f9843049613448d4299b98bbed41bece32cea46",
+    "bridge/neurofactory/development/model_handoff_owned/test_security_remediation.py": "f8c29da67ddbd59e2c89645f29c023a228304942",
+    ".github/workflows/neurofactory-handoff-owned-model-gate.yml": "0f93c1ebb9e7e95b8a47a76830b4a93a30e70218"
+  },
+  "testing": {
+    "linux": {
+      "job_id": 115893057023,
+      "result": "success",
+      "discovered": 52,
+      "passed": 51,
+      "skipped": 1
+    },
+    "windows": {
+      "job_id": 115893057580,
+      "result": "success",
+      "discovered": 9,
+      "passed": 4,
+      "skipped": 5
+    }
+  },
+  "positive_controls": [
+    "POSIX pinned directory descriptors with O_NOFOLLOW, ownership and write-permission checks",
+    "forced cross-process-style rename/symlink attack during leaf create rejects and cleans task-fd output without out-of-root file",
+    "symlink path and untrusted writable evidence root rejected",
+    "partial three-file checkpoint is not complete and cannot be finalized",
+    "repeated identical evidence saves no new file and conflicting evidence fails",
+    "caller-supplied positive model name and verdict never authorize publication",
+    "positive model-origin correlation callback explicitly does NOT assert authentication",
+    "Windows refuses filesystem writes until native secure directory handles are reviewed"
+  ],
+  "limits": [
+    "A malicious actor running under the same OS user and controlling the trusted evidence root remains outside the defensible trust boundary; no promise of security against full account compromise.",
+    "Native secure Windows evidence storage is not implemented: real Windows CI confirms fail-closed behavior, not successful Windows persistence.",
+    "A callback that returns True is only an untrusted correlation claim; independent REVIEW/COORDINATOR must authenticate GitHub run, artifact, and exact model IO from trusted resources.",
+    "Three evidence documents are written sequentially. A crash can leave partial data; verify_complete_handoff refuses such a checkpoint. This is not an atomic multi-file commit.",
+    "No new live Qwen pair was executed, Q090 was not repeated, no new queue job IDs reserved, and no real GitHub publisher writes took place.",
+    "The original Qwen artifact 11850873678 attests only the old rejected module; no new Qwen3 source assessment of this remediation yet.",
+    "These local lane tests are NOT independent REVIEW owner approval."
+  ],
+  "integration_authorized": false,
+  "release_authorized": false,
+  "published": false,
+  "chat_delivery": "paused",
+  "paid_api_use": false,
+  "core_changed": false,
+  "review_branch_changed_by_handoff": false,
+  "coordinator_branch_changed_by_handoff": false,
+  "next_step": "REVIEW owner independently check exact latest HANDOFF HEAD/code blobs, race and forged-origin tests on Linux and Windows; return APPROVE/REJECT in its own branch. Coordinator approval required later."
+}
