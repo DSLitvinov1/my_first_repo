@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "date": "2026-10-15",
+  "previous_checkpoint": "7de2c15ea54791ef7f9ce3c1b8ea60eaf22fd97e",
+  "candidate_branch": "neurofactory-coordinator-mvp-status-20261015",
+  "draft_pr": 12,
+  "pre_checkpoint_head": "c82373d725cca42b8767d66670a7ed21ac25f912",
+  "new_own_features": [
+    "mvp_provider_wire.py: pure request/result bridge to ProviderTask proposal v1; no inference or writes",
+    "test_mvp_provider_wire.py: 12 targeted negative and safe example checks",
+    "mvp_task_exchange.py: explicit qwen2.5-coder:1.5b metadata allowlist (model not invoked)",
+    "two own short workflows targeting only changed units, no big matrix",
+    "mvp_exchange_compatibility_20261015.json and MVP_TASK_EXCHANGE_V1_RU.md updated with exact proof"
+  ],
+  "source_refs": {
+    "coordinator_exchange": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+    "coordinator_wire": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+    "core": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "review": "c2510f1f35c946dea0c7a33786960e4875984ace",
+    "providers_pr13": "33c8df8cc579698c937fc008dfe06bf9581d37a6",
+    "ops": "c41cb9ee0d91964cdf81bfd9052ca7e03b9b381f",
+    "skills_pr545": "7852d1bb8017b2bd646d0e52979e12a80ed063d4",
+    "handoff": "279995e7fa252882fceec7ee2e955884382c4f54"
+  },
+  "tests": {
+    "exchange": {
+      "run_id": 38650279255,
+      "job_id": 116147073996,
+      "source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+      "tests_pass": 22,
+      "tests_total": 22,
+      "status": "completed_success",
+      "log_verified": true
+    },
+    "read_only_view": {
+      "run_id": 38650279255,
+      "job_id": 116147073996,
+      "source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+      "tests_pass": 10,
+      "tests_total": 10,
+      "status": "completed_success",
+      "log_verified": true
+    },
+    "provider_wire": {
+      "run_id": 38650127588,
+      "job_id": 116146567101,
+      "source_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "tests_pass": 12,
+      "tests_total": 12,
+      "status": "completed_success",
+      "log_verified": true
+    },
+    "total_unique_scenarios": 44,
+    "all_own_targeted_on_hosted_linux": true,
+    "independent_review": false,
+    "reference_old_windows": {
+      "run_id": 38643604899,
+      "job_id": 116124933092,
+      "status": "QUEUED",
+      "duplicate_dispatch": false,
+      "scope": "old lane projector only"
+    }
+  },
+  "owner_evidence": {
+    "core": {
+      "new_contract": false,
+      "issue": 9,
+      "blocker": "legacy 2-8 jobs only; one-task lease CAS and unknown publication missing"
+    },
+    "providers": {
+      "pr": 13,
+      "own_windows_linux_run": 38648742867,
+      "own_jobs_both_success": true,
+      "own_local_model_real_inference_proof": false,
+      "previous_offscope_workflow": "removed in PR13 delta; older PR7 still draft",
+      "blocker": "input_sha256 task digest distinct from source SHA/file digest and CORE target mapping; no authenticated bridge yet"
+    },
+    "ops": {
+      "issue": 6,
+      "run": 38649341882,
+      "own_windows_linux_success": true,
+      "own_two_layer_read_only_adapter": true,
+      "blocker": "needs independent reviewer and optional single-task projection handling; cannot authorize anything"
+    },
+    "skills": {
+      "pr": 545,
+      "profiles_prepared": true,
+      "skills_candidates": 12,
+      "approved_skills": 0,
+      "blocker": "independent authenticated reviewer/exact source attestation absent"
+    },
+    "review": {
+      "issue": 11,
+      "status": "WAIT_CORE_SHA"
+    },
+    "handoff": {
+      "status": "PAUSED_BY_USER"
+    }
+  },
+  "coordination_gates": {
+    "core_new_sha": "MISSING",
+    "review_independent_sha": "MISSING",
+    "independent_provider_pr13": "MISSING",
+    "real_qwen_windows_resource_preflight": "NOT_VERIFIED",
+    "ops_independent": "MISSING",
+    "skills_trusted_external_verifier": "MISSING",
+    "branch_protection": "NOT_VERIFIED",
+    "release": "BLOCKED"
+  },
+  "owner_scope": {
+    "only_coordinator_files_and_coordinator_workflows": true,
+    "no_foreign_branch_edits": true,
+    "no_merge": true,
+    "no_paid_model_api": true,
+    "no_model_downloads": true,
+    "no_live_queue_actions": true,
+    "no_chatgpt_sender": true,
+    "no_handoff_resumption": true
+  },
+  "next": "Await CORE exact one-job lease/CAS/UNKNOWN result contract; agree trusted task digest and src/docs to core_owned mapping with PROVIDERS PR13; independent review per lane; old Windows smoke remains queued; do not repeat successful test on unchanged SHA."
+}
