@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "scope": "neurofactory-ops-offline-report",
+  "observations": [
+    {
+      "id": "stage5_selected_snapshot_20261014",
+      "snapshot": {
+        "schema": 1,
+        "scope": "neurofactory-ops-candidate",
+        "target": {
+          "task_id": "NF-DEV-05",
+          "branch": "neurofactory-model-handoff-owned-20261013",
+          "head_sha": "279995e7fa252882fceec7ee2e955884382c4f54"
+        },
+        "branch": {
+          "name": "neurofactory-model-handoff-owned-20261013",
+          "head_sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+          "protected": false
+        },
+        "runs": [
+          {
+            "id": 38471630462,
+            "role": "unit_tests",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "b205a495b51aa125dd8273955c202a177df7a173"
+          },
+          {
+            "id": 38469770594,
+            "role": "model_writer",
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "db38b78e5c36207edf5d344741f9d317e1fff33d"
+          }
+        ],
+        "review": {
+          "verdict": "REJECT",
+          "head_sha": "b205a495b51aa125dd8273955c202a177df7a173",
+          "artifact_sha256": "24c8cbb5a8c383c4dbb000127f5805b27eac62a6ff35c20cdaefbc8265d9fd6b"
+        },
+        "checkpoint": {
+          "state": "unknown",
+          "task_id": "NF-DEV-05",
+          "head_sha": "b205a495b51aa125dd8273955c202a177df7a173",
+          "durable_readback": false
+        },
+        "publisher_receipt": {
+          "state": "not_attempted"
+        },
+        "ownership": {
+          "lane": "ops_candidate",
+          "same_owner_paths": true
+        }
+      },
+      "workers": [],
+      "queue": [],
+      "incidents": []
+    }
+  ]
+}
