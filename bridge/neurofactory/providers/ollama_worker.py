@@ -15,10 +15,15 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import sys
+from time import monotonic_ns
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from durable_budget import DurableBudget, DurableBudgetError
+from evidence_receipt import (
+    EvidenceError, check_evidence_directory, persist_model_evidence,
+    verify_model_evidence, evidence_name,
+)
 from local_qwen import (
     ALLOWED_MODELS, LocalQwenAdapter, LocalQwenConfig,
     LocalProviderDisabled, LocalProviderUnknownResult,
@@ -202,7 +207,8 @@ def _safe_proposal(text: str, expected_path: str) -> dict:
 
 
 def execute_one(task: ProviderTask, *, model: str, ledger_dir: Path,
-                max_output_tokens: int = 256) -> dict:
+                max_output_tokens: int = 256,
+                evidence_dir: Path | None = None) -> dict:
     """One preflight + at most one local HTTP inference. Never writes project files."""
     common = {
         "schema": SCHEMA_RESULT,
@@ -228,6 +234,12 @@ def execute_one(task: ProviderTask, *, model: str, ledger_dir: Path,
     if not isinstance(ledger_dir, Path) or not ledger_dir.is_dir():
         return {**common, "status": "BLOCKED", "error_code": "BLOCKED_LEDGER",
                 "attempt_consumed": False}
+    if evidence_dir is not None:
+        try:
+            check_evidence_directory(evidence_dir)
+        except EvidenceError:
+            return {**common, "status": "BLOCKED", "error_code": "BLOCKED_EVIDENCE_DIRECTORY",
+                    "attempt_consumed": False}
     # No recorded attempt if the model or RAM preflight is not satisfied.
     prompt = task.prompt()
     common["prompt_sha256"] = sha256(prompt.encode("utf-8")).hexdigest()
@@ -236,6 +248,7 @@ def execute_one(task: ProviderTask, *, model: str, ledger_dir: Path,
     adapter = LocalQwenAdapter(LocalQwenConfig(
         enabled=True, model=model, timeout_seconds=60,
         max_output_tokens=max_output_tokens), budget)
+    started_ns = monotonic_ns()
     try:
         reply = adapter.generate(prompt, task_id=task.task_id)
     except (DurableBudgetError, LocalProviderDisabled, LocalProviderUnknownResult,
@@ -243,7 +256,20 @@ def execute_one(task: ProviderTask, *, model: str, ledger_dir: Path,
         code = "BLOCKED_DUPLICATE_OR_LEDGER" if isinstance(exc, DurableBudgetError) else "UNKNOWN_INFERENCE"
         return {**common, "status": "BLOCKED", "error_code": code,
                 "attempt_consumed": True}
+    elapsed_ms = (monotonic_ns() - started_ns) // 1_000_000
     common["response_sha256"] = sha256(reply.text.encode("utf-8")).hexdigest()
+    if evidence_dir is not None:
+        try:
+            persist_model_evidence(
+                evidence_dir, task_id=task.task_id, project_id=task.project_id,
+                input_sha256=task.input_sha256, prompt_sha256=common["prompt_sha256"],
+                model=model, response_text=reply.text, elapsed_ms=elapsed_ms,
+            )
+        except EvidenceError:
+            # Durable reservation is already consumed; an ambiguous evidence write
+            # NEVER permits a second inference or a successful CORE proposal.
+            return {**common, "status": "BLOCKED", "error_code": "UNKNOWN_EVIDENCE_WRITE",
+                    "attempt_consumed": True}
     # A real Ollama answer is observed even if it fails the proposal schema.
     common["observed_local_reply"] = True
     try:
@@ -261,9 +287,14 @@ def main(argv=None) -> int:
     parser.add_argument("--diagnose", action="store_true")
     parser.add_argument("--safe-smoke", action="store_true")
     parser.add_argument("--model", default="qwen2.5-coder:1.5b")
+    parser.add_argument("--task-id", default=None)
     args = parser.parse_args(argv)
     if args.diagnose == args.safe_smoke:
         parser.error("select exactly one of --diagnose or --safe-smoke")
+    if args.safe_smoke and not args.task_id:
+        parser.error("explicit unique --task-id required for a local attempt")
+    if args.safe_smoke:
+        evidence_name(args.task_id)  # fail before any network or model call
     try:
         resources = check_resources(args.model)
     except PreflightBlocked as exc:
@@ -273,23 +304,34 @@ def main(argv=None) -> int:
     if args.diagnose:
         print(json.dumps({"status": "READY_FOR_ONE_LOCAL_CALL", **resources}))
         return 0
-    ledger = Path.home() / ".neurofactory-providers-owned" / "qwen-one-shot-ledger"
+    root = Path.home() / ".neurofactory-providers-owned"
+    ledger = root / "qwen-one-shot-ledger"
+    evidence = root / "qwen-one-shot-evidence"
     ledger.mkdir(parents=True, exist_ok=True, mode=0o700)
+    evidence.mkdir(parents=True, exist_ok=True, mode=0o700)
     task = ProviderTask(
-        task_id="nf-providers-smoke-20261015-a",
+        task_id=args.task_id,
         project_id="nf-provider-sandbox",
         input_sha256="0" * 64,
         target_path="src/local_smoke.py",
         instruction=("Write a Python function named add_two_numbers(a, b) "
                      "that returns a + b. Do not add dependencies."),
     )
-    result = execute_one(task, model=args.model, ledger_dir=ledger)
+    result = execute_one(task, model=args.model, ledger_dir=ledger,
+                         evidence_dir=evidence)
     # Truncate proposed contents in CLI report: the CORE writer must obtain
     # the full exact proposal separately under a trusted authorized channel.
     if result["proposed_files"]:
         for file in result["proposed_files"]:
             file["content"] = None
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    if result.get("observed_local_reply") is True and result["status"] in (
+            "PROPOSED_UNVERIFIED", "INVALID_MODEL_OUTPUT"):
+        try:
+            print("PROVIDER_EVIDENCE=" + json.dumps(
+                verify_model_evidence(evidence, task.task_id), sort_keys=True))
+        except EvidenceError:
+            return 4
     return 0 if result["status"] == "PROPOSED_UNVERIFIED" else 3
 
 
