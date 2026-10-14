@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "project": "НЕЙРОЗАВОД",
   "date": "2026-10-15",
   "candidate_branch": "neurofactory-coordinator-mvp-status-20261015",
@@ -75,8 +75,9 @@
   ],
   "windows_pr12": {
     "run_id": 38643604899,
-    "initial_state": "queued",
-    "new_dispatch": false
+    "job_id": 116124933092,
+    "status": "QUEUED_NOT_RERUN",
+    "scope": "old lane status projector only"
   },
   "release_status": "INTEGRATION_CANDIDATE_ONLY_NO_APPROVAL_NO_PUBLICATION",
   "new_view_adapter": "bridge/neurofactory/coordination/mvp_task_view.py",
@@ -148,5 +149,38 @@
       "status": "queued; no rerun",
       "scope": "old status projector only"
     }
-  }
+  },
+  "latest_verified_source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+  "latest_verified_wire_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+  "latest_own_tests": {
+    "exchange_and_view": {
+      "run": 38650279255,
+      "job": 116147073996,
+      "source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+      "exchange_pass": 22,
+      "view_pass": 10,
+      "conclusion": "SUCCESS"
+    },
+    "provider_wire": {
+      "run": 38650127588,
+      "job": 116146567101,
+      "source_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "pass": 12,
+      "conclusion": "SUCCESS"
+    },
+    "total_unique_test_cases": 44,
+    "review": "SELF_TESTS_ONLY_NOT_INDEPENDENT"
+  },
+  "model_allowlist_alignment": "coordinator metadata contract recognizes qwen2.5-coder:1.5b, model NOT verified installed or executed",
+  "external_gates": {
+    "CORE_NEW_CONTRACT": "MISSING",
+    "REVIEW_EXACT_CORE_SHA": "MISSING",
+    "PROVIDERS_REAL_LOCAL_QWEN": "NOT_VERIFIED",
+    "PROVIDERS_PR13_INDEPENDENT_REVIEW": "MISSING",
+    "OPS_INDEPENDENT_REVIEW": "MISSING",
+    "SKILLS_EXTERNAL_APPROVAL": "MISSING",
+    "HANDOFF": "PAUSED_BY_USER",
+    "RELEASE": "BLOCKED"
+  },
+  "provider_source_digest_semantics": "input_sha256 supplied by trusted CORE task snapshot must not be confused with source_sha or source_sha256 of source file; path mapping CORE core_owned to provider src/docs must be authenticated"
 }
