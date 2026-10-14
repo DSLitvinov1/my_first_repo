@@ -78,6 +78,9 @@ def _pinned_directory(directory: Path):
         _check_windows_reparse(directory)
         yield None
         _check_windows_reparse(directory)
+        # Windows ACL changes while an attempt is in progress invalidate the
+        # receipt, even if the local byte checksums are internally consistent.
+        check_evidence_directory(directory)
         return
     try:
         flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
