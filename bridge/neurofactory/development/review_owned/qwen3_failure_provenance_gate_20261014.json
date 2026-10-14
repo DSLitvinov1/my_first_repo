@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "issue_number": 4,
+  "role": "REVIEW",
+  "status": "INDEPENDENT_PROVENANCE_TESTS_PASS_SOURCE_MODEL_VERDICT_NOT_OBTAINED",
+  "release_authorized": false,
+  "merge_authorized": false,
+  "publisher_allowed": false,
+  "reviewed_handoff": {
+    "source_commit": "279995e7fa252882fceec7ee2e955884382c4f54",
+    "module_sha256": "ba0c34cee37700b5ff127757ed1e348f3dcc8b77a675d45f35e38d23614549e3",
+    "new_source_audit_workflow": ".github/workflows/neurofactory-handoff-owned-qwen3-remediation.yml",
+    "run_id": 38628093324,
+    "run_conclusion": "failure",
+    "completed_offline_tests": "success",
+    "real_model_job_conclusion": "failure",
+    "original_evidence_artifact_id": 11925566937,
+    "evidence_zip_sha256": "e94d9f9cdbe67b209eea4c8c46a6adfaae15e2a72507148be031769257373959",
+    "archive_files": [
+      {
+        "name": "request.json",
+        "sha256": "479600632feee6f676a314d479b629d28521fbb42b58d5a9d5e829720af22f3e"
+      },
+      {
+        "name": "ollama-response.json",
+        "sha256": "ab2241d92ff85e947d2e6f1f076fd11756eb06949845fa81a789d92c094f3e2b"
+      },
+      {
+        "name": "checkpoint.json",
+        "sha256": "c96fbf46407170268820e126f5e48842e8ba278b6e32d3bccdc5d2dad84b53e8"
+      }
+    ],
+    "result_json_exists": false,
+    "raw_model_response_exists": true,
+    "response_json_model": "qwen3:4b",
+    "response_done": true,
+    "response_done_reason": "length",
+    "response_eval_count": 900,
+    "request_max_generated_tokens": 900,
+    "response_text_length_characters": 4212,
+    "strict_json_complete": false,
+    "checkpoint_state": "blocked",
+    "checkpoint_release_authorized": false,
+    "conclusion": "No valid independent model verdict; not an APPROVE and not a semantic security REJECT."
+  },
+  "review_owned_tools": {
+    "module": "bridge/neurofactory/development/review_owned/verify_qwen3_github_evidence.py",
+    "unit_test_files": [
+      "bridge/neurofactory/development/review_owned/test_verify_qwen3_github_evidence.py",
+      "bridge/neurofactory/development/review_owned/test_verify_qwen3_github_remote.py"
+    ],
+    "workflow": ".github/workflows/neurofactory-review-owned-artifact-verifier.yml",
+    "exact_review_branch_commit": "2714f34e731bd3c3670e1b8a4b189b6be5b2e4fd",
+    "ci_run_id": 38630121475,
+    "ci_result": "success",
+    "tests_passed": 22,
+    "tests_failed": 0,
+    "ownership_gate_run_id": 38630121495,
+    "ownership_gate": "success",
+    "properties": [
+      "Require exact immutable GitHub run commit, branch, workflow identity, completed success and successful model job.",
+      "Retrieve metadata only from fixed official HTTPS REST endpoints, reject incomplete artifact/job listings and HTTP redirects.",
+      "Require exact model request with reviewed full source bytes and SHA256, intact raw Ollama response and exact artifact file manifest.",
+      "Reject caller-supplied positive verdict not matching raw model output, wrong archive or wrong source, duplicate JSON keys, uncertain statuses.",
+      "Never elevate valid model output to independent REVIEW, cryptographic model provenance, publisher authorization or merging rights.",
+      "Reject failed/partial Qwen3 run 38628093324 and preserve raw original evidence; no Q090 rerun."
+    ],
+    "run_of_original_failed_qwen3": "",
+    "model_origin_limitations": "GitHub run metadata, artifact integrity and raw local Ollama response are correlated, not a cryptographic proof of model process or weights. Independent REVIEW remains mandatory."
+  },
+  "outstanding": [
+    "HANDOFF must fix or bound the source-review generation budget so Ollama returns complete strict JSON; new run should be read-only and evidence-bound.",
+    "REVIEW independently verify new completed run and artifact using exact latest HEAD/source before positive owner verdict.",
+    "Secure native Windows evidence persistence remains unimplemented, Windows currently fails closed.",
+    "CORE integration, branch protection and exact-once publisher remain unverified."
+  ],
+  "scope_guards": {
+    "no_core_files_written": true,
+    "no_handoff_files_written": true,
+    "no_coordinator_files_written": true,
+    "no_paid_api": true,
+    "no_chatgpt_sender": true,
+    "no_windows_reboot": true,
+    "no_live_job_publication": true
+  }
+}
