@@ -1,0 +1,31 @@
+name: Neurofactory PROVIDERS targeted worker tests
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [neurofactory-providers-resilience-20261014]
+    paths:
+      - bridge/neurofactory/providers/ollama_worker.py
+      - bridge/neurofactory/providers/test_ollama_worker.py
+      - bridge/neurofactory/providers/local_qwen.py
+      - .github/workflows/neurofactory-providers-owned-targeted-worker.yml
+permissions:
+  contents: read
+jobs:
+  worker-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate only touched worker paths
+        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py
+      - name: Targeted worker unit and loopback-only test
+        run: python -m unittest discover -s bridge/neurofactory/providers -p "test_ollama_worker.py" -v
