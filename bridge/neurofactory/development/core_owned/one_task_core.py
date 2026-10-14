@@ -114,7 +114,7 @@ def _validate_spec(spec):
             or type(spec["approval_commit"]) is not str or not SHA40.fullmatch(spec["approval_commit"])
             or type(spec["objective"]) is not str or not 25 <= len(spec["objective"]) <= 320
             or any(ord(ch) < 32 for ch in spec["objective"])
-            or spec["model"] not in MODELS or type(spec["reserved_units"]) is not int
+            or type(spec["model"]) is not str or spec["model"] not in MODELS\n            or type(spec["reserved_units"]) is not int
             or not 1 <= spec["reserved_units"] <= 100000):
         raise CoreSafetyError("Unapproved or incompatible task fields")
     _safe_target(spec["target"])
@@ -261,9 +261,11 @@ class OneTaskCore:
         if row is None or row["spec"]["task_id"] != task_id:
             raise CoreSafetyError("Unknown task")
         p = row["spec"]
-        return {"schema": "neurofactory.providers.request.v1", "task_id": p["task_id"],
-                "project_id": p["project_id"], "input_sha256": _sha(_canonical(p)),
-                "target_path": p["target"], "instruction": p["objective"],
+        request = {"schema": "neurofactory.providers.request.v1",
+                   "task_id": p["task_id"], "project_id": p["project_id"],
+                   "input_sha256": _sha(_canonical(p)), "target_path": p["target"],
+                   "instruction": p["objective"]}
+        return {"request": request,
                 "permissions": {"execution": False, "retry": False, "publication": False,
                                 "paid_api": False}}
 
