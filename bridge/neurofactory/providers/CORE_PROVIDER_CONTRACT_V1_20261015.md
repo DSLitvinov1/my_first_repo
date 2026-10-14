@@ -9,7 +9,7 @@ JSON object, exact mandatory fields, all other keys rejected:
 - `task_id`: stable, unique, never re-used within a provider ledger; safe identifier (max 64 chars)
 - `project_id`: approved sandbox project identifier (max 64 chars)
 - `input_sha256`: 64 lowercase hex bytes digest of trusted task/input snapshot, provided by CORE
-- `target_path`: approved relative path under `src/` or `docs/`, extensions `.py`, `.md`, `.txt`, `.json`, no hidden/traversal/absolute components
+- `target_path`: approved relative path under `src/`, `docs/`, or exact coordinator sandbox `bridge/neurofactory/development/core_owned/`, extensions `.py`, `.md`, `.txt`, `.json`, no hidden/traversal/absolute components
 - `instruction`: plain text instruction max 4000 characters; no shell commands, downloads, secrets or API keys
 
 Crucial: `project_id`, `target_path`, `input_sha256` come from CORE's own allowlist and trusted claim, not an arbitrary model or UI message. This provider validates syntax and exact model reply path but **cannot authenticate CORE**. Do not call the adapter directly with unapproved requests.
@@ -43,3 +43,19 @@ Crucial: `project_id`, `target_path`, `input_sha256` come from CORE's own allowl
 **COORDINATOR (#3)**: confirm v1 naming, field types, source-of-truth, approval/review gates and budget allocation. No release or merge implied.
 
 **REVIEW**: independent provenance and negative security check to come from a separate authorized reviewer, not the provider author. This provider's own tests can never approve itself.
+
+## Coordinator MVP compatibility adapter (added 15 October)
+
+Read-only compatibility source: `bridge/neurofactory/coordination/mvp_task_exchange.py` at the coordinator's own candidate branch. **No coordinator source has been modified.**
+
+New PROVIDERS-owned `coordinator_adapter.py` accepts one strict JSON envelope with `schema=neurofactory.providers.coordinator_pair.v1`, exact nested `proposal` fields defined by COORDINATOR (task_id, project_id, target, objective, source_sha, source_sha256, model, reserved_units) and exact nested `prepared_request` fields (task_id, source_sha, model, budget_units, local_only, purpose).
+
+- Correlates immutable task ID, full input Git SHA, input SHA256, exact approved model, one bounded resource reservation, and the coordinator-approved `CORE_SANDBOX_PROPOSAL` purpose.
+- Accepts coordinator `NF-DEV-05-Qxxx` task IDs and **only** paths in `bridge/neurofactory/development/core_owned/` for this special route. The alternate standalone `src/` and `docs/` paths are not admitted by the coordinator bridge.
+- Rejects any key duplication, foreign target, mismatched source revision, unexpected field, insufficient estimated resource reservation, paid/unknown model or apparent JSON approval.
+- Maps an **unverified actual local model proposal** to COORDINATOR's current seven-field `RESULT_FIELDS` record (`task_id/source_sha/model/text/local_only/published/mode`) after validating proposed file digest, exact model/task/source, required observed-local-response digest and non-publication markers.
+- Does not write project files, claim CORE tasks, possess credentials for approval, prove model identity independently, or authorize a release. Its `text` field contains the **untrusted proposed file content**, and COORDINATOR computes a new digest of that text (not necessarily the full raw model JSON digest).
+
+**Pending explicit agreement:** CORE #9 must authorize exact task/source/target and provide the authenticated lease + sandbox writer; COORDINATOR #3 must confirm the two-layer payload binding and interpretation of the text digest. A `trusted_core_call=True` opt-in in the older PROVIDERS entrypoint is not itself authentication and may not be exposed directly as a public endpoint.
+
+This bridge was tested with offline fabricated inputs only; hosted focused Linux/Windows tests are author-owned, not an independent origin or live inference proof.
