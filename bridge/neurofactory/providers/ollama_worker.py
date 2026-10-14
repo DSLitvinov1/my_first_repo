@@ -307,8 +307,15 @@ def main(argv=None) -> int:
     root = Path.home() / ".neurofactory-providers-owned"
     ledger = root / "qwen-one-shot-ledger"
     evidence = root / "qwen-one-shot-evidence"
-    ledger.mkdir(parents=True, exist_ok=True, mode=0o700)
-    evidence.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name != "nt":
+        ledger.mkdir(parents=True, exist_ok=True, mode=0o700)
+        evidence.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Windows: never auto-create evidence/ledger trees inheriting broad ACLs.
+    # A trusted owner must provision private directories and verify DACLs first.
+    if not ledger.is_dir() or not evidence.is_dir():
+        print(json.dumps({"status":"BLOCKED","error_code":"BLOCKED_PRIVATE_DIRECTORIES_NOT_PROVISIONED",
+                          "model":args.model}))
+        return 3
     task = ProviderTask(
         task_id=args.task_id,
         project_id="nf-provider-sandbox",
