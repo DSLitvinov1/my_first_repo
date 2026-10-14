@@ -140,3 +140,67 @@ def coordinator_result(candidate: PreparedProviderCall, provider_result: dict) -
         "published": False,
         "mode": "local",
     }
+
+
+# Coordinator's *newer* owned mvp_provider_wire.py packet (PR #12); preview only.
+WIRE_SCHEMA = "neurofactory.coordination.provider_bridge.v1"
+WIRE_REQUEST_KEYS = {"schema", "task_id", "project_id", "input_sha256",
+                     "target_path", "instruction"}
+WIRE_BINDING_KEYS = {"task_id", "project_id", "source_sha", "source_sha256",
+                     "core_target", "provider_target", "model", "input_sha256"}
+WIRE_PERMISSIONS_DISABLED = {
+    "execution": False, "retry": False, "publication": False, "paid_api": False
+}
+
+
+def parse_new_coordinator_wire(raw: bytes, *, trusted_budget_units: int) -> PreparedProviderCall:
+    """Parse the COORDINATOR data-only packet; NEVER authenticate or execute it.
+
+    An authorized CORE host must separately confirm CORE-owned snapshot/mapping,
+    approval, and a permanent claim/lease. Permission flags remain all False.
+    """
+    if type(raw) is not bytes or not 1 <= len(raw) <= 16384:
+        raise ValueError("invalid coordinator packet size/type")
+    try:
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_duplicate_pairs)
+    except (UnicodeError, TypeError, ValueError) as exc:
+        raise ValueError("bad coordinator JSON") from exc
+    if (type(data) is not dict or set(data) !=
+            {"schema", "request", "binding", "permissions"} or
+            data["schema"] != WIRE_SCHEMA or
+            type(data["permissions"]) is not dict or
+            data["permissions"] != WIRE_PERMISSIONS_DISABLED):
+        raise ValueError("noncanonical or privileged coordinator packet")
+    request, binding = data["request"], data["binding"]
+    if (type(request) is not dict or set(request) != WIRE_REQUEST_KEYS or
+            type(binding) is not dict or set(binding) != WIRE_BINDING_KEYS):
+        raise ValueError("untrusted coordinator fields")
+    if (request["schema"] != "neurofactory.providers.request.v1" or
+            type(binding["task_id"]) is not str or not _TASK.fullmatch(binding["task_id"]) or
+            type(binding["project_id"]) is not str or not _PROJECT.fullmatch(binding["project_id"]) or
+            type(binding["source_sha"]) is not str or not _SHA40.fullmatch(binding["source_sha"]) or
+            type(binding["source_sha256"]) is not str or not _SHA64.fullmatch(binding["source_sha256"]) or
+            type(binding["input_sha256"]) is not str or not _SHA64.fullmatch(binding["input_sha256"]) or
+            type(binding["model"]) is not str or binding["model"] not in ALLOWED_MODELS or
+            type(binding["core_target"]) is not str or
+            not binding["core_target"].startswith(_CORE_TARGET)):
+        raise ValueError("coordinator source/model/scope mismatch")
+    validate_target(binding["core_target"])
+    if (type(binding["provider_target"]) is not str or
+            not binding["provider_target"].startswith(("src/", "docs/"))):
+        raise ValueError("provider path must remain isolated")
+    validate_target(binding["provider_target"])
+    if (request["task_id"] != binding["task_id"] or
+            request["project_id"] != binding["project_id"] or
+            request["input_sha256"] != binding["input_sha256"] or
+            request["target_path"] != binding["provider_target"] or
+            type(request["instruction"]) is not str or
+            not 1 <= len(request["instruction"].strip()) <= 320 or
+            type(trusted_budget_units) is not int or
+            not 1024 <= trusted_budget_units <= 50000):
+        raise ValueError("missing trusted reservation or altered coordinator mapping")
+    task = ProviderTask.from_json(request)
+    if len(task.prompt()) + 4 * 256 > trusted_budget_units:
+        raise ValueError("insufficient trusted CORE budget")
+    return PreparedProviderCall(task, binding["source_sha"],
+                                binding["model"], trusted_budget_units)
