@@ -1,0 +1,147 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "as_of": "2026-10-14",
+  "authority": "COORDINATOR assignment, adoption by each ChatGPT chat must be explicitly confirmed",
+  "issue_tracker": {
+    "coordination": "DSLitvinov1/my_first_repo#3",
+    "handoff_held": "DSLitvinov1/my_first_repo#4",
+    "historical_nonduplicative": "DSLitvinov1/lesson3.1#399"
+  },
+  "default_policy": {
+    "one_owner_per_file": true,
+    "commits_only_in_owned_paths": true,
+    "no_full_branch_merges": true,
+    "no_repeat_Q090": true,
+    "no_new_queue_job_ids_without_review_and_coordinator": true,
+    "no_paid_api": true,
+    "no_chatgpt_sender": true,
+    "no_other_projects": true,
+    "no_production_publish": true,
+    "do_not_restart_windows_runners": true,
+    "existing_workflow_runs": "observe without stopping; do not manually trigger new HANDOFF runs"
+  },
+  "lanes": [
+    {
+      "id": "coordinator",
+      "primary_chat": "Выбор типа проекта — продолжение (текущий чат)",
+      "branch": "neurofactory-chat-coordination-20261013",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "ACTIVE",
+      "responsibility": "Единый реестр, исключение дублей, аудит пересечений, очередь допусков, журнал ресурсов, план защиты ветки",
+      "allowed": [
+        "bridge/neurofactory/coordination/",
+        "bridge/neurofactory/development/stage5_usage_ledger.py"
+      ],
+      "next": "Сверять все пять веток, собрать отчеты без правок чужого кода; защищенность production должна быть реальной, не только CI-сигнал"
+    },
+    {
+      "id": "core",
+      "primary_chat": "Нейрозавод 1",
+      "alias_chats": [
+        "Нейрозавод. Основное ядро"
+      ],
+      "branch": "neurofactory-core-queue-owned-20261013",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "ACTIVE_ISOLATED",
+      "responsibility": "Очередь 2–8 разных заданий, lease/CAS, удаленный журнал и recovery, контрольные точки и защита от дублирования",
+      "allowed": [
+        "bridge/neurofactory/development/core_owned/",
+        "bridge/neurofactory/development/stage5_development_queue.py",
+        "bridge/neurofactory/development/stage5_remote_journal.py",
+        ".github/workflows/neurofactory-core-owned-"
+      ],
+      "next": "Документировать совместимый доверенный контракт и изолированные тесты отказа и повторной доставки; не интегрировать замороженный HANDOFF"
+    },
+    {
+      "id": "handoff",
+      "primary_chat": "Восстановление очереди нейрозавода",
+      "branch": "neurofactory-model-handoff-owned-20261013",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "PAUSED_BY_USER",
+      "last_observed_commit": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "responsibility": "Qwen2.5 Coder→Qwen3, доказательства передачи и origin, только собственные файлы",
+      "allowed": [
+        "bridge/neurofactory/development/model_handoff_owned/",
+        "bridge/neurofactory/development/stage5_live_",
+        ".github/workflows/neurofactory-handoff-owned-"
+      ],
+      "hold": "Не разрабатывать, не коммитить, не запускать новые модели/Qwen3/CI вручную, не включать publisher, не продолжать Issue 4; уже идущие запуски лишь наблюдать/сохранить результат",
+      "resume_gate": "Только по новому прямому указанию пользователя; затем сверка HEAD+REVIEW и отдельное согласование с координатором"
+    },
+    {
+      "id": "review",
+      "primary_chat": "Контроль очереди нейрозавода",
+      "branch": "neurofactory-review-owned-20261013",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "ACTIVE_ISOLATED",
+      "responsibility": "Независимый read-only аудит CORE и доказательств, тесты безопасности в review-owned каталоге",
+      "allowed": [
+        "bridge/neurofactory/development/review_owned/",
+        ".github/workflows/neurofactory-review-owned-"
+      ],
+      "next": "Разрабатывать независимые негативные тесты контракта CORE после его предоставления; приостановить новые HANDOFF/Qwen3-review задания пока HANDOFF на паузе",
+      "cannot": "Никогда не редактировать чужой CORE/HANDOFF и не выдавать собственный CI за независимый выпуск"
+    },
+    {
+      "id": "providers",
+      "primary_chat": "Подключение DeepSeek",
+      "branch": "neurofactory-providers-free-20261013",
+      "repository": "DSLitvinov1/my_first_repo",
+      "status": "ACTIVE_ISOLATED",
+      "responsibility": "Только сравнение бесплатных Claude/DeepSeek/Qwen, документирование квот и безопасных адаптеров без ключей",
+      "allowed": [
+        "bridge/neurofactory/providers/",
+        ".github/workflows/neurofactory-providers-owned-"
+      ],
+      "next": "Офлайн адаптеры и проверка стоимости/лимитов без автоматического переключения или платного API; не затрагивать CORE либо SKILLS"
+    },
+    {
+      "id": "skills",
+      "primary_chat": "Нейрозавод. Интеллект и навыки",
+      "alias_chats": [
+        "Как добавить навыки"
+      ],
+      "branch": "neurofactory-skill-master-isolated",
+      "repository": "DSLitvinov1/lesson3.1",
+      "status": "ACTIVE_ISOLATED_SINGLE_WRITER",
+      "responsibility": "GOD MODE и библиотека специализированных навыков, frontend, интерфейсы, тесты навыков",
+      "allowed": [
+        "neurofactory-skill-master/"
+      ],
+      "next": "Не вести параллельные правки registry.json/test_skill_master.py в PR 514 и 515. Подготовить единый reconciled кандидат, провести настоящие unit-тесты и отдельный review; не активировать кандидат до приёмки"
+    }
+  ],
+  "conflicts_and_holds": [
+    {
+      "target": "DSLitvinov1/my_first_repo PR #2",
+      "state": "BLOCKED_DRAFT_MIXED_CORE_REVIEW",
+      "action": "Не объединять целиком"
+    },
+    {
+      "target": "DSLitvinov1/lesson3.1 PR #514 and #515",
+      "state": "OVERLAPPING_SKILLS_REGISTRY_AND_TESTS",
+      "action": "Единственный SKILLS-владелец выполняет согласование, не сливать оба вслепую"
+    },
+    {
+      "target": "stage5_remote_journal.py, stage5_development_queue.py",
+      "state": "SINGLE_CORE_OWNER",
+      "action": "REVIEW/COORDINATOR only report issues"
+    },
+    {
+      "target": "stage5_usage_ledger.py",
+      "state": "SINGLE_COORDINATOR_OWNER",
+      "action": "Остальные только read-only"
+    },
+    {
+      "target": "HANDOFF Issue #4",
+      "state": "PAUSED_NOT_RELEASE_APPROVED",
+      "action": "Сохранять стоп на интеграцию и публикацию"
+    },
+    {
+      "target": "Production branch protection",
+      "state": "NOT_CONFIRMED_ENFORCED",
+      "action": "Администратор должен включить GitHub ruleset; CI-гейт не заменяет защиту"
+    }
+  ]
+}
