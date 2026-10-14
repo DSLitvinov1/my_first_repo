@@ -59,3 +59,20 @@ New PROVIDERS-owned `coordinator_adapter.py` accepts one strict JSON envelope wi
 **Pending explicit agreement:** CORE #9 must authorize exact task/source/target and provide the authenticated lease + sandbox writer; COORDINATOR #3 must confirm the two-layer payload binding and interpretation of the text digest. A `trusted_core_call=True` opt-in in the older PROVIDERS entrypoint is not itself authentication and may not be exposed directly as a public endpoint.
 
 This bridge was tested with offline fabricated inputs only; hosted focused Linux/Windows tests are author-owned, not an independent origin or live inference proof.
+
+## Updated COORDINATOR wire adapter — current PR #12 candidate
+
+After the first compatibility implementation, the coordinator introduced an additional pure-data adapter at `bridge/neurofactory/coordination/mvp_provider_wire.py` (read-only source blob `f9a59efaf598fcc064fba51886b0776aab17d2f0`). PROVIDERS now supports **both** historical `proposal+prepared_request` preview and the newer `neurofactory.coordination.provider_bridge.v1` preview without changing any coordinator-owned file.
+
+The **newer** read-only packet has exactly four top-level fields:
+
+- `schema` (fixed coordinator-wire version)
+- `request` (exact provider request v1: schema, task_id, project_id, input_sha256, target_path, instruction)
+- `binding` (task_id, project_id, source_sha, source_sha256, core_target, provider_target, model, input_sha256)
+- `permissions` (execution=false, retry=false, publication=false, paid_api=false; no extra fields)
+
+`parse_new_coordinator_wire(..., trusted_budget_units=...)` checks strict JSON including duplicate-key rejection, exact source/task/model correlation, CORE-approved path namespace versus separate `src/` or `docs/` provider proposal path, and a bounded reservation amount provided **separately by a trusted CORE host**. The wire packet itself grants **no execution permission**. No local/remote model is invoked or file written by this parser.
+
+The coordinator's `summarize_reply(packet, result)` accepts the **full** PROVIDERS result shape, not the older seven-field `record_provider_result` envelope. The full result returned by `execute_one` is the candidate for independent correlation; `coordinator_result` is retained only for the older pure-data exchange. The model proposal itself remains unverified, and permissions stay false.
+
+**Unresolved before integration:** COORDINATOR #3 must explicitly select the canonical packet and approve mapping semantics; CORE #9 must provide authenticated task approval, exact file mapping, durable lease and separately trusted resource budget. This provider module does not verify identities or turn coordinator `permissions.execution=false` into true. Windows has an installed Ollama executable and Qwen manifest(s) but current Windows RAM is insufficient; no real Qwen result exists.
