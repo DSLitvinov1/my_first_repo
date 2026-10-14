@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "lane": "ops",
+  "status": "isolated_tested_candidate_not_independently_accepted",
+  "assigned_by": "DSLitvinov1/my_first_repo#3 coordinator comment 6177700205",
+  "coord_assignment_commit": "bb68c8a87ba2de0bc427ba70d85602b621165750",
+  "coord_rule": "PROVISIONAL_ISOLATED_AWAITING_INDEPENDENT_REVIEW",
+  "based_on_tested_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
+  "current_tested_source_commit": "544497da020f0619c6c29c5eef82a67868fe7f4d",
+  "repo": "DSLitvinov1/my_first_repo",
+  "branch": "neurofactory-ops-diagnostics-candidate-20261014",
+  "self_tests": {
+    "run_id": 38633528805,
+    "conclusion": "success",
+    "linux": {
+      "job_id": 116090861557,
+      "tests_pass": 68,
+      "tests_failed": 0
+    },
+    "windows": {
+      "job_id": 116090861899,
+      "tests_pass": 68,
+      "tests_failed": 0
+    },
+    "workflow_artifact_id": 11927426520
+  },
+  "functions_added": [
+    "offline input-only report of latest observed worker/queue status and blockers",
+    "identify repeated incidents only across distinct GitHub run IDs",
+    "fixed whitelist of incident reasons and human-safe recovery recommendations",
+    "Russian human-readable report plus JSON output",
+    "unknown is explicit when no worker/queue record is supplied",
+    "fail-closed with no scheduling, recovery, publication, merge or trusted receipt claims"
+  ],
+  "intermediate_failed_ci_runs": [
+    {
+      "run_id": 38633388295,
+      "reason": "Text-only test asserted mixed-case phrase inside lowercase output"
+    },
+    {
+      "run_id": 38633434565,
+      "reason": "Identical text-only test case mismatch"
+    }
+  ],
+  "changes_from_base": [
+    ".github/workflows/neurofactory-ops-candidate-diagnostics.yml",
+    "bridge/neurofactory/ops_diagnostics/"
+  ],
+  "critical_limitations": [
+    "Own automated tests only; separate independent review not yet performed",
+    "Offline snapshots are untrusted assertions and do not prove current status of all workers or queue",
+    "No live GitHub polling or authenticated model provenance",
+    "One selective observed snapshot is incomplete and deliberately reports worker/queue status unknown",
+    "Repeated incident detection is based on distinct run IDs in input, not independent event attestation",
+    "No automatic recovery or queue writes, no production merge or release, no model calls",
+    "Do not interfere with paused HANDOFF or reviewer lane",
+    "Actual GitHub Actions charges or account billing not verified"
+  ],
+  "safety": {
+    "published": false,
+    "production_connected": false,
+    "auto_recovery": false,
+    "chat_delivery": false,
+    "paid_api_calls": 0,
+    "other_branch_commits": 0
+  },
+  "remaining": [
+    "Coordinator to assign separate read-only independent review against exact OPS HEAD",
+    "Reviewer to validate schema spoofing, no secrets and no foreign writes",
+    "Coordinator to approve or reject future integration after reviewer verdict"
+  ],
+  "release_authorized": false
+}
