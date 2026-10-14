@@ -38,7 +38,9 @@ class SecuredHandoffTests(unittest.TestCase):
                     owner.rename(root/"moved_task")
                     owner.symlink_to(foreign,target_is_directory=True)
                 return leaf_open(path,flags,*args,**kw)
-            with mock.patch.object(os,"open",side_effect=interrupt):
+            # Patching os.open changes its identity; retain the real platform capability check.
+            with mock.patch.object(gate,"_secure_storage_available",return_value=True), \
+                 mock.patch.object(os,"open",side_effect=interrupt):
                 with self.assertRaises(gate.HandoffError):
                     gate.store_once(root,TASK,"candidate.json",{"example":"adversarial"})
             self.assertTrue(injected[0])
