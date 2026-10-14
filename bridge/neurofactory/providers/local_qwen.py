@@ -6,6 +6,7 @@ No automatic model downloads or credential handling occur in this module.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from durable_budget import DurableBudget
 from threading import Lock
 import json
 from urllib.error import HTTPError, URLError
@@ -119,18 +120,22 @@ class LocalReply:
 
 class LocalQwenAdapter:
     def __init__(self, config: LocalQwenConfig, budget: LocalBudget):
-        if type(config) is not LocalQwenConfig or type(budget) is not LocalBudget:
+        if type(config) is not LocalQwenConfig or type(budget) not in (LocalBudget, DurableBudget):
             raise TypeError("validated local config and budget required")
         self.config = config
         self.budget = budget
 
-    def generate(self, prompt: str) -> LocalReply:
+    def generate(self, prompt: str, *, task_id: str | None = None) -> LocalReply:
         if not self.config.enabled:
             raise LocalProviderDisabled("local adapter disabled by default")
         if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > MAX_PROMPT_CHARS:
             raise ValueError("invalid prompt")
         # Reserve BEFORE the side effect. Never refund on ambiguous failure.
-        self.budget.reserve(len(prompt) + 4 * self.config.max_output_tokens)
+        units = len(prompt) + 4 * self.config.max_output_tokens
+        if type(self.budget) is DurableBudget:
+            self.budget.reserve(units, task_id)
+        else:
+            self.budget.reserve(units)
         payload = json.dumps({
             "model": self.config.model,
             "prompt": prompt,
