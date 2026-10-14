@@ -12,6 +12,7 @@ from diagnose import SnapshotError, _parse_unique
 from secure_input import SafeInputError, read_snapshot
 from status_adapter import snapshot_to_status, concise_text
 from ops_projection_guard import guard_project_view
+from ops_task_card import adapt_task_card
 
 LANES = ("CORE", "PROVIDERS", "COORDINATOR", "REVIEW", "OPS",
          "SKILLS", "UI", "HANDOFF", "GODMODE")
@@ -87,7 +88,7 @@ def _validate_board(board):
     return clean
 
 
-def join_readonly_views(lane_board=None, project_status=None):
+def join_readonly_views(lane_board=None, project_status=None, task_card=None):
     """Construct an interface payload, NEVER an authorization or live status."""
     lanes = _validate_board(lane_board)
     if project_status is not None:
@@ -183,6 +184,7 @@ def join_readonly_views(lane_board=None, project_status=None):
                        "commit": None, "issue_url": None, "source": None
                   } for lane in LANES]},
         "project_detail": report,
+        "coordinator_task_card": adapt_task_card(task_card),
         "consistency": {"board_project_match": matched, "status": condition,
                         "does_not_attest_provenance": True},
         "trust": {"live_source_verified": False, "independent_review": False,
@@ -196,12 +198,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Offline two-layer OPS/UI view")
     parser.add_argument("--board")
     parser.add_argument("--project")
+    parser.add_argument("--task-card", help="Optional untrusted coordinator task card JSON")
     args = parser.parse_args(argv)
     try:
         lane_board = _parse_unique(read_snapshot(args.board)) if args.board else None
         raw_project = _parse_unique(read_snapshot(args.project)) if args.project else None
         projection = snapshot_to_status(raw_project) if raw_project is not None else None
-        print(json.dumps(join_readonly_views(lane_board, projection),
+        card = _parse_unique(read_snapshot(args.task_card)) if args.task_card else None
+        print(json.dumps(join_readonly_views(lane_board, projection, card),
                          ensure_ascii=False, sort_keys=True))
         return 0
     except (SnapshotError, SafeInputError, OSError, KeyError, TypeError) as exc:
