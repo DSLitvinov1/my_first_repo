@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "kind": "read_only_coordination_board",
+  "provenance": "self_reported_git_refs_not_attested",
+  "cost_authorized_usd": 0,
+  "external_execution_allowed": false,
+  "external_publication_allowed": false,
+  "automatic_retry_allowed": false,
+  "lanes": [
+    {
+      "lane": "CORE",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "PROVIDERS",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "COORDINATOR",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "REVIEW",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "OPS",
+      "reported_phase": "waiting_review",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/6",
+      "source": {
+        "repository": "DSLitvinov1/my_first_repo",
+        "branch": "neurofactory-ops-completion-20261015"
+      }
+    },
+    {
+      "lane": "SKILLS",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "UI",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    },
+    {
+      "lane": "HANDOFF",
+      "reported_phase": "paused",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/4",
+      "source": {
+        "repository": "DSLitvinov1/my_first_repo",
+        "branch": "neurofactory-model-handoff-owned-20261013"
+      }
+    },
+    {
+      "lane": "GODMODE",
+      "reported_phase": "unknown",
+      "evidence_status": "not_verified",
+      "release_allowed": false,
+      "commit": null,
+      "issue_url": null,
+      "source": null
+    }
+  ]
+}
