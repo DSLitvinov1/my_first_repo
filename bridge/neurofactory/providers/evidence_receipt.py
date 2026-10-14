@@ -189,6 +189,22 @@ def persist_model_evidence(
             with _open_local_record(directory, filename, create=False,
                                     directory_fd=parent_fd) as stream:
                 readback = stream.read(MAX_RECORD_BYTES + 1)
+            if readback != raw:
+                raise EvidenceError("evidence readback mismatch; no model retry")
+            # A separate committed seal distinguishes a crashed/partial write
+            # from a completed receipt. A missing or corrupt seal is a STOP.
+            seal = (sha256(readback).hexdigest() + "\n").encode("ascii")
+            with _open_local_record(directory, filename + ".seal", create=True,
+                                    directory_fd=parent_fd) as stream:
+                stream.write(seal)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if parent_fd is not None:
+                os.fsync(parent_fd)
+            with _open_local_record(directory, filename + ".seal", create=False,
+                                    directory_fd=parent_fd) as stream:
+                if stream.read(128) != seal:
+                    raise EvidenceError("evidence commit seal mismatch; no retry")
     except (OSError, ValueError) as exc:
         raise EvidenceError("evidence write/readback uncertain; no model retry") from exc
     if readback != raw:
@@ -219,9 +235,14 @@ def verify_model_evidence(directory: Path, task_id: str, *,
             with _open_local_record(directory, filename, create=False,
                                     directory_fd=parent_fd) as stream:
                 raw = stream.read(MAX_RECORD_BYTES + 1)
+            with _open_local_record(directory, filename + ".seal", create=False,
+                                    directory_fd=parent_fd) as stream:
+                seal = stream.read(128)
     except OSError as exc:
         raise EvidenceError("missing or unreadable evidence") from exc
     actual_evidence_digest = sha256(raw).hexdigest()
+    if seal != (actual_evidence_digest + "\n").encode("ascii"):
+        raise EvidenceError("missing/invalid commit seal; unconfirmed crash outcome")
     if (expected_evidence_sha256 is not None and not
             hmac.compare_digest(actual_evidence_digest, expected_evidence_sha256)):
         raise EvidenceError("record differs from independently anchored digest")
