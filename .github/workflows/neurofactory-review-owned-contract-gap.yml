@@ -1,0 +1,36 @@
+name: Neurofactory REVIEW exact coordination signed-event contract negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-contract-gap.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  incomplete_binding_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout REVIEW-owned negative test
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Save reviewer negative outside source checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_central_contract_gap_20261015.py "$RUNNER_TEMP/review_contract_gap.py"
+      - name: Checkout exact coordinator contract SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 5bb7bb860f5064237951afd722b360abb71e5d61
+          persist-credentials: false
+          clean: true
+      - name: Verify exact contract commit
+        run: test "$(git rev-parse HEAD)" = "5bb7bb860f5064237951afd722b360abb71e5d61"
+      - name: Single preimplementation signed-event negative observation
+        run: python3 -B "$RUNNER_TEMP/review_contract_gap.py" "$GITHUB_WORKSPACE/bridge/neurofactory/coordination/central-multipc-transaction-v1.json"
+      - name: Assert checkout unchanged
+        run: git diff --exit-code
