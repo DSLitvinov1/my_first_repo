@@ -1,0 +1,41 @@
+name: Neurofactory REVIEW exact HOST source pins fixed
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-host-source-pins-fixed.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one_signed_context_review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only REVIEW checkout
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Isolate reviewer script
+        run: cp bridge/neurofactory/development/review_owned/independent_host_source_binding_fix_20261015.py "$RUNNER_TEMP/review_fixed_pins.py"
+      - name: Checkout exact new HOST code
+        uses: actions/checkout@v4
+        with:
+          ref: 3724dda83f7b352cb535c87e95687ae9b12957f2
+          persist-credentials: false
+          clean: true
+      - name: Verify pinned host SHA
+        run: test "$(git rev-parse HEAD)" = "3724dda83f7b352cb535c87e95687ae9b12957f2"
+      - name: Create isolated test crypto environment
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_crypto"
+          "$RUNNER_TEMP/review_crypto/bin/python" -m pip -q install 'cryptography>=43,<47'
+      - name: Independently test five exact signed source-context mismatches
+        run: |
+          "$RUNNER_TEMP/review_crypto/bin/python" -B "$RUNNER_TEMP/review_fixed_pins.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Confirm source checkout unchanged
+        run: git diff --exit-code
