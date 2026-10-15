@@ -167,27 +167,42 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "1a106b1124f9560f15c2508f9209ab89fbb5a8e8",
+      "head": "7d0a359b8e1e4f8b0133d0fec541d56ed51505ef",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "POSTGRES_CAS_14_PASS_HOST_NOT_DEPLOYED",
+      "status": "OFFLINE_CAS_AND_SIGNED_LINK_TESTED_NO_HOST_TRUST",
       "evidence": {
-        "run_id": 38724948294,
-        "job_id": 116388365652,
-        "tests_passed": 14,
-        "connections": 2,
-        "physical_computers": 1,
-        "independent_review": false
+        "postgres_claim": {
+          "run_id": 38724948294,
+          "job_id": 116388365652,
+          "tests_pass": 14,
+          "db": "ephemeral_postgres16",
+          "competing_connections": 2,
+          "physical_computers": 1
+        },
+        "ed25519_link": {
+          "run_id": 38725993141,
+          "job_id": 116391867768,
+          "tests_pass": 12,
+          "signer_key": "temporary_in_memory_fixture",
+          "trusted_off_host_issuer": false
+        },
+        "distinct_test_scenarios": 26,
+        "independent_review": false,
+        "scope": "seven owned paths, draft PR15"
       },
       "blockers": [
-        "issuer_not_deployed",
-        "separate_OS_identity_not_attested",
-        "cross_pc_test_not_run",
-        "signed_receipts_missing"
+        "external_issuer_host_and_key_custody_NOT_DEPLOYED",
+        "signed_monotonic_rollback_protected_anchor_NOT_DEPLOYED",
+        "actual_OS_isolation_NOT_PROVEN",
+        "authenticated_cross_host_API_NOT_IMPLEMENTED",
+        "physical_two_PC_validation_NOT_RUN",
+        "CORE_REVIEW_REJECT_LIVE",
+        "own_independent_security_signoff_MISSING"
       ],
-      "resume": "explicit owner acceptance, own isolated implementation, two-PC adversarial tests and independent review",
+      "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
       "pr": 15
     },
@@ -230,6 +245,10 @@
     {
       "code": "SINGLE_LEASE_VS_EXACTLY_ONCE",
       "decision": "central claim only prevents competing winners; external effects still require idempotent receiver/fencing, otherwise UNKNOWN STOP"
+    },
+    {
+      "code": "OFFLINE_ED25519_VS_DEPLOYED_TRUST",
+      "decision": "Real Ed25519 verification in ephemeral tests establishes only cryptographic format; a public key from the same untrusted DB cannot be accepted as identity, and signed chain is rollbackable until independently anchored"
     }
   ],
   "cross_host_protocol": "bridge/neurofactory/coordination/central-multipc-transaction-v1.json",
