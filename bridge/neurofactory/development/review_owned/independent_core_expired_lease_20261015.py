@@ -29,7 +29,9 @@ with tempfile.TemporaryDirectory() as folder:
     git(repo,"add","README.md")
     git(repo,"commit","-qm","synthetic origin")
     sha=git(repo,"rev-parse","HEAD")
-    q=OneTaskCore(temp/"workspace",repo)
+    workspace=temp/"workspace"
+    workspace.mkdir(mode=0o700)
+    q=OneTaskCore(workspace,repo)
     spec={
       "schema":"neurofactory.core.task.v1",
       "task_id":"NF-DEV-05-Q995","project_id":"review-only",
