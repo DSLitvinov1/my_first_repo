@@ -286,7 +286,7 @@
     "core_independent_latest_verdict": "REJECT_LIVE",
     "providers_sha": "53a025361c2038c6e9960d0c96634c372e41cdf7",
     "ops_sha": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
-    "skills_final_candidate_sha": "571a8668680456db6b12b9991f57f9a465461906",
+    "skills_final_candidate_sha": "aa791f9ad47b0ab471932f516d24756bbd51d420",
     "skills_parent_clean_run": 38659826061,
     "skills_parent_clean_pass": 86,
     "god_mode_sha": "18532efce7d23aaf959e0c4c50227723970dc8f5",
