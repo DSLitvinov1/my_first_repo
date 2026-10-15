@@ -397,16 +397,22 @@ class OneTaskCore:
                     "result_sha256": row["result_sha256"],
                     "receipt": row["receipt"]}
 
-    def checkpoint_fingerprint(self):
-        """UNTRUSTED local digest to be anchored by a separate trusted principal.
+    def _verified_local_checkpoint(self):
+        """Read local metadata and file under ONE SQLite metadata snapshot.
 
-        This function neither signs evidence nor establishes independent origin.
-        Store this exact fingerprint off-host BEFORE relying on completed evidence.
+        This only prevents a split-read stale local digest. It does NOT protect
+        against same-privilege filesystem tampering or attest an external issuer.
         """
         with self._connect() as con:
+            con.execute("BEGIN")
             row = self._row(con)
             if row is None or row["state"] != "CHECKPOINTED_TEST":
                 raise CoreSafetyError("No completed offline checkpoint to fingerprint")
+            target = self._file(row["spec"]["target"])
+            if (not target.exists()
+                    or _sha(target.read_bytes()) != row["result_sha256"]):
+                raise CoreSafetyError(
+                    "Checkpoint content changed; require explicit manual recovery")
             record = {
                 "schema": "neurofactory.core.checkpoint_anchor.v1",
                 "spec_sha256": _sha(_canonical(row["spec"])),
@@ -421,29 +427,30 @@ class OneTaskCore:
                 "result_sha256": row["result_sha256"],
                 "receipt": row["receipt"]
             }
-        # Snapshot also reads the actual sandbox file and compares its SHA256.
-        snapshot = self.snapshot()
-        if (snapshot["task_id"] != record["task_id"]
-                or snapshot["state"] != "CHECKPOINTED_TEST"
-                or snapshot["result_sha256"] != record["result_sha256"]
-                or snapshot["receipt"] != record["receipt"]):
-            raise CoreSafetyError("Concurrent local checkpoint alteration")
-        return _sha(_canonical(record))
+            con.execute("COMMIT")
+        return row["spec"]["task_id"], _sha(_canonical(record))
+
+    def checkpoint_fingerprint(self):
+        """UNTRUSTED local digest for a separate protected issuer to anchor.
+
+        No signing, provenance, authorization or cross-host fencing is claimed.
+        """
+        return self._verified_local_checkpoint()[1]
 
     def check_external_checkpoint(self, expected_anchor_sha256):
-        """Compare against a digest supplied OUTSIDE the executor's trust domain.
+        """Check independently supplied digest; does NOT authenticate its origin.
 
-        Caller must authenticate/immutably pin expected digest independently.
-        Passing a recomputed local digest is NOT external attestation.
+        The expected SHA must already be authenticated and immutably pinned by
+        a distinct trusted principal before any consuming security decision.
         """
         if (type(expected_anchor_sha256) is not str
                 or not SHA64.fullmatch(expected_anchor_sha256)):
             raise CoreSafetyError("Missing externally pinned checkpoint digest")
-        current = self.checkpoint_fingerprint()
+        task_id, current = self._verified_local_checkpoint()
         if not secrets.compare_digest(current, expected_anchor_sha256):
             raise CoreSafetyError("Checkpoint changed since external anchor: STOP")
         return {"schema": "neurofactory.core.anchor_match.v1",
-                "task_id": self.snapshot()["task_id"],
+                "task_id": task_id,
                 "anchor_sha256": current,
                 "matches_supplied_external_digest": True,
                 "external_origin_attested": False,
