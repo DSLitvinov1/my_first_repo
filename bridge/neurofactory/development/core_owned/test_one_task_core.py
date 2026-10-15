@@ -128,6 +128,7 @@ except CoreSafetyError:
             self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=115)
         self.assertFalse((self.q.sandbox / TARGET).exists())
 
+    @unittest.skipIf(os.name == "nt", "Windows file writer intentionally blocked until trusted ACL host")
     def test_killed_after_atomic_file_replace_never_replays(self):
         """Real child death between visible file and SQLite receipt, no fake receipt."""
         self.admit()
@@ -148,9 +149,9 @@ core = OneTaskCore(workspace, repo)
 wanted = core.sandbox / proposal["target"]
 original_replace = os.replace
 
-def die_after_effect(src, dst):
-    original_replace(src, dst)
-    if pathlib.Path(dst) == wanted:
+def die_after_effect(src, dst, **kwargs):
+    original_replace(src, dst, **kwargs)
+    if kwargs.get("dst_dir_fd") is not None:
         os._exit(87)
 os.replace = die_after_effect
 core.apply_offline_test(task, token, proposal, now=101)
@@ -174,6 +175,50 @@ raise AssertionError("injection did not intercept target replace")
             self.q.apply_offline_test(self.spec["task_id"], claim["token"],
                                       self.proposal("VALUE = 999\\n"), now=120)
         self.assertEqual(target.read_text("utf8"), self.proposal()["content"])
+
+    @unittest.skipUnless(os.name == "nt", "Windows-only fail-closed host gate")
+    def test_windows_writer_explicitly_disabled(self):
+        self.admit()
+        claim = self.q.claim("windows-host", now=100, lease_seconds=10)
+        with self.assertRaises(CoreSafetyError):
+            self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                      self.proposal(), now=101)
+        self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
+        self.assertFalse((self.q.sandbox / TARGET).exists())
+
+    @unittest.skipUnless(os.name == "posix", "Descriptor-relative POSIX only")
+    def test_parent_swap_at_atomic_replace_never_writes_attacker_directory(self):
+        from unittest.mock import patch
+        self.admit()
+        claim = self.q.claim("host", now=100, lease_seconds=10)
+        target = self.q.sandbox / TARGET
+        parent = target.parent
+        displaced = self.base / "displaced_original_parent"
+        attacker = self.base / "attacker_outside"
+        attacker.mkdir(mode=0o700)
+        original_replace = os.replace
+        swapped = []
+
+        def swap_before_replace(src, dst, **kwargs):
+            if kwargs.get("dst_dir_fd") is not None and not swapped:
+                parent.rename(displaced)
+                parent.symlink_to(attacker, target_is_directory=True)
+                swapped.append(True)
+            return original_replace(src, dst, **kwargs)
+
+        with patch.object(os, "replace", side_effect=swap_before_replace):
+            with self.assertRaises(CoreSafetyError):
+                self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                          self.proposal(), now=101)
+        self.assertTrue(swapped, "attack must actually occur at effect boundary")
+        self.assertFalse((attacker / target.name).exists())
+        self.assertEqual(self.q.snapshot()["state"], "APPLYING")
+        self.assertEqual(self.q.recover(now=111)["state"], "NEEDS_MANUAL_REVIEW")
+        with self.assertRaises(CoreSafetyError):
+            self.q.claim("retry", now=112)
+        parent.unlink()
+        # Restore only the test fixture tree for teardown and investigation.
+        displaced.rename(parent)
 
     def test_foreign_or_forged_approval_is_not_enough(self):
         with self.assertRaises(CoreSafetyError):
