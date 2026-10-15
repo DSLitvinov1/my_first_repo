@@ -1,0 +1,41 @@
+name: Neurofactory REVIEW exact HOST signature identity negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-host-source-binding.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one_independent_effect_identity_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout independent reviewer script
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Save reviewer script outside audited checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_host_source_binding_20261015.py "$RUNNER_TEMP/review_host_source_binding.py"
+      - name: Checkout exact host candidate
+        uses: actions/checkout@v4
+        with:
+          ref: e2491063ab7823d95f81b1149b71452c541a3f5e
+          persist-credentials: false
+          clean: true
+      - name: Verify fixed host SHA
+        run: test "$(git rev-parse HEAD)" = "e2491063ab7823d95f81b1149b71452c541a3f5e"
+      - name: Prepare isolated test crypto library
+        run: |
+          python3 -m venv "$RUNNER_TEMP/isolated_venv"
+          "$RUNNER_TEMP/isolated_venv/bin/python" -m pip -q install 'cryptography>=43,<47'
+      - name: Run one negative effect signature identity check
+        run: |
+          "$RUNNER_TEMP/isolated_venv/bin/python" -B "$RUNNER_TEMP/review_host_source_binding.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Ensure exact source unchanged
+        run: git diff --exit-code
