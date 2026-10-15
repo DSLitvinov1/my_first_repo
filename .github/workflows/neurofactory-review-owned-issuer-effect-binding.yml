@@ -1,0 +1,40 @@
+name: Neurofactory REVIEW exact-host signed-effect binding negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-issuer-effect-binding.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed_effect_binding_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout reviewer-owned test
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Isolate REVIEW negative script
+        run: cp bridge/neurofactory/development/review_owned/independent_issuer_effect_binding_20261015.py "$RUNNER_TEMP/review_issuer_binding.py"
+      - name: Checkout exact host source SHA
+        uses: actions/checkout@v4
+        with:
+          ref: 0e37d6901a31d0ee6a6d9dff711bb019240f685d
+          persist-credentials: false
+          clean: true
+      - name: Verify pinned host code
+        run: test "$(git rev-parse HEAD)" = "0e37d6901a31d0ee6a6d9dff711bb019240f685d"
+      - name: Install crypto library only inside test virtual environment
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_venv"
+          "$RUNNER_TEMP/review_venv/bin/python" -m pip -q install 'cryptography>=43,<47'
+      - name: Independent signature with missing effect fencing
+        run: "$RUNNER_TEMP/review_venv/bin/python" -B "$RUNNER_TEMP/review_issuer_binding.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Confirm source untouched
+        run: git diff --exit-code
