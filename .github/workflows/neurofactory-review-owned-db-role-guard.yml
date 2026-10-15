@@ -5,6 +5,7 @@ on:
       - neurofactory-review-owned-20261013
     paths:
       - .github/workflows/neurofactory-review-owned-db-role-guard.yml
+      - bridge/neurofactory/development/review_owned/independent_host_db_role_guard_20261015.py
   workflow_dispatch:
 
 permissions:
