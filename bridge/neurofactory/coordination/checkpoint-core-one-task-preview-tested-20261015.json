@@ -36,7 +36,7 @@
   },
   "owner_current": {
     "CORE": {
-      "head": "bcd6f3f2d918d1a543adb5bab5854ebba79da01a",
+      "head": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
       "previous_failed_head": "1b54f5fd37a00fd52a8535e1ed5f23fd7b3cece5",
       "old_failed_run": 38659107250,
       "fixed_targeted_run": 38659194020,
@@ -63,14 +63,15 @@
       ],
       "review_issue": 11,
       "review_request_comment": 6181407004,
-      "independent_verdict": "REJECT_OLD_SHA_NEW_SHA_NOT_SECURITY_APPROVED",
+      "independent_verdict": "REJECT_OLD_A667_SHA_NEW_FA92_SECURITY_FIX_AWAITING_INDEPENDENT_REVIEW",
       "tested_linux_windows_final": {
-        "run": 38659770246,
-        "ubuntu_job": 116178000386,
-        "ubuntu_result": "22/22 PASS",
-        "windows_job": 116178000540,
-        "windows_result": "two focused checks PASS",
-        "status": "completed/success"
+        "run": 38660103278,
+        "ubuntu_job": 116179126043,
+        "ubuntu_result": "23 PASS 1 platform SKIP of 24 tests",
+        "windows_job": 116179126312,
+        "windows_result": "2 narrowly scoped PASS (writer refuses, Windows reserved paths)",
+        "status": "completed/success",
+        "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8"
       }
     },
     "PROVIDERS": {
@@ -126,8 +127,8 @@
     "reviewer": "CORE Issue #11 independent SHA-specific verdict required, cannot self-review"
   },
   "policy": {
-    "core_live_execution": "P0_BLOCKED_SANDBOX_ESCAPE_RISK",
-    "review": "REJECT_OLD_SHA_PENDING_NEW_SECURITY_FIX",
+    "core_live_execution": "P0_BLOCKED_PENDING_EXACT_FA92_INDEPENDENT_REVIEW_AND_TRUST_GATES",
+    "review": "PENDING_EXACT_FA92_INDEPENDENT_REVIEW",
     "providers_real_qwen": "RESOURCE_BLOCKED",
     "ops_live": "BLOCKED",
     "skills_activation": "BLOCKED",
@@ -146,17 +147,18 @@
     "no_replayed_old_windows": true,
     "no_handoff_activation": true
   },
-  "next_trigger": "Only new CORE own SHA fixing out-of-sandbox TOCTOU and exact independent review; trust-anchor or real Windows RAM change. Do not rerun completed owned tests just for status.",
+  "next_trigger": "Independent REVIEW targeted attack on exact fa92 + origin-bound receipt and approval; no live inference, no additional old Windows smoke or model calls",
   "source_review_updated": "2026-10-15",
   "latest_core_security_state": {
-    "new_head": "bcd6f3f2d918d1a543adb5bab5854ebba79da01a",
+    "new_head": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
     "tested_linux_windows": {
-      "run": 38659770246,
-      "ubuntu_job": 116178000386,
-      "ubuntu_result": "22/22 PASS",
-      "windows_job": 116178000540,
-      "windows_result": "two focused checks PASS",
-      "status": "completed/success"
+      "run": 38660103278,
+      "ubuntu_job": 116179126043,
+      "ubuntu_result": "23 PASS 1 platform SKIP of 24 tests",
+      "windows_job": 116179126312,
+      "windows_result": "2 narrowly scoped PASS (writer refuses, Windows reserved paths)",
+      "status": "completed/success",
+      "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8"
     },
     "windows_before_fix": {
       "sha": "5e6e1d0f0bb10ddb9ff122c12c570be08d466a0f",
@@ -173,13 +175,13 @@
         "parent directory symlink swapped between safe path check and os.replace wrote outside sandbox (POSIX same-account synthetic fixture)",
         "local sqlite receipt metadata forged approval/model/publish under database write access"
       ],
-      "latest_sha_repro": "NOT_RUN_INDEPENDENTLY_ON_LATEST_SHA",
-      "latest_source_inspection": "mutable os.replace pathname after _file parent checks remains at bcd6f3..., so parent-swap security blocker plausibly remains",
+      "latest_sha_repro": "PENDING_EXACT_FA92_INDEPENDENT_REVIEW",
+      "latest_source_inspection": "Previously mutable destination path replaced with descriptor-relative POSIX write and Windows-disabled writer at fa92; needs independent same-UID attacker negative test on EXACT FA92",
       "updated_p0_owner_issue9_comment": 6181501620,
-      "latest_core_review_request_issue11_comment": 6181484845,
+      "latest_core_review_request_issue11_comment": 6181529663,
       "independent_signoff_on_current_sha": "MISSING"
     },
-    "decision": "P0 STOP all live CORE worker/inference, publish, real integrations and merges; no evidence customer data touched; require owner safe descriptor-pinned parent/Windows policy, origin signed checkpoint, focused independent exact-SHA re-review",
+    "decision": "P0 live release blocked pending independent review of narrowed POSIX sandbox fix on fa92 and separate origin-bound receipt/external approval/lease gates",
     "remaining_gates": [
       "safe sandbox file-write boundary against parent swap",
       "separate external authenticated approval and monotonic trusted receipt",
@@ -187,6 +189,14 @@
       "independent security review of final exact CORE SHA",
       "Ollama local resources >= floor and model actually running",
       "owner coordinator written release"
-    ]
+    ],
+    "sandbox_fix_candidate": {
+      "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
+      "posix": "new _write_one_pinned O_DIRECTORY/O_NOFOLLOW + dirfd relative replace/readback/identity check; independent hostile rename attack NOT retested yet",
+      "windows": "file writer explicitly disabled/fail closed (not working on Windows)",
+      "comparison_to_rejected_SHA": "old symlink parent swap vulnerable on a667, new exact fix not independently APPROVED",
+      "reviewer_issue11_update_comment": 6181529663,
+      "blocker": "independent A+B rerun on exact fa92 SHA, host ACL/source of authorization, monotonic external checkpoint, cross-host lease all missing"
+    }
   }
 }
