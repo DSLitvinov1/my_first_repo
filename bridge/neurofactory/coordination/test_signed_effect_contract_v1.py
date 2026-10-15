@@ -49,8 +49,7 @@ class SignedEffectContractChecks(unittest.TestCase):
             set(self.trust["proposed_event"]["detached_signed_envelope_fields"])
         )
         self.assertEqual(set(self.events["required_fields"]),
-                         set(self.trust["proposed_event"]["required_fields"])
-                         - {"schema"})
+                         set(self.trust["proposed_event"]["required_fields"]))
 
     def test_pinned_expectations_not_from_signed_payload(self):
         expected={"task_id","input_core_sha40","issuer_identity","issuer_key_id",
