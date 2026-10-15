@@ -8,12 +8,29 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "SPECIFICATIONS_UPDATED_NO_LIVE",
+      "status": "HOST_WITNESS_DIAGNOSTIC_BRIDGE_TESTED_LOCAL_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
       "owner": "COORDINATOR",
-      "evidence": "New TRUSTED HOST Issue14, owner registry and central multi-PC protocol in coordination/"
+      "evidence": "New TRUSTED HOST Issue14, owner registry and central multi-PC protocol in coordination/",
+      "host_witness_read_only_boundary": {
+        "status": "IMPLEMENTED_AUTHOR_LOCAL_TARGETED_PASS_INDEPENDENT_REVIEW_PENDING",
+        "source": "bridge/neurofactory/coordination/mvp_host_witness_boundary.py",
+        "source_blob_sha": "e5880b22d260251b553a3034622d4c2bacd12faa",
+        "tests": "bridge/neurofactory/coordination/test_mvp_host_witness_boundary.py",
+        "test_blob_sha": "6846e4cdc6953cc956cad151dbc4e9157868a2df",
+        "local_unittest_cases_passed": 15,
+        "local_py_compile_passed": true,
+        "committed_candidate_sha_before_registry_update": "7986089931905c2cf1c6e08a4aefd5ad527b33bf",
+        "local_git_hash_object_matches_remote_blobs": true,
+        "github_ci_for_this_change": "NOT_RUN",
+        "independent_review": "PENDING",
+        "field_origin_decision": "bridge/neurofactory/coordination/CORE_HOST_FIELD_ORIGIN_V1_RU.md",
+        "host_witness_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+        "output_kind": "READ_ONLY_FORMAT_ONLY_BLOCKED_NONLIVE_DIAGNOSTIC_ONLY",
+        "live_allowed": false
+      }
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
