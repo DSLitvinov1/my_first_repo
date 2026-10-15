@@ -147,7 +147,7 @@
       "repository": "DSLitvinov1/my_first_repo",
       "branch": "neurofactory-trusted-host-owned-20261015",
       "branch_status": "DRAFT_PR15_OFFLINE_TARGETED_TESTS_PASS",
-      "status": "ISOLATED_OFFLINE_CANDIDATE_NO_LIVE_UNDER_TEMP_COORD_OWNER",
+      "status": "OFFLINE_CAS_AND_ED25519_SOURCE_EFFECT_POLICY_40_SELF_TESTS_NO_LIVE",
       "issue": 14,
       "responsibility": "Own future central transaction and external checkpoint proofs, not CORE or PROVIDERS operations",
       "allowed": [
@@ -158,7 +158,7 @@
       "owner_acceptance": "COORDINATOR_TEMPORARY_OFFLINE_CODE_ONLY_USER_AUTHORIZED",
       "base_main_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
       "pr": 15,
-      "source_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e",
+      "source_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2",
       "security_owner_acceptance": false
     },
     {
