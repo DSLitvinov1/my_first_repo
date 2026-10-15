@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "as_of": "2026-10-15",
+  "role": "COORDINATOR",
+  "repository": "DSLitvinov1/my_first_repo",
+  "previous_checkpoint": "7c809baaf30676ba94808fab86327edc148306b1",
+  "work_branch": "neurofactory-coordinator-mvp-status-20261015",
+  "pr": 12,
+  "feature": {
+    "module": "bridge/neurofactory/coordination/mvp_core_anchor_boundary.py",
+    "test": "bridge/neurofactory/coordination/test_mvp_core_anchor_boundary.py",
+    "workflow": ".github/workflows/neurofactory-coordination-anchor-boundary-targeted.yml",
+    "description": "Pure exact-schema inspection for new CORE.check_external_checkpoint match result and prior independent review observation; SHA match is NOT external origin; old CORE REJECT cannot become new exact-SHA verdict; no authorization/retry/publication from any input.",
+    "trust": "All observations are untrusted even if exact SHA fields match; real protected external trust and reviewer identity must be proven independently. Never signs or fetches evidence.",
+    "execution_allowed": false,
+    "publishing_allowed": false,
+    "automatic_retry_allowed": false
+  },
+  "new_tests": {
+    "run_id": 38661306729,
+    "job_id": 116182957385,
+    "tested_head": "72d562d98f0bb3393ec6f566a9c1f15c03d93493",
+    "hosted_os": "ubuntu-24.04",
+    "targeted_cases_pass": 13,
+    "total": 13,
+    "conclusion": "success",
+    "log_readback": true,
+    "independent_signoff": false
+  },
+  "old_coordinator_test_count": 70,
+  "total_distinct_own_test_methods": 83,
+  "large_matrix_repeated": false,
+  "core": {
+    "current_head": "ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3",
+    "new_files_changed_since_fa92": [
+      "bridge/neurofactory/development/core_owned/one_task_core.py",
+      "bridge/neurofactory/development/core_owned/test_one_task_core.py"
+    ],
+    "new_feature": "checkpoint_fingerprint produces local SHA256; check_external_checkpoint compares externally PROVIDED digest and returns external_origin_attested=false. It does not create an immutable protected signer nor remove same-UID rename outside sandbox.",
+    "independent_review": {
+      "audited_exact_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
+      "issue": 11,
+      "comment_id": 6181593574,
+      "review_owner_sha": "7eec345599670974b9998968c3aa0f8a79108341",
+      "run_id": 38660581761,
+      "job_id": 116180600166,
+      "verdict": "REJECT_FOR_LIVE",
+      "tests": "original symlink redirect blocked; forged trivial approval refused; coherent local DB/file forgery undetected; same-UID moved dir received bytes outside before STOP"
+    },
+    "latest_sha_independent_signoff": "MISSING",
+    "latest_sha_hosted_test_proof": "NOT_FOUND_VIA_COMMIT_WORKFLOW_RUNS",
+    "non_proven": [
+      "same_UID directory rename containment",
+      "externally authenticated immutable checkpoint SHA",
+      "signed reviewer and source proof",
+      "multi-host lease/CAS",
+      "Windows safe file writer (disabled)",
+      "safe live publisher"
+    ],
+    "status": "P0_LIVE_RELEASE_HOLD"
+  },
+  "providers": {
+    "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+    "draft_pr": 13,
+    "private_author_receipt_only": true,
+    "authenticated_model_origin": false,
+    "independent_reviews": 0,
+    "last_win_resource_run": 38652410062,
+    "free_ram_bytes": 934338560,
+    "ollama_process_observed": false,
+    "live_model_test": false,
+    "status": "P2_WAIT_RESOURCES_AND_EXTERNAL_AUDIT"
+  },
+  "ops": {
+    "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+    "issue": 6,
+    "hosted_run": 38652940146,
+    "linux_pass": 34,
+    "windows_pass": 34,
+    "independent_reviewer": "UNASSIGNED",
+    "read_only_layers": 3
+  },
+  "skills": {
+    "latest_review_pr": 558,
+    "head": "571a8668680456db6b12b9991f57f9a465461906",
+    "profiles": 19,
+    "candidate_skills": 12,
+    "active_skills": 0,
+    "independent_review": "MISSING",
+    "full_native_five_suite_tests": "MISSING"
+  },
+  "old_windows": {
+    "run_id": 38643604899,
+    "job_id": 116124933092,
+    "status": "QUEUED",
+    "duplicated": false
+  },
+  "handoff": "PAUSED_BY_USER",
+  "release": "BLOCKED",
+  "no_unsafe_actions": {
+    "paid_api": false,
+    "real_qwen": false,
+    "model_download": false,
+    "windows_bridge": false,
+    "live_queue": false,
+    "auto_retry": false,
+    "production_publish": false,
+    "merge": false,
+    "foreign_branch_writes": false
+  },
+  "next_trigger": "New CORE exact SHA, independent REVIEW exact current SHA security verdict, host-enforced same-UID isolation or protected external digest evidence, Windows resource improvement, authenticated independent OPS/SKILLS signoff; do not create repeated status-only commits."
+}
