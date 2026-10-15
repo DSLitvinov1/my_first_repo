@@ -36,7 +36,7 @@
   },
   "owner_current": {
     "CORE": {
-      "head": "0ba18eeb609bec1b241ad01aab8b156aa7c9f9ae",
+      "head": "bcd6f3f2d918d1a543adb5bab5854ebba79da01a",
       "previous_failed_head": "1b54f5fd37a00fd52a8535e1ed5f23fd7b3cece5",
       "old_failed_run": 38659107250,
       "fixed_targeted_run": 38659194020,
@@ -63,7 +63,15 @@
       ],
       "review_issue": 11,
       "review_request_comment": 6181407004,
-      "independent_verdict": "PENDING"
+      "independent_verdict": "REJECT_OLD_SHA_NEW_SHA_NOT_SECURITY_APPROVED",
+      "tested_linux_windows_final": {
+        "run": 38659770246,
+        "ubuntu_job": 116178000386,
+        "ubuntu_result": "22/22 PASS",
+        "windows_job": 116178000540,
+        "windows_result": "two focused checks PASS",
+        "status": "completed/success"
+      }
     },
     "PROVIDERS": {
       "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
@@ -118,8 +126,8 @@
     "reviewer": "CORE Issue #11 independent SHA-specific verdict required, cannot self-review"
   },
   "policy": {
-    "core_live_execution": "BLOCKED",
-    "review": "PENDING",
+    "core_live_execution": "P0_BLOCKED_SANDBOX_ESCAPE_RISK",
+    "review": "REJECT_OLD_SHA_PENDING_NEW_SECURITY_FIX",
     "providers_real_qwen": "RESOURCE_BLOCKED",
     "ops_live": "BLOCKED",
     "skills_activation": "BLOCKED",
@@ -138,5 +146,47 @@
     "no_replayed_old_windows": true,
     "no_handoff_activation": true
   },
-  "next_trigger": "CORE independent REVIEW verdict pinned to 0ba18eeb or new changed CORE exact SHA; validated on-host input approval/global-lease and monitored host resources; do not create routine status commits without event"
+  "next_trigger": "Only new CORE own SHA fixing out-of-sandbox TOCTOU and exact independent review; trust-anchor or real Windows RAM change. Do not rerun completed owned tests just for status.",
+  "source_review_updated": "2026-10-15",
+  "latest_core_security_state": {
+    "new_head": "bcd6f3f2d918d1a543adb5bab5854ebba79da01a",
+    "tested_linux_windows": {
+      "run": 38659770246,
+      "ubuntu_job": 116178000386,
+      "ubuntu_result": "22/22 PASS",
+      "windows_job": 116178000540,
+      "windows_result": "two focused checks PASS",
+      "status": "completed/success"
+    },
+    "windows_before_fix": {
+      "sha": "5e6e1d0f0bb10ddb9ff122c12c570be08d466a0f",
+      "run": 38659680346,
+      "status": "Windows FAIL WinError32 queue.sqlite3 after child killed; fixed SQLite connection-lifetime issue in next exact SHA"
+    },
+    "independent_review": {
+      "reviewed_old_sha": "a6677ca6de0f995a297d6f75824e9e8b91ee8de9",
+      "review_owned_sha": "69e7ba4c19383913ef9fb8a5d04f68a7d5ba29fb",
+      "run": 38659617801,
+      "issue11_comment": 6181469741,
+      "verdict": "REJECT_FOR_LIVE_ON_OLD_SHA",
+      "reproduced_defects": [
+        "parent directory symlink swapped between safe path check and os.replace wrote outside sandbox (POSIX same-account synthetic fixture)",
+        "local sqlite receipt metadata forged approval/model/publish under database write access"
+      ],
+      "latest_sha_repro": "NOT_RUN_INDEPENDENTLY_ON_LATEST_SHA",
+      "latest_source_inspection": "mutable os.replace pathname after _file parent checks remains at bcd6f3..., so parent-swap security blocker plausibly remains",
+      "updated_p0_owner_issue9_comment": 6181501620,
+      "latest_core_review_request_issue11_comment": 6181484845,
+      "independent_signoff_on_current_sha": "MISSING"
+    },
+    "decision": "P0 STOP all live CORE worker/inference, publish, real integrations and merges; no evidence customer data touched; require owner safe descriptor-pinned parent/Windows policy, origin signed checkpoint, focused independent exact-SHA re-review",
+    "remaining_gates": [
+      "safe sandbox file-write boundary against parent swap",
+      "separate external authenticated approval and monotonic trusted receipt",
+      "global cross-host lease or explicit supported single-host deployment",
+      "independent security review of final exact CORE SHA",
+      "Ollama local resources >= floor and model actually running",
+      "owner coordinator written release"
+    ]
+  }
 }
