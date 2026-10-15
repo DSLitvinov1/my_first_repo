@@ -1,5 +1,5 @@
 {
-  "schema": 6,
+  "schema": 7,
   "project": "НЕЙРОЗАВОД",
   "checkpoint_date": "2026-10-14",
   "scope": "coordinator_readonly_assignment",
@@ -21,7 +21,7 @@
       "owner": "core",
       "chat": "Нейрозавод 1",
       "branch": "neurofactory-core-queue-owned-20261013",
-      "status": "WAITING_CORE_OWNED_COMMIT",
+      "status": "P0_INDEPENDENT_REVIEW_REJECT_LIVE_WAIT_HOST_TRUST",
       "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "scope": [
         "bridge/neurofactory/development/core_owned/",
@@ -43,14 +43,21 @@
       "last_observed_head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "exact_sha_still": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "linked_issue": 9,
-      "next": "No additional job or test before new CORE exact SHA; define durable lease, CAS, unknown external receipt STOP and one approved sandbox transaction"
+      "next": "Owner CORE only: real host OS identity isolation, issuer anchor and external fencing before new writer changes; independent review on each new exact SHA.",
+      "candidate_sha": "f4f24d16c5a71263441d0df939ba98cbd76a66ae",
+      "independent_evidence": {
+        "issue": 11,
+        "comment": 6181833967,
+        "verdict": "REJECT_LIVE",
+        "audited_sha": "f4f24d16c5a71263441d0df939ba98cbd76a66ae"
+      }
     },
     {
       "id": "NF-COORD-REVIEW-CORE-20261014",
       "owner": "review",
       "chat": "Контроль очереди нейрозавода",
       "branch": "neurofactory-review-owned-20261013",
-      "status": "WAITING_NEW_CORE_SHA",
+      "status": "EXACT_CORE_F4F24_REJECT_LIVE",
       "input_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "scope": [
         "bridge/neurofactory/development/review_owned/",
@@ -73,14 +80,16 @@
       "note": "Existing receipt spoof 5/5 PASS reproduces a defect, not safety approval.",
       "last_observed_head": "c2510f1f35c946dea0c7a33786960e4875984ace",
       "latest_review_commit": "c2510f1f35c946dea0c7a33786960e4875984ace",
-      "linked_issue": 11
+      "linked_issue": 11,
+      "audited_sha": "f4f24d16c5a71263441d0df939ba98cbd76a66ae",
+      "independent_issue_comment": 6181833967
     },
     {
       "id": "NF-COORD-PROVIDERS-MOCK-20261014",
       "owner": "providers",
       "chat": "Подключение DeepSeek",
       "branch": "neurofactory-providers-free-20261013",
-      "status": "P0_SCOPE_HOLD_WORKFLOW_PREFIX_UNAUTHORIZED",
+      "status": "P2_SCOPE_OWNED_PR13_REQUIRES_HOST_AND_RAM",
       "scope": [
         "bridge/neurofactory/providers/",
         ".github/workflows/neurofactory-providers-owned-"
@@ -96,7 +105,7 @@
         "fallback_never_uses_paid_endpoint"
       ],
       "candidate_branch": "neurofactory-providers-resilience-20261014",
-      "candidate_sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+      "candidate_sha": "53a025361c2038c6e9960d0c96634c372e41cdf7",
       "self_reported_tests": {
         "linux_local": 29,
         "linux_ci": "NOT_VERIFIED",
@@ -105,7 +114,7 @@
         "network": "localhost_stub_only",
         "paid_api_called": false
       },
-      "next": "Provider owner: remediate workflow scope discrepancy, obtain exact replacement SHA, targeted Windows/Linux evidence and independent external review, zero paid endpoints; do not merge",
+      "next": "No inference until 2GiB RAM and observed Ollama process; owner-only private receipt; no trusted model/signer proof and no paid API.",
       "pr": 5,
       "active_draft_pr": 5,
       "original_candidate_sha": "8d4723a95808df1d66d7a49152c441960da6b1a5",
@@ -129,14 +138,15 @@
         "authorized_workflow_prefix": ".github/workflows/neurofactory-providers-owned-",
         "decision": "P0 procedural hold until PROVIDERS owner renames in own candidate OR explicitly approved scope change first",
         "pr7_comment_id": 6179204821
-      }
+      },
+      "resolved_scope": "PR13 own workflow under allowed prefix; older PR7 off-prefix remains separate unmerged candidate"
     },
     {
       "id": "NF-COORD-SKILLS-RECONCILE-20261014",
       "owner": "skills",
       "chat": "Нейрозавод. Интеллект и навыки (единственный автор)",
       "branch": "NEW_SKILLS_OWNED_RECONCILIATION_BRANCH_REQUIRED",
-      "status": "UNIFIED_12_INACTIVE_CANDIDATES_INDEPENDENT_TESTS_WAITING",
+      "status": "P2_12_CANDIDATE_19_PROFILES_NO_EXACT_FINAL_REVIEW",
       "repository": "DSLitvinov1/lesson3.1",
       "inputs": [
         {
@@ -185,19 +195,25 @@
       "trusted_external_reviewer_approval": "MISSING",
       "independent_review_request": "PR #540 comment 6178480450",
       "candidate_branch": "neurofactory-skills-unified-profiles-20261015",
-      "candidate_sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
+      "candidate_sha": "571a8668680456db6b12b9991f57f9a465461906",
       "draft_pr": 542,
       "independent_issue": 543,
       "candidate_approved_count": 0,
       "trusted_review_boundary": "fail_closed_without_host_verifier_but_external_reviewer_implementation_pending",
-      "full_python_tests": "44 test cases saved, run NOT_CONFIRMED"
+      "full_python_tests": "44 test cases saved, run NOT_CONFIRMED",
+      "parent_own_original_tests": {
+        "sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
+        "run": 38659826061,
+        "pass": 86,
+        "applies_to_latest": false
+      }
     },
     {
       "id": "NF-COORD-OPS-REVIEW-20261014",
       "owner": "ops",
       "chat": "OPS diagnostics",
       "branch": "neurofactory-ops-diagnostics-candidate-20261014",
-      "status": "STABLE_20_JOB_CI_SUCCESS_EXPERIMENTAL_SECURE_READER_AUDIT_WAITING",
+      "status": "P2_3_LAYER_READ_ONLY_OWN_TARGETED_WIN_LINUX_PASS_NO_INDEPENDENT",
       "input_commit": "8f6afd2541537f5a7ee7fb963645fd562b55b55d",
       "scope": [
         "bridge/neurofactory/ops_diagnostics/",
@@ -242,7 +258,9 @@
       "stable_head": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
       "experimental_branch": "neurofactory-ops-completion-20261015",
       "experimental_sha": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
-      "experimental_claims": "own Linux 10 targeted PASS, no independent Windows run or separate audit"
+      "experimental_claims": "own Linux 10 targeted PASS, no independent Windows run or separate audit",
+      "candidate_sha": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "own_test_run": 38652940146
     },
     {
       "id": "NF-COORD-HANDOFF-PAUSE-20261014",
@@ -282,6 +300,45 @@
         "no_production_publish",
         "independent_acceptance_before_live_binding"
       ]
+    },
+    {
+      "id": "NF-COORD-TRUSTED-HOST-20261015",
+      "owner": "trusted_host",
+      "status": "P0_BLOCKED_P2_OWNER_UNASSIGNED",
+      "issue": 14,
+      "branch": "neurofactory-trusted-host-owned-20261015",
+      "branch_created": false,
+      "owner_accepted": false,
+      "scope": [
+        "bridge/neurofactory/trusted_host/",
+        ".github/workflows/neurofactory-trusted-host-owned-"
+      ],
+      "deliverables": [
+        "self-hosted central PostgreSQL transactional CAS with fenced epochs for multi-PC workers",
+        "separate signed monotonic append-only issuer under isolated OS identity",
+        "real OS sandbox isolation for CORE host including Windows ACL proof",
+        "audited no-retry after UNKNOWN and signed readback"
+      ],
+      "acceptance": [
+        "separate_owner_assigned",
+        "exact_owned_commit",
+        "2_worker_cross_host_CAS_test",
+        "external_signer_verified",
+        "same_uid_directory_move_no_escaped_write",
+        "signed_independent_REVIEW_exact_sha"
+      ],
+      "live_permission": false
+    },
+    {
+      "id": "NF-COORD-GOD-MODE-SCOPE-20261015",
+      "owner": "god_mode",
+      "status": "P2_SCOPE_COLLISION_WITH_SKILLS_REQUIRES_UNIQUE_OWNER_PATH",
+      "repository": "DSLitvinov1/lesson3.1",
+      "branch": "neurofactory-godmode-autonomy-isolated-20261014",
+      "scope": [],
+      "no_new_writes": true,
+      "activation": false,
+      "next": "Owner must prove unique prefix versus SKILLS; no skill activation or merge"
     }
   ],
   "blockers": [
@@ -327,18 +384,23 @@
     "HANDOFF original Q090 and failed Qwen3 review"
   ],
   "approval_gates": {
-    "CORE_new_trusted_contract": "MISSING",
-    "REVIEW_new_CORE_exact_SHA_verdict": "MISSING",
+    "CORE_new_trusted_contract": "CANDIDATE_HOST_SMOKE_ONLY_REVIEW_REJECT_LIVE",
+    "REVIEW_new_CORE_exact_SHA_verdict": "REJECT_LIVE_EXACT_F4F24",
     "PROVIDERS_Windows_and_external_review": "MISSING",
     "SKILLS_12_candidate_reconcile_and_external_identity": "MISSING",
     "OPS_independent_owner_review": "MISSING",
     "HANDOFF": "PAUSED_BY_USER",
     "branch_ruleset": "NOT_VERIFIED",
     "release": "BLOCKED",
-    "PROVIDERS_SCOPE": "P0_HOLD",
+    "PROVIDERS_SCOPE": "RESOLVED_IN_PR13_ONLY",
     "SKILLS_12_CANDIDATE": "PREPARED_NOT_REVIEWED",
     "UI": "OWNER_NOT_ASSIGNED",
-    "OPS_ISSUE6": "INDEPENDENT_REVIEW_PENDING"
+    "OPS_ISSUE6": "INDEPENDENT_REVIEW_PENDING",
+    "TRUSTED_HOST": "PAPER_SCOPE_RESERVED_OWNER_UNASSIGNED",
+    "CENTRAL_MULTIPC_CAS": "NOT_IMPLEMENTED",
+    "TRUSTED_SIGNER": "NOT_IMPLEMENTED",
+    "REAL_OS_PRINCIPAL_SEPARATION": "NOT_DEPLOYED",
+    "GOD_MODE": "NO_OWNED_UNIQUE_SCOPE"
   },
   "runs_not_to_repeat": [
     "REVIEW historical receipt spoof #38630845464",
@@ -416,5 +478,8 @@
     ]
   },
   "priority_vs_incident_ambiguity": "Issue #8 P0/P1 are priority ranks; escalation P0/P1/P2 in coordination are incident severity and must not be conflated.",
-  "new_mvp_scope_contract": "bridge/neurofactory/coordination/MVP_READ_ONLY_INTERFACE_CONTRACT_20261015_RU.md"
+  "new_mvp_scope_contract": "bridge/neurofactory/coordination/MVP_READ_ONLY_INTERFACE_CONTRACT_20261015_RU.md",
+  "central_task_contract": "bridge/neurofactory/coordination/central-multipc-transaction-v1.json",
+  "central_task_documentation": "bridge/neurofactory/coordination/CENTRAL_MULTIPC_TRANSACTION_V1_RU.md",
+  "trust_host_issue": 14
 }
