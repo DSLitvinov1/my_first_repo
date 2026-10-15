@@ -187,6 +187,47 @@ def run(browser, viewport, name):
         page.locator('#file-input').set_input_files(str(path))
         page.wait_for_function("document.querySelector('#toast').textContent.includes('снимок принят')",timeout=3500)
         assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text()
+    # Card navigation regression: independent coordinator card survives absent OPS queue,
+    # and clicking the second OPS task must select THAT task, not the first.
+    with TemporaryDirectory() as temp:
+        original=json.loads((ROOT/'demo-bundle.json').read_text())
+        board=json.loads(json.dumps(original))
+        board['project_detail']={
+            'project':None,'source_verified':False,'observed_at':None,
+            'bridge':{'reported_state':'UNKNOWN','display_state':'UNKNOWN','seconds_since_reported_heartbeat':None},
+            'workers':[],'queue':[],'checkpoint_counts':{},'problems':[],
+            'stopped_tasks':[],'possibly_stalled_tasks':[],
+            'last_reported_success':None,'last_reported_failure':None,'last_reported_run':None,
+            'last_run_sort':'HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED'
+        }
+        board['consistency']={'board_project_match':None,'status':'SOURCE_MISSING','does_not_attest_provenance':True}
+        path=Path(temp)/'coordinator-only.json'
+        path.write_text(json.dumps(board),encoding='utf8')
+        page.locator('#toast').evaluate('(e)=> {e.hidden=true;e.textContent=""}')
+        page.locator('#file-input').set_input_files(str(path))
+        page.wait_for_function("document.querySelector('#toast').textContent.includes('снимок принят')",timeout=3500)
+        page.locator('#navigation button').filter(has_text='Карточка задания').click()
+        assert page.get_by_text('Отдельная карточка координатора',exact=True).count()==1
+        assert 'NF-DEV-05-Q091' in page.locator('#main-content').inner_text()
+        assert 'Нет данных OPS о задании' in page.locator('#main-content').inner_text()
+        two=json.loads(json.dumps(original))
+        second=json.loads(json.dumps(two['project_detail']['queue'][0]))
+        second['task_id']='NF-DEV-05-Q092'
+        two['project_detail']['queue'].append(second)
+        two['project_detail']['checkpoint_counts']['PARTIAL']=2
+        two['project_detail']['stopped_tasks'].append(second['task_id'])
+        path=Path(temp)/'two-tasks.json'
+        path.write_text(json.dumps(two),encoding='utf8')
+        page.locator('#toast').evaluate('(e)=> {e.hidden=true;e.textContent=""}')
+        page.locator('#file-input').set_input_files(str(path))
+        page.wait_for_function("document.querySelector('#toast').textContent.includes('снимок принят')",timeout=3500)
+        page.locator('#navigation button').filter(has_text='Очередь заданий').click()
+        choices=page.locator('#main-content .item-row button').filter(has_text='Карточка')
+        assert choices.count()==2
+        choices.nth(1).click()
+        first_card=page.locator('#main-content .card').first.inner_text()
+        assert 'NF-DEV-05-Q092' in first_card and 'NF-DEV-05-Q091' not in first_card
+        assert page.get_by_text('Отдельная карточка координатора',exact=True).count()==1
     page.locator('#reset-btn').click()
     assert 'Демонстрационные данные' in page.locator('.warning-strip').inner_text()
     page.close()
