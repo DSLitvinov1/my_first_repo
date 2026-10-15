@@ -1,0 +1,36 @@
+name: Neurofactory REVIEW CORE read-only SQLite snapshot negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-readonly-snapshot.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  one_readonly_snapshot_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: REVIEW-only checkout
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Isolate review scripts outside candidate checkout
+        run: |
+          cp bridge/neurofactory/development/review_owned/independent_core_readonly_snapshot_20261015.py "$RUNNER_TEMP/review_readonly_snapshot.py"
+          cp bridge/neurofactory/development/review_owned/independent_external_anchor_20261015.py "$RUNNER_TEMP/independent_external_anchor_20261015.py"
+      - name: Checkout exact CORE candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ce6191153d0a0c1d742de6233897186a0b46896b
+          persist-credentials: false
+          clean: true
+      - name: Require exact target SHA
+        run: test "$(git rev-parse HEAD)" = "ce6191153d0a0c1d742de6233897186a0b46896b"
+      - name: Run one adversarial read-only SQLite file snapshot test
+        run: python3 -B "$RUNNER_TEMP/review_readonly_snapshot.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
+      - name: Ensure core checkout unchanged
+        run: git diff --exit-code
