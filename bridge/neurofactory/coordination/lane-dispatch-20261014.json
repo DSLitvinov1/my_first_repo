@@ -304,7 +304,7 @@
     {
       "id": "NF-COORD-TRUSTED-HOST-20261015",
       "owner": "trusted_host",
-      "status": "TESTED_POSTGRESQL_OFFLINE_CAS_14_PASS_LIVE_REJECT",
+      "status": "26_PASS_OFFLINE_CAS_AND_ED25519_FORMAT_NO_TRUSTED_DEPLOYMENT",
       "issue": 14,
       "branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
@@ -330,23 +330,22 @@
       "live_permission": false,
       "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
       "pr": 15,
-      "candidate_sha": "1a106b1124f9560f15c2508f9209ab89fbb5a8e8",
+      "candidate_sha": "7d0a359b8e1e4f8b0133d0fec541d56ed51505ef",
       "evidence": {
-        "run_id": 38724948294,
-        "job_id": 116388365652,
-        "postgres": "16_ephemeral",
-        "tests": "14/14 PASS",
-        "runner": "GitHub-hosted Ubuntu",
-        "connections": 2,
-        "physical_hosts": 1,
-        "independent_review": false
+        "cas_run": 38724948294,
+        "cas_tests_pass": 14,
+        "crypto_run": 38725993141,
+        "crypto_tests_pass": 12,
+        "independent_review": false,
+        "physical_pc_count": 1,
+        "signing_key_deployed": false
       },
       "remaining": [
-        "real host identity and sandbox separation",
-        "issuer independent signed monotonic anchored record",
-        "live PostgreSQL API authentication and cross-host fencing",
-        "two real physical PC tests",
-        "independent security REVIEW"
+        "real OS isolation",
+        "external signed issuer with protected key/antirollback",
+        "two physical computers and authenticated API",
+        "CORE independent approval",
+        "separate host independent review"
       ]
     },
     {
@@ -416,9 +415,9 @@
     "SKILLS_12_CANDIDATE": "PREPARED_NOT_REVIEWED",
     "UI": "OWNER_NOT_ASSIGNED",
     "OPS_ISSUE6": "INDEPENDENT_REVIEW_PENDING",
-    "TRUSTED_HOST": "OFFLINE_CAS_TESTED_NOT_DEPLOYED",
-    "CENTRAL_MULTIPC_CAS": "ONE_POSTGRESQL_DB_TWO_CONNECTIONS_TESTED_NOT_MULTIPC",
-    "TRUSTED_SIGNER": "NOT_IMPLEMENTED",
+    "TRUSTED_HOST": "26_OFFLINE_TESTS_PASS_SIGNER_NOT_DEPLOYED",
+    "CENTRAL_MULTIPC_CAS": "POSTGRESQL_TWO_CONNECTIONS_ONE_RUNNER_NOT_CROSS_PC",
+    "TRUSTED_SIGNER": "ED25519_TEST_ONLY_NO_KEY_CUSTODY",
     "REAL_OS_PRINCIPAL_SEPARATION": "NOT_DEPLOYED",
     "GOD_MODE": "NO_OWNED_UNIQUE_SCOPE"
   },
