@@ -380,6 +380,38 @@ raise AssertionError("injection did not intercept target replace")
         with self.assertRaises(CoreSafetyError):
             self.q.check_external_checkpoint(external_reference)
 
+    @unittest.skipUnless(os.name == "posix", "Completed synthetic file checkpoint required")
+    def test_external_anchor_db_snapshot_race(self):
+        """Spec metadata can be replaced between old two independent SQLite reads."""
+        from unittest.mock import patch
+        self.admit()
+        held = self.q.claim("worker", now=100, lease_seconds=10)
+        self.q.apply_offline_test(self.spec["task_id"], held["token"],
+                                  self.proposal(), now=101)
+        anchored = self.q.checkpoint_fingerprint()
+        original_snapshot = self.q.snapshot
+        intervened = []
+
+        def switch_sqlite_before_second_read():
+            intervened.append(True)
+            with sqlite3.connect(self.q.db) as db:
+                raw = db.execute("SELECT spec FROM single_job WHERE singleton=1").fetchone()[0]
+                changed = json.loads(raw)
+                changed["objective"] = (
+                    "New forged objective injected between metadata and snapshot reads."
+                )
+                body = _canonical(changed)
+                db.execute("UPDATE single_job SET spec=?, spec_sha256=? WHERE singleton=1",
+                           (body.decode("utf8"), hashlib.sha256(body).hexdigest()))
+            return original_snapshot()
+
+        with patch.object(self.q, "snapshot", side_effect=switch_sqlite_before_second_read):
+            result = self.q.check_external_checkpoint(anchored)
+            self.assertFalse(intervened,
+                "External checkpoint comparison read stale metadata across separate SQLite snapshots")
+            self.assertFalse(result["external_origin_attested"])
+            self.assertFalse(result["execution_allowed"])
+
     def test_poisoned_receipt_cannot_appear_successful(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
