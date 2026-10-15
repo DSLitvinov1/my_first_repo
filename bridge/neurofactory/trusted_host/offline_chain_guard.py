@@ -18,7 +18,11 @@ def verify_pinned_chain(trusted_public_key, signed_events, *,
                         externally_pinned_final_digest,
                         expected_project_id, expected_source_file_sha256,
                         expected_input_task_sha256, expected_policy_sha256,
-                        expected_target):
+                        expected_target,
+                        externally_pinned_lease_epoch=None,
+                        externally_pinned_worker_id=None,
+                        externally_pinned_fencing_token_sha256=None,
+                        externally_pinned_idempotency_key=None):
     """Fail closed on truncation, replay, reorder, tamper, or wrong external head.
 
     All externally_pinned_* and expected_* values MUST originate from a
@@ -54,6 +58,10 @@ def verify_pinned_chain(trusted_public_key, signed_events, *,
             expected_input_task_sha256=expected_input_task_sha256,
             expected_policy_sha256=expected_policy_sha256,
             expected_target=expected_target,
+            externally_pinned_lease_epoch=externally_pinned_lease_epoch,
+            externally_pinned_worker_id=externally_pinned_worker_id,
+            externally_pinned_fencing_token_sha256=externally_pinned_fencing_token_sha256,
+            externally_pinned_idempotency_key=externally_pinned_idempotency_key,
         )
         parent = result["reported_receipt_digest_sha256"]
         current += 1
