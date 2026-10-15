@@ -1,0 +1,39 @@
+name: Neurofactory REVIEW exact HOST mixed chain correction
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-mixed-chain-fixed.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent_exact_source_mixed_chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout REVIEW test script only
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Save independent reviewer script outside candidate checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_host_mixed_chain_fixed_20261015.py "$RUNNER_TEMP/review_mixed_fixed.py"
+      - name: Checkout exact TRUSTED HOST
+        uses: actions/checkout@v4
+        with:
+          ref: c93320c2239fe37c3c17b75ca0ec94c632870ded
+          persist-credentials: false
+          clean: true
+      - name: Require exact tested source SHA
+        run: test "$(git rev-parse HEAD)" = "c93320c2239fe37c3c17b75ca0ec94c632870ded"
+      - name: Ephemeral independent Ed25519 test library
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_crypto"
+          "$RUNNER_TEMP/review_crypto/bin/python" -m pip -q install 'cryptography>=43,<47'
+      - name: One corrected mixed-chain check and targeted negative pins
+        run: |
+          "$RUNNER_TEMP/review_crypto/bin/python" -B "$RUNNER_TEMP/review_mixed_fixed.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: No source edits
+        run: git diff --exit-code
