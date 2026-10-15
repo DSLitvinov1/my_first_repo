@@ -17,9 +17,9 @@
       "host_witness_read_only_boundary": {
         "status": "AUTHOR_HOSTED_LINUX_19_PASS_INDEPENDENT_REVIEW_PENDING",
         "source": "bridge/neurofactory/coordination/mvp_host_witness_boundary.py",
-        "source_blob_sha": "",
+        "source_blob_sha": "295cf93b9414dc6adb3fc7392bcea5457af25176",
         "tests": "bridge/neurofactory/coordination/test_mvp_host_witness_boundary.py",
-        "test_blob_sha": "",
+        "test_blob_sha": "9667ec21628e02978fa7fd676b09c4921ae9d454",
         "local_unittest_cases_passed": 15,
         "local_py_compile_passed": true,
         "committed_candidate_sha_before_registry_update": "7986089931905c2cf1c6e08a4aefd5ad527b33bf",
@@ -51,7 +51,9 @@
         "compatibility_with_actual_core_preview": "PASS_1_TARGETED_UNTRUSTED_FORMAT_ONLY",
         "host_result_has_signed_source_fields": false,
         "host_witness_summary_cannot_authenticate_project_source_policy_target": true,
-        "latest_owned_workflow": ".github/workflows/neurofactory-coordination-host-witness-targeted.yml"
+        "latest_owned_workflow": ".github/workflows/neurofactory-coordination-host-witness-targeted.yml",
+        "field_origin_document_blob_sha": "0360b8cc3d5652de17c7c254ac60e6ae984d8eb2",
+        "exact_code_and_test_blobs_verified_after_hosted_run": true
       }
     },
     "CORE": {
