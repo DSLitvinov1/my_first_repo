@@ -1,0 +1,26 @@
+name: Neurofactory coordinator HOST witness diagnostic boundary
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/mvp_host_witness_boundary.py
+      - bridge/neurofactory/coordination/test_mvp_host_witness_boundary.py
+      - .github/workflows/neurofactory-coordination-host-witness-targeted.yml
+permissions:
+  contents: read
+jobs:
+  offline-diagnostic-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Print pinned commit
+        run: echo "REVIEWED_COORD_SHA=$(git rev-parse HEAD)"
+      - name: Validate narrow read-only diagnostic bridge and adversarial inputs
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_mvp_host_witness_boundary.py' -v
