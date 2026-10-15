@@ -56,7 +56,9 @@ class SignedEffectContractChecks(unittest.TestCase):
     def test_pinned_expectations_not_from_signed_payload(self):
         expected={"task_id","input_core_sha40","issuer_identity","issuer_key_id",
                   "prior_event_digest_sha256","event_sequence","lease_epoch",
-                  "worker_id","fencing_token_sha256","idempotency_key"}
+                  "worker_id","fencing_token_sha256","idempotency_key",
+                  "project_id","source_file_sha256","input_task_sha256",
+                  "policy_sha256","target"}
         self.assertEqual(set(self.events["external_pins_required_for_effect"]),expected)
         self.assertIn("independent",self.events["security_semantics"].lower())
 
