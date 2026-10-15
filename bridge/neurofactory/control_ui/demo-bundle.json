@@ -9,7 +9,7 @@
     {"lane":"OPS","reported_phase":"waiting_review","evidence_status":"not_verified","release_allowed":false,"commit":"e32acaba8a3c6b5dc724cc08c84ad033190b9efe","issue_url":"https://github.com/DSLitvinov1/my_first_repo/issues/6","source":{"repository":"DSLitvinov1/my_first_repo","branch":"neurofactory-ops-completion-20261015"}},
     {"lane":"SKILLS","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
     {"lane":"UI","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
-    {"lane":"HANDOFF","reported_phase":"paused","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"HANDOFF","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
     {"lane":"GODMODE","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null}
   ]},
   "project_detail": {

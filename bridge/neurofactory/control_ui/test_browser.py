@@ -58,7 +58,11 @@ def run(browser, viewport, name):
     with TemporaryDirectory() as tmp:
         queued=json.loads((ROOT/'demo-bundle.json').read_text())
         queued['project_detail']['queue'][0]['reported_state']='QUEUED'
-        queued['project_detail']['queue'][0]['display_state']='QUEUED'
+        queued['project_detail']['queue'][0]['display_state']='UNKNOWN'
+        queued['project_detail']['queue'][0]['checkpoint']['reported_state']='MISSING'
+        queued['project_detail']['checkpoint_counts']={'MISSING':1}
+        queued['project_detail']['stopped_tasks']=[]
+        queued['project_detail']['problems']=[]
         candidate=Path(tmp)/'queued.json'
         candidate.write_text(json.dumps(queued),encoding='utf8')
         page.locator('#file-input').set_input_files(str(candidate))
@@ -88,6 +92,37 @@ def run(browser, viewport, name):
         injected=tmp/'injected.json';injected.write_text(json.dumps(bad),encoding='utf8')
         page.locator('#file-input').set_input_files(str(injected))
         page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')") or page.locator('img').count()==0
+    # New negative regressions: previously accepted these four forged structures.
+    with TemporaryDirectory() as temp:
+        checks=[]
+        forged=json.loads((ROOT/'demo-bundle.json').read_text())
+        forged['project_detail']['queue'][0]['reported_state']='APPROVE'
+        checks.append(('forged-task-state',forged))
+        forged=json.loads((ROOT/'demo-bundle.json').read_text())
+        lane=next(x for x in forged['board']['lanes'] if x['lane']=='OPS')
+        lane['commit']=None;lane['issue_url']=None;lane['source']=None
+        forged['consistency']={'board_project_match':None,'status':'SOURCE_MISSING','does_not_attest_provenance':True}
+        checks.append(('missing-lane-provenance',forged))
+        forged=json.loads((ROOT/'demo-bundle.json').read_text())
+        forged['coordinator_task_card']['task_id']=None
+        forged['coordinator_task_card']['reported_phase']='unknown'
+        checks.append(('absent-card-with-sha',forged))
+        forged=json.loads((ROOT/'demo-bundle.json').read_text())
+        forged['project_detail']['last_reported_success']={
+          'id':9,'state':'COMPLETED','conclusion':'APPROVE',
+          'head_sha':'a'*40,'matches_project_head':True,
+          'url':'https://github.com/evil/repo','source_verified':False}
+        checks.append(('forged-run-conclusion',forged))
+        forged=json.loads((ROOT/'demo-bundle.json').read_text())
+        forged['consistency']['status']='DECLARATIONS_DIFFER'
+        checks.append(('forged-consistency',forged))
+        for label, payload in checks:
+            path=Path(temp)/(label+'.json')
+            path.write_text(json.dumps(payload),encoding='utf8')
+            page.locator('#toast').evaluate('(el) => { el.hidden = true; el.textContent = ""; }')
+            page.locator('#file-input').set_input_files(str(path))
+            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')",timeout=3500)
+            assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text(),label
     page.locator('#reset-btn').click()
     assert 'Демонстрационные данные' in page.locator('.warning-strip').inner_text()
     page.close()
