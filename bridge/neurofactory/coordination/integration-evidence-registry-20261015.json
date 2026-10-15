@@ -83,9 +83,9 @@
     },
     "REVIEW": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "de07a0402e62495ae6811c73900d3bc6118f14c3",
+      "head": "ba3b0f02824cc75614f796b927332546c207be47",
       "owner": "REVIEW",
-      "status": "NARROW_CORE_READONLY_SNAPSHOT_APPROVE_LIVE_REJECT_AND_OLD_HOST_MIXED_CHAIN_REJECT",
+      "status": "TECHNICALLY_INDEPENDENT_NARROW_HOST_DB_ROLE_CHECK_PASS_RELEASE_REJECT",
       "issue": 11,
       "blockers": [
         "new CORE/host protected trust implementation absent"
@@ -104,7 +104,16 @@
           "run_id": 38731892564,
           "scope": "mixed event chain false negative"
         },
-        "new_host_review": "PENDING"
+        "new_host_review": "PENDING",
+        "host_role_narrow": {
+          "run_id": 38735563325,
+          "job_id": 116423848961,
+          "review_candidate_sql_sha": "59067fd8e43425e016a8af801d65f9b9d6bcbff2",
+          "verdict": "NARROW_PASS_EPHEMERAL_POSTGRES_ROLE_SEPARATION_ONLY",
+          "authenticated_external_authority": false,
+          "privileged_admin_rewrite": "POSSIBLE"
+        },
+        "release_verdict": "REJECT_LIVE"
       }
     },
     "PROVIDERS": {
@@ -159,17 +168,24 @@
     },
     "SKILLS": {
       "repo": "DSLitvinov1/lesson3.1",
-      "head": "aa791f9ad47b0ab471932f516d24756bbd51d420",
+      "head": "35012d3cc45293f3a9fbfa2230cf9cec3acd57b1",
       "draft_pr": 558,
       "owner": "SKILLS",
       "issue": 543,
-      "status": "P2_PR558_REVIEW_ATTESTATION_FURTHER_FIXES_IN_PROGRESS_NO_INDEPENDENT_SIGNOFF",
+      "status": "DRAFT_PR558_12_DISABLED_19_PREPARED_SECURITY_NF07_FIX_OWN_4_PASS_NO_EXTERNAL_SIGNOFF",
       "evidence": {
         "parent_pr": 550,
         "parent_sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
         "parent_original_suites_run": 38659826061,
         "pass": 86,
-        "does_not_cover_child": true
+        "does_not_cover_child": true,
+        "nf07_fix": {
+          "run_id": 38735066767,
+          "tests_pass": 4,
+          "exact_sha": "35012d3cc45293f3a9fbfa2230cf9cec3acd57b1",
+          "independent_approval": false,
+          "source_scope": "core_intake_preview restricted to local prepared catalog read-only"
+        }
       },
       "blockers": [
         "exact latest PR558 independent trusted reviewer signoff missing",
@@ -196,27 +212,30 @@
     },
     "UI": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": null,
+      "head": "7169fc40272c560355e245491affbc79e8d41711",
       "issue": 10,
-      "owner": "UI — adoption pending",
-      "status": "P2_READ_ONLY_AREA_RESERVED_NO_LIVE",
+      "owner": "UI_ISOLATED_READ_ONLY",
+      "status": "OFFLINE_BROWSER_UI_ONLY_NO_EXECUTION",
       "evidence": {
-        "ops_three_layer_rendering": 38652940146
+        "issue10_comment": 6192047894,
+        "local_chromium_mobile_and_desktop_own_tests": "PASS",
+        "independent_release_approval": false
       },
       "blockers": [
-        "separate UI owner and branch not adopted",
-        "no trusted live status source"
+        "no trusted live issuer data source",
+        "no independent signoff",
+        "actions prohibited"
       ],
-      "resume": "one UI owner accepts isolated read-only prefix, no enqueue/preview action outside mock"
+      "resume": "trusted read-only feeder and separate review only after CORE/HOST release gates"
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "c3faf4bceaa5f1d0833865db29c85531387cdb72",
+      "head": "ea67e276367b2aadd13187e0a26e95731cad2701",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "MIXED_CHAIN_FIXED_OFFLINE_HIGHWATER_TESTED_REAL_ISSUER_UNDEPLOYED",
+      "status": "EPHEMERAL_POSTGRES_REAL_DB_LOGIN_ROLES_TESTED_NO_DEPLOYED_ISSUER",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -255,9 +274,10 @@
           "cas": 14,
           "signed_effect_binding": 26,
           "mixed_chain": 22,
-          "offline_highwater": 12
+          "offline_highwater": 12,
+          "db_login_roles": 11
         },
-        "total_distinct_test_scenarios": 74,
+        "total_distinct_test_scenarios": 85,
         "mixed_lifecycle_chain": {
           "source_sha": "b0623cb33a7951d83a857ae0bf0e05ebbdbaaee6",
           "run_id": 38732672023,
@@ -283,6 +303,23 @@
           "run_id": 38731892564,
           "conclusion": "REJECT_MIXED_KIND_COMPOSITION_OLD_SHA",
           "new_fixed_sha_review": "PENDING"
+        },
+        "db_roles": {
+          "candidate_sha": "ea67e276367b2aadd13187e0a26e95731cad2701",
+          "own_run": 38735237887,
+          "own_job": 116422734824,
+          "own_tests_pass": 11,
+          "independent_reviewer_run": 38735563325,
+          "independent_reviewer_job": 116423848961,
+          "independent_reviewer_sha": "ba3b0f02824cc75614f796b927332546c207be47",
+          "verified_boundary": "TWO_DISTINCT_EPHEMERAL_POSTGRES_LOGIN_ROLES_READ_VS_APPEND_WITH_DB_TRIGGER;_DB_ADMIN_CAN_DISABLE_AND_REWRITE",
+          "first_failed_run": 38734929424,
+          "first_failure": "superuser SET ROLE fixture not valid principal isolation evidence",
+          "review_first_failed_run": 38735203368,
+          "review_first_failure": "privileged admin SET ROLE confound corrected by reviewer",
+          "real_host_operating_system_identity_attested": false,
+          "independently_custodied_signer": false,
+          "independent_external_approval": false
         }
       },
       "blockers": [
@@ -297,7 +334,9 @@
         "two physical PC concurrent lease test not run",
         "exact new mixed-kind chain fix must receive independent reviewer test",
         "offline highwater stored in same DB can be coherently rolled back by administrator",
-        "separate actual host signer/key custody and antirollback trust root not deployed"
+        "separate actual host signer/key custody and antirollback trust root not deployed",
+        "PostgreSQL role isolation is only ephemeral DB logins, not Linux/Windows host OS isolation",
+        "database owner can disable trigger and coherently fork head/history; independently pinned source and real signer not implemented"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
@@ -364,9 +403,9 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST independent reviewer verify exact new mixed-kind chain SHA c3faf4bceaa5f1d0833865db29c85531387cdb72; offline highwater only as untrusted persistence",
-    "TRUSTED HOST approved custody/operator must deploy separate signer identity and monotonic externally protected rollback-resistant anchor before any real authorization",
-    "Authenticated central multi-PC API and receiver-enforced fencing followed by exact CORE/HOST independent release review before one sandbox educational transaction"
+    "TRUSTED HOST assign protected host principal and separate private-key custody plus externally held monotonic root, with signed operator permission and independent exact-SHA audit",
+    "TRUSTED HOST authenticated two physical client PostgreSQL/API/fencing test; prove no second irreversible effect after UNKNOWN",
+    "CORE owner independently validate OS sandbox and exact receipt mapper, request REVIEW release decision; Qwen only after resource and user permission"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
