@@ -126,11 +126,11 @@
     },
     "SKILLS": {
       "repo": "DSLitvinov1/lesson3.1",
-      "head": "f0b99d82760ca3ca3aefbe8b717bfd03130471f8",
+      "head": "aa791f9ad47b0ab471932f516d24756bbd51d420",
       "draft_pr": 558,
       "owner": "SKILLS",
       "issue": 543,
-      "status": "P2_NEW_PR558_CANDIDATE_INDEPENDENT_VERDICT_PENDING",
+      "status": "P2_PR558_REVIEW_ATTESTATION_FURTHER_FIXES_IN_PROGRESS_NO_INDEPENDENT_SIGNOFF",
       "evidence": {
         "parent_pr": 550,
         "parent_sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
@@ -139,9 +139,9 @@
         "does_not_cover_child": true
       },
       "blockers": [
-        "independent signed external review latest SHA needed",
-        "no CORE written acceptance",
-        "12 candidate remain disabled"
+        "exact latest PR558 independent trusted reviewer signoff missing",
+        "CORE read-only machine-format acceptance missing",
+        "all 12 inactive despite own tests"
       ],
       "resume": "exact child clean checkout targeted test+real independent signoff; maintain disabled status"
     },
@@ -199,7 +199,8 @@
           "tests_pass": 22,
           "actual_test_key": "ephemeral_only",
           "off_host_key_custody": false,
-          "independent_review": false
+          "independent_review": false,
+          "tested_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e"
         },
         "distinct_test_scenarios": 36,
         "independent_review": false,
@@ -208,7 +209,7 @@
           "comment_id": 6190880630,
           "old_host_sha": "7d0a359b8e1e4f8b0133d0fec541d56ed51505ef",
           "real_signed_effect_epoch_omission": "CONFIRMED_OLD_CODE",
-          "fixed_own_tests_new_sha": "e2491063ab7823d95f81b11452c541a3f5e",
+          "fixed_own_tests_new_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e",
           "independent_new_sha_verdict": "PENDING"
         }
       },
