@@ -17,10 +17,10 @@
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "a8f946f10ca9fbb962623537551414230906e4d2",
+      "head": "ce6191153d0a0c1d742de6233897186a0b46896b",
       "issue": 9,
       "owner": "CORE",
-      "status": "P0_LIVE_BLOCKED_EXACT_LEASE_EXPIRY_FIXED_OWN_TESTS_REVIEW_REQUIRED",
+      "status": "CORE_SQLITE_SNAPSHOT_NARROW_INDEPENDENT_PASS_LIVE_BLOCKED",
       "evidence": {
         "author_linux_host_smoke": {
           "run": 38662104225,
@@ -57,6 +57,18 @@
           "run": 38728273226,
           "problem": "lease_until equality allowed old effect exactly at expiry",
           "fixed_sha": "a8f946f10ca9fbb962623537551414230906e4d2"
+        },
+        "owner_latest": {
+          "run_id": 38730355810,
+          "linux": "27_PASS_1_SKIP",
+          "windows": "2_PASS_DISABLED_WRITER"
+        },
+        "independent_latest": {
+          "issue": 11,
+          "comment": 6191664555,
+          "run_id": 38731833190,
+          "verdict": "APPROVE_NARROW_SNAPSHOT_READBACK",
+          "release_verdict": "REJECT_LIVE"
         }
       },
       "blockers": [
@@ -64,20 +76,36 @@
         "independent review exact latest lease expiry fix pending",
         "external protected checkpoint/key custody and central side-effect fencing not deployed",
         "same-UID path relocation risk not proven safe",
-        "Windows file writer remains blocked"
+        "Windows file writer remains blocked",
+        "real separate OS UID sandbox protection and external trust root still absent"
       ],
       "resume": "CORE+TRUSTED_HOST owner actual separate OS/domain implementation then exact-SHA independent hostile-input reviewer"
     },
     "REVIEW": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "e61b1dc969401c50f19ada39e7683a1edb657908",
+      "head": "de07a0402e62495ae6811c73900d3bc6118f14c3",
       "owner": "REVIEW",
-      "status": "INDEPENDENT_NEGATIVES_CONDUCTED_LATEST_HOST_CORE_EXACT_APPROVAL_PENDING",
+      "status": "NARROW_CORE_READONLY_SNAPSHOT_APPROVE_LIVE_REJECT_AND_OLD_HOST_MIXED_CHAIN_REJECT",
       "issue": 11,
       "blockers": [
         "new CORE/host protected trust implementation absent"
       ],
-      "resume": "new exact source SHA after actual host boundary security change"
+      "resume": "new exact source SHA after actual host boundary security change",
+      "evidence": {
+        "issue11_comment": 6191664555,
+        "core_snapshot_approval": {
+          "sha": "ce6191153d0a0c1d742de6233897186a0b46896b",
+          "run_id": 38731833190,
+          "scope": "sqlite_consistency_only",
+          "release": false
+        },
+        "host_old_chain_rejection": {
+          "sha": "8a7b5b839252aeedea263df57633719dcd7ed043",
+          "run_id": 38731892564,
+          "scope": "mixed event chain false negative"
+        },
+        "new_host_review": "PENDING"
+      }
     },
     "PROVIDERS": {
       "repo": "DSLitvinov1/my_first_repo",
@@ -183,12 +211,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "8a7b5b839252aeedea263df57633719dcd7ed043",
+      "head": "c3faf4bceaa5f1d0833865db29c85531387cdb72",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_CAS_SIGNED_LINK_AND_PINNED_CHAIN_TESTED_NO_DEPLOYED_HOST_TRUST",
+      "status": "MIXED_CHAIN_FIXED_OFFLINE_HIGHWATER_TESTED_REAL_ISSUER_UNDEPLOYED",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -226,9 +254,36 @@
         "unique_current_subsuites": {
           "cas": 14,
           "signed_effect_binding": 26,
-          "chain_pinned_final": 12
+          "mixed_chain": 22,
+          "offline_highwater": 12
         },
-        "total_distinct_test_scenarios": 52
+        "total_distinct_test_scenarios": 74,
+        "mixed_lifecycle_chain": {
+          "source_sha": "b0623cb33a7951d83a857ae0bf0e05ebbdbaaee6",
+          "run_id": 38732672023,
+          "job_id": 116414044524,
+          "tests_pass": 22,
+          "distinct_new_cases": 10,
+          "independent_review": false
+        },
+        "offline_postgres_highwater": {
+          "source_sha": "c3faf4bceaa5f1d0833865db29c85531387cdb72",
+          "run_id": 38733114104,
+          "job_id": 116415538057,
+          "tests_pass": 12,
+          "db": "temporary_postgresql16",
+          "survives_separate_connections": true,
+          "malicious_db_admin_rollback_prevented": false,
+          "independent_review": false
+        },
+        "independent_host_review": {
+          "reviewed_exact_previous_host_sha": "8a7b5b839252aeedea263df57633719dcd7ed043",
+          "review_source_sha": "de07a0402e62495ae6811c73900d3bc6118f14c3",
+          "issue11_comment": 6191664555,
+          "run_id": 38731892564,
+          "conclusion": "REJECT_MIXED_KIND_COMPOSITION_OLD_SHA",
+          "new_fixed_sha_review": "PENDING"
+        }
       },
       "blockers": [
         "no protected signer host, independent key custody, monotonic antirollback",
@@ -239,7 +294,10 @@
         "CORE new SHA no independent live approval",
         "real independent monotonic highwater persistence and protected public-key pin not deployed",
         "real host OS isolation not attested",
-        "two physical PC concurrent lease test not run"
+        "two physical PC concurrent lease test not run",
+        "exact new mixed-kind chain fix must receive independent reviewer test",
+        "offline highwater stored in same DB can be coherently rolled back by administrator",
+        "separate actual host signer/key custody and antirollback trust root not deployed"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
@@ -306,9 +364,9 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST owner accepts Issue14, implement separate OS principal and independent issuer trust boundary",
-    "TRUSTED HOST implements isolated central CAS/fencing with two PC no-duplicate tests",
-    "CORE owner binds its protected writer/source evidence to central issuer and exact new independent REVIEW"
+    "TRUSTED HOST independent reviewer verify exact new mixed-kind chain SHA c3faf4bceaa5f1d0833865db29c85531387cdb72; offline highwater only as untrusted persistence",
+    "TRUSTED HOST approved custody/operator must deploy separate signer identity and monotonic externally protected rollback-resistant anchor before any real authorization",
+    "Authenticated central multi-PC API and receiver-enforced fencing followed by exact CORE/HOST independent release review before one sandbox educational transaction"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
