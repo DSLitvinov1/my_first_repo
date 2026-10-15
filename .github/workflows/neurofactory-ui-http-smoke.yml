@@ -1,0 +1,40 @@
+name: Neurofactory UI isolated HTTP browser smoke
+
+on:
+  push:
+    branches:
+      - neurofactory-ui-readonly-mvp-20261015
+    paths:
+      - bridge/neurofactory/control_ui/**
+      - .github/workflows/neurofactory-ui-http-smoke.yml
+
+permissions:
+  contents: read
+
+jobs:
+  browser-http-demo-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact UI branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated Chromium browser
+        run: |
+          python -m pip install --disable-pip-version-check playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Actual HTTP browser on desktop and mobile viewports
+        run: python bridge/neurofactory/control_ui/test_http_browser.py
+      - name: Preserve synthetic browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-http-demo-screenshots
+          path: bridge/neurofactory/control_ui/http_*.png
+          if-no-files-found: ignore
+          retention-days: 7
