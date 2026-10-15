@@ -15,7 +15,10 @@
       "bridge/neurofactory/trusted_host/",
       ".github/workflows/neurofactory-trusted-host-owned-"
     ],
-    "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
+    "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
+    "offline_implementation_owner": "COORDINATOR_TEMPORARY_USER_AUTHORIZED_NO_INDEPENDENT_APPROVAL",
+    "draft_pr": 15,
+    "offline_candidate_sha": "1a106b1124f9560f15c2508f9209ab89fbb5a8e8"
   },
   "topology": {
     "dispatch_authority": "ONE_SELF_HOSTED_POSTGRESQL_PLUS_AUTHENTICATED_HTTPS_API",
@@ -77,7 +80,16 @@
     "fencing_token_visibility": "SECRET_NEVER_IN_ISSUES_CI_UI_OPS",
     "worker_identity_authentication": "REQUIRED_EXTERNALLY_SIGNED",
     "temporary_lease_reclaim": "ONLY_WHEN_ZERO_PRE_SIDE_EFFECT_AND_ISSUER_PROVES_NO_EFFECT",
-    "multiple_winner_permission": false
+    "multiple_winner_permission": false,
+    "ephemeral_cas_test": {
+      "run_id": 38724948294,
+      "job_id": 116388365652,
+      "tests_pass": 14,
+      "postgres_version": "16",
+      "scope": "two_concurrent_connections_on_one_ubuntu_runner",
+      "not_two_independent_pcs": true,
+      "no_signing": true
+    }
   },
   "status_machine": {
     "states": [
@@ -144,10 +156,10 @@
     "host_windows_dacl_reparse": "NOT_PROVEN",
     "same_uid_rename_risk": "NOT_RESOLVED",
     "independent_signing_issuer": "NOT_DEPLOYED",
-    "central_postgres_cas": "NOT_DEPLOYED",
+    "central_postgres_cas": "OFFLINE_ONE_DB_TWO_CONNECTIONS_TESTED_NO_DEPLOYMENT",
     "replayed_fencing_negative_tests": "NOT_RUN",
     "cross_pc_two_worker_test": "NOT_RUN",
-    "review_exact_sha": "REJECT_LIVE",
+    "review_exact_sha": "REJECT_LIVE_FOR_CORE_PROD",
     "provider_real_local_model": "RESOURCE_BLOCKED",
     "skills": "INACTIVE",
     "ops": "READ_ONLY_NOT_INDEPENDENTLY_REVIEWED",
