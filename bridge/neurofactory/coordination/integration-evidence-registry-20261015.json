@@ -230,12 +230,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "ea67e276367b2aadd13187e0a26e95731cad2701",
+      "head": "02646ccb71b3892dc08f68a76525937cfe2ed194",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "EPHEMERAL_POSTGRES_REAL_DB_LOGIN_ROLES_TESTED_NO_DEPLOYED_ISSUER",
+      "status": "OFFLINE_SIGNED_WITNESS_MATCH_AND_ROLLBACK_DETECTION_TESTED_ISSUER_NOT_DEPLOYED",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -275,9 +275,10 @@
           "signed_effect_binding": 26,
           "mixed_chain": 22,
           "offline_highwater": 12,
-          "db_login_roles": 11
+          "db_login_roles": 11,
+          "signed_external_witness": 14
         },
-        "total_distinct_test_scenarios": 85,
+        "total_distinct_test_scenarios": 99,
         "mixed_lifecycle_chain": {
           "source_sha": "b0623cb33a7951d83a857ae0bf0e05ebbdbaaee6",
           "run_id": 38732672023,
@@ -320,6 +321,22 @@
           "real_host_operating_system_identity_attested": false,
           "independently_custodied_signer": false,
           "independent_external_approval": false
+        },
+        "signed_external_witness_comparison": {
+          "candidate_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+          "owned_run": 38741929077,
+          "job_id": 116445551806,
+          "scenarios_pass": 14,
+          "source": "GitHub-hosted Ubuntu PostgreSQL16 and ephemeral Ed25519 in-memory key",
+          "db_admin_coherent_rollback_vs_previous_signed_checkpoint": "DETECTED",
+          "forged_signer": "DENIED",
+          "stale_witness_sequence_with_supplied_external_pin": "DENIED",
+          "attacker_self_supplied_rollback_pin": "CAN_APPEAR_MATCHED_NO_TRUST",
+          "real_independent_signer_deployed": false,
+          "external_monotonic_sequence_durably_protected": false,
+          "independent_reviewer_approval": false,
+          "network_calls": 0,
+          "actual_external_credentials": false
         }
       },
       "blockers": [
@@ -336,7 +353,9 @@
         "offline highwater stored in same DB can be coherently rolled back by administrator",
         "separate actual host signer/key custody and antirollback trust root not deployed",
         "PostgreSQL role isolation is only ephemeral DB logins, not Linux/Windows host OS isolation",
-        "database owner can disable trigger and coherently fork head/history; independently pinned source and real signer not implemented"
+        "database owner can disable trigger and coherently fork head/history; independently pinned source and real signer not implemented",
+        "external witness comparison detects DB rollback only with independently sourced valid pinned signing key and latest witness sequence; actual pin custody and durable antirollback root absent",
+        "new signed witness comparison exact SHA lacks separate independent reviewer acceptance"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
@@ -403,9 +422,9 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST assign protected host principal and separate private-key custody plus externally held monotonic root, with signed operator permission and independent exact-SHA audit",
-    "TRUSTED HOST authenticated two physical client PostgreSQL/API/fencing test; prove no second irreversible effect after UNKNOWN",
-    "CORE owner independently validate OS sandbox and exact receipt mapper, request REVIEW release decision; Qwen only after resource and user permission"
+    "Independent REVIEW #11: verify new exact TRUSTED HOST signed witness comparison SHA 02646ccb71b3892dc08f68a76525937cfe2ed194 with forged signer, DB-admin rollback and malicious self-repinned sequence cases",
+    "Assign actual protected signer and host operator with separate OS principal, outside-DB pinned key and durable monotonic head; no real deploy or credential changes before permission",
+    "Implement authenticated two-physical-PC central claim and receiver fencing under approved host boundary; then exact CORE/HOST release review and first isolated educational transaction"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
