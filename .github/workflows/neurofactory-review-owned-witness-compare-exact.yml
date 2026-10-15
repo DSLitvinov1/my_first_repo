@@ -1,0 +1,60 @@
+name: Neurofactory REVIEW exact signed witness rollback and replay negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - bridge/neurofactory/development/review_owned/independent_witness_compare_exact_20261015.py
+      - .github/workflows/neurofactory-review-owned-witness-compare-exact.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  review_witness_ephemeral_negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nf_test
+          POSTGRES_USER: nf_review
+          POSTGRES_PASSWORD: ephemeral_reviewer_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_review -d nf_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout reviewer-authored negative only at fixed SHA
+        uses: actions/checkout@v4
+        with:
+          ref: a8fb1bb40de8dc4e5ea20a082a15801729e42d8b
+          persist-credentials: false
+      - name: Save reviewer-owned reproducer outside host source tree
+        run: cp bridge/neurofactory/development/review_owned/independent_witness_compare_exact_20261015.py "$RUNNER_TEMP/review_witness.py"
+      - name: Checkout exact, unmodified TRUSTED HOST source candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 02646ccb71b3892dc08f68a76525937cfe2ed194
+          persist-credentials: false
+          clean: true
+      - name: Assert original trusted-host commit pinned and tree clean
+        run: |
+          test "$(git rev-parse HEAD)" = "02646ccb71b3892dc08f68a76525937cfe2ed194"
+          test -z "$(git status --porcelain)"
+      - name: Install isolated PostgreSQL and crypto test libraries
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_witness_venv"
+          "$RUNNER_TEMP/review_witness_venv/bin/python" -m pip install --disable-pip-version-check 'psycopg[binary]==3.2.6' 'cryptography==44.0.3'
+      - name: Run reviewer-owned signed witness negatives
+        env:
+          REVIEW_ONLY_EPHEMERAL_PG_DSN: postgresql://nf_review:ephemeral_reviewer_only@127.0.0.1:5432/nf_test
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONNOUSERSITE: "1"
+        run: |
+          "$RUNNER_TEMP/review_witness_venv/bin/python" -B "$RUNNER_TEMP/review_witness.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Ensure HOST source not modified during test
+        run: git diff --exit-code
