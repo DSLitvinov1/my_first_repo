@@ -91,7 +91,7 @@ def compare_signed_witness_to_ephemeral_postgres(
         "witness_key_id":(expected_witness_key_id,_ID),
         "previous_witness_sha256":(externally_pinned_previous_witness_sha256,_SHA64)
     }
-    if (type(trusted_public_key) is not Ed25519PublicKey or
+    if (not isinstance(trusted_public_key,Ed25519PublicKey) or
         any(not _matches(value,pattern) for value,pattern in expected.values()) or
         type(externally_pinned_next_witness_sequence) is not int or
         externally_pinned_next_witness_sequence < 1 or
