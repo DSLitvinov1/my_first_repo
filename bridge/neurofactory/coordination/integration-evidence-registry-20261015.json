@@ -96,14 +96,16 @@
     },
     "OPS": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "head": "e32acaba8a3c6b5dc724cc08c84ad033190b9efe",
       "owner": "OPS",
       "issue": 6,
-      "status": "P2_READ_ONLY_OWN_TESTS_PASS_INDEPENDENT_UNASSIGNED",
+      "status": "READ_ONLY_BOOL_SCHEMA_PATCHED_REVIEW_PENDING",
       "evidence": {
-        "run": 38652940146,
-        "ubuntu_tests_pass": 34,
-        "windows_tests_pass": 34
+        "run_id": 38722745638,
+        "windows_job_success": true,
+        "linux_job_success": true,
+        "tests_in_source_per_platform": 35,
+        "independent_review": false
       },
       "blockers": [
         "no independent reviewer assigned",
@@ -165,25 +167,29 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": null,
+      "head": "1a106b1124f9560f15c2508f9209ab89fbb5a8e8",
       "issue": 14,
-      "owner": "TRUSTED HOST — not assigned",
+      "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "P0_PREREQUISITE_UNIMPLEMENTED_P2_OWNER_UNASSIGNED",
+      "status": "POSTGRES_CAS_14_PASS_HOST_NOT_DEPLOYED",
       "evidence": {
-        "scope_in_registry": true,
-        "reference_doc": "bridge/neurofactory/coordination/CENTRAL_MULTIPC_TRANSACTION_V1_RU.md"
+        "run_id": 38724948294,
+        "job_id": 116388365652,
+        "tests_passed": 14,
+        "connections": 2,
+        "physical_computers": 1,
+        "independent_review": false
       },
       "blockers": [
-        "no adopted author and separate branch",
-        "no central PostgreSQL transactional CAS with epoch fencing",
-        "no signed append-only independent monotonic issuer",
-        "no real distinct OS identities and ACL attestation",
-        "no no-retry reconciliation across two PCs"
+        "issuer_not_deployed",
+        "separate_OS_identity_not_attested",
+        "cross_pc_test_not_run",
+        "signed_receipts_missing"
       ],
       "resume": "explicit owner acceptance, own isolated implementation, two-PC adversarial tests and independent review",
-      "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
+      "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
+      "pr": 15
     },
     "HANDOFF": {
       "repo": "DSLitvinov1/my_first_repo",
