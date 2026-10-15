@@ -126,6 +126,7 @@
       "MANUAL_STOP"
     ],
     "required_fields": [
+      "schema",
       "task_id",
       "project_id",
       "input_core_sha40",
@@ -151,6 +152,7 @@
     "independently_trusted_issuer": false,
     "event_schema_revision": "v1.1-test-only-no-live-approval",
     "signed_payload_common_fields": [
+      "schema",
       "task_id",
       "project_id",
       "input_core_sha40",
@@ -194,6 +196,7 @@
       ]
     },
     "effect_readback_signed_fields": [
+      "schema",
       "task_id",
       "project_id",
       "input_core_sha40",
