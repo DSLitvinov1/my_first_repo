@@ -17,7 +17,8 @@ def event(seq=1,prev=PREV):
     return {"schema":"neurofactory.trusted_checkpoint_event.v1",
             "task_id":TASK,"project_id":"nf-sandbox",
             "input_core_sha40":CORE,"source_file_sha256":"b"*64,
-            "input_task_sha256":"c"*64,"event_kind":"AUTHORIZE_TASK",
+            "input_task_sha256":"c"*64,"policy_sha256":"9"*64,
+            "target":"src/test_part.py","event_kind":"AUTHORIZE_TASK",
             "event_sequence":seq,"prior_event_digest_sha256":prev,
             "core_checkpoint_digest_sha256":"d"*64,
             "issuer_identity":"issuer-test-id","issuer_key_id":"test-key-01",
@@ -32,6 +33,11 @@ class OfflineIssuerTests(unittest.TestCase):
         return verify_with_externally_pinned_state(
             pub if pub is not None else self.public,signed,
             expected_task_id=TASK,expected_core_sha40=core,
+            expected_project_id="nf-sandbox",
+            expected_source_file_sha256="b"*64,
+            expected_input_task_sha256="c"*64,
+            expected_policy_sha256="9"*64,
+            expected_target="src/test_part.py",
             expected_issuer_identity="issuer-test-id",
             expected_key_id="test-key-01",
             externally_pinned_prev_digest=prev,
@@ -135,6 +141,11 @@ class OfflineIssuerTests(unittest.TestCase):
         return verify_with_externally_pinned_state(
             self.public,signed,expected_task_id=TASK,
             expected_core_sha40=CORE,
+            expected_project_id="nf-sandbox",
+            expected_source_file_sha256="b"*64,
+            expected_input_task_sha256="c"*64,
+            expected_policy_sha256="9"*64,
+            expected_target="src/test_part.py",
             expected_issuer_identity="issuer-test-id",
             expected_key_id="test-key-01",
             externally_pinned_prev_digest=PREV,
@@ -206,6 +217,11 @@ class OfflineIssuerTests(unittest.TestCase):
                 result=verify_with_externally_pinned_state(
                     self.public,signed,
                     expected_task_id=TASK,expected_core_sha40=CORE,
+                    expected_project_id="nf-sandbox",
+                    expected_source_file_sha256="b"*64,
+                    expected_input_task_sha256="c"*64,
+                    expected_policy_sha256="9"*64,
+                    expected_target="src/test_part.py",
                     expected_issuer_identity="issuer-test-id",
                     expected_key_id="test-key-01",
                     externally_pinned_prev_digest=PREV,
@@ -227,6 +243,59 @@ class OfflineIssuerTests(unittest.TestCase):
         signed=sign_offline_fixture(self.key,self.effect())
         with self.assertRaises(IssuerBoundaryError):
             self.verify_effect(signed,epoch=True)
+
+    def test_valid_signed_effect_wrong_external_policy_is_denied(self):
+        signed=sign_offline_fixture(self.key,self.effect())
+        with self.assertRaises(IssuerBoundaryError):
+            verify_with_externally_pinned_state(
+                self.public,signed,expected_task_id=TASK,
+                expected_core_sha40=CORE,expected_project_id="nf-sandbox",
+                expected_source_file_sha256="b"*64,
+                expected_input_task_sha256="c"*64,
+                expected_policy_sha256="8"*64,
+                expected_target="src/test_part.py",
+                expected_issuer_identity="issuer-test-id",expected_key_id="test-key-01",
+                externally_pinned_prev_digest=PREV,externally_pinned_next_sequence=1,
+                externally_pinned_lease_epoch=7,
+                externally_pinned_worker_id="worker-test",
+                externally_pinned_fencing_token_sha256="f"*64,
+                externally_pinned_idempotency_key="e"*64
+            )
+
+    def test_other_project_file_input_target_denied_with_valid_signature(self):
+        signed=sign_offline_fixture(self.key,event())
+        params=dict(expected_task_id=TASK,expected_core_sha40=CORE,
+                    expected_project_id="nf-sandbox",
+                    expected_source_file_sha256="b"*64,
+                    expected_input_task_sha256="c"*64,
+                    expected_policy_sha256="9"*64,
+                    expected_target="src/test_part.py",
+                    expected_issuer_identity="issuer-test-id",
+                    expected_key_id="test-key-01",
+                    externally_pinned_prev_digest=PREV,
+                    externally_pinned_next_sequence=1)
+        for field,value in (("expected_project_id","other-project"),
+                            ("expected_source_file_sha256","8"*64),
+                            ("expected_input_task_sha256","8"*64),
+                            ("expected_target","docs/other.md")):
+            values=dict(params)
+            values[field]=value
+            with self.subTest(field=field),self.assertRaises(IssuerBoundaryError):
+                verify_with_externally_pinned_state(self.public,signed,**values)
+
+    def test_policy_must_be_in_signed_canonical_payload(self):
+        payload=event()
+        del payload["policy_sha256"]
+        with self.assertRaises(IssuerBoundaryError):
+            sign_offline_fixture(self.key,payload)
+
+    def test_noncanonical_or_unsafe_target_denied(self):
+        for unsafe in ("src/../secret.py","src/./other.py","src//a.py",
+                       "docs/file.exe","src/sub\\evil.py","/abs/path.py"):
+            payload=event()
+            payload["target"]=unsafe
+            with self.subTest(target=unsafe),self.assertRaises(IssuerBoundaryError):
+                sign_offline_fixture(self.key,payload)
 
 if __name__=="__main__":
     unittest.main()
