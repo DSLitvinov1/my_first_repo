@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "project": "НЕЙРОЗАВОД",
   "as_of": "2026-10-14",
   "authority": "COORDINATOR assignment, adoption by each ChatGPT chat must be explicitly confirmed",
@@ -140,6 +140,22 @@
       ],
       "next": "Only after one designated chat accepts role: create isolated branch; develop mock-only Russian PC/mobile UI with zero launch controls; independent review before any live bindings",
       "cannot": "No writes to CORE, OPS, providers, coordination, production or real GitHub; no run/queue publisher, no paid services"
+    },
+    {
+      "id": "trusted_host",
+      "primary_chat": "TRUSTED HOST — owner not yet assigned",
+      "repository": "DSLitvinov1/my_first_repo",
+      "branch": "neurofactory-trusted-host-owned-20261015",
+      "branch_status": "RESERVED_NOT_CREATED",
+      "status": "PROVISIONAL_OWNER_ACCEPTANCE_REQUIRED",
+      "issue": 14,
+      "responsibility": "Own future central transaction and external checkpoint proofs, not CORE or PROVIDERS operations",
+      "allowed": [
+        "bridge/neurofactory/trusted_host/",
+        ".github/workflows/neurofactory-trusted-host-owned-"
+      ],
+      "live_execution": false,
+      "owner_acceptance": false
     }
   ],
   "conflicts_and_holds": [
