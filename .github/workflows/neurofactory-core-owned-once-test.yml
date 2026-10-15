@@ -5,6 +5,7 @@ on:
     paths:
       - 'bridge/neurofactory/development/core_owned/one_task_core.py'
       - 'bridge/neurofactory/development/core_owned/test_one_task_core.py'
+      - 'bridge/neurofactory/development/core_owned/ONE_TASK_MVP_RU.md'
       - '.github/workflows/neurofactory-core-owned-once-test.yml'
   workflow_dispatch:
 
