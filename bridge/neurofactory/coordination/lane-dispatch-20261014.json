@@ -195,7 +195,7 @@
       "trusted_external_reviewer_approval": "MISSING",
       "independent_review_request": "PR #540 comment 6178480450",
       "candidate_branch": "neurofactory-skills-unified-profiles-20261015",
-      "candidate_sha": "571a8668680456db6b12b9991f57f9a465461906",
+      "candidate_sha": "aa791f9ad47b0ab471932f516d24756bbd51d420",
       "draft_pr": 542,
       "independent_issue": 543,
       "candidate_approved_count": 0,
@@ -330,7 +330,7 @@
       "live_permission": false,
       "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
       "pr": 15,
-      "candidate_sha": "7d0a359b8e1e4f8b0133d0fec541d56ed51505ef",
+      "candidate_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e",
       "evidence": {
         "cas_run": 38724948294,
         "cas_tests_pass": 14,
