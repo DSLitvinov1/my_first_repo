@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   core-windows-crash-path:
-    name: Windows hosted only crash boundary and safe path (NO Ollama)
+    name: Windows hosted blocked writer and safe path (NO Ollama)
     runs-on: windows-latest
     timeout-minutes: 5
     steps:
@@ -26,8 +26,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Verify Windows subprocess dies after replace with no replay
-        run: python -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py -k killed_after_atomic_file_replace
+      - name: Verify Windows unsupported writer refuses file effect
+        run: python -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py -k windows_writer_explicitly_disabled
       - name: Verify Win32 reserved device paths are rejected
         run: python -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py -k windows_reserved_device_names
       - name: Verify no tracked modifications
