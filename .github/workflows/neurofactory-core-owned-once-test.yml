@@ -17,6 +17,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  core-windows-crash-path:
+    name: Windows hosted only crash boundary and safe path (NO Ollama)
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout pinned candidate without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Windows subprocess dies after replace with no replay
+        run: python -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py -k killed_after_atomic_file_replace
+      - name: Verify Win32 reserved device paths are rejected
+        run: python -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_one_task_core.py -k windows_reserved_device_names
+      - name: Verify no tracked modifications
+        run: git diff --exit-code
+
   core-offline-test:
     name: deterministic single-task sandbox tests (NO Ollama)
     runs-on: ubuntu-latest
