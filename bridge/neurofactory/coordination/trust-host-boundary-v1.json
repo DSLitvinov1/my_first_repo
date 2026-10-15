@@ -132,7 +132,9 @@
     "lease_epoch": "strict positive int (not bool or float), independently pinned current epoch",
     "idempotency_key": "strict 64 lowercase hex for PRE_SIDE_EFFECT/EFFECT_READBACK, pinned independently",
     "fencing_token_sha256": "64 lowercase hex, must be compared to independently pinned active lease",
-    "identity_binding": "EFFECT_READBACK must include and sign lease_epoch, worker_id, fencing_token_sha256 and idempotency_key; compare each to trusted external state Signature MUST bind project, source-file SHA, input-task SHA, policy SHA and canonical target path to independently pinned values."
+    "identity_binding": "EFFECT_READBACK must include and sign lease_epoch, worker_id, fencing_token_sha256 and idempotency_key; compare each to trusted external state Signature MUST bind project, source-file SHA, input-task SHA, policy SHA and canonical target path to independently pinned values.",
+    "tested_own_host_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2",
+    "tested_own_host_run": 38729474058
   },
   "permission_matrix": {
     "CORE": {
@@ -243,6 +245,6 @@
     "handoff": "PAUSED_BY_USER"
   },
   "documentation": "bridge/neurofactory/coordination/TRUSTED_HOST_BOUNDARY_V1_20261015_RU.md",
-  "reviewed_core_new_sha": "cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34",
+  "reviewed_core_new_sha": "a8f946f10ca9fbb962623537551414230906e4d2",
   "reviewed_core_new_sha_independent_approval": false
 }
