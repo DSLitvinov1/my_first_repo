@@ -87,4 +87,36 @@ class Targeted(unittest.TestCase):
     def test_bool_checkpoint_not_truthy(self):
         h=host();h['checkpoint_matches_signed_witness']=1
         with self.assertRaises(BoundaryError):self.check(h=h)
+    def test_windows_device_aliases_and_unmapped_extensions_denied(self):
+        for x in ('src/CON.py','src/AUX.txt','docs/PRN.md',
+                  'src/com1.json','src/lpt9.py','docs/item.txt',
+                  'src/item.md','src/item.exe','docs/folder./item.md'):
+            c=core();c['provider_relative_path']=x
+            with self.subTest(x=x),self.assertRaises(BoundaryError):
+                self.check(c=c)
+    def test_proposed_sha_is_not_signed_witness_binding(self):
+        baseline=self.check()
+        c=core()
+        c['source_sha']='f'*40
+        c['source_sha256']='e'*64
+        c['input_sha256']='d'*64
+        forged=self.check(c=c)
+        self.assertEqual(forged['diagnostic_status'],
+                         baseline['diagnostic_status'])
+        self.assertEqual(forged['proposed_core_sha40'],'f'*40)
+        self.assertIs(forged['witness_contains_signed_source_fields'],False)
+        for k in ('provenance_authenticated','signed_target_binding_verified',
+                  'owner_authorization_verified','live_execution_allowed',
+                  'publication_allowed','automatic_retry_allowed'):
+            self.assertIs(forged[k],False)
+        self.assertEqual(forged['integration_gate'],
+                         'BLOCKED_NONLIVE_DIAGNOSTIC_ONLY')
+    def test_bounded_paths_and_valid_extensions(self):
+        for x in ('docs/guide.md','src/code.py','src/nested/data.json',
+                  'src/nested/file.txt'):
+            c=core();c['provider_relative_path']=x
+            self.assertEqual(self.check(c=c)['integration_gate'],
+                             'BLOCKED_NONLIVE_DIAGNOSTIC_ONLY')
+        c=core();c['provider_relative_path']='src/'+'a'*114+'.py'
+        with self.assertRaises(BoundaryError):self.check(c=c)
 if __name__=='__main__':unittest.main()
