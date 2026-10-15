@@ -21,7 +21,7 @@
       "owner": "core",
       "chat": "Нейрозавод 1",
       "branch": "neurofactory-core-queue-owned-20261013",
-      "status": "P0_INDEPENDENT_REVIEW_REJECT_LIVE_WAIT_HOST_TRUST",
+      "status": "P0_CORE_EXACT_LEASE_EXPIRY_SAFETY_PATCH_NO_LIVE_APPROVAL",
       "input_commit": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "scope": [
         "bridge/neurofactory/development/core_owned/",
@@ -44,7 +44,7 @@
       "exact_sha_still": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
       "linked_issue": 9,
       "next": "Owner CORE only: real host OS identity isolation, issuer anchor and external fencing before new writer changes; independent review on each new exact SHA.",
-      "candidate_sha": "f4f24d16c5a71263441d0df939ba98cbd76a66ae",
+      "candidate_sha": "a8f946f10ca9fbb962623537551414230906e4d2",
       "independent_evidence": {
         "issue": 11,
         "comment": 6181833967,
@@ -304,7 +304,7 @@
     {
       "id": "NF-COORD-TRUSTED-HOST-20261015",
       "owner": "trusted_host",
-      "status": "26_PASS_OFFLINE_CAS_AND_ED25519_FORMAT_NO_TRUSTED_DEPLOYMENT",
+      "status": "40_TESTS_OWN_OFFLINE_CAS_CRYPTO_NO_REAL_ISSUER",
       "issue": 14,
       "branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
@@ -330,12 +330,12 @@
       "live_permission": false,
       "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
       "pr": 15,
-      "candidate_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e",
+      "candidate_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2",
       "evidence": {
         "cas_run": 38724948294,
         "cas_tests_pass": 14,
-        "crypto_run": 38725993141,
-        "crypto_tests_pass": 12,
+        "crypto_run": 38729474058,
+        "crypto_tests_pass": 26,
         "independent_review": false,
         "physical_pc_count": 1,
         "signing_key_deployed": false
@@ -415,9 +415,9 @@
     "SKILLS_12_CANDIDATE": "PREPARED_NOT_REVIEWED",
     "UI": "OWNER_NOT_ASSIGNED",
     "OPS_ISSUE6": "INDEPENDENT_REVIEW_PENDING",
-    "TRUSTED_HOST": "26_OFFLINE_TESTS_PASS_SIGNER_NOT_DEPLOYED",
+    "TRUSTED_HOST": "40_OFFLINE_TESTS_NO_REAL_HOST",
     "CENTRAL_MULTIPC_CAS": "POSTGRESQL_TWO_CONNECTIONS_ONE_RUNNER_NOT_CROSS_PC",
-    "TRUSTED_SIGNER": "ED25519_TEST_ONLY_NO_KEY_CUSTODY",
+    "TRUSTED_SIGNER": "TEST_ED25519_NO_REAL_KEY_CUSTODY_OR_ROLLBACK",
     "REAL_OS_PRINCIPAL_SEPARATION": "NOT_DEPLOYED",
     "GOD_MODE": "NO_OWNED_UNIQUE_SCOPE"
   },
