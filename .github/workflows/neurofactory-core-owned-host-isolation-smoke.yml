@@ -1,0 +1,31 @@
+name: Neurofactory CORE distinct UID sandbox isolation smoke
+on:
+  push:
+    branches: [neurofactory-core-queue-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/test_host_isolation_core.py'
+      - 'bridge/neurofactory/development/core_owned/HOST_ISOLATION_PROFILE_RU.md'
+      - '.github/workflows/neurofactory-core-owned-host-isolation-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  distinct-uid-only:
+    name: isolated POSIX host ACL/DAC smoke (NO Ollama)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact candidate without saved credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm runner is ephemeral root-capable Linux host
+        run: |
+          test "$(uname -s)" = "Linux"
+          sudo -n id -u
+      - name: Different OS uid denied private CORE workspace, trusted host still writes synthetic file
+        run: sudo -n python3 -B -m unittest discover -v -s bridge/neurofactory/development/core_owned -p test_host_isolation_core.py
+      - name: Ensure repository untouched
+        run: git diff --exit-code
