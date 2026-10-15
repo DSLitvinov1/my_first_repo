@@ -183,12 +183,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "3724dda83f7b352cb535c87e95687ae9b12957f2",
+      "head": "8a7b5b839252aeedea263df57633719dcd7ed043",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_SIGNED_SOURCE_POLICY_EFFECT_CONTEXT_TESTED_REAL_ISSUER_NOT_DEPLOYED",
+      "status": "OFFLINE_CAS_SIGNED_LINK_AND_PINNED_CHAIN_TESTED_NO_DEPLOYED_HOST_TRUST",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -215,7 +215,20 @@
           "real_signed_effect_epoch_omission": "CONFIRMED_OLD_CODE",
           "fixed_own_tests_new_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e",
           "independent_new_sha_verdict": "PENDING"
-        }
+        },
+        "externally_pinned_chain": {
+          "run_id": 38731360084,
+          "job_id": 116409669481,
+          "tests_passed": 12,
+          "host": "GitHub-hosted Ubuntu",
+          "trusted_pin_storage_deployed": false
+        },
+        "unique_current_subsuites": {
+          "cas": 14,
+          "signed_effect_binding": 26,
+          "chain_pinned_final": 12
+        },
+        "total_distinct_test_scenarios": 52
       },
       "blockers": [
         "no protected signer host, independent key custody, monotonic antirollback",
@@ -223,7 +236,10 @@
         "real separated OS identities/ACL and sandbox parent isolation missing",
         "cross-PC API/fencing and two-physical-client test absent",
         "independent review exact latest host SHA missing",
-        "CORE new SHA no independent live approval"
+        "CORE new SHA no independent live approval",
+        "real independent monotonic highwater persistence and protected public-key pin not deployed",
+        "real host OS isolation not attested",
+        "two physical PC concurrent lease test not run"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
