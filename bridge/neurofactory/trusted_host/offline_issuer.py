@@ -32,6 +32,17 @@ _FIELDS = {"schema", "task_id", "project_id", "input_core_sha40",
            "issuer_key_id", "issued_at_utc"}
 _KINDS = {"AUTHORIZE_TASK", "LEASE_CLAIM", "PRE_SIDE_EFFECT",
           "EFFECT_READBACK", "MANUAL_STOP"}
+_LEASE_KINDS = {"LEASE_CLAIM", "PRE_SIDE_EFFECT", "EFFECT_READBACK", "MANUAL_STOP"}
+_EFFECT_KINDS = {"PRE_SIDE_EFFECT", "EFFECT_READBACK"}
+_LEASE_FIELDS = {"lease_epoch", "worker_id", "fencing_token_sha256"}
+_EFFECT_FIELDS = {"idempotency_key"}
+
+def _expected_fields(kind):
+    if type(kind) is not str or kind not in _KINDS:
+        raise IssuerBoundaryError("invalid event kind")
+    return (_FIELDS
+            | (_LEASE_FIELDS if kind in _LEASE_KINDS else set())
+            | (_EFFECT_FIELDS if kind in _EFFECT_KINDS else set()))
 
 
 def _is_text(value, pattern):
@@ -39,7 +50,7 @@ def _is_text(value, pattern):
 
 
 def _valid_payload(payload):
-    if type(payload) is not dict or set(payload) != _FIELDS:
+    if type(payload) is not dict or set(payload) != _expected_fields(payload.get("event_kind")):
         raise IssuerBoundaryError("unknown or missing signed event field")
     if (payload["schema"] != "neurofactory.trusted_checkpoint_event.v1" or
         not _is_text(payload["task_id"], _TASK) or
@@ -57,6 +68,14 @@ def _valid_payload(payload):
         not _is_text(payload["issuer_key_id"], _ID) or
         not _is_text(payload["issued_at_utc"], _UTC)):
         raise IssuerBoundaryError("invalid signed event payload")
+    if payload["event_kind"] in _LEASE_KINDS:
+        if (type(payload["lease_epoch"]) is not int or payload["lease_epoch"] < 1 or
+            not _is_text(payload["worker_id"], _ID) or
+            not _is_text(payload["fencing_token_sha256"], _SHA64)):
+            raise IssuerBoundaryError("invalid signed lease epoch/holder/fence")
+    if payload["event_kind"] in _EFFECT_KINDS:
+        if not _is_text(payload["idempotency_key"], _SHA64):
+            raise IssuerBoundaryError("missing or malformed signed idempotency key")
 
 
 def _canonical(payload):
@@ -81,7 +100,10 @@ def verify_with_externally_pinned_state(
     trusted_public_key, signed_event, *,
     expected_task_id, expected_core_sha40,
     expected_issuer_identity, expected_key_id,
-    externally_pinned_prev_digest, externally_pinned_next_sequence
+    externally_pinned_prev_digest, externally_pinned_next_sequence,
+    externally_pinned_lease_epoch=None, externally_pinned_worker_id=None,
+    externally_pinned_fencing_token_sha256=None,
+    externally_pinned_idempotency_key=None
 ):
     """Verify one link against externally pinned key+sequence+previous digest.
 
@@ -109,6 +131,26 @@ def verify_with_externally_pinned_state(
         payload["prior_event_digest_sha256"] != externally_pinned_prev_digest or
         payload["event_sequence"] != externally_pinned_next_sequence):
         raise IssuerBoundaryError("wrong external identity/source/sequence")
+    if payload["event_kind"] in _LEASE_KINDS:
+        if (type(externally_pinned_lease_epoch) is not int or
+            externally_pinned_lease_epoch < 1 or
+            not _is_text(externally_pinned_worker_id, _ID) or
+            not _is_text(externally_pinned_fencing_token_sha256, _SHA64) or
+            payload["lease_epoch"] != externally_pinned_lease_epoch or
+            payload["worker_id"] != externally_pinned_worker_id or
+            payload["fencing_token_sha256"] != externally_pinned_fencing_token_sha256):
+            raise IssuerBoundaryError("signed lease not bound to pinned holder/epoch/fence")
+    elif any(x is not None for x in (externally_pinned_lease_epoch,
+                                    externally_pinned_worker_id,
+                                    externally_pinned_fencing_token_sha256,
+                                    externally_pinned_idempotency_key)):
+        raise IssuerBoundaryError("authorization event cannot spoof lease binding")
+    if payload["event_kind"] in _EFFECT_KINDS:
+        if (not _is_text(externally_pinned_idempotency_key, _SHA64) or
+            payload["idempotency_key"] != externally_pinned_idempotency_key):
+            raise IssuerBoundaryError("signed effect not bound to pinned idempotency key")
+    elif externally_pinned_idempotency_key is not None:
+        raise IssuerBoundaryError("unexpected effect key on non-effect event")
     encoded=signed_event["signature_base64"]
     if type(encoded) is not str or len(encoded)>128:
         raise IssuerBoundaryError("malformed detached signature")
@@ -126,6 +168,7 @@ def verify_with_externally_pinned_state(
         "task_id":payload["task_id"],"event_sequence":payload["event_sequence"],
         "reported_receipt_digest_sha256":hashlib.sha256(canonical_receipt).hexdigest(),
         "matches_supplied_external_anchor":True,
+        "lease_and_effect_binding_reported":payload["event_kind"] in _LEASE_KINDS,
         "external_anchor_provenance_supplied_by_host":False,
         "separate_signer_host_attested":False,
         "live_execution_allowed":False,"publication_allowed":False,
