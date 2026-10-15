@@ -51,3 +51,9 @@
 `REVIEW_REJECT_LIVE` для CORE `ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3`. `TRUST_ISSUER=NOT_IMPLEMENTED`. `SAME_UID_CONTAINMENT=NOT_PROVEN`. `WINDOWS_FILE_WRITER=DISABLED`. `CROSS_HOST_CAS=NOT_IMPLEMENTED`. `MODEL=NOT_RUN`. `HANDOFF=PAUSED_BY_USER`. `RELEASE=BLOCKED`.
 
 Это пригодный к обсуждению/реализации межкомпонентный контракт, **не доказательство реализации**. Снимать блокировку только после отдельно проверенных доказательств новых границ.
+
+## Уточнение обязательных привязок эффекта (после независимого REVIEW)
+
+Для LEASE_CLAIM и MANUAL_STOP подпись содержит `lease_epoch`, `worker_id`, `fencing_token_sha256`. Для PRE_SIDE_EFFECT и EFFECT_READBACK к этим полям обязательно добавляется `idempotency_key`. Указанные значения являются частью **подписанного** канонического payload; внешний проверяющий сравнивает их с независимо удостоверенным текущим CAS-epoch, worker, digest активного fencing-token и одобренным idempotency key. Нельзя принимать значения только потому, что они находятся в том же правильно подписанном payload. Любое расхождение/отсутствие означает STOP/UNKNOWN, не повтор.
+
+AUTHORIZE_TASK не содержит полей аренды. Жёсткий список полей задаётся отдельно на каждый вид события в `central-multipc-transaction-v1.json` и `trust-host-boundary-v1.json`. Новый тестовый verifier TRUSTED HOST PR №15 проверен адресно 22/22 по GitHub-run №38727612394, однако реальные системные роли, внешний issuer, key custody, неизменяемый антиоткатный регистр, сетевая аутентификация и независимая приёмка не готовы. Заключение по рабочему CORE остаётся REJECT LIVE.
