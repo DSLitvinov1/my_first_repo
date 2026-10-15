@@ -13,6 +13,7 @@ import json
 import re
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
 
 
 class IssuerBoundaryError(ValueError):
@@ -46,6 +47,7 @@ def _valid_payload(payload):
         not _is_text(payload["input_core_sha40"], _SHA40) or
         not _is_text(payload["source_file_sha256"], _SHA64) or
         not _is_text(payload["input_task_sha256"], _SHA64) or
+        type(payload["event_kind"]) is not str or
         payload["event_kind"] not in _KINDS or
         type(payload["event_sequence"]) is not int or
         payload["event_sequence"] < 1 or
@@ -66,7 +68,7 @@ def _canonical(payload):
 def sign_offline_fixture(private_key, payload):
     """For isolated tests only; never generates, persists or installs keys."""
     canonical = _canonical(payload)
-    if not callable(getattr(private_key,"sign",None)):
+    if not isinstance(private_key,Ed25519PrivateKey):
         raise IssuerBoundaryError("no signer")
     signature = private_key.sign(canonical)
     if type(signature) is not bytes or len(signature) != 64:
@@ -87,7 +89,7 @@ def verify_with_externally_pinned_state(
     principal. This function does not provide that principal or antirollback
     storage and cannot authorize a real effect, even for a valid signature.
     """
-    if (not callable(getattr(trusted_public_key,"verify",None)) or
+    if (not isinstance(trusted_public_key,Ed25519PublicKey) or
         type(signed_event) is not dict or
         set(signed_event) != {"payload","signature_base64"} or
         not _is_text(expected_task_id,_TASK) or
