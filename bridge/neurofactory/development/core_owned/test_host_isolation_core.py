@@ -13,7 +13,7 @@ import subprocess
 import sys
 import unittest
 
-from test_one_task_core import CoreOnceTests, TARGET
+import test_one_task_core
 from one_task_core import CoreSafetyError
 
 
@@ -24,13 +24,13 @@ class SeparateUidHostSmoke(unittest.TestCase):
     def test_untrusted_uid_cannot_move_core_parent_or_modify_db(self):
         attacker = pwd.getpwnam("nobody")
         self.assertNotEqual(attacker.pw_uid, os.geteuid())
-        fixture = CoreOnceTests("test_one_file_real_offline_write_and_checkpoint")
+        fixture = test_one_task_core.CoreOnceTests("test_one_file_real_offline_write_and_checkpoint")
         fixture.setUp()
         try:
             fixture.base.chmod(0o711)
             fixture.workspace.chmod(0o711)
-            fixture.secure_parents(TARGET)
-            parent = fixture.q.sandbox / TARGET
+            fixture.secure_parents(test_one_task_core.TARGET)
+            parent = fixture.q.sandbox / test_one_task_core.TARGET
             parent = parent.parent
             outside = fixture.base / "attacker_destination"
             outside.mkdir(mode=0o777)
