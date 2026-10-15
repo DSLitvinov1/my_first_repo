@@ -19,7 +19,9 @@ class SignedEffectContractChecks(unittest.TestCase):
         cls.events=cls.wire["events"]
 
     def test_effect_signed_fields_include_epoch_and_idempotency(self):
-        minimum={"lease_epoch","worker_id","fencing_token_sha256","idempotency_key"}
+        minimum={"lease_epoch","worker_id","fencing_token_sha256","idempotency_key",
+                  "project_id","source_file_sha256","input_task_sha256",
+                  "policy_sha256","target"}
         fields=set(self.events["effect_readback_signed_fields"])
         self.assertTrue(minimum <= fields)
         self.assertTrue(minimum <= set(self.events["required_fields"]))
