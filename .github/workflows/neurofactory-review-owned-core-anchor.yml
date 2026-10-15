@@ -1,0 +1,40 @@
+name: Neurofactory REVIEW exact CORE external anchor
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-core-anchor.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independently_pinned_anchor_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout read-only REVIEW test
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Copy REVIEW script outside candidate Git checkout
+        shell: bash
+        run: cp bridge/neurofactory/development/review_owned/independent_external_anchor_20261015.py "$RUNNER_TEMP/review_external_anchor.py"
+      - name: Read-only checkout exact audited CORE commit
+        uses: actions/checkout@v4
+        with:
+          ref: ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3
+          persist-credentials: false
+          clean: true
+      - name: Refuse any other CORE commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3"
+      - name: Independent missing/fake/forged anchor negatives
+        shell: bash
+        run: python3 -B "$RUNNER_TEMP/review_external_anchor.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
+      - name: Assert code checkout unchanged
+        shell: bash
+        run: git diff --exit-code
