@@ -382,6 +382,9 @@ class OneTaskCore:
 
     def snapshot(self):
         with self._connect() as con:
+            # Keep local checkpoint metadata locked through file readback.
+            # This is NOT an external signature or protection from same-UID tampering.
+            con.execute("BEGIN")
             row = self._row(con)
             if row is None:
                 return {"state": "EMPTY"}
