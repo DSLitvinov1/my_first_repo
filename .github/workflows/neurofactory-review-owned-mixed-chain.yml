@@ -1,0 +1,39 @@
+name: Neurofactory REVIEW HOST mixed signed-event chain negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-mixed-chain.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  one_mixed_chain_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reviewer-only source checkout
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Isolate own negative before HOST checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_host_mixed_chain_20261015.py "$RUNNER_TEMP/review_mixed_chain.py"
+      - name: Checkout exact TRUSTED HOST candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 8a7b5b839252aeedea263df57633719dcd7ed043
+          persist-credentials: false
+          clean: true
+      - name: Require exact signed chain code SHA
+        run: test "$(git rev-parse HEAD)" = "8a7b5b839252aeedea263df57633719dcd7ed043"
+      - name: Create isolated crypto test environment
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_crypto"
+          "$RUNNER_TEMP/review_crypto/bin/python" -m pip -q install 'cryptography>=43,<47'
+      - name: One valid multi-kind event chain composition negative
+        run: |
+          "$RUNNER_TEMP/review_crypto/bin/python" -B "$RUNNER_TEMP/review_mixed_chain.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Confirm code checkout untouched
+        run: git diff --exit-code
