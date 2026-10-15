@@ -146,6 +146,8 @@ class OneTaskCore:
             raise CoreSafetyError("Trusted Git checkout missing")
         self.state = _safe_directory(self.root / "state", create=True)
         self.sandbox = _safe_directory(self.root / "sandbox", create=True)
+        sandbox_stat = self.sandbox.lstat()
+        self._sandbox_identity = (sandbox_stat.st_dev, sandbox_stat.st_ino)
         self.db = self.state / "queue.sqlite3"
         if self.db.is_symlink():
             raise CoreSafetyError("Database symlink refused")
@@ -265,6 +267,96 @@ class OneTaskCore:
             raise CoreSafetyError("Hardlinked sandbox file refused")
         return file
 
+    def _write_one_pinned(self, target, payload, previous_sha, resulting_sha):
+        """POSIX descriptor-relative sandbox mutation; Windows fails closed.
+
+        Pin each directory inode (O_NOFOLLOW); never resolve the destination
+        by a mutable pathname during os.replace. A same-UID attacker can still
+        move already-open directories: identity/readback guards then STOP,
+        rather than accepting a false trusted checkpoint.
+        """
+        if (os.name != "posix" or not all(hasattr(os, name) for name in
+                ("O_DIRECTORY", "O_NOFOLLOW", "O_CLOEXEC"))):
+            raise CoreSafetyError("Windows writer disabled pending authorized ACL/reparse host sandbox")
+        parts = target.split("/")
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+        handles = []
+        identifiers = []
+        temporary = None
+        try:
+            root_fd = os.open(self.sandbox, flags)
+            handles.append(root_fd)
+            for index, part in enumerate(("", *parts[:-1])):
+                if index:
+                    try:
+                        child = os.open(part, flags, dir_fd=handles[-1])
+                    except FileNotFoundError:
+                        os.mkdir(part, mode=0o700, dir_fd=handles[-1])
+                        child = os.open(part, flags, dir_fd=handles[-1])
+                    handles.append(child)
+                stat_dir = os.fstat(handles[-1])
+                if (not stat.S_ISDIR(stat_dir.st_mode) or stat_dir.st_mode & 0o077
+                        or (index == 0 and
+                            (stat_dir.st_dev, stat_dir.st_ino) != self._sandbox_identity)):
+                    raise CoreSafetyError("Sandbox directory ownership/identity invalid")
+                identifiers.append((stat_dir.st_dev, stat_dir.st_ino))
+            parent = handles[-1]
+            basename = parts[-1]
+            try:
+                existing = os.open(basename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+            except FileNotFoundError:
+                if previous_sha != EMPTY_SHA:
+                    raise CoreSafetyError("Approved original disappeared before write")
+            else:
+                try:
+                    info = os.fstat(existing)
+                    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+                            _sha(os.read(existing, 65537)) != previous_sha):
+                        raise CoreSafetyError("Original source inode or checksum changed")
+                finally:
+                    os.close(existing)
+            temporary = ".core-once-" + secrets.token_hex(16)
+            temporary_fd = os.open(temporary,
+                os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+                0o600, dir_fd=parent)
+            with os.fdopen(temporary_fd, "wb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, basename, src_dir_fd=parent, dst_dir_fd=parent)
+            temporary = None
+            os.fsync(parent)
+            result_fd = os.open(basename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=parent)
+            try:
+                info = os.fstat(result_fd)
+                if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
+                        _sha(os.read(result_fd, 12001)) != resulting_sha):
+                    raise CoreSafetyError("Pinned output readback failed")
+            finally:
+                os.close(result_fd)
+            # If a directory was renamed away while pinned, never acknowledge it.
+            check_fds = []
+            try:
+                check_fds.append(os.open(self.sandbox, flags))
+                for part in parts[:-1]:
+                    check_fds.append(os.open(part, flags, dir_fd=check_fds[-1]))
+                if any((os.fstat(fd).st_dev, os.fstat(fd).st_ino) != expected
+                       for fd, expected in zip(check_fds, identifiers)):
+                    raise CoreSafetyError("Sandbox path moved during write")
+            finally:
+                for fd in reversed(check_fds):
+                    os.close(fd)
+        except (OSError, ValueError) as exc:
+            raise CoreSafetyError("Pinned sandbox write could not be trusted: STOP") from exc
+        finally:
+            if temporary is not None and handles:
+                try:
+                    os.unlink(temporary, dir_fd=handles[-1])
+                except OSError:
+                    pass
+            for fd in reversed(handles):
+                os.close(fd)
+
     def enqueue(self, spec, *, trusted_approval_check=None):
         """Admission requires EXTERNAL authenticated approval + actual local Git preimage."""
         _validate_spec(spec)
@@ -366,6 +458,8 @@ class OneTaskCore:
         now = int(time.time()) if now is None else now
         if type(now) is not int or now < 0 or type(token) is not str:
             raise CoreSafetyError("Invalid claimant context")
+        if os.name != "posix":
+            raise CoreSafetyError("Windows sandbox writer intentionally disabled until trusted host approval")
         with self._connect() as con:
             con.execute("BEGIN IMMEDIATE")
             row = self._row(con)
@@ -384,24 +478,8 @@ class OneTaskCore:
             con.execute("UPDATE single_job SET state='APPLYING' WHERE singleton=1")
             con.execute("COMMIT")
         payload = proposal["content"].encode("utf-8")
-        target = self._file(row["spec"]["target"], make_parents=True)
-        temp_name = None
-        try:
-            fd, temp_name = tempfile.mkstemp(prefix=".core-once-", dir=str(self.state))
-            with os.fdopen(fd, "wb") as stream:
-                stream.write(payload)
-                stream.flush()
-                os.fsync(stream.fileno())
-            os.replace(temp_name, target)
-            temp_name = None
-            if os.name != "nt":
-                dir_fd = os.open(str(target.parent), os.O_RDONLY)
-                try:
-                    os.fsync(dir_fd)
-                finally:
-                    os.close(dir_fd)
-            if _sha(target.read_bytes()) != proposal["content_sha256"]:
-                raise CoreSafetyError("Sandbox readback did not match proposed file")
+        self._write_one_pinned(row["spec"]["target"], payload,
+                               row["spec"]["source_sha256"], proposal["content_sha256"])
             receipt = {"schema": "neurofactory.core.offline_receipt.v1",
                        "task_id": task_id, "source_sha": row["spec"]["source_sha"],
                        "source_sha256": row["spec"]["source_sha256"],
@@ -419,9 +497,6 @@ class OneTaskCore:
                             (receipt["result_sha256"], _canonical(receipt).decode()))
                 con.execute("COMMIT")
             return receipt
-        finally:
-            if temp_name is not None:
-                os.unlink(temp_name)
 
     def recover(self, *, now=None):
         """Expired CLAIMED/APPLYING is UNKNOWN; never automatically retry or publish."""
