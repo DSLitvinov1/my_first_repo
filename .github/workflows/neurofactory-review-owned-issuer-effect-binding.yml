@@ -35,6 +35,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/review_venv"
           "$RUNNER_TEMP/review_venv/bin/python" -m pip -q install 'cryptography>=43,<47'
       - name: Independent signature with missing effect fencing
-        run: "$RUNNER_TEMP/review_venv/bin/python" -B "$RUNNER_TEMP/review_issuer_binding.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+        run: |
+          "$RUNNER_TEMP/review_venv/bin/python" -B "$RUNNER_TEMP/review_issuer_binding.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
       - name: Confirm source untouched
         run: git diff --exit-code
