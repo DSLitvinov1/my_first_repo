@@ -1,0 +1,45 @@
+name: Neurofactory REVIEW independent CORE boundary negatives
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-core-adversarial.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent_negative_reproducer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only checkout of independent REVIEW-owned script
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+
+      - name: Preserve review-only script outside source checkout
+        shell: bash
+        run: |
+          cp bridge/neurofactory/development/review_owned/independent_core_negative_20261015.py "$RUNNER_TEMP/independent_core_negative.py"
+
+      - name: Read-only checkout of exact audited CORE SHA
+        uses: actions/checkout@v4
+        with:
+          ref: a6677ca6de0f995a297d6f75824e9e8b91ee8de9
+          persist-credentials: false
+          clean: true
+
+      - name: Verify audited commit exactly
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "a6677ca6de0f995a297d6f75824e9e8b91ee8de9"
+          git status --porcelain
+
+      - name: Execute TWO independent sandbox-only negatives (NO Ollama)
+        shell: bash
+        run: |
+          python3 -B "$RUNNER_TEMP/independent_core_negative.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
