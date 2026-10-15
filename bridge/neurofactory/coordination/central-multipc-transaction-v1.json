@@ -10,11 +10,12 @@
     "assigned_principal": null,
     "acceptance": "REQUIRED",
     "reserved_branch": "neurofactory-trusted-host-owned-20261015",
-    "branch_created": false,
+    "branch_created": true,
     "allowed_paths": [
       "bridge/neurofactory/trusted_host/",
       ".github/workflows/neurofactory-trusted-host-owned-"
-    ]
+    ],
+    "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
   },
   "topology": {
     "dispatch_authority": "ONE_SELF_HOSTED_POSTGRESQL_PLUS_AUTHENTICATED_HTTPS_API",
