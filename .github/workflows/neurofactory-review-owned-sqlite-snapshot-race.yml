@@ -1,0 +1,38 @@
+name: Neurofactory REVIEW CORE atomic sqlite snapshot adversarial
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-sqlite-snapshot-race.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sqlite_snapshot_one_adversarial_case:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read-only checkout REVIEW script
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Copy two REVIEW-only fixture files off checkout
+        run: |
+          cp bridge/neurofactory/development/review_owned/independent_core_sqlite_snapshot_race_20261015.py "$RUNNER_TEMP/review_snapshot_race.py"
+          cp bridge/neurofactory/development/review_owned/independent_external_anchor_20261015.py "$RUNNER_TEMP/independent_external_anchor_20261015.py"
+      - name: Read-only exact CORE code checkout
+        uses: actions/checkout@v4
+        with:
+          ref: cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34
+          persist-credentials: false
+          clean: true
+      - name: Confirm exact SHA and no source modifications
+        run: test "$(git rev-parse HEAD)" = "cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34"
+      - name: One independent concurrent metadata swap negative
+        run: python3 -B "$RUNNER_TEMP/review_snapshot_race.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
+      - name: Confirm source still unmodified
+        run: git diff --exit-code
