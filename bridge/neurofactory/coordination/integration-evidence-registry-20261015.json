@@ -8,28 +8,50 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOST_WITNESS_DIAGNOSTIC_BRIDGE_TESTED_LOCAL_RELEASE_BLOCKED",
+      "status": "HOSTED_LINUX_19_PASS_DIAGNOSTIC_ONLY_REVIEW_PENDING",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
       "owner": "COORDINATOR",
       "evidence": "New TRUSTED HOST Issue14, owner registry and central multi-PC protocol in coordination/",
       "host_witness_read_only_boundary": {
-        "status": "IMPLEMENTED_AUTHOR_LOCAL_TARGETED_PASS_INDEPENDENT_REVIEW_PENDING",
+        "status": "AUTHOR_HOSTED_LINUX_19_PASS_INDEPENDENT_REVIEW_PENDING",
         "source": "bridge/neurofactory/coordination/mvp_host_witness_boundary.py",
-        "source_blob_sha": "e5880b22d260251b553a3034622d4c2bacd12faa",
+        "source_blob_sha": "",
         "tests": "bridge/neurofactory/coordination/test_mvp_host_witness_boundary.py",
-        "test_blob_sha": "6846e4cdc6953cc956cad151dbc4e9157868a2df",
+        "test_blob_sha": "",
         "local_unittest_cases_passed": 15,
         "local_py_compile_passed": true,
         "committed_candidate_sha_before_registry_update": "7986089931905c2cf1c6e08a4aefd5ad527b33bf",
         "local_git_hash_object_matches_remote_blobs": true,
-        "github_ci_for_this_change": "NOT_RUN",
-        "independent_review": "PENDING",
+        "github_ci_for_this_change": "HOSTED_19_PASS_AT_EXACT_EXECUTABLE_SOURCE_SHA_2058646",
+        "independent_review": "PENDING_ON_NEW_COORD_SOURCE_AND_HOST_WITNESS",
         "field_origin_decision": "bridge/neurofactory/coordination/CORE_HOST_FIELD_ORIGIN_V1_RU.md",
         "host_witness_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
         "output_kind": "READ_ONLY_FORMAT_ONLY_BLOCKED_NONLIVE_DIAGNOSTIC_ONLY",
-        "live_allowed": false
+        "live_allowed": false,
+        "hosted_linux_targeted": {
+          "run_id": 38777671103,
+          "job_id": 116569418771,
+          "exact_executed_coordinator_sha": "2058646fb2c708a51f9bde389210a84a43145a9d",
+          "platform": "ubuntu-24.04",
+          "tests_pass": 19,
+          "tests_fail": 0,
+          "conclusion": "success",
+          "independent": false,
+          "verified_via": "GitHub Actions jobs and exact job logs"
+        },
+        "previous_linux_run": {
+          "run_id": 38747004341,
+          "job_id": 116463168032,
+          "exact_executed_sha": "e8ecb5a406dc48147752675329645d4732a4529f",
+          "tests_pass": 18,
+          "conclusion": "success"
+        },
+        "compatibility_with_actual_core_preview": "PASS_1_TARGETED_UNTRUSTED_FORMAT_ONLY",
+        "host_result_has_signed_source_fields": false,
+        "host_witness_summary_cannot_authenticate_project_source_policy_target": true,
+        "latest_owned_workflow": ".github/workflows/neurofactory-coordination-host-witness-targeted.yml"
       }
     },
     "CORE": {
@@ -439,9 +461,9 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "Independent REVIEW #11: verify new exact TRUSTED HOST signed witness comparison SHA 02646ccb71b3892dc08f68a76525937cfe2ed194 with forged signer, DB-admin rollback and malicious self-repinned sequence cases",
-    "Assign actual protected signer and host operator with separate OS principal, outside-DB pinned key and durable monotonic head; no real deploy or credential changes before permission",
-    "Implement authenticated two-physical-PC central claim and receiver fencing under approved host boundary; then exact CORE/HOST release review and first isolated educational transaction"
+    "REVIEW #11: independent targeted HOST witness comparator exact SHA 02646ccb71b3892dc08f68a76525937cfe2ed194, coherent DB-admin rollback/fork, false witness, wrong signer and stolen/self-chosen stale external pin; no production approval",
+    "REVIEW #11: independent targeted COORD exact source mvp_host_witness_boundary.py current blob and pinned 19 author Linux tests; reject forged source same task, dangerous provider aliases and any live authorization",
+    "Real approved and isolated HOST OS signer/key custody/out-of-DB monotonic head/owner permission, followed by authenticated 2 physical PC lease+receiver fencing and exact CORE/HOST release review; all live gates blocked"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
