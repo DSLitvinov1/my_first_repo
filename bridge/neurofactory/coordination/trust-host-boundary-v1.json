@@ -66,7 +66,9 @@
       "worker_id",
       "fencing_token_sha256",
       "idempotency_key",
-      "signature"
+      "signature",
+      "policy_sha256",
+      "target"
     ],
     "event_kinds": [
       "AUTHORIZE_TASK",
@@ -94,7 +96,9 @@
       "core_checkpoint_digest_sha256",
       "issuer_identity",
       "issuer_key_id",
-      "issued_at_utc"
+      "issued_at_utc",
+      "policy_sha256",
+      "target"
     ],
     "detached_signed_envelope_fields": [
       "payload",
@@ -128,7 +132,7 @@
     "lease_epoch": "strict positive int (not bool or float), independently pinned current epoch",
     "idempotency_key": "strict 64 lowercase hex for PRE_SIDE_EFFECT/EFFECT_READBACK, pinned independently",
     "fencing_token_sha256": "64 lowercase hex, must be compared to independently pinned active lease",
-    "identity_binding": "EFFECT_READBACK must include and sign lease_epoch, worker_id, fencing_token_sha256 and idempotency_key; compare each to trusted external state"
+    "identity_binding": "EFFECT_READBACK must include and sign lease_epoch, worker_id, fencing_token_sha256 and idempotency_key; compare each to trusted external state Signature MUST bind project, source-file SHA, input-task SHA, policy SHA and canonical target path to independently pinned values."
   },
   "permission_matrix": {
     "CORE": {
