@@ -79,12 +79,12 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
             p.write_text(json.dumps(malicious), encoding="utf-8")
             page.locator("#toast").evaluate("(el) => { el.hidden=true; el.textContent=''; }")
             page.locator("#file-input").set_input_files(str(p))
-            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')", timeout=4000)
+            page.locator("#toast").filter(has_text="Файл отклонён").wait_for(state="visible", timeout=4000)
             duplicate = Path(tmp) / "duplicate-keys.json"
             duplicate.write_text('{"schema":1,"schema":1}', encoding="utf-8")
             page.locator("#toast").evaluate("(el) => { el.hidden=true; el.textContent=''; }")
             page.locator("#file-input").set_input_files(str(duplicate))
-            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')", timeout=4000)
+            page.locator("#toast").filter(has_text="Файл отклонён").wait_for(state="visible", timeout=4000)
         assert "Неподтверждённый локальный снимок" in page.locator(".warning-strip").inner_text()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "horizontal overflow"
         assert not errors, errors
