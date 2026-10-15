@@ -5,6 +5,7 @@ on:
       - neurofactory-review-owned-20261013
     paths:
       - .github/workflows/neurofactory-review-owned-expired-lease.yml
+      - bridge/neurofactory/development/review_owned/independent_core_expired_lease_20261015.py
   workflow_dispatch:
 
 permissions:
