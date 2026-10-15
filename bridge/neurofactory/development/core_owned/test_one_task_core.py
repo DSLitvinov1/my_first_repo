@@ -256,6 +256,48 @@ except CoreSafetyError:
         with self.assertRaises(CoreSafetyError):
             self.q.snapshot()
 
+    def test_poisoned_receipt_cannot_appear_successful(self):
+        self.admit()
+        claim = self.q.claim("worker", now=100)
+        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                  self.proposal(), now=101)
+        with sqlite3.connect(self.q.db) as db:
+            receipt = json.loads(db.execute(
+                "SELECT receipt FROM single_job WHERE singleton=1").fetchone()[0])
+            receipt["published"] = True
+            db.execute("UPDATE single_job SET receipt=? WHERE singleton=1",
+                       (json.dumps(receipt),))
+        with self.assertRaises(CoreSafetyError):
+            self.q.snapshot()
+
+    def test_poisoned_result_digest_cannot_appear_successful(self):
+        self.admit()
+        claim = self.q.claim("worker", now=100)
+        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                  self.proposal(), now=101)
+        with sqlite3.connect(self.q.db) as db:
+            db.execute("UPDATE single_job SET result_sha256=? WHERE singleton=1",
+                       ("0" * 64,))
+        with self.assertRaises(CoreSafetyError):
+            self.q.snapshot()
+
+    def test_windows_reserved_device_names_rejected_on_every_host(self):
+        from one_task_core import _safe_target
+        for suffix in ("NUL.py", "con.txt", "Com1.md", "folder/AUX.json",
+                       "folder/trailing./child.py", "folder/PRN.txt"):
+            with self.subTest(suffix=suffix), self.assertRaises(CoreSafetyError):
+                _safe_target(
+                    "bridge/neurofactory/development/core_owned/" + suffix)
+
+    def test_checkpointed_snapshot_must_read_back_result(self):
+        self.admit()
+        claim = self.q.claim("worker", now=100)
+        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                  self.proposal(), now=101)
+        (self.q.sandbox / TARGET).write_text("tampered after commit", "utf8")
+        with self.assertRaises(CoreSafetyError):
+            self.q.snapshot()
+
     def test_unmodified_source_is_not_overwritten_on_admission(self):
         path = self.repo / TARGET
         path.parent.mkdir(parents=True, exist_ok=True)
