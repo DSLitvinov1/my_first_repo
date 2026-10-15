@@ -54,6 +54,19 @@ def run(browser, viewport, name):
     page.locator('#file-input').set_input_files(str(ROOT/'demo-bundle.json'))
     page.get_by_role('heading', name='Центр наблюдения').wait_for()
     page.get_by_text('Неподтверждённый локальный снимок', exact=False).wait_for()
+    # Valid offline OPS QUEUED claim must import but remain UNKNOWN in UI.
+    with TemporaryDirectory() as tmp:
+        queued=json.loads((ROOT/'demo-bundle.json').read_text())
+        queued['project_detail']['queue'][0]['reported_state']='QUEUED'
+        queued['project_detail']['queue'][0]['display_state']='QUEUED'
+        candidate=Path(tmp)/'queued.json'
+        candidate.write_text(json.dumps(queued),encoding='utf8')
+        page.locator('#file-input').set_input_files(str(candidate))
+        page.get_by_text('Неподтверждённый локальный снимок', exact=False).wait_for()
+        page.locator('#navigation button').filter(has_text='Очередь заданий').click()
+        assert 'Заявлено: QUEUED' in page.locator('#main-content').inner_text()
+        assert 'UNKNOWN' in page.locator('#main-content').inner_text()
+        page.locator('#navigation button').filter(has_text='Главная панель').click()
     # Forged permissions, duplicate keys, and HTML payload must not be accepted
     with TemporaryDirectory() as temp:
         tmp=Path(temp)
@@ -61,6 +74,11 @@ def run(browser, viewport, name):
         bad['actions_allowed']['publish']=True
         forged=tmp/'forged.json';forged.write_text(json.dumps(bad),encoding='utf8')
         page.locator('#file-input').set_input_files(str(forged))
+        page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')")
+        bad=json.loads((ROOT/'demo-bundle.json').read_text())
+        bad['project_detail']['problems'][0]['code']='APPROVE'
+        incident=tmp/'incident.json';incident.write_text(json.dumps(bad),encoding='utf8')
+        page.locator('#file-input').set_input_files(str(incident))
         page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')")
         duplicate=tmp/'duplicate.json';duplicate.write_text('{"schema":1,"schema":1}',encoding='utf8')
         page.locator('#file-input').set_input_files(str(duplicate))
