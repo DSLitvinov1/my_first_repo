@@ -1,0 +1,190 @@
+{
+  "schema": "neurofactory.coordination.trust_host_boundary.v1",
+  "revision": "2026-10-15",
+  "status": "PROPOSED_NOT_IMPLEMENTED",
+  "owner": "COORDINATOR",
+  "repo": "DSLitvinov1/my_first_repo",
+  "branch": "neurofactory-coordinator-mvp-status-20261015",
+  "reviewed_core": {
+    "sha": "ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3",
+    "review_sha": "5f4259793e2b21503ef3b7865b2cb9e05e17fd3a",
+    "issue": 11,
+    "comment_id": 6181724062,
+    "run_id": 38661559153,
+    "decision": "REJECT_LIVE",
+    "independent_test_complete": true
+  },
+  "non_negotiable_boundaries": {
+    "os_isolation": {
+      "state": "NOT_PROVEN",
+      "owner": "CORE_HOST_OWNER",
+      "requirement": "CORE database and sandbox parent not renamable by same identity as untrusted worker; independently test moved already-open parent; Windows writer stays disabled"
+    },
+    "external_checkpoint_issuer": {
+      "state": "NOT_IMPLEMENTED",
+      "owner": "TRUSTED_HOST_OWNER",
+      "requirement": "off-host independent OS identity, authentic signed or platform-immutable append-only checkpoint receipts, monotonic per-task sequence and protected anti-rollback"
+    },
+    "authorization": {
+      "state": "NOT_IMPLEMENTED",
+      "owner": "CORE_HOST_OWNER",
+      "requirement": "signed and authenticated task approval bound to exact source Git SHA, file digest, input digest, one allowed path; no approval via JSON/string"
+    },
+    "global_lease": {
+      "state": "NOT_IMPLEMENTED",
+      "owner": "CORE_HOST_OWNER",
+      "requirement": "cross-host owner/epoch/fencing or explicitly single host; no duplicate effects after UNKNOWN"
+    },
+    "provider_origin": {
+      "state": "NOT_VERIFIED",
+      "owner": "PROVIDERS",
+      "requirement": "preserve private raw evidence; do not treat own receipt as issuer or reviewer; no model invocation while RAM gate blocks"
+    },
+    "independent_acceptance": {
+      "state": "REJECT",
+      "owner": "REVIEW",
+      "requirement": "new owner exact SHA and separate authenticated negative tests for changed isolation/issuer after implementation"
+    }
+  },
+  "proposed_event": {
+    "schema": "neurofactory.trusted_checkpoint_event.v1",
+    "required_fields": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "event_kind",
+      "event_sequence",
+      "prior_event_digest_sha256",
+      "core_checkpoint_digest_sha256",
+      "issuer_identity",
+      "issuer_key_id",
+      "issued_at_utc",
+      "signature"
+    ],
+    "event_kinds": [
+      "AUTHORIZE_TASK",
+      "LEASE_CLAIM",
+      "PRE_SIDE_EFFECT",
+      "EFFECT_READBACK",
+      "MANUAL_STOP"
+    ],
+    "sequence": "integer >=1, strictly increasing per task, issuer-enforced",
+    "attestation": "issuer signature/platform immutability and identity MUST be verified outside CORE/SQLite/PROVIDERS trust domain",
+    "forbidden_event_names": [
+      "REVIEW_OK",
+      "PUBLISHED"
+    ]
+  },
+  "permission_matrix": {
+    "CORE": {
+      "may_propose_future_owner_changes": true,
+      "may_mark_independent_review_approved": false,
+      "may_publish_now": false
+    },
+    "PROVIDERS": {
+      "may_return_unverified_proposal": true,
+      "may_publish_now": false,
+      "may_issue_external_checkpoint_receipt": false
+    },
+    "COORDINATOR": {
+      "may_write_own_metadata_and_specs": true,
+      "may_change_CORE_code": false,
+      "may_issue_external_checkpoint_receipt": false,
+      "may_publish_now": false
+    },
+    "REVIEW": {
+      "may_submit_authenticated_exact_sha_verdict": true,
+      "may_modify_CORE_code": false,
+      "may_publish_now": false
+    },
+    "OPS_UI_SKILLS": {
+      "read_only": true,
+      "may_retry": false,
+      "may_activate": false,
+      "may_publish_now": false
+    },
+    "HANDOFF": {
+      "status": "PAUSED_BY_USER",
+      "may_start": false
+    }
+  },
+  "next_acceptance_evidence": [
+    {
+      "owner": "CORE",
+      "required": "new exact source sha; separately controlled OS identity/ACL and same-UID rename hard-negative evidence; verified no bytes outside sandbox"
+    },
+    {
+      "owner": "TRUSTED_HOST_OWNER",
+      "required": "named issuer implementation and signed append-only event evidence, key custody and monotonic replay protection"
+    },
+    {
+      "owner": "REVIEW",
+      "required": "separate actor independent verdict on new exact SHA after both boundaries actually exist"
+    },
+    {
+      "owner": "PROVIDERS",
+      "required": "genuinely verified local Qwen resources and no paid API; private receipt remains not signed reviewer"
+    },
+    {
+      "owner": "OPS",
+      "required": "independent review issue #6 on fixed OPS head"
+    },
+    {
+      "owner": "SKILLS",
+      "required": "independent review latest PR #558, 12 inactive skills and full exact-SHA suite"
+    },
+    {
+      "owner": "COORDINATOR",
+      "required": "compare adapters only after owner wire contract changes; no execution implementation"
+    }
+  ],
+  "known_test_evidence": {
+    "CORE_owner": {
+      "run_id": 38661006646,
+      "ubuntu": "24 PASS 1 SKIP",
+      "windows": "2 PASS writer disabled",
+      "independent": false
+    },
+    "CORE_review": {
+      "run_id": 38661559153,
+      "review_exact": "ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3",
+      "decision": "REJECT_LIVE"
+    },
+    "COORDINATOR_owner": {
+      "run_id": 38661306729,
+      "tests": "13/13 PASS",
+      "independent": false
+    },
+    "OPS_owner": {
+      "run_id": 38652940146,
+      "ubuntu": "34 PASS",
+      "windows": "34 PASS",
+      "independent": false
+    },
+    "SKILLS_parent": {
+      "run_id": 38659826061,
+      "exact_parent_sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
+      "tests": "86/86 PASS",
+      "not_evidence_for_final_child": true
+    },
+    "old_self_hosted_windows": {
+      "run_id": 38643604899,
+      "job_id": 116124933092,
+      "status": "QUEUED",
+      "rerun": false
+    }
+  },
+  "release": {
+    "status": "BLOCKED",
+    "auto_retry": false,
+    "live_worker": false,
+    "publisher": false,
+    "merge": false,
+    "paid_api": false,
+    "handoff": "PAUSED_BY_USER"
+  },
+  "documentation": "bridge/neurofactory/coordination/TRUSTED_HOST_BOUNDARY_V1_20261015_RU.md"
+}
