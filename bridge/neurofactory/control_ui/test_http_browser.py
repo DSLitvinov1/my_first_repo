@@ -60,7 +60,16 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
         page.reload(wait_until="load")
         assert "HTTP браузерный тест" not in page.locator("#main-content").inner_text(), "candidate persisted unexpectedly"
         assert "Демонстрационные данные" in page.locator(".warning-strip").inner_text()
-        page.locator("#file-input").set_input_files(str(ROOT / "demo-bundle.json"))
+        # Accessibility regression: Import must be reachable by keyboard and launch
+        # the native file chooser (also when its visible text is hidden on mobile).
+        import_button = page.get_by_role("button", name="Импорт JSON")
+        assert import_button.count() == 1, "import cannot be found as a button"
+        page.locator("#reset-btn").focus()
+        page.keyboard.press("Shift+Tab")
+        assert page.evaluate("document.activeElement.id") == "import-btn", "import skipped in keyboard tab order"
+        with page.expect_file_chooser(timeout=8000) as chooser:
+            page.keyboard.press("Enter")
+        chooser.value.set_files(str(ROOT / "demo-bundle.json"))
         page.get_by_text("Неподтверждённый локальный снимок", exact=False).wait_for(timeout=4000)
         with TemporaryDirectory() as tmp:
             base = json.loads((ROOT / "demo-bundle.json").read_text(encoding="utf-8"))
