@@ -123,6 +123,23 @@ def run(browser, viewport, name):
             page.locator('#file-input').set_input_files(str(path))
             page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')",timeout=3500)
             assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text(),label
+    # Narrow source-contract regressions: reject forged metadata that used to pass.
+    with TemporaryDirectory() as temp:
+        source=json.loads((ROOT/'demo-bundle.json').read_text())
+        def check_bad(label, transform):
+            packet=json.loads(json.dumps(source))
+            transform(packet)
+            path=Path(temp)/(label+'.json')
+            path.write_text(json.dumps(packet),encoding='utf8')
+            page.locator('#toast').evaluate('(el) => {el.hidden=true;el.textContent="";}')
+            page.locator('#file-input').set_input_files(str(path))
+            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')",timeout=3500)
+            assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text(),label
+        check_bad('forged-worker',lambda x:x['project_detail']['workers'].append({'id':'WIN-X','role':'worker','reported_state':'APPROVE','display_state':'UNKNOWN','seconds_since_reported_heartbeat':None}))
+        check_bad('duplicate-task',lambda x:x['project_detail']['queue'].append(dict(x['project_detail']['queue'][0])))
+        check_bad('forged-checkpoints',lambda x:x['project_detail'].__setitem__('checkpoint_counts',{'VERIFIED':999}))
+        check_bad('forged-severity',lambda x:x['project_detail']['problems'][0].__setitem__('severity','WARNING'))
+        check_bad('forged-stalled',lambda x:x['project_detail'].__setitem__('possibly_stalled_tasks',['GHOST']))
     page.locator('#reset-btn').click()
     assert 'Демонстрационные данные' in page.locator('.warning-strip').inner_text()
     page.close()

@@ -41,10 +41,24 @@
     if(project.project!==null&&(!exact(project.project,["id","repository","branch","head_sha"])||!/^[-a-zA-Z0-9_.:]{1,64}$/.test(project.project.id)||!/^[-a-zA-Z0-9_.]+\/[-a-zA-Z0-9_.]+$/.test(project.project.repository)||!/^[-a-zA-Z0-9._/]{1,180}$/.test(project.project.branch)||!/^[a-f0-9]{40}$/.test(project.project.head_sha)))deny();
     if(project.observed_at!==null&&(typeof project.observed_at!=="string"||project.observed_at.length>35||!/^\d{4}-\d\d-\d\dT/.test(project.observed_at)))deny();
     if(!exact(project.bridge,["reported_state","display_state","seconds_since_reported_heartbeat"])||project.bridge.display_state!=="UNKNOWN"||!(["UNKNOWN","RUNNING","IDLE","FAILED","OFFLINE"].includes(project.bridge.reported_state)))deny();
-    for(const w of project.workers){if(!exact(w,["id","role","reported_state","display_state","seconds_since_reported_heartbeat"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.id)||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.role)||w.display_state!=="UNKNOWN")deny();}
-    for(const t of project.queue){if(!exact(t,["task_id","reported_state","display_state","possibly_stalled","checkpoint"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(t.task_id)||!["QUEUED","CLAIMED","RUNNING","BLOCKED","CHECKED","UNKNOWN"].includes(t.reported_state)||!(["UNKNOWN","BLOCKED"].includes(t.display_state))||typeof t.possibly_stalled!=="boolean"||!exact(t.checkpoint,["reported_state","externally_verified"])||t.checkpoint.externally_verified!==false||!(["PARTIAL","VERIFIED","MISSING","UNKNOWN"].includes(t.checkpoint.reported_state)))deny();
+    const workerIds=new Set();
+    for(const w of project.workers){
+      if(!exact(w,["id","role","reported_state","display_state","seconds_since_reported_heartbeat"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.id)||workerIds.has(w.id)||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.role)||!["RUNNING","IDLE","FAILED","OFFLINE","UNKNOWN"].includes(w.reported_state)||w.display_state!=="UNKNOWN"||(w.seconds_since_reported_heartbeat!==null&&!safeInt(w.seconds_since_reported_heartbeat)))deny();
+      workerIds.add(w.id);
+    }
+    const taskIds=new Set(),cpCounts={},blockedTasks=[],stalledTasks=[];
+    for(const t of project.queue){
+      if(!exact(t,["task_id","reported_state","display_state","possibly_stalled","checkpoint"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(t.task_id)||taskIds.has(t.task_id)||!["QUEUED","CLAIMED","RUNNING","BLOCKED","CHECKED","UNKNOWN"].includes(t.reported_state)||!(["UNKNOWN","BLOCKED"].includes(t.display_state))||typeof t.possibly_stalled!=="boolean"||!exact(t.checkpoint,["reported_state","externally_verified"])||t.checkpoint.externally_verified!==false||!( ["PARTIAL","VERIFIED","MISSING","UNKNOWN"].includes(t.checkpoint.reported_state)))deny();
+      taskIds.add(t.task_id);
       const blocked=t.reported_state==="BLOCKED"||t.checkpoint.reported_state==="PARTIAL";
-      if(t.display_state!==(blocked?"BLOCKED":"UNKNOWN"))deny();}
+      if(t.display_state!==(blocked?"BLOCKED":"UNKNOWN")||(t.possibly_stalled&&!(["RUNNING","CLAIMED"].includes(t.reported_state))))deny();
+      cpCounts[t.checkpoint.reported_state]=(cpCounts[t.checkpoint.reported_state]||0)+1;
+      if(blocked)blockedTasks.push(t.task_id);
+      if(t.possibly_stalled)stalledTasks.push(t.task_id);
+    }
+    if(!exact(project.checkpoint_counts,Object.keys(cpCounts))||Object.entries(cpCounts).some(([key,n])=>project.checkpoint_counts[key]!==n))deny();
+    if(project.stopped_tasks.length!==blockedTasks.length||project.stopped_tasks.some((id,i)=>id!==blockedTasks[i]))deny();
+    if(project.possibly_stalled_tasks.length!==stalledTasks.length||project.possibly_stalled_tasks.some((id,i)=>id!==stalledTasks[i]))deny();
     if(!exact(data.coordinator_task_card,["source","task_id","reported_phase","display_phase","task_input_sha","input_sha_vs_ops_sha","source_verified","actions_allowed"])||data.coordinator_task_card.source!=="COORDINATOR_TASK_CARD_UNATTESTED"||data.coordinator_task_card.source_verified!==false||data.coordinator_task_card.actions_allowed!==false||data.coordinator_task_card.display_phase!=="UNKNOWN"||data.coordinator_task_card.input_sha_vs_ops_sha!=="NOT_COMPARABLE")deny();
     if(data.coordinator_task_card.task_id===null){if(data.coordinator_task_card.task_input_sha!==null||data.coordinator_task_card.reported_phase!=="unknown")deny();}
     else if(!/^NF-DEV-05-Q\d{3}$/.test(data.coordinator_task_card.task_id)||!(/^[a-f0-9]{40}$/.test(data.coordinator_task_card.task_input_sha))||!["candidate","waiting_dependency","waiting_review"].includes(data.coordinator_task_card.reported_phase))deny();
@@ -58,7 +72,12 @@
       if(k==="last_reported_success"&&(r.state!=="COMPLETED"||r.conclusion!=="SUCCESS"))deny();
       if(k==="last_reported_failure"&&(r.state!=="COMPLETED"||!["FAILURE","CANCELLED","TIMED_OUT"].includes(r.conclusion)))deny();}
     for(const p of project.problems)if(!exact(p,["code","task_id","severity","source_verified"])&&!exact(p,["code","task_id","severity","source_verified","run_ids","distinct_reported_runs","recurrent_in_snapshot"]))deny();
-    if(project.problems.some(p=>p.source_verified!==false||!["MODEL_TIMEOUT","RUNNER_LOST","GITHUB_UNAVAILABLE","CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE","REVIEW_REJECTED","MODEL_REPLY_MALFORMED","LEASE_CONFLICT","OTHER_FAILURE","POSSIBLY_STALLED"].includes(p.code)||!["BLOCKED","WARNING"].includes(p.severity)))deny();
+    for(const p of project.problems){
+      if(p.source_verified!==false||!["MODEL_TIMEOUT","RUNNER_LOST","GITHUB_UNAVAILABLE","CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE","REVIEW_REJECTED","MODEL_REPLY_MALFORMED","LEASE_CONFLICT","OTHER_FAILURE","POSSIBLY_STALLED"].includes(p.code)||(p.task_id!==null&&(!/^[-A-Za-z0-9_.:]{1,64}$/.test(p.task_id)))||p.severity!==(["CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE"].includes(p.code)?"BLOCKED":"WARNING"))deny();
+      if(Object.hasOwn(p,"run_ids")){
+        if(!Array.isArray(p.run_ids)||p.run_ids.length>100||p.run_ids.some((id,i)=>!safeInt(id)||id===0||(i>0&&id<=p.run_ids[i-1]))||p.distinct_reported_runs!==p.run_ids.length||p.recurrent_in_snapshot!==(p.run_ids.length>=2))deny();
+      }
+    }
     return data;
   }
   function pill(text,kind="unknown") {return node("span","pill "+kind,text);}
