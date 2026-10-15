@@ -17,10 +17,10 @@
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34",
+      "head": "a8f946f10ca9fbb962623537551414230906e4d2",
       "issue": 9,
       "owner": "CORE",
-      "status": "P0_LIVE_REJECT_NEW_SNAPSHOT_FIX_SELF_TESTED_INDEPENDENT_NEW_SHA_INCONCLUSIVE",
+      "status": "P0_LIVE_BLOCKED_EXACT_LEASE_EXPIRY_FIXED_OWN_TESTS_REVIEW_REQUIRED",
       "evidence": {
         "author_linux_host_smoke": {
           "run": 38662104225,
@@ -43,31 +43,36 @@
           "verdict": "REJECT_LIVE"
         },
         "latest_owner_run": {
-          "run": 38725612289,
-          "ubuntu": "25 pass 1 skip",
-          "windows": "2 pass",
+          "run": 38728346627,
+          "linux_tests": "26 pass + 1 platform skip",
+          "hosted_windows_tests": "2 pass writer disabled",
           "independent": false
         },
         "latest_independent_review": {
           "issue": 11,
           "comment": 6190880630,
           "decision": "REJECT_LIVE_NEW_SNAPSHOT_INCONCLUSIVE"
+        },
+        "latest_negative_red": {
+          "run": 38728273226,
+          "problem": "lease_until equality allowed old effect exactly at expiry",
+          "fixed_sha": "a8f946f10ca9fbb962623537551414230906e4d2"
         }
       },
       "blockers": [
-        "host OS isolation not deployed",
-        "external protected issuer antirollback not deployed",
-        "latest snapshot mutation single-transaction fix lacks independent exact-SHA negative re-test",
-        "same UID parent relocation not proven safe",
-        "no central multi-PC lease API"
+        "real trusted OS sandbox/signer/issuer not deployed",
+        "independent review exact latest lease expiry fix pending",
+        "external protected checkpoint/key custody and central side-effect fencing not deployed",
+        "same-UID path relocation risk not proven safe",
+        "Windows file writer remains blocked"
       ],
       "resume": "CORE+TRUSTED_HOST owner actual separate OS/domain implementation then exact-SHA independent hostile-input reviewer"
     },
     "REVIEW": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "5f4259793e2b21503ef3b7865b2cb9e05e17fd3a",
+      "head": "e61b1dc969401c50f19ada39e7683a1edb657908",
       "owner": "REVIEW",
-      "status": "INDEPENDENT_REJECT_LIVE",
+      "status": "INDEPENDENT_NEGATIVES_CONDUCTED_LATEST_HOST_CORE_EXACT_APPROVAL_PENDING",
       "issue": 11,
       "blockers": [
         "new CORE/host protected trust implementation absent"
@@ -178,12 +183,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "e2491063ab7823d95f81b1149b71452c541a3f5e",
+      "head": "3724dda83f7b352cb535c87e95687ae9b12957f2",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_CRYPTO_SIGNED_LEASE_EFFECT_BINDING_TESTED_NO_PRODUCTION_ISSUER",
+      "status": "OFFLINE_SIGNED_SOURCE_POLICY_EFFECT_CONTEXT_TESTED_REAL_ISSUER_NOT_DEPLOYED",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -194,15 +199,14 @@
           "physical_computers": 1
         },
         "ed25519_link": {
-          "run_id": 38727612394,
-          "job_id": 116397249898,
-          "tests_pass": 22,
-          "actual_test_key": "ephemeral_only",
-          "off_host_key_custody": false,
-          "independent_review": false,
-          "tested_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e"
+          "run_id": 38729474058,
+          "job_id": 116403401318,
+          "tests_pass": 26,
+          "exact_source_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2",
+          "test_key": "ephemeral_in_memory_only",
+          "independent_review": false
         },
-        "distinct_test_scenarios": 36,
+        "distinct_test_scenarios": 40,
         "independent_review": false,
         "scope": "seven owned paths, draft PR15",
         "review_observed_prior_defect": {
@@ -214,13 +218,12 @@
         }
       },
       "blockers": [
-        "no trusted issuer deployed",
-        "public key and monotonic anchor not independently protected",
-        "no real OS identity separation",
-        "no authenticated central API or two physical hosts",
-        "signed effect new code not independently verified",
-        "no real user authorization receipt",
-        "no external receiver fencing"
+        "no protected signer host, independent key custody, monotonic antirollback",
+        "offline CAS fixture_authorized not secure owner authentication",
+        "real separated OS identities/ACL and sandbox parent isolation missing",
+        "cross-PC API/fencing and two-physical-client test absent",
+        "independent review exact latest host SHA missing",
+        "CORE new SHA no independent live approval"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
@@ -273,6 +276,10 @@
     {
       "code": "OFFLINE_CRYPTO_EFFECT_BINDING",
       "decision": "Host offline Ed25519 signer now rejects missing/mismatched lease epoch/worker/fencing SHA and idempotency key; coordinator contract aligned; never trust self-supplied pinned values; no deployed external signer or independent approval"
+    },
+    {
+      "code": "SIGNED_POLICY_SOURCE_TARGET_BINDING",
+      "decision": "Offline Ed25519 verifier validates externally supplied project/source SHA/file SHA/task SHA/policy SHA/target plus current lease/fence/key, but caller protection, signer custody and origin not deployed; author tests do not equal independent APPROVE."
     }
   ],
   "cross_host_protocol": "bridge/neurofactory/coordination/central-multipc-transaction-v1.json",
@@ -289,15 +296,16 @@
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
-    "exact_test_sha": "4bc494d18185b8d90f55bbc076881a0d649760a9",
-    "run_id": 38728264647,
-    "job_id": 116399372900,
+    "exact_test_sha": "acbee468681470346af31a80671dca3f5f1db32e",
+    "run_id": 38729991195,
+    "job_id": 116405115211,
     "pass": 6,
-    "description": "event-kind-specific lease_epoch/worker/fencing-token digest and idempotency key signed payload contract aligned",
+    "description": "signed per-kind epoch/worker/fence/idempotency and independently pinned project/source/input/policy/safe target manifest alignment",
     "independent_review": false,
-    "early_failures": [
+    "old_schema_failure_runs": [
       38728067278,
-      38728152964
+      38728152964,
+      38729591779
     ],
     "resolved": true
   }
