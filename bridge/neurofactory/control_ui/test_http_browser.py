@@ -1,4 +1,4 @@
-"""Focused real-HTTP Chromium smoke for isolated, non-live NEUROFACTORY UI.
+"""Focused real-HTTP Chromium/WebKit smoke for isolated, non-live NEUROFACTORY UI.
 
 This script starts only an ephemeral loopback HTTP server and makes no GitHub,
 provider, queue, or production requests. Designed for GitHub-hosted Linux.
@@ -24,7 +24,7 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 def check(browser, origin: str, name: str, width: int, height: int) -> None:
-    page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=1)
+    page = browser.new_page(viewport={"width": width, "height": height}, device_scale_factor=3 if name == "webkit_mobile" else 1, is_mobile=name == "webkit_mobile", has_touch=name == "webkit_mobile")
     requested: list[str] = []
     loaded: dict[str, int] = {}
     errors: list[str] = []
@@ -71,6 +71,11 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
             page.locator("#toast").evaluate("(el) => { el.hidden=true; el.textContent=''; }")
             page.locator("#file-input").set_input_files(str(p))
             page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')", timeout=4000)
+            duplicate = Path(tmp) / "duplicate-keys.json"
+            duplicate.write_text('{"schema":1,"schema":1}', encoding="utf-8")
+            page.locator("#toast").evaluate("(el) => { el.hidden=true; el.textContent=''; }")
+            page.locator("#file-input").set_input_files(str(duplicate))
+            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')", timeout=4000)
         assert "Неподтверждённый локальный снимок" in page.locator(".warning-strip").inner_text()
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "horizontal overflow"
         assert not errors, errors
@@ -83,17 +88,23 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
         page.close()
 
 
-def main() -> None:
+def main(engine: str) -> None:
+    if engine not in ("chromium", "webkit"):
+        raise ValueError("Unsupported browser engine")
     server = ThreadingHTTPServer(("127.0.0.1", 0), QuietHandler)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     try:
         origin = f"http://127.0.0.1:{server.server_port}"
         with sync_playwright() as play:
-            browser = play.chromium.launch(headless=True, args=["--no-sandbox"])
+            browser_type = getattr(play, engine)
+            launch_options = {"headless": True}
+            if engine == "chromium":
+                launch_options["args"] = ["--no-sandbox"]
+            browser = browser_type.launch(**launch_options)
             try:
-                check(browser, origin, "desktop", 1440, 900)
-                check(browser, origin, "mobile", 390, 844)
+                check(browser, origin, engine + "_desktop", 1440, 900)
+                check(browser, origin, engine + "_mobile", 390, 844)
             finally:
                 browser.close()
     finally:
@@ -103,4 +114,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description="Offline UI HTTP smoke; no live APIs")
+    parser.add_argument("--engine", choices=("chromium", "webkit"), default="chromium")
+    main(parser.parse_args().engine)
