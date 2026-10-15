@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "as_of": "2026-10-15",
+  "branch": "neurofactory-coordinator-mvp-status-20261015",
+  "draft_pr": 12,
+  "previous_checkpoint": "20481097e9eace92cc6bb8e918f9a03b44dff337",
+  "own_new_feature": {
+    "module": "bridge/neurofactory/coordination/mvp_core_preview_check.py",
+    "tests": "bridge/neurofactory/coordination/test_mvp_core_preview_check.py",
+    "workflow": ".github/workflows/neurofactory-coordination-core-preview-targeted.yml",
+    "function": "inspect_core_preview; verify exact CORE ten-field task manifest, canonical SHA256 full task snapshot, original Git SHA40 and file SHA256 distinct, deterministic core_owned to src/docs mapping, model allowlist, no ambiguous permission escalation, no traversal/windows device paths; returns only format compatibility with zero grants",
+    "side_effects": "NONE; no model, no filesystem, no SQLite, no network, no authorizations",
+    "test_evidence": {
+      "run": 38659398066,
+      "job": 116176806872,
+      "head_sha": "646bd3a2513537a9f32262ed30bba4f368e468ed",
+      "host": "GitHub-hosted Ubuntu 24.04",
+      "pass": 15,
+      "total": 15,
+      "conclusion": "completed/success",
+      "raw_log_checked": true,
+      "independent_review": false
+    },
+    "test_limit": "synthetic CORE-spec fixture; not a real cross-branch invocation of CORE code"
+  },
+  "previous_own_test_scenarios": {
+    "core_exchange": 22,
+    "task_view": 10,
+    "provider_wire": 12,
+    "provider_evidence_view": 11,
+    "total_distinct": 55,
+    "not_reexecuted_this_cycle": true,
+    "new_total_distinct_scenarios": 70
+  },
+  "owner_current": {
+    "CORE": {
+      "head": "0ba18eeb609bec1b241ad01aab8b156aa7c9f9ae",
+      "previous_failed_head": "1b54f5fd37a00fd52a8535e1ed5f23fd7b3cece5",
+      "old_failed_run": 38659107250,
+      "fixed_targeted_run": 38659194020,
+      "job": 116176145765,
+      "pass": 21,
+      "total": 21,
+      "ownership_run": 38659194036,
+      "new_contract": true,
+      "features": [
+        "single job queue",
+        "single host SQLite BEGIN IMMEDIATE lease and CAS-like token",
+        "one sandbox file offline atomic replace",
+        "durable pre-effect APPLYING",
+        "readback checkpoint",
+        "uncertain receipt -> manual STOP",
+        "read-only provider_preview v1"
+      ],
+      "limits": [
+        "single host only",
+        "trusted host approval callback not independent reviewer",
+        "no cross-host queue atomics",
+        "no real Ollama",
+        "no signed global publisher receipt"
+      ],
+      "review_issue": 11,
+      "review_request_comment": 6181407004,
+      "independent_verdict": "PENDING"
+    },
+    "PROVIDERS": {
+      "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+      "pr": 13,
+      "own_windows_linux_targeted_run": 38656535978,
+      "independent_reviews": 0,
+      "last_self_hosted_resource_run": 38652410062,
+      "free_ram_bytes": 934338560,
+      "ollama_process_seen": false,
+      "real_model_inference": false,
+      "private_receipt": "owner-controlled evidence; no external cryptographic attestation"
+    },
+    "OPS": {
+      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "own_ci_run": 38652940146,
+      "linux_tests_pass": 34,
+      "windows_tests_pass": 34,
+      "independent_issue": 6,
+      "independent_reviewer": "NOT_ASSIGNED",
+      "read_only_layers": 3
+    },
+    "SKILLS": {
+      "unified_draft_pr": 550,
+      "head": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
+      "candidate_skills": 12,
+      "approved_skills": 0,
+      "profiles": 19,
+      "real_installed": 0,
+      "own_targeted_tests_reported": 30,
+      "full_exact_repo_suite": "NOT_EXECUTED",
+      "independent_pr_reviews": 0
+    },
+    "HANDOFF": {
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "state": "PAUSED_BY_USER"
+    }
+  },
+  "windows_old": {
+    "run": 38643604899,
+    "job": 116124933092,
+    "status": "QUEUED",
+    "duplicated": false,
+    "not_applicable_to_new_contract": true
+  },
+  "architecture_decision": {
+    "provider_wire": "neurofactory.coordination.provider_bridge.v1 READ_ONLY / exact request+binding and permissions all false",
+    "input_snapshot": "SHA256 canonical JSON of full CORE task spec including source_sha, source_sha256, approval_commit; distinct from source bytes hash and commit",
+    "core_relative_mapping": "core_owned/<suffix> => docs/<suffix> for markdown else src/<suffix>; read-only syntax check only",
+    "trusted_origin": "MISSING, no user-supplied approval JSON or test callback is production attestation",
+    "durable_checkpoint": "SQLite local, external monotonic trusted attestation MISSING",
+    "global_lease": "NOT IMPLEMENTED across hosts, no real publishing",
+    "reviewer": "CORE Issue #11 independent SHA-specific verdict required, cannot self-review"
+  },
+  "policy": {
+    "core_live_execution": "BLOCKED",
+    "review": "PENDING",
+    "providers_real_qwen": "RESOURCE_BLOCKED",
+    "ops_live": "BLOCKED",
+    "skills_activation": "BLOCKED",
+    "paid_api": "FORBIDDEN",
+    "merge": "FORBIDDEN",
+    "publication": "FORBIDDEN",
+    "handoff": "PAUSED_BY_USER"
+  },
+  "no_unauthorized_actions": {
+    "changed_only_coordination_and_own_workflow": true,
+    "no_foreign_branch_edit": true,
+    "no_merge": true,
+    "no_live_queue": true,
+    "no_model_download": true,
+    "no_paid_api": true,
+    "no_replayed_old_windows": true,
+    "no_handoff_activation": true
+  },
+  "next_trigger": "CORE independent REVIEW verdict pinned to 0ba18eeb or new changed CORE exact SHA; validated on-host input approval/global-lease and monitored host resources; do not create routine status commits without event"
+}
