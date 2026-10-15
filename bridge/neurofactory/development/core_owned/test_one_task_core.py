@@ -348,6 +348,38 @@ raise AssertionError("injection did not intercept target replace")
         with self.assertRaises(CoreSafetyError):
             self.q.snapshot()
 
+    @unittest.skipUnless(os.name == "posix", "POSIX synthetic write only")
+    def test_external_anchor_rejects_consistent_local_db_and_file_forgery(self):
+        self.admit()
+        claim = self.q.claim("host", now=100, lease_seconds=10)
+        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                  self.proposal(), now=101)
+        external_reference = self.q.checkpoint_fingerprint()
+        checked = self.q.check_external_checkpoint(external_reference)
+        self.assertTrue(checked["matches_supplied_external_digest"])
+        self.assertFalse(checked["external_origin_attested"])
+        self.assertFalse(checked["execution_allowed"])
+        with self.assertRaises(CoreSafetyError):
+            self.q.check_external_checkpoint(None)
+        with self.assertRaises(CoreSafetyError):
+            self.q.check_external_checkpoint("not a digest")
+
+        # Reproducer from independent REVIEW: attacker can modify BOTH DB and file.
+        replacement = "FORGED = 73\\n".replace("\\\\n", "\\n")
+        forged_digest = hashlib.sha256(replacement.encode("utf8")).hexdigest()
+        (self.q.sandbox / TARGET).write_text(replacement, "utf8")
+        with sqlite3.connect(self.q.db) as db:
+            raw = db.execute("SELECT receipt FROM single_job WHERE singleton=1").fetchone()[0]
+            fake_receipt = json.loads(raw)
+            fake_receipt["result_sha256"] = forged_digest
+            db.execute("UPDATE single_job SET result_sha256=?, receipt=? WHERE singleton=1",
+                       (forged_digest, json.dumps(fake_receipt)))
+        # Local hashes are self-consistent, which is the confirmed risk.
+        self.assertEqual(self.q.snapshot()["state"], "CHECKPOINTED_TEST")
+        self.assertNotEqual(external_reference, self.q.checkpoint_fingerprint())
+        with self.assertRaises(CoreSafetyError):
+            self.q.check_external_checkpoint(external_reference)
+
     def test_poisoned_receipt_cannot_appear_successful(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
