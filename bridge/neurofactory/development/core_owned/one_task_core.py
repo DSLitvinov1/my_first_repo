@@ -18,6 +18,7 @@ import stat
 import subprocess
 import tempfile
 import time
+from contextlib import contextmanager
 
 TASK = re.compile(r"NF-DEV-05-Q[0-9]{3}\Z")
 PROJECT = re.compile(r"[a-z][a-z0-9-]{2,39}\Z")
@@ -174,12 +175,19 @@ class OneTaskCore:
                 receipt TEXT
             )""")
 
+    @contextmanager
     def _connect(self):
+        # sqlite3.Connection.__exit__ commits/rolls back but DOES NOT close.
+        # A leaked Windows file handle can prevent crash recovery and cleanup.
         con = sqlite3.connect(str(self.db), timeout=10, isolation_level=None)
-        con.execute("PRAGMA busy_timeout=10000")
-        con.execute("PRAGMA synchronous=FULL")
-        con.execute("PRAGMA journal_mode=DELETE")
-        return con
+        try:
+            con.execute("PRAGMA busy_timeout=10000")
+            con.execute("PRAGMA synchronous=FULL")
+            con.execute("PRAGMA journal_mode=DELETE")
+            with con:
+                yield con
+        finally:
+            con.close()
 
     def _row(self, con):
         row = con.execute("SELECT task_id,spec,spec_sha256,state,owner,token_sha256,"
