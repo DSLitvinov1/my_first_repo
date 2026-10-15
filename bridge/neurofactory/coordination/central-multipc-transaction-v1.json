@@ -143,7 +143,9 @@
       "worker_id",
       "fencing_token_sha256",
       "idempotency_key",
-      "signature"
+      "signature",
+      "policy_sha256",
+      "target"
     ],
     "issuer_key_in_repo": false,
     "strictly_increasing_sequence": true,
@@ -164,7 +166,9 @@
       "core_checkpoint_digest_sha256",
       "issuer_identity",
       "issuer_key_id",
-      "issued_at_utc"
+      "issued_at_utc",
+      "policy_sha256",
+      "target"
     ],
     "detached_envelope_fields": [
       "payload",
@@ -212,7 +216,9 @@
       "lease_epoch",
       "worker_id",
       "fencing_token_sha256",
-      "idempotency_key"
+      "idempotency_key",
+      "policy_sha256",
+      "target"
     ],
     "external_pins_required_for_effect": [
       "task_id",
@@ -224,9 +230,14 @@
       "lease_epoch",
       "worker_id",
       "fencing_token_sha256",
-      "idempotency_key"
+      "idempotency_key",
+      "project_id",
+      "source_file_sha256",
+      "input_task_sha256",
+      "policy_sha256",
+      "target"
     ],
-    "security_semantics": "Fields are kind-specific. SIGNED EFFECT_READBACK MUST bind epoch, worker, fencing token digest, idempotency key against independent current CAS/issuer context; signing alone never authorizes execution. Detached signature is outside payload.",
+    "security_semantics": "Fields are kind-specific. SIGNED EFFECT_READBACK MUST bind epoch, worker, fencing token digest, idempotency key against independent current CAS/issuer context; signing alone never authorizes execution. Detached signature is outside payload. Exact project, source file SHA256, input snapshot SHA256, policy SHA256 and canonical target path are inside signed payload and compared to independent protected caller context.",
     "publisher_allowed": false,
     "offline_signed_binding_run": 38727612394,
     "offline_signed_binding_tests_pass": 22
