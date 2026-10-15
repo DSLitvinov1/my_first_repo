@@ -1,0 +1,57 @@
+name: Neurofactory REVIEW exact HOST ephemeral DB role security negative
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-db-role-guard.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent_ephemeral_db_principal_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nf_test
+          POSTGRES_USER: nf_review
+          POSTGRES_PASSWORD: transient_review_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_review -d nf_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 8
+    steps:
+      - name: Read-only checkout REVIEW negative
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Keep independent test off source checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_host_db_role_guard_20261015.py "$RUNNER_TEMP/review_db_role_negative.py"
+      - name: Checkout pinned exact TRUSTED HOST candidate
+        uses: actions/checkout@v4
+        with:
+          ref: 59067fd8e43425e016a8af801d65f9b9d6bcbff2
+          persist-credentials: false
+          clean: true
+      - name: Require exact candidate SHA before negative
+        run: test "$(git rev-parse HEAD)" = "59067fd8e43425e016a8af801d65f9b9d6bcbff2"
+      - name: Install small isolated test PostgreSQL driver
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_pg"
+          "$RUNNER_TEMP/review_pg/bin/python" -m pip -q install 'psycopg[binary]>=3.2,<3.4'
+      - name: Review ephemeral reader-writer privileges and DB-owner rollback
+        env:
+          REVIEW_ONLY_EPHEMERAL_PG_DSN: "postgresql://nf_review:transient_review_only@localhost:5432/nf_test"
+        run: |
+          "$RUNNER_TEMP/review_pg/bin/python" -B "$RUNNER_TEMP/review_db_role_negative.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Verify audited files untouched
+        run: git diff --exit-code
