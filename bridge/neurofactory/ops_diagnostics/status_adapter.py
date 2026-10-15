@@ -96,7 +96,7 @@ def snapshot_to_status(snapshot):
     expect_dict(snapshot, ("schema", "scope", "observed_at", "project",
                            "bridge", "workers", "queue", "runs", "problems"),
                 "snapshot")
-    if snapshot["schema"] != 1 or snapshot["scope"] != "neurofactory-ops-status":
+    if type(snapshot["schema"]) is not int or snapshot["schema"] != 1 or snapshot["scope"] != "neurofactory-ops-status":
         raise SnapshotError("Foreign snapshot")
     as_of = timestamp(snapshot["observed_at"], "observed_at")
     p = expect_dict(snapshot["project"],

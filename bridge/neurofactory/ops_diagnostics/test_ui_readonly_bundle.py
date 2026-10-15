@@ -116,6 +116,20 @@ class CombinedViewTests(unittest.TestCase):
         with self.assertRaises(SnapshotError):
             snapshot_to_status(d)
 
+    def test_boolean_snapshot_schema_rejected_before_ui_projection(self):
+        # JSON true must not be accepted as integer schema=1.
+        bad = sample()
+        bad["schema"] = True
+        with self.assertRaises(SnapshotError):
+            snapshot_to_status(bad)
+        with tempfile.TemporaryDirectory() as td:
+            project = Path(td) / "untrusted.json"
+            project.write_text(json.dumps(bad), encoding="utf-8")
+            errors = StringIO()
+            with redirect_stderr(errors):
+                self.assertEqual(main(["--project", str(project)]), 2)
+            self.assertIn("OPS_UI_REFUSED", errors.getvalue())
+
     def test_board_forged_approval_refused(self):
         b=board()
         b["lanes"][4]["release_allowed"]=True
