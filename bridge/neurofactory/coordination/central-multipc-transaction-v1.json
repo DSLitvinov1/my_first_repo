@@ -18,7 +18,7 @@
     "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
     "offline_implementation_owner": "COORDINATOR_TEMPORARY_USER_AUTHORIZED_NO_INDEPENDENT_APPROVAL",
     "draft_pr": 15,
-    "offline_candidate_sha": "e2491063ab7823d95f81b1149b71452c541a3f5e"
+    "offline_candidate_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2"
   },
   "topology": {
     "dispatch_authority": "ONE_SELF_HOSTED_POSTGRESQL_PLUS_AUTHENTICATED_HTTPS_API",
@@ -239,8 +239,8 @@
     ],
     "security_semantics": "Fields are kind-specific. SIGNED EFFECT_READBACK MUST bind epoch, worker, fencing token digest, idempotency key against independent current CAS/issuer context; signing alone never authorizes execution. Detached signature is outside payload. Exact project, source file SHA256, input snapshot SHA256, policy SHA256 and canonical target path are inside signed payload and compared to independent protected caller context.",
     "publisher_allowed": false,
-    "offline_signed_binding_run": 38727612394,
-    "offline_signed_binding_tests_pass": 22
+    "offline_signed_binding_run": 38729474058,
+    "offline_signed_binding_tests_pass": 26
   },
   "exactly_once_limitations": {
     "central_cas_solves": "ONE_ACTIVE_LEASE_WINNER_PER_TASK_WITH_CURRENT_EPOCH",
@@ -252,11 +252,11 @@
     "host_linux_distinct_identity_real": "NOT_DEPLOYED",
     "host_windows_dacl_reparse": "NOT_PROVEN",
     "same_uid_rename_risk": "NOT_RESOLVED",
-    "independent_signing_issuer": "NOT_DEPLOYED_TEST_CRYPTO_EFFECT_BINDING_ONLY",
+    "independent_signing_issuer": "NOT_DEPLOYED_ED25519_SIGNED_EFFECT_CONTEXT_OFFLINE_ONLY",
     "central_postgres_cas": "OFFLINE_ONE_DB_TWO_CONNECTIONS_TESTED_NO_DEPLOYMENT",
     "replayed_fencing_negative_tests": "NOT_RUN",
     "cross_pc_two_worker_test": "NOT_RUN",
-    "review_exact_sha": "CORE_NEW_SNAPSHOT_SELF_TESTED_NO_INDEPENDENT_APPROVE_LIVE_BLOCKED",
+    "review_exact_sha": "REJECT_LIVE_INDEPENDENT_LATEST_CORE_EXACT_PENDING",
     "provider_real_local_model": "RESOURCE_BLOCKED",
     "skills": "INACTIVE",
     "ops": "READ_ONLY_NOT_INDEPENDENTLY_REVIEWED",
@@ -289,7 +289,7 @@
     "hosted CORE exact SHA signed independent reviewer -> APPROVE before one sandbox E2E"
   ],
   "audit": {
-    "core_current_sha": "cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34",
+    "core_current_sha": "a8f946f10ca9fbb962623537551414230906e4d2",
     "core_owned_short_linux_run": 38662104225,
     "core_owned_short_linux_pass": 1,
     "core_review_issue": 11,
