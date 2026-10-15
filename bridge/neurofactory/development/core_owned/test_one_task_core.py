@@ -426,6 +426,58 @@ raise AssertionError("injection did not intercept target replace")
             self.assertFalse(result["external_origin_attested"])
             self.assertFalse(result["execution_allowed"])
 
+    @unittest.skipUnless(os.name == "posix", "POSIX synthetic checkpoint only")
+    def test_snapshot_blocks_coherent_sqlite_change_during_file_read(self):
+        """A read-only status must not attest bytes from stale SQLite metadata."""
+        import threading
+        from unittest.mock import patch
+        self.admit()
+        claim = self.q.claim("reader-host", now=100, lease_seconds=10)
+        receipt = self.q.apply_offline_test(
+            self.spec["task_id"], claim["token"], self.proposal(), now=101)
+        path = self.q.sandbox / TARGET
+        outcome = {}
+
+        def concurrent_change():
+            try:
+                with sqlite3.connect(self.q.db, timeout=0.35) as db:
+                    raw = db.execute(
+                        "SELECT spec FROM single_job WHERE singleton=1"
+                    ).fetchone()[0]
+                    altered = json.loads(raw)
+                    altered["objective"] = "Independent task specification was swapped during readback."
+                    blob = _canonical(altered)
+                    db.execute(
+                        "UPDATE single_job SET spec=?, spec_sha256=? WHERE singleton=1",
+                        (blob.decode("utf8"), hashlib.sha256(blob).hexdigest()))
+                outcome["committed"] = True
+            except sqlite3.OperationalError as error:
+                if "locked" not in str(error).lower():
+                    outcome["error"] = str(error)
+                outcome["blocked"] = True
+
+        class CheckedFile:
+            def exists(self):
+                return path.exists()
+
+            def read_bytes(self):
+                thread = threading.Thread(target=concurrent_change, daemon=True)
+                thread.start()
+                thread.join(timeout=3)
+                if thread.is_alive():
+                    outcome["error"] = "concurrent SQLite writer unexpectedly hung"
+                return path.read_bytes()
+
+        with patch.object(self.q, "_file", return_value=CheckedFile()):
+            observed = self.q.snapshot()
+
+        self.assertNotIn("error", outcome)
+        self.assertEqual(observed["receipt"], receipt)
+        self.assertTrue(
+            outcome.get("blocked", False),
+            "Concurrent coherent SQLite spec forgery COMMITTED while snapshot readback was in progress")
+        self.assertFalse(outcome.get("committed", False))
+
     def test_poisoned_receipt_cannot_appear_successful(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
