@@ -128,6 +128,53 @@ except CoreSafetyError:
             self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=115)
         self.assertFalse((self.q.sandbox / TARGET).exists())
 
+    def test_killed_after_atomic_file_replace_never_replays(self):
+        """Real child death between visible file and SQLite receipt, no fake receipt."""
+        self.admit()
+        claim = self.q.claim("worker", now=100, lease_seconds=10)
+        worker_code = """
+import json
+import os
+import pathlib
+import sys
+sys.path.insert(0, sys.argv[1])
+from one_task_core import OneTaskCore
+workspace = pathlib.Path(sys.argv[2])
+repo = pathlib.Path(sys.argv[3])
+token = sys.argv[4]
+task = sys.argv[5]
+proposal = json.loads(sys.argv[6])
+core = OneTaskCore(workspace, repo)
+wanted = core.sandbox / proposal["target"]
+original_replace = os.replace
+
+def die_after_effect(src, dst):
+    original_replace(src, dst)
+    if pathlib.Path(dst) == wanted:
+        os._exit(87)
+os.replace = die_after_effect
+core.apply_offline_test(task, token, proposal, now=101)
+raise AssertionError("injection did not intercept target replace")
+"""
+        process = subprocess.run(
+            [sys.executable, "-B", "-c", worker_code,
+             str(pathlib.Path(__file__).resolve().parent),
+             str(self.workspace), str(self.repo), claim["token"],
+             self.spec["task_id"], json.dumps(self.proposal())],
+            capture_output=True, text=True, timeout=15)
+        self.assertEqual(process.returncode, 87, process.stderr)
+        target = self.q.sandbox / TARGET
+        self.assertEqual(target.read_text("utf8"), self.proposal()["content"])
+        self.assertEqual(self.q.snapshot()["state"], "APPLYING")
+        self.assertEqual(self.q.recover(now=111)["state"], "NEEDS_MANUAL_REVIEW")
+        self.assertIsNone(self.q.snapshot()["receipt"])
+        with self.assertRaises(CoreSafetyError):
+            self.q.claim("another-worker", now=120)
+        with self.assertRaises(CoreSafetyError):
+            self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                      self.proposal("VALUE = 999\\n"), now=120)
+        self.assertEqual(target.read_text("utf8"), self.proposal()["content"])
+
     def test_foreign_or_forged_approval_is_not_enough(self):
         with self.assertRaises(CoreSafetyError):
             self.q.enqueue(self.spec)
