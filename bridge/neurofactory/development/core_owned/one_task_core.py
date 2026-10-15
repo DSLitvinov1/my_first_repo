@@ -480,23 +480,23 @@ class OneTaskCore:
         payload = proposal["content"].encode("utf-8")
         self._write_one_pinned(row["spec"]["target"], payload,
                                row["spec"]["source_sha256"], proposal["content_sha256"])
-            receipt = {"schema": "neurofactory.core.offline_receipt.v1",
-                       "task_id": task_id, "source_sha": row["spec"]["source_sha"],
-                       "source_sha256": row["spec"]["source_sha256"],
-                       "target": row["spec"]["target"],
-                       "result_sha256": proposal["content_sha256"],
-                       "mode": "OFFLINE_TEST", "model_invoked": False,
-                       "review_approved": False, "published": False, "api_cost_usd": 0}
-            with self._connect() as con:
-                con.execute("BEGIN IMMEDIATE")
-                current = self._row(con)
-                if (current["state"] != "APPLYING" or current["token"] != _sha(token.encode())):
-                    raise CoreSafetyError("Claim invalidated during effect: STOP")
-                con.execute("UPDATE single_job SET state='CHECKPOINTED_TEST', "
-                            "result_sha256=?, receipt=? WHERE singleton=1",
-                            (receipt["result_sha256"], _canonical(receipt).decode()))
-                con.execute("COMMIT")
-            return receipt
+        receipt = {"schema": "neurofactory.core.offline_receipt.v1",
+                   "task_id": task_id, "source_sha": row["spec"]["source_sha"],
+                   "source_sha256": row["spec"]["source_sha256"],
+                   "target": row["spec"]["target"],
+                   "result_sha256": proposal["content_sha256"],
+                   "mode": "OFFLINE_TEST", "model_invoked": False,
+                   "review_approved": False, "published": False, "api_cost_usd": 0}
+        with self._connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            current = self._row(con)
+            if (current["state"] != "APPLYING" or current["token"] != _sha(token.encode())):
+                raise CoreSafetyError("Claim invalidated during effect: STOP")
+            con.execute("UPDATE single_job SET state='CHECKPOINTED_TEST', "
+                        "result_sha256=?, receipt=? WHERE singleton=1",
+                        (receipt["result_sha256"], _canonical(receipt).decode()))
+            con.execute("COMMIT")
+        return receipt
 
     def recover(self, *, now=None):
         """Expired CLAIMED/APPLYING is UNKNOWN; never automatically retry or publish."""
