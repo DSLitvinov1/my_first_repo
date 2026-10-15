@@ -307,7 +307,7 @@
       "status": "P0_BLOCKED_P2_OWNER_UNASSIGNED",
       "issue": 14,
       "branch": "neurofactory-trusted-host-owned-20261015",
-      "branch_created": false,
+      "branch_created": true,
       "owner_accepted": false,
       "scope": [
         "bridge/neurofactory/trusted_host/",
@@ -327,7 +327,8 @@
         "same_uid_directory_move_no_escaped_write",
         "signed_independent_REVIEW_exact_sha"
       ],
-      "live_permission": false
+      "live_permission": false,
+      "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
     },
     {
       "id": "NF-COORD-GOD-MODE-SCOPE-20261015",
