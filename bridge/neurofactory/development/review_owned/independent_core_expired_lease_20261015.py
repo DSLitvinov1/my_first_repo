@@ -51,7 +51,9 @@ with tempfile.TemporaryDirectory() as folder:
     try:
         receipt=q.apply_offline_test(spec["task_id"],holder["token"],proposal,now=1010)
     except CoreSafetyError:
-        print("REVIEW_EXPIRED_AT_LEASE_DEADLINE=REJECTED")
+        assert not (q.sandbox/TARGET).exists(), "Side effect persisted after expired claim"
+        assert q.recover(now=1010)["state"]=="NEEDS_MANUAL_REVIEW"
+        print("REVIEW_EXPIRED_AT_LEASE_DEADLINE=REJECTED_NO_FILE_MANUAL_STOP")
     else:
         assert receipt["model_invoked"] is False
         assert (q.sandbox/TARGET).read_text()==CONTENT
