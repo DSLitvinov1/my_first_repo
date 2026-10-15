@@ -4,7 +4,9 @@ on:
     branches:
       - neurofactory-trusted-host-owned-20261015
     paths:
-      - bridge/neurofactory/trusted_host/**
+      - bridge/neurofactory/trusted_host/offline_cas.py
+      - bridge/neurofactory/trusted_host/schema_v1.sql
+      - bridge/neurofactory/trusted_host/test_offline_cas.py
       - .github/workflows/neurofactory-trusted-host-owned-postgres-cas-targeted.yml
 permissions:
   contents: read
