@@ -54,6 +54,13 @@ def _safe_target(path):
     return path
 
 
+def _provider_path(core_target):
+    """Deterministic one-to-one CORE->proposal path mapping; never a file write."""
+    _safe_target(core_target)
+    suffix = core_target.removeprefix("bridge/neurofactory/development/core_owned/")
+    return ("docs/" if suffix.endswith(".md") else "src/") + suffix
+
+
 def _safe_directory(path, *, create=False):
     p = pathlib.Path(path)
     if create:
@@ -256,19 +263,27 @@ class OneTaskCore:
                 "model": row["spec"]["model"], "objective": row["spec"]["objective"]}
 
     def provider_preview(self, task_id):
-        """Only a pure-data proposed v1 request. Execution permission is ALWAYS false."""
+        """Pure read-only coordinator/provider bridge; ALL execution permissions false."""
         with self._connect() as con:
             row = self._row(con)
         if row is None or row["spec"]["task_id"] != task_id:
             raise CoreSafetyError("Unknown task")
         p = row["spec"]
+        trusted_input = _sha(_canonical(p))
+        provider_path = _provider_path(p["target"])
         request = {"schema": "neurofactory.providers.request.v1",
                    "task_id": p["task_id"], "project_id": p["project_id"],
-                   "input_sha256": _sha(_canonical(p)), "target_path": p["target"],
+                   "input_sha256": trusted_input, "target_path": provider_path,
                    "instruction": p["objective"]}
-        return {"request": request,
-                "permissions": {"execution": False, "retry": False, "publication": False,
-                                "paid_api": False}}
+        binding = {"task_id": p["task_id"], "project_id": p["project_id"],
+                   "source_sha": p["source_sha"],
+                   "source_sha256": p["source_sha256"],
+                   "core_target": p["target"], "provider_target": provider_path,
+                   "model": p["model"], "input_sha256": trusted_input}
+        return {"schema": "neurofactory.coordination.provider_bridge.v1",
+                "request": request, "binding": binding,
+                "permissions": {"execution": False, "retry": False,
+                                "publication": False, "paid_api": False}}
 
     def apply_offline_test(self, task_id, token, proposal, *, now=None):
         """Only trusted deterministic TEST output. No subprocess/model/remote publication."""
