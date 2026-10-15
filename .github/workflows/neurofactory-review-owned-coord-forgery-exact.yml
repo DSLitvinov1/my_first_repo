@@ -1,0 +1,40 @@
+name: Neurofactory REVIEW exact COORD forged diagnostics boundary
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - bridge/neurofactory/development/review_owned/independent_coord_diagnostic_forgery_20261015.py
+      - .github/workflows/neurofactory-review-owned-coord-forgery-exact.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reviewer_coord_diagnostic_forgery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact reviewer negative scenario
+        uses: actions/checkout@v4
+        with:
+          ref: 7d6884a5b69f1062959257287ceabeb723bae090
+          persist-credentials: false
+      - name: Move independent reproducer outside audited code
+        run: cp bridge/neurofactory/development/review_owned/independent_coord_diagnostic_forgery_20261015.py "$RUNNER_TEMP/review_coord_negative.py"
+      - name: Checkout exact coordinator-only candidate
+        uses: actions/checkout@v4
+        with:
+          ref: fa52b66c30a1901c0e00bc2d9fba9639d6c2d7e3
+          persist-credentials: false
+          clean: true
+      - name: Require auditable SHA before reviewer attack
+        run: |
+          test "$(git rev-parse HEAD)" = "fa52b66c30a1901c0e00bc2d9fba9639d6c2d7e3"
+          test -z "$(git status --porcelain)"
+      - name: Run independent no-authority and forged source cases
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONNOUSERSITE: "1"
+        run: python3 -B "$RUNNER_TEMP/review_coord_negative.py" "$GITHUB_WORKSPACE/bridge/neurofactory/coordination"
+      - name: Confirm no audited code mutated
+        run: git diff --exit-code
