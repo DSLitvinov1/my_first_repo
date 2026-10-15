@@ -119,4 +119,22 @@ class Targeted(unittest.TestCase):
                              'BLOCKED_NONLIVE_DIAGNOSTIC_ONLY')
         c=core();c['provider_relative_path']='src/'+'a'*114+'.py'
         with self.assertRaises(BoundaryError):self.check(c=c)
+    def test_actual_core_preview_contract_maps_without_authority(self):
+        from mvp_core_preview_check import inspect_core_preview
+        from test_mvp_core_preview_check import manifest, core_packet, canonical_digest
+        for filename,expected in (('demo.py','src/demo.py'),
+                                  ('docs/a.md','docs/docs/a.md'),
+                                  ('nested/d.json','src/nested/d.json')):
+            p=manifest('bridge/neurofactory/development/core_owned/'+filename)
+            preview=inspect_core_preview(p,core_packet(p))
+            report=self.check(c=preview,h=host())
+            with self.subTest(filename=filename):
+                self.assertEqual(report['proposed_input_task_sha256'],
+                                 canonical_digest(p))
+                self.assertEqual(report['proposed_core_sha40'],p['source_sha'])
+                self.assertEqual(report['proposed_source_file_sha256'],p['source_sha256'])
+                self.assertEqual(report['proposed_provider_target'],expected)
+                self.assertFalse(report['owner_authorization_verified'])
+                self.assertFalse(report['witness_contains_signed_source_fields'])
+                self.assertFalse(report['live_execution_allowed'])
 if __name__=='__main__':unittest.main()
