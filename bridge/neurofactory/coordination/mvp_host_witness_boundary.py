@@ -21,6 +21,26 @@ _HOST = {'schema','task_id','status','witness_receipt_sha256',
 def _match(v,pattern):
     return type(v) is str and pattern.fullmatch(v) is not None
 
+_WINDOWS_DEVICES = frozenset({'CON','PRN','AUX','NUL'} |
+    {'COM'+str(i) for i in range(1,10)} |
+    {'LPT'+str(i) for i in range(1,10)})
+
+def _safe_provider_path(path):
+    if not _match(path,_PATH) or len(path)>115:
+        return False
+    parts=path.split('/')
+    if parts[0]=='docs':
+        if not path.endswith('.md'):
+            return False
+    elif not path.endswith(('.py','.txt','.json')):
+        return False
+    return all(
+        x not in ('','.','..') and
+        not x.startswith('.') and not x.endswith('.') and
+        x.split('.')[0].upper() not in _WINDOWS_DEVICES
+        for x in parts[1:]
+    )
+
 def inspect_host_witness(core, host, *, expected_task_id):
     """Read-only report. Positive source/host checks cannot authorize any work."""
     if (not _match(expected_task_id,_TASK) or type(core) is not dict or
@@ -31,8 +51,7 @@ def inspect_host_witness(core, host, *, expected_task_id):
         not _match(core['source_sha'],_SHA40) or
         not _match(core['source_sha256'],_SHA64) or
         not _match(core['input_sha256'],_SHA64) or
-        not _match(core['provider_relative_path'],_PATH) or
-        any(x in ('','.','..') or x.startswith('.') for x in core['provider_relative_path'].split('/')) or
+        not _safe_provider_path(core['provider_relative_path']) or
         core['format_compatible'] is not True or
         any(core[k] is not False for k in ('task_source_authenticated',
             'approval_origin_authenticated','lease_proven','source_verified',
@@ -60,6 +79,7 @@ def inspect_host_witness(core, host, *, expected_task_id):
         'proposed_provider_target':core['provider_relative_path'],
         'provenance_authenticated':False,'owner_authorization_verified':False,
         'policy_sha256_authenticated':False,'signed_target_binding_verified':False,
+        'witness_contains_signed_source_fields':False,
         'protected_issuer_highwater_verified':False,
         'central_cas_and_receiver_fencing_verified':False,
         'independent_exact_sha_release_review_verified':False,
