@@ -156,6 +156,18 @@
       ],
       "live_execution": false,
       "owner_acceptance": false
+    },
+    {
+      "id": "god_mode",
+      "primary_chat": "GOD MODE (requires SKILLS scope agreement before any write)",
+      "repository": "DSLitvinov1/lesson3.1",
+      "branch": "neurofactory-godmode-autonomy-isolated-20261014",
+      "status": "P2_UNIQUE_OWNERSHIP_SCOPE_REQUIRED",
+      "issue": 541,
+      "allowed": [],
+      "responsibility": "Separate offline candidate; no rights to active task execution, SKILLS files, or live workers until unique scope and independent acceptance",
+      "live_execution": false,
+      "owner_acceptance": false
     }
   ],
   "conflicts_and_holds": [
