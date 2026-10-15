@@ -24,9 +24,11 @@ _TASK = re.compile(r"NF-DEV-05-Q[0-9]{3}\Z")
 _SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 _SHA64 = re.compile(r"[0-9a-f]{64}\Z")
 _ID = re.compile(r"[A-Za-z0-9_.-]{3,72}\Z")
+_TARGET = re.compile(r"(?:src|docs)/(?:[A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.(?:py|md|txt|json)\Z")
 _UTC = re.compile(r"20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z")
 _FIELDS = {"schema", "task_id", "project_id", "input_core_sha40",
-           "source_file_sha256", "input_task_sha256", "event_kind",
+           "source_file_sha256", "input_task_sha256", "policy_sha256",
+           "target", "event_kind",
            "event_sequence", "prior_event_digest_sha256",
            "core_checkpoint_digest_sha256", "issuer_identity",
            "issuer_key_id", "issued_at_utc"}
@@ -58,6 +60,8 @@ def _valid_payload(payload):
         not _is_text(payload["input_core_sha40"], _SHA40) or
         not _is_text(payload["source_file_sha256"], _SHA64) or
         not _is_text(payload["input_task_sha256"], _SHA64) or
+        not _is_text(payload["policy_sha256"], _SHA64) or
+        not _is_text(payload["target"], _TARGET) or
         type(payload["event_kind"]) is not str or
         payload["event_kind"] not in _KINDS or
         type(payload["event_sequence"]) is not int or
@@ -99,6 +103,8 @@ def sign_offline_fixture(private_key, payload):
 def verify_with_externally_pinned_state(
     trusted_public_key, signed_event, *,
     expected_task_id, expected_core_sha40,
+    expected_project_id, expected_source_file_sha256,
+    expected_input_task_sha256, expected_policy_sha256, expected_target,
     expected_issuer_identity, expected_key_id,
     externally_pinned_prev_digest, externally_pinned_next_sequence,
     externally_pinned_lease_epoch=None, externally_pinned_worker_id=None,
@@ -116,6 +122,11 @@ def verify_with_externally_pinned_state(
         set(signed_event) != {"payload","signature_base64"} or
         not _is_text(expected_task_id,_TASK) or
         not _is_text(expected_core_sha40,_SHA40) or
+        not _is_text(expected_project_id,_ID) or
+        not _is_text(expected_source_file_sha256,_SHA64) or
+        not _is_text(expected_input_task_sha256,_SHA64) or
+        not _is_text(expected_policy_sha256,_SHA64) or
+        not _is_text(expected_target,_TARGET) or
         not _is_text(expected_issuer_identity,_ID) or
         not _is_text(expected_key_id,_ID) or
         not _is_text(externally_pinned_prev_digest,_SHA64) or
@@ -126,6 +137,11 @@ def verify_with_externally_pinned_state(
     canonical=_canonical(payload)
     if (payload["task_id"] != expected_task_id or
         payload["input_core_sha40"] != expected_core_sha40 or
+        payload["project_id"] != expected_project_id or
+        payload["source_file_sha256"] != expected_source_file_sha256 or
+        payload["input_task_sha256"] != expected_input_task_sha256 or
+        payload["policy_sha256"] != expected_policy_sha256 or
+        payload["target"] != expected_target or
         payload["issuer_identity"] != expected_issuer_identity or
         payload["issuer_key_id"] != expected_key_id or
         payload["prior_event_digest_sha256"] != externally_pinned_prev_digest or
