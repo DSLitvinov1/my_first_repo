@@ -140,6 +140,53 @@ def run(browser, viewport, name):
         check_bad('forged-checkpoints',lambda x:x['project_detail'].__setitem__('checkpoint_counts',{'VERIFIED':999}))
         check_bad('forged-severity',lambda x:x['project_detail']['problems'][0].__setitem__('severity','WARNING'))
         check_bad('forged-stalled',lambda x:x['project_detail'].__setitem__('possibly_stalled_tasks',['GHOST']))
+    # Regression: missing project source must not carry phantom queue or results;
+    # last reported run must agree with the success/failure highlights.
+    with TemporaryDirectory() as tmp:
+        original=json.loads((ROOT/'demo-bundle.json').read_text())
+        hostile=[]
+        p=json.loads(json.dumps(original))
+        p['project_detail']['project']=None
+        p['project_detail']['observed_at']=None
+        p['consistency']={'board_project_match':None,'status':'SOURCE_MISSING','does_not_attest_provenance':True}
+        hostile.append(('missing-project-with-queue',p))
+        p=json.loads(json.dumps(original))
+        src=p['project_detail']['project']
+        run={'id':100,'state':'COMPLETED','conclusion':'SUCCESS',
+             'head_sha':src['head_sha'],'matches_project_head':True,
+             'url':f"https://github.com/{src['repository']}/actions/runs/100",
+             'source_verified':False}
+        p['project_detail']['last_reported_success']=run
+        p['project_detail']['last_reported_run']={**run,'id':99,'state':'IN_PROGRESS',
+                'conclusion':'UNKNOWN','url':run['url'].replace('/100','/99')}
+        hostile.append(('inconsistent-run-order',p))
+        p=json.loads(json.dumps(original))
+        p['project_detail']['bridge']['seconds_since_reported_heartbeat']={'forged':'age'}
+        hostile.append(('invalid-bridge-age',p))
+        for name,packet in hostile:
+            path=Path(tmp)/(name+'.json')
+            path.write_text(json.dumps(packet),encoding='utf-8')
+            page.locator('#toast').evaluate('(el) => {el.hidden=true;el.textContent="";}')
+            page.locator('#file-input').set_input_files(str(path))
+            page.wait_for_function("document.querySelector('#toast').textContent.includes('Файл отклонён')",timeout=3500)
+            assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text(),name
+        # A legitimate coordinator-board-only payload has no OPS project or fabricated queue.
+        board_only=json.loads(json.dumps(original))
+        board_only['project_detail']={
+            'project':None,'source_verified':False,'observed_at':None,
+            'bridge':{'reported_state':'UNKNOWN','display_state':'UNKNOWN','seconds_since_reported_heartbeat':None},
+            'workers':[],'queue':[],'checkpoint_counts':{},'problems':[],
+            'stopped_tasks':[],'possibly_stalled_tasks':[],
+            'last_reported_success':None,'last_reported_failure':None,'last_reported_run':None,
+            'last_run_sort':'HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED'
+        }
+        board_only['consistency']={'board_project_match':None,'status':'SOURCE_MISSING','does_not_attest_provenance':True}
+        path=Path(tmp)/'board-only.json'
+        path.write_text(json.dumps(board_only),encoding='utf-8')
+        page.locator('#toast').evaluate('(el) => {el.hidden=true;el.textContent="";}')
+        page.locator('#file-input').set_input_files(str(path))
+        page.wait_for_function("document.querySelector('#toast').textContent.includes('снимок принят')",timeout=3500)
+        assert 'Неподтверждённый локальный снимок' in page.locator('.warning-strip').inner_text()
     page.locator('#reset-btn').click()
     assert 'Демонстрационные данные' in page.locator('.warning-strip').inner_text()
     page.close()

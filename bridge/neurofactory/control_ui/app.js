@@ -39,8 +39,11 @@
     const project=data.project_detail;
     if(!exact(project,["project","source_verified","observed_at","bridge","workers","queue","checkpoint_counts","problems","stopped_tasks","possibly_stalled_tasks","last_reported_success","last_reported_failure","last_reported_run","last_run_sort"])||project.source_verified!==false||!Array.isArray(project.workers)||!Array.isArray(project.queue)||!Array.isArray(project.problems)||project.workers.length>50||project.queue.length>100||project.problems.length>300||!Array.isArray(project.stopped_tasks)||!Array.isArray(project.possibly_stalled_tasks)||project.last_run_sort!=="HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED")deny();
     if(project.project!==null&&(!exact(project.project,["id","repository","branch","head_sha"])||!/^[-a-zA-Z0-9_.:]{1,64}$/.test(project.project.id)||!/^[-a-zA-Z0-9_.]+\/[-a-zA-Z0-9_.]+$/.test(project.project.repository)||!/^[-a-zA-Z0-9._/]{1,180}$/.test(project.project.branch)||!/^[a-f0-9]{40}$/.test(project.project.head_sha)))deny();
-    if(project.observed_at!==null&&(typeof project.observed_at!=="string"||project.observed_at.length>35||!/^\d{4}-\d\d-\d\dT/.test(project.observed_at)))deny();
-    if(!exact(project.bridge,["reported_state","display_state","seconds_since_reported_heartbeat"])||project.bridge.display_state!=="UNKNOWN"||!(["UNKNOWN","RUNNING","IDLE","FAILED","OFFLINE"].includes(project.bridge.reported_state)))deny();
+    if(!exact(project.bridge,["reported_state","display_state","seconds_since_reported_heartbeat"])||project.bridge.display_state!=="UNKNOWN"||!(["UNKNOWN","RUNNING","IDLE","FAILED","OFFLINE"].includes(project.bridge.reported_state))||(project.bridge.seconds_since_reported_heartbeat!==null&&!safeInt(project.bridge.seconds_since_reported_heartbeat)))deny();
+    if(project.project===null){
+      // OPS emits a completely empty diagnostics projection when the source is missing.
+      if(project.observed_at!==null||project.bridge.reported_state!=="UNKNOWN"||project.bridge.seconds_since_reported_heartbeat!==null||project.queue.length||project.workers.length||project.problems.length||Object.keys(project.checkpoint_counts).length||project.stopped_tasks.length||project.possibly_stalled_tasks.length||project.last_reported_success!==null||project.last_reported_failure!==null||project.last_reported_run!==null)deny();
+    }else if(typeof project.observed_at!=="string"||project.observed_at.length>35||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(project.observed_at)||!Number.isFinite(Date.parse(project.observed_at)))deny();
     const workerIds=new Set();
     for(const w of project.workers){
       if(!exact(w,["id","role","reported_state","display_state","seconds_since_reported_heartbeat"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.id)||workerIds.has(w.id)||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.role)||!["RUNNING","IDLE","FAILED","OFFLINE","UNKNOWN"].includes(w.reported_state)||w.display_state!=="UNKNOWN"||(w.seconds_since_reported_heartbeat!==null&&!safeInt(w.seconds_since_reported_heartbeat)))deny();
@@ -71,6 +74,13 @@
       if(!exact(r,["id","state","conclusion","head_sha","matches_project_head","url","source_verified"])||!safeInt(r.id)||r.id===0||r.source_verified!==false||r.matches_project_head!==true||!project.project||r.head_sha!==project.project.head_sha||r.url!==`https://github.com/${project.project.repository}/actions/runs/${r.id}`||!["QUEUED","IN_PROGRESS","COMPLETED","UNKNOWN"].includes(r.state)||!["SUCCESS","FAILURE","CANCELLED","TIMED_OUT","UNKNOWN"].includes(r.conclusion)||(r.state!=="COMPLETED"&&r.conclusion!=="UNKNOWN"))deny();
       if(k==="last_reported_success"&&(r.state!=="COMPLETED"||r.conclusion!=="SUCCESS"))deny();
       if(k==="last_reported_failure"&&(r.state!=="COMPLETED"||!["FAILURE","CANCELLED","TIMED_OUT"].includes(r.conclusion)))deny();}
+    const last=project.last_reported_run,success=project.last_reported_success,failure=project.last_reported_failure;
+    if((success!==null||failure!==null)&&last===null)deny();
+    if(success!==null&&failure!==null&&success.id===failure.id)deny();
+    const sameRun=(a,b)=>a.id===b.id&&a.state===b.state&&a.conclusion===b.conclusion&&a.head_sha===b.head_sha&&a.url===b.url;
+    for(const entry of [success,failure])if(entry!==null&&(entry.id>last.id||(entry.id===last.id&&!sameRun(entry,last))))deny();
+    if(last!==null&&last.state==="COMPLETED"&&last.conclusion==="SUCCESS"&&(success===null||!sameRun(last,success)))deny();
+    if(last!==null&&last.state==="COMPLETED"&&["FAILURE","CANCELLED","TIMED_OUT"].includes(last.conclusion)&&(failure===null||!sameRun(last,failure)))deny();
     for(const p of project.problems)if(!exact(p,["code","task_id","severity","source_verified"])&&!exact(p,["code","task_id","severity","source_verified","run_ids","distinct_reported_runs","recurrent_in_snapshot"]))deny();
     for(const p of project.problems){
       if(p.source_verified!==false||!["MODEL_TIMEOUT","RUNNER_LOST","GITHUB_UNAVAILABLE","CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE","REVIEW_REJECTED","MODEL_REPLY_MALFORMED","LEASE_CONFLICT","OTHER_FAILURE","POSSIBLY_STALLED"].includes(p.code)||(p.task_id!==null&&(!/^[-A-Za-z0-9_.:]{1,64}$/.test(p.task_id)))||p.severity!==(["CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE"].includes(p.code)?"BLOCKED":"WARNING"))deny();
