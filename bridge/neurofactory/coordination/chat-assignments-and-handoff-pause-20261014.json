@@ -143,11 +143,11 @@
     },
     {
       "id": "trusted_host",
-      "primary_chat": "TRUSTED HOST — owner not yet assigned",
+      "primary_chat": "Existing main coordinator chat — TEMPORARY OFFLINE TRUSTED HOST implementer, no new chat",
       "repository": "DSLitvinov1/my_first_repo",
       "branch": "neurofactory-trusted-host-owned-20261015",
-      "branch_status": "CREATED_EMPTY_FROM_MAIN_OWNER_UNASSIGNED",
-      "status": "PROVISIONAL_OWNER_ACCEPTANCE_REQUIRED",
+      "branch_status": "DRAFT_PR15_OFFLINE_TARGETED_TESTS_PASS",
+      "status": "ISOLATED_OFFLINE_CANDIDATE_NO_LIVE_UNDER_TEMP_COORD_OWNER",
       "issue": 14,
       "responsibility": "Own future central transaction and external checkpoint proofs, not CORE or PROVIDERS operations",
       "allowed": [
@@ -155,8 +155,11 @@
         ".github/workflows/neurofactory-trusted-host-owned-"
       ],
       "live_execution": false,
-      "owner_acceptance": false,
-      "base_main_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
+      "owner_acceptance": "COORDINATOR_TEMPORARY_OFFLINE_CODE_ONLY_USER_AUTHORIZED",
+      "base_main_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
+      "pr": 15,
+      "source_sha": "1a106b1124f9560f15c2508f9209ab89fbb5a8e8",
+      "security_owner_acceptance": false
     },
     {
       "id": "god_mode",
