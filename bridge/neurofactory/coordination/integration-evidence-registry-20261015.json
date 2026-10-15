@@ -1,0 +1,240 @@
+{
+  "schema": 2,
+  "project": "НЕЙРОЗАВОД",
+  "recorded_at_date": "2026-10-15",
+  "owner": "COORDINATOR",
+  "primary_issue": 3,
+  "roadmap_issue": 8,
+  "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
+  "lanes": {
+    "COORDINATOR": {
+      "status": "SPECIFICATIONS_UPDATED_NO_LIVE",
+      "branch": "neurofactory-coordinator-mvp-status-20261015",
+      "pr": 12,
+      "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
+      "owner": "COORDINATOR",
+      "evidence": "New TRUSTED HOST Issue14, owner registry and central multi-PC protocol in coordination/"
+    },
+    "CORE": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": "f4f24d16c5a71263441d0df939ba98cbd76a66ae",
+      "issue": 9,
+      "owner": "CORE",
+      "status": "P0_INDEPENDENT_REJECT_LIVE",
+      "evidence": {
+        "author_linux_host_smoke": {
+          "run": 38662104225,
+          "job": 116185550089,
+          "tests": "1/1 success, distinct-UID temporary 0700 sandbox"
+        },
+        "ownership": {
+          "run": 38662104194,
+          "conclusion": "success"
+        },
+        "independent_exact_sha_review": {
+          "issue": 11,
+          "comment": 6181833967,
+          "verdict": "REJECT_LIVE"
+        },
+        "older_external_anchor_negative": {
+          "issue": 11,
+          "comment": 6181724062,
+          "reviewed_sha": "ef8ce6acc64ac1d4ad2c8e8018e67e28b8549fe3",
+          "verdict": "REJECT_LIVE"
+        }
+      },
+      "blockers": [
+        "no real deployed OS identity isolation",
+        "same-UID rename into out-of-sandbox inode not excluded",
+        "no protected signer/antirollback",
+        "no central fenced lease authority",
+        "Windows protected writer not implemented"
+      ],
+      "resume": "CORE+TRUSTED_HOST owner actual separate OS/domain implementation then exact-SHA independent hostile-input reviewer"
+    },
+    "REVIEW": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": "5f4259793e2b21503ef3b7865b2cb9e05e17fd3a",
+      "owner": "REVIEW",
+      "status": "INDEPENDENT_REJECT_LIVE",
+      "issue": 11,
+      "blockers": [
+        "new CORE/host protected trust implementation absent"
+      ],
+      "resume": "new exact source SHA after actual host boundary security change"
+    },
+    "PROVIDERS": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+      "pr": 13,
+      "owner": "PROVIDERS",
+      "status": "P2_NO_REAL_OLLAMA_RESOURCE_OR_SIGNED_REVIEW",
+      "evidence": {
+        "hosted_targeted": {
+          "run": 38655657608,
+          "os": [
+            "windows-2025",
+            "ubuntu-24.04"
+          ],
+          "jobs_both_success": true,
+          "scope": "owner candidate offline"
+        },
+        "self_hosted_ram": {
+          "run": 38652410062,
+          "free_ram_bytes": 934338560,
+          "ollama_process_detected": false
+        }
+      },
+      "blockers": [
+        "real local Qwen not proven",
+        "private author receipt is not independent identity",
+        "RAM gate below 2GiB and no running Ollama",
+        "CORE signer and real lease absent",
+        "independent model provenance absent"
+      ],
+      "resume": "read-only changed Windows resource/Ollama evidence plus own exact reviewed core-bound envelope"
+    },
+    "OPS": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "owner": "OPS",
+      "issue": 6,
+      "status": "P2_READ_ONLY_OWN_TESTS_PASS_INDEPENDENT_UNASSIGNED",
+      "evidence": {
+        "run": 38652940146,
+        "ubuntu_tests_pass": 34,
+        "windows_tests_pass": 34
+      },
+      "blockers": [
+        "no independent reviewer assigned",
+        "live source not authenticated"
+      ],
+      "resume": "separate independent exact SHA verdict, then only read-only user-approved consumer integration"
+    },
+    "SKILLS": {
+      "repo": "DSLitvinov1/lesson3.1",
+      "head": "571a8668680456db6b12b9991f57f9a465461906",
+      "draft_pr": 558,
+      "owner": "SKILLS",
+      "issue": 543,
+      "status": "P2_12_INACTIVE_19_PROFILES_NO_FINAL_REVIEW",
+      "evidence": {
+        "parent_pr": 550,
+        "parent_sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
+        "parent_original_suites_run": 38659826061,
+        "pass": 86,
+        "does_not_cover_child": true
+      },
+      "blockers": [
+        "exact PR558 independent signed reviewer missing",
+        "parent test evidence does not auto-transfer to child",
+        "CORE owner machine format acceptance absent"
+      ],
+      "resume": "exact child clean checkout targeted test+real independent signoff; maintain disabled status"
+    },
+    "GOD_MODE": {
+      "repo": "DSLitvinov1/lesson3.1",
+      "head": "18532efce7d23aaf959e0c4c50227723970dc8f5",
+      "pr": 541,
+      "owner": "GOD MODE — unique scope unconfirmed",
+      "status": "P1_OWNERSHIP_OVERLAP_STOP",
+      "evidence": {
+        "run": 38637867856,
+        "two_jobs_success": true
+      },
+      "blockers": [
+        "unique owned paths relative to SKILLS unconfirmed",
+        "no independent live approval"
+      ],
+      "resume": "single writer/unique file prefix and independent acceptance; no activation"
+    },
+    "UI": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": null,
+      "issue": 10,
+      "owner": "UI — adoption pending",
+      "status": "P2_READ_ONLY_AREA_RESERVED_NO_LIVE",
+      "evidence": {
+        "ops_three_layer_rendering": 38652940146
+      },
+      "blockers": [
+        "separate UI owner and branch not adopted",
+        "no trusted live status source"
+      ],
+      "resume": "one UI owner accepts isolated read-only prefix, no enqueue/preview action outside mock"
+    },
+    "TRUSTED_HOST": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": null,
+      "issue": 14,
+      "owner": "TRUSTED HOST — not assigned",
+      "reserved_branch": "neurofactory-trusted-host-owned-20261015",
+      "branch_created": false,
+      "status": "P0_PREREQUISITE_UNIMPLEMENTED_P2_OWNER_UNASSIGNED",
+      "evidence": {
+        "scope_in_registry": true,
+        "reference_doc": "bridge/neurofactory/coordination/CENTRAL_MULTIPC_TRANSACTION_V1_RU.md"
+      },
+      "blockers": [
+        "no adopted author and separate branch",
+        "no central PostgreSQL transactional CAS with epoch fencing",
+        "no signed append-only independent monotonic issuer",
+        "no real distinct OS identities and ACL attestation",
+        "no no-retry reconciliation across two PCs"
+      ],
+      "resume": "explicit owner acceptance, own isolated implementation, two-PC adversarial tests and independent review"
+    },
+    "HANDOFF": {
+      "repo": "DSLitvinov1/my_first_repo",
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "owner": "HANDOFF",
+      "status": "PAUSED_BY_USER",
+      "blockers": [
+        "explicit user unpause absent"
+      ],
+      "resume": "user instruction alone after all release safety gates"
+    }
+  },
+  "common_conflicts": [
+    {
+      "code": "HOST_VS_CORE",
+      "decision": "TRUSTED HOST owns central CAS HTTPS API/signing; CORE owns sandbox writer and local lease consumer; no cross-edit"
+    },
+    {
+      "code": "SIGNED_ISSUER_VS_DB",
+      "decision": "issuer separate identity/key domain and antirollback; SHA match in CORE alone isn't attestation"
+    },
+    {
+      "code": "LOCAL_SQLITE_VS_MULTIPC",
+      "decision": "central PostgreSQL authoritative row lock and epoch fencing; SQLite cannot arbitrate across PCs"
+    },
+    {
+      "code": "PROVIDER_RECEIPT_VS_REVIEW",
+      "decision": "author-owned private response receipt remains unverified; signed reviewer/issuer distinct"
+    },
+    {
+      "code": "OPS_UI_VS_LIVE",
+      "decision": "three-layer UI snapshots are read-only UNVERIFIED/UNKNOWN, not execution grants"
+    },
+    {
+      "code": "GOD_MODE_VS_SKILLS",
+      "decision": "GOD MODE writes disabled until unique area independent of SKILLS documented"
+    },
+    {
+      "code": "SINGLE_LEASE_VS_EXACTLY_ONCE",
+      "decision": "central claim only prevents competing winners; external effects still require idempotent receiver/fencing, otherwise UNKNOWN STOP"
+    }
+  ],
+  "cross_host_protocol": "bridge/neurofactory/coordination/central-multipc-transaction-v1.json",
+  "status": "BLOCKED",
+  "branch_protection": "NOT_VERIFIED",
+  "publisher_idempotency": "NOT_IMPLEMENTED",
+  "paid_api_forbidden": true,
+  "live_model_forbidden": true,
+  "handoff": "PAUSED_BY_USER",
+  "next_action_order": [
+    "TRUSTED HOST owner accepts Issue14, implement separate OS principal and independent issuer trust boundary",
+    "TRUSTED HOST implements isolated central CAS/fencing with two PC no-duplicate tests",
+    "CORE owner binds its protected writer/source evidence to central issuer and exact new independent REVIEW"
+  ]
+}
