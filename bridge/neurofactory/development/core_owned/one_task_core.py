@@ -51,6 +51,13 @@ def _safe_target(path):
                                       for s in path.split("/"))
             or pathlib.PurePosixPath(path).suffix not in (".py", ".md", ".txt", ".json")):
         raise CoreSafetyError("Target is not a single allowed CORE sandbox file")
+    # Windows silently resolves device basenames and trailing dots to other objects.
+    # Enforce identical path semantics on Linux and Windows before any admission.
+    for component in path.split("/"):
+        stem = component.split(".", 1)[0].upper()
+        if (component.endswith(".") or stem in {"CON", "PRN", "AUX", "NUL"}
+                or re.fullmatch(r"(COM|LPT)[1-9]", stem)):
+            raise CoreSafetyError("Windows device path or ambiguous trailing dot")
     return path
 
 
@@ -180,13 +187,58 @@ class OneTaskCore:
         if row is None:
             return None
         task, raw, digest, state, owner, token, attempts, lease, result, receipt = row
-        spec = json.loads(raw)
-        _validate_spec(spec)
+        try:
+            spec = json.loads(raw)
+            _validate_spec(spec)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise CoreSafetyError("Corrupted trusted task checkpoint") from exc
         if _sha(_canonical(spec)) != digest or task != spec["task_id"]:
             raise CoreSafetyError("Checkpoint identity or task fingerprint corrupted")
+        allowed_states = {"QUEUED", "CLAIMED", "APPLYING",
+                          "CHECKPOINTED_TEST", "NEEDS_MANUAL_REVIEW"}
+        if state not in allowed_states or type(attempts) is not int or attempts not in (0, 1):
+            raise CoreSafetyError("Unknown or corrupted durable queue state")
+        if state == "QUEUED":
+            if (attempts != 0 or owner is not None or token is not None or
+                    lease is not None or result is not None or receipt is not None):
+                raise CoreSafetyError("Queued task contains untrusted execution evidence")
+        else:
+            if (attempts != 1 or type(owner) is not str or
+                    not re.fullmatch(r"[a-zA-Z0-9_-]{1,50}", owner) or
+                    type(token) is not str or not SHA64.fullmatch(token) or
+                    type(lease) is not int or lease < 0):
+                raise CoreSafetyError("Worker claim and lease checkpoint corrupted")
+        try:
+            parsed_receipt = json.loads(receipt) if receipt is not None else None
+        except (TypeError, ValueError) as exc:
+            raise CoreSafetyError("Unparseable offline checkpoint receipt") from exc
+        if result is not None or parsed_receipt is not None:
+            expected_fields = {"schema", "task_id", "source_sha", "source_sha256",
+                               "target", "result_sha256", "mode", "model_invoked",
+                               "review_approved", "published", "api_cost_usd"}
+            if (type(result) is not str or not SHA64.fullmatch(result)
+                    or type(parsed_receipt) is not dict
+                    or set(parsed_receipt) != expected_fields
+                    or parsed_receipt["schema"] != "neurofactory.core.offline_receipt.v1"
+                    or parsed_receipt["task_id"] != spec["task_id"]
+                    or parsed_receipt["source_sha"] != spec["source_sha"]
+                    or parsed_receipt["source_sha256"] != spec["source_sha256"]
+                    or parsed_receipt["target"] != spec["target"]
+                    or parsed_receipt["result_sha256"] != result
+                    or parsed_receipt["mode"] != "OFFLINE_TEST"
+                    or parsed_receipt["model_invoked"] is not False
+                    or parsed_receipt["review_approved"] is not False
+                    or parsed_receipt["published"] is not False
+                    or type(parsed_receipt["api_cost_usd"]) is not int
+                    or parsed_receipt["api_cost_usd"] != 0):
+                raise CoreSafetyError("Receipt metadata or result digest corrupted")
+            if state not in ("CHECKPOINTED_TEST", "NEEDS_MANUAL_REVIEW"):
+                raise CoreSafetyError("Receipt present before verified local checkpoint")
+        elif state == "CHECKPOINTED_TEST":
+            raise CoreSafetyError("Completed checkpoint has no offline receipt")
         return {"spec": spec, "state": state, "owner": owner, "token": token,
                 "attempts": attempts, "lease_until": lease,
-                "result_sha256": result, "receipt": json.loads(receipt) if receipt else None}
+                "result_sha256": result, "receipt": parsed_receipt}
 
     def _file(self, target, *, make_parents=False):
         path = self.sandbox
@@ -233,6 +285,12 @@ class OneTaskCore:
             row = self._row(con)
             if row is None:
                 return {"state": "EMPTY"}
+            if row["state"] == "CHECKPOINTED_TEST":
+                target = self._file(row["spec"]["target"])
+                if (not target.exists()
+                        or _sha(target.read_bytes()) != row["result_sha256"]):
+                    raise CoreSafetyError(
+                        "Checkpoint content changed; require explicit manual recovery")
             return {"task_id": row["spec"]["task_id"], "state": row["state"],
                     "attempts": row["attempts"], "lease_until": row["lease_until"],
                     "source_sha": row["spec"]["source_sha"],
