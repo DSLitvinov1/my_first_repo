@@ -1,0 +1,55 @@
+name: Neurofactory REVIEW exact HOST ephemeral highwater rollback
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-highwater-rollback.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  independent_ephemeral_postgres_negative:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nf_test
+          POSTGRES_USER: nf_review
+          POSTGRES_PASSWORD: only_ephemeral_review
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_review -d nf_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 8
+    steps:
+      - name: Read-only REVIEW checkout
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Copy one REVIEW-only negative outside source checkout
+        run: cp bridge/neurofactory/development/review_owned/independent_host_highwater_rollback_20261015.py "$RUNNER_TEMP/review_highwater.py"
+      - name: Checkout exact HOST SHA read-only
+        uses: actions/checkout@v4
+        with:
+          ref: c93320c2239fe37c3c17b75ca0ec94c632870ded
+          persist-credentials: false
+          clean: true
+      - name: Verify exact audited highwater source
+        run: test "$(git rev-parse HEAD)" = "c93320c2239fe37c3c17b75ca0ec94c632870ded"
+      - name: Isolated temporary psycopg client
+        run: |
+          python3 -m venv "$RUNNER_TEMP/review_pg"
+          "$RUNNER_TEMP/review_pg/bin/python" -m pip -q install 'psycopg[binary]>=3.2,<3.4'
+      - name: One privileged rollback vs external and self-chosen pins
+        env:
+          REVIEW_EPHEMERAL_PG_DSN: "postgresql://nf_review:only_ephemeral_review@localhost:5432/nf_test"
+        run: |
+          "$RUNNER_TEMP/review_pg/bin/python" -B "$RUNNER_TEMP/review_highwater.py" "$GITHUB_WORKSPACE/bridge/neurofactory/trusted_host"
+      - name: Confirm audited source unmodified
+        run: git diff --exit-code
