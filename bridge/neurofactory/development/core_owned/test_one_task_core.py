@@ -214,17 +214,34 @@ except CoreSafetyError:
         self.assertFalse(preview["permissions"]["execution"])
         self.assertFalse(preview["permissions"]["publication"])
         self.assertFalse(preview["permissions"]["paid_api"])
+        self.assertEqual(preview["schema"], "neurofactory.coordination.provider_bridge.v1")
+        self.assertEqual(set(preview), {"schema", "request", "binding", "permissions"})
         self.assertEqual(preview["request"]["task_id"], self.spec["task_id"])
         self.assertEqual(set(preview["request"]), {
             "schema", "task_id", "project_id", "input_sha256", "target_path", "instruction"})
+        self.assertEqual(preview["request"]["target_path"], "src/lesson_once.py")
+        self.assertEqual(preview["binding"]["core_target"], TARGET)
+        self.assertEqual(preview["binding"]["provider_target"], "src/lesson_once.py")
+        self.assertEqual(preview["binding"]["source_sha"], self.spec["source_sha"])
         self.assertEqual(preview["request"]["input_sha256"],
                          hashlib.sha256(_canonical(self.spec)).hexdigest())
+        self.assertEqual(preview["binding"]["input_sha256"],
+                         preview["request"]["input_sha256"])
         claim = self.q.claim("worker", now=100)
         fake = self.proposal()
         fake["mode"] = "PROVIDER_UNVERIFIED"
         with self.assertRaises(CoreSafetyError):
             self.q.apply_offline_test(self.spec["task_id"], claim["token"], fake, now=101)
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
+
+    def test_markdown_provider_mapping_without_model_execution(self):
+        self.spec["target"] = "bridge/neurofactory/development/core_owned/notes/lesson.md"
+        self.admit()
+        packet = self.q.provider_preview(self.spec["task_id"])
+        self.assertEqual(packet["request"]["target_path"], "docs/notes/lesson.md")
+        self.assertEqual(packet["binding"]["core_target"], self.spec["target"])
+        self.assertEqual(packet["binding"]["source_sha256"], EMPTY_SHA)
+        self.assertIs(packet["permissions"]["execution"], False)
 
     def test_non_string_model_is_safely_rejected(self):
         bad = copy.deepcopy(self.spec)
