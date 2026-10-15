@@ -524,7 +524,7 @@ class OneTaskCore:
             con.execute("BEGIN IMMEDIATE")
             row = self._row(con)
             if (row is None or row["spec"]["task_id"] != task_id
-                    or row["state"] != "CLAIMED" or row["lease_until"] < now
+                    or row["state"] != "CLAIMED" or row["lease_until"] <= now
                     or not secrets.compare_digest(row["token"], _sha(token.encode()))
                     or proposal["target"] != row["spec"]["target"]):
                 raise CoreSafetyError("No valid live exclusive CORE claim")
