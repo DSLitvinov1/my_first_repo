@@ -1,0 +1,44 @@
+name: Neurofactory REVIEW exact CORE candidate rerun
+on:
+  push:
+    branches:
+      - neurofactory-review-owned-20261013
+    paths:
+      - .github/workflows/neurofactory-review-owned-core-rereview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact_core_boundary_repro:
+    name: Two former defects and relocated-parent boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Isolated REVIEW script checkout
+        uses: actions/checkout@v4
+        with:
+          ref: neurofactory-review-owned-20261013
+          persist-credentials: false
+      - name: Store reviewer script outside candidate checkout
+        shell: bash
+        run: |
+          cp bridge/neurofactory/development/review_owned/independent_core_rereview_20261015.py "$RUNNER_TEMP/independent_core_rereview.py"
+      - name: Checkout exact candidate source WITHOUT changing it
+        uses: actions/checkout@v4
+        with:
+          ref: fa92a2eb2d23ce1575da7090444eb6b82b63dee8
+          persist-credentials: false
+          clean: true
+      - name: Enforce exact audited code SHA
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "fa92a2eb2d23ce1575da7090444eb6b82b63dee8"
+      - name: Independent small negative checks (NO Qwen or Windows bridge)
+        shell: bash
+        run: |
+          python3 -B "$RUNNER_TEMP/independent_core_rereview.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
+      - name: Confirm read-only source tree
+        shell: bash
+        run: git diff --exit-code
