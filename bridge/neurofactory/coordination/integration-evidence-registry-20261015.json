@@ -169,7 +169,7 @@
       "issue": 14,
       "owner": "TRUSTED HOST — not assigned",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
-      "branch_created": false,
+      "branch_created": true,
       "status": "P0_PREREQUISITE_UNIMPLEMENTED_P2_OWNER_UNASSIGNED",
       "evidence": {
         "scope_in_registry": true,
@@ -182,7 +182,8 @@
         "no real distinct OS identities and ACL attestation",
         "no no-retry reconciliation across two PCs"
       ],
-      "resume": "explicit owner acceptance, own isolated implementation, two-PC adversarial tests and independent review"
+      "resume": "explicit owner acceptance, own isolated implementation, two-PC adversarial tests and independent review",
+      "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226"
     },
     "HANDOFF": {
       "repo": "DSLitvinov1/my_first_repo",
