@@ -1,0 +1,24 @@
+name: Neurofactory coordinator CORE preview exact contract tests
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/mvp_core_preview_check.py
+      - bridge/neurofactory/coordination/test_mvp_core_preview_check.py
+      - .github/workflows/neurofactory-coordination-core-preview-targeted.yml
+permissions:
+  contents: read
+jobs:
+  coordinator-contract-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect only CORE preview protocol and negative scenarios
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_mvp_core_preview_check.py' -v
