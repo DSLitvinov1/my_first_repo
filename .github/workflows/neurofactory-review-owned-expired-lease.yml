@@ -26,11 +26,11 @@ jobs:
       - name: Checkout exact CORE candidate only
         uses: actions/checkout@v4
         with:
-          ref: 18becc1ad8c17c9259d0e7f646683d0568ce18d6
+          ref: a8f946f10ca9fbb962623537551414230906e4d2
           persist-credentials: false
           clean: true
       - name: Pin exact code before own negative
-        run: test "$(git rev-parse HEAD)" = "18becc1ad8c17c9259d0e7f646683d0568ce18d6"
+        run: test "$(git rev-parse HEAD)" = "a8f946f10ca9fbb962623537551414230906e4d2"
       - name: One synthetic expired lease file effect negative
         run: python3 -B "$RUNNER_TEMP/review_lease_expiry.py" "$GITHUB_WORKSPACE/bridge/neurofactory/development/core_owned"
       - name: Confirm source checkout untouched
