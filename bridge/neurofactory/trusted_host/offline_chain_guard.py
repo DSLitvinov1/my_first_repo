@@ -19,10 +19,7 @@ def verify_pinned_chain(trusted_public_key, signed_events, *,
                         expected_project_id, expected_source_file_sha256,
                         expected_input_task_sha256, expected_policy_sha256,
                         expected_target,
-                        externally_pinned_lease_epoch=None,
-                        externally_pinned_worker_id=None,
-                        externally_pinned_fencing_token_sha256=None,
-                        externally_pinned_idempotency_key=None):
+                        externally_pinned_event_contexts):
     """Fail closed on truncation, replay, reorder, tamper, or wrong external head.
 
     All externally_pinned_* and expected_* values MUST originate from a
@@ -42,9 +39,34 @@ def verify_pinned_chain(trusted_public_key, signed_events, *,
         any(c not in "0123456789abcdef" for c in externally_pinned_final_digest)):
         raise IssuerBoundaryError("untrusted external final digest")
 
+    # A separate trusted caller must bind a different, exact pin set to
+    # EACH lifecycle event. Never infer expected pins from signed payloads.
+    if (type(externally_pinned_event_contexts) is not list or
+        len(externally_pinned_event_contexts) != len(signed_events)):
+        raise IssuerBoundaryError("missing externally pinned per-event contexts")
+    lease_kinds = {"LEASE_CLAIM", "PRE_SIDE_EFFECT",
+                   "EFFECT_READBACK", "MANUAL_STOP"}
+    effect_kinds = {"PRE_SIDE_EFFECT", "EFFECT_READBACK"}
+    allowed_kinds = lease_kinds | {"AUTHORIZE_TASK"}
+    required_lease = {"lease_epoch", "worker_id", "fencing_token_sha256"}
     parent = externally_pinned_genesis_digest
     current = externally_pinned_start_sequence
-    for signed in signed_events:
+    for signed, pinned in zip(signed_events, externally_pinned_event_contexts):
+        if type(pinned) is not dict or type(pinned.get("event_kind")) is not str:
+            raise IssuerBoundaryError("untrusted per-event context")
+        kind = pinned["event_kind"]
+        if kind not in allowed_kinds:
+            raise IssuerBoundaryError("unknown externally expected event kind")
+        required = {"event_kind"}
+        if kind in lease_kinds:
+            required |= required_lease
+        if kind in effect_kinds:
+            required.add("idempotency_key")
+        if set(pinned) != required:
+            raise IssuerBoundaryError("missing or extra per-event authority pin")
+        if (type(signed) is not dict or type(signed.get("payload")) is not dict or
+            signed["payload"].get("event_kind") != kind):
+            raise IssuerBoundaryError("signed kind differs from pinned lifecycle kind")
         result = verify_with_externally_pinned_state(
             trusted_public_key, signed,
             expected_task_id=expected_task_id,
@@ -58,10 +80,10 @@ def verify_pinned_chain(trusted_public_key, signed_events, *,
             expected_input_task_sha256=expected_input_task_sha256,
             expected_policy_sha256=expected_policy_sha256,
             expected_target=expected_target,
-            externally_pinned_lease_epoch=externally_pinned_lease_epoch,
-            externally_pinned_worker_id=externally_pinned_worker_id,
-            externally_pinned_fencing_token_sha256=externally_pinned_fencing_token_sha256,
-            externally_pinned_idempotency_key=externally_pinned_idempotency_key,
+            externally_pinned_lease_epoch=pinned.get("lease_epoch"),
+            externally_pinned_worker_id=pinned.get("worker_id"),
+            externally_pinned_fencing_token_sha256=pinned.get("fencing_token_sha256"),
+            externally_pinned_idempotency_key=pinned.get("idempotency_key"),
         )
         parent = result["reported_receipt_digest_sha256"]
         current += 1
