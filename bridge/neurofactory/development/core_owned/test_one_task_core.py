@@ -111,6 +111,20 @@ except CoreSafetyError:
         self.assertTrue(all(not err for _, err in outputs), outputs)
         self.assertEqual(self.q.snapshot()["attempts"], 1)
 
+    @unittest.skipUnless(os.name == "posix", "POSIX synthetic side-effect only")
+    def test_exact_expiry_disallows_side_effect(self):
+        """At t == lease_until, recovery already treats the claim as expired."""
+        self.admit()
+        held = self.q.claim("expiry-worker", now=100, lease_seconds=10)
+        with self.assertRaises(CoreSafetyError):
+            self.q.apply_offline_test(self.spec["task_id"], held["token"],
+                                      self.proposal(), now=110)
+        self.assertFalse((self.q.sandbox / TARGET).exists())
+        self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
+        self.assertEqual(self.q.recover(now=110)["state"], "NEEDS_MANUAL_REVIEW")
+        with self.assertRaises(CoreSafetyError):
+            self.q.claim("another-worker", now=111)
+
     def test_crash_after_claim_expires_to_manual_no_retry(self):
         self.admit()
         self.q.claim("worker", now=100, lease_seconds=10)
