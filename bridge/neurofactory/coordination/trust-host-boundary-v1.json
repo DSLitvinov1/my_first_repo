@@ -21,7 +21,7 @@
       "requirement": "CORE database and sandbox parent not renamable by same identity as untrusted worker; independently test moved already-open parent; Windows writer stays disabled"
     },
     "external_checkpoint_issuer": {
-      "state": "NOT_IMPLEMENTED",
+      "state": "NOT_IMPLEMENTED_OFFLINE_ED25519_FORMAT_TESTED",
       "owner": "TRUSTED_HOST_OWNER",
       "requirement": "off-host independent OS identity, authentic signed or platform-immutable append-only checkpoint receipts, monotonic per-task sequence and protected anti-rollback"
     },
@@ -62,6 +62,10 @@
       "issuer_identity",
       "issuer_key_id",
       "issued_at_utc",
+      "lease_epoch",
+      "worker_id",
+      "fencing_token_sha256",
+      "idempotency_key",
       "signature"
     ],
     "event_kinds": [
@@ -76,7 +80,55 @@
     "forbidden_event_names": [
       "REVIEW_OK",
       "PUBLISHED"
-    ]
+    ],
+    "common_signed_payload_fields": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "event_kind",
+      "event_sequence",
+      "prior_event_digest_sha256",
+      "core_checkpoint_digest_sha256",
+      "issuer_identity",
+      "issuer_key_id",
+      "issued_at_utc"
+    ],
+    "detached_signed_envelope_fields": [
+      "payload",
+      "signature_base64"
+    ],
+    "event_specific_fields": {
+      "AUTHORIZE_TASK": [],
+      "LEASE_CLAIM": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256"
+      ],
+      "PRE_SIDE_EFFECT": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256",
+        "idempotency_key"
+      ],
+      "EFFECT_READBACK": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256",
+        "idempotency_key"
+      ],
+      "MANUAL_STOP": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256"
+      ]
+    },
+    "lease_epoch": "strict positive int (not bool or float), independently pinned current epoch",
+    "idempotency_key": "strict 64 lowercase hex for PRE_SIDE_EFFECT/EFFECT_READBACK, pinned independently",
+    "fencing_token_sha256": "64 lowercase hex, must be compared to independently pinned active lease",
+    "identity_binding": "EFFECT_READBACK must include and sign lease_epoch, worker_id, fencing_token_sha256 and idempotency_key; compare each to trusted external state"
   },
   "permission_matrix": {
     "CORE": {
@@ -186,5 +238,7 @@
     "paid_api": false,
     "handoff": "PAUSED_BY_USER"
   },
-  "documentation": "bridge/neurofactory/coordination/TRUSTED_HOST_BOUNDARY_V1_20261015_RU.md"
+  "documentation": "bridge/neurofactory/coordination/TRUSTED_HOST_BOUNDARY_V1_20261015_RU.md",
+  "reviewed_core_new_sha": "cbe2bb0e5e9668e5ea0d41044ddb15141d3d4f34",
+  "reviewed_core_new_sha_independent_approval": false
 }
