@@ -1,14 +1,14 @@
 {
   "schema": 2,
   "project": "НЕЙРОЗАВОД",
-  "recorded_at_date": "2026-10-16",
+  "recorded_at_date": "2026-10-17",
   "owner": "COORDINATOR",
   "primary_issue": 3,
   "roadmap_issue": 8,
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "PINNED_CORE_HOST_ONE_TASK_OFFLINE_6_PASS_REAL_HOST_STILL_UNDEPLOYED",
+      "status": "OFFLINE_AUTO_INTAKE_HMAC_SQLITE_HTTP_35_PASS_LIVE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -179,6 +179,46 @@
         "live_authorized": false,
         "release_approved": false,
         "review_independent": false
+      },
+      "auto_intake": {
+        "status": "IMPLEMENTED_ISOLATED_ADVISORY_ONLY",
+        "source": "bridge/neurofactory/coordination/offline_autointake.py",
+        "source_blob": "0bb458a8bcdad2c9772d34f3c614288b8246eaf5",
+        "gateway": "bridge/neurofactory/coordination/offline_intake_gateway.py",
+        "gateway_blob": "46b701dbcd92f4442bc66003b64c494f82222ca2",
+        "tests": "bridge/neurofactory/coordination/test_offline_autointake.py",
+        "test_blob": "96efbbe1a699561d998a18e8b46f7a5284fd65ea",
+        "gateway_tests": "bridge/neurofactory/coordination/test_offline_intake_gateway.py",
+        "gateway_test_blob": "39f451f79f2a406c57e53e5ae2b49e1ce70146ff",
+        "tested_coordinator_sha": "5a8d3e6bae8a4deb42fb5bef61b9b33688bd9504",
+        "hosted_github_actions_run": 38983357524,
+        "hosted_job": 117249078208,
+        "verified_test_count": 35,
+        "test_count_direct": 24,
+        "test_count_real_loopback_http": 11,
+        "previous_red_test_fixture": 38983134603,
+        "previous_red_resolution": "INVALID_UNICODE_TEST_PREVIOUSLY_PASSED_LITERAL_SLASH_U_NOT_SURROGATE",
+        "accepted_sources": [
+          "github_issues",
+          "authorized_api",
+          "signed_import"
+        ],
+        "supported_modes": [
+          "MANUAL",
+          "SEMI_AUTOMATIC",
+          "AUTOMATIC"
+        ],
+        "hmac_sha256_verified_on_exact_bytes": true,
+        "sqlite_durable_dedup": true,
+        "real_webhook_deployed": false,
+        "production_https_ingress": false,
+        "actual_authenticated_owner_approval": false,
+        "real_task_queue_write": false,
+        "automatic_worker_execution": false,
+        "independent_review": false,
+        "paid_api": false,
+        "handoff": "PAUSED_BY_USER",
+        "evidence": "bridge/neurofactory/coordination/AUTO_INTAKE_EVIDENCE_20261017_RU.md"
       }
     },
     "CORE": {
@@ -235,6 +275,13 @@
           "run_id": 38731833190,
           "verdict": "APPROVE_NARROW_SNAPSHOT_READBACK",
           "release_verdict": "REJECT_LIVE"
+        },
+        "latest_checked_fenced_offline_integration": {
+          "candidate_sha": "eecad0c26843a41d39e9c59a8f934786c45b34eb",
+          "github_run": 38982113121,
+          "tested_cases": 6,
+          "conclusion": "AUTHOR_TEST_ONLY_5_NEGATIVE_1_SYNTHETIC_POSITIVE",
+          "live_recipient_fencing_deployed": false
         }
       },
       "blockers": [
@@ -630,11 +677,11 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST #14: real separate approved OS signer, protected key custody and out-of-DB monotonic antirollback origin; signed owner/project/repo/source/policy",
-    "TRUSTED HOST #14: authenticated CAS HTTPS API and recipient-side epoch/fence/idempotency, with UNKNOWN no auto replay; coordinate without altering CORE ownership",
-    "CORE #9: real Linux OS sandbox isolation against same-UID moved parent and code integration to trusted recipient fencing, then two physical authorized nodes",
-    "REVIEW #11: new exact HOST/CORE scoped negative review with privileged rollback, stale lease, race, lost effect receipt and real deployment evidence, before any release",
-    "PROVIDERS/OPS/UI/SKILLS/HANDOFF remain disabled for real execution until model resources, separate reviews and explicit user unpause"
+    "TRUSTED HOST #14: implement independently protected signer/key and owner/project/repo/source/policy permits, externally fixed antirollback highwater and authenticated central HTTPS API; no live deployment before explicit operator approval",
+    "CORE #9: require real HOST issuer authenticated lease_epoch worker fencing idempotency immediately at all filesystem side-effect entrypoints, deny on BLOCKED UNKNOWN stale expiry and failed recipient acknowledgement",
+    "REVIEW #11: independent external authorized reviewer negative tests on exact HOST 5c0132... and CORE eecad0... plus COORD new signed-advisory intake code blobs, no broad unchanged matrices",
+    "COORD/UI integration after review: attach user-facing new project/task form to signed gateway contract, no executor activation; GitHub/Telegram external webhooks only via explicitly authorized secure ingress",
+    "Authorized OS-separated two-physical-host collision/crash/replay acceptance, real local model resource check, separately approved release; HANDOFF remains PAUSED"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
