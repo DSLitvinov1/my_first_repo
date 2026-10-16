@@ -46,7 +46,13 @@ def _str(v, pattern):
     return type(v) is str and pattern.fullmatch(v) is not None
 
 def _text(v, *, limit=240):
-    if type(v) is not str or not 1 <= len(v.encode("utf-8")) <= limit or any(ord(c)<32 or ord(c)==127 for c in v):
+    if type(v) is not str:
+        raise IntakeRejected("unsafe event text")
+    try:
+        encoded=v.encode("utf-8")
+    except UnicodeError as e:
+        raise IntakeRejected("invalid Unicode text") from e
+    if not 1 <= len(encoded) <= limit or any(ord(c)<32 or ord(c)==127 for c in v):
         raise IntakeRejected("unsafe event text")
     return v
 
@@ -91,7 +97,8 @@ def _parse(source, body, headers):
         raise IntakeRejected("unsupported source")
     if set(body)!={"schema","event_id","kind","repository","project_id","description"} or (
         body["schema"]!="neurofactory.intake.event.v1" or
-        not _str(body["event_id"],_EVENT) or body["kind"] not in _KINDS or
+        not _str(body["event_id"],_EVENT) or
+        type(body["kind"]) is not str or body["kind"] not in _KINDS or
         not _str(body["repository"],_REPO) or not _str(body["project_id"],_PROJECT)):
         raise IntakeRejected("invalid signed event fields")
     description=_text(body["description"])
@@ -111,7 +118,8 @@ def _registry(repo, registry, source, project_id=None):
     if (type(entry) is not dict or set(entry)!={"project_id","owner_id","mode","profile","sources","preapproved"} or
         not _str(entry["project_id"],_PROJECT) or
         not _str(entry["owner_id"],_EVENT) or
-        entry["mode"] not in _MODES or entry["profile"] not in _PROFILES or
+        type(entry["mode"]) is not str or entry["mode"] not in _MODES or
+        type(entry["profile"]) is not str or entry["profile"] not in _PROFILES or
         type(entry["sources"]) not in (tuple,list) or
         not all(type(v) is str and v in ("github_issues","authorized_api","signed_import") for v in entry["sources"]) or
         type(entry["preapproved"]) is not bool):
