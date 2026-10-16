@@ -48,6 +48,8 @@ jobs:
           path: _pinned_fixture/host
           persist-credentials: false
       - name: Install isolated postgres client dependency
-        run: python3 -m pip install --disable-pip-version-check --no-input "psycopg[binary]==3.2.6"
+        run: |
+          python3 -m venv .nf-ephemeral-venv
+          .nf-ephemeral-venv/bin/python -m pip install --disable-pip-version-check --no-input "psycopg[binary]==3.2.6"
       - name: Pin source HEADs and execute one synthetic file once
-        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p "test_pinned_core_host_one_task.py" -v
+        run: .nf-ephemeral-venv/bin/python -B -m unittest discover -s bridge/neurofactory/coordination -p "test_pinned_core_host_one_task.py" -v
