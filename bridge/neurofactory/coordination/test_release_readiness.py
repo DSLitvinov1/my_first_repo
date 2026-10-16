@@ -51,7 +51,7 @@ class ReleaseReadinessTests(unittest.TestCase):
             with self.subTest(value=str(val)[:10]),self.assertRaises(ReadinessError):self.check(d)
     def test_type_smuggling_denied(self):
         for x in (None,[],1,True,{'schema':'fake'}):
-            with self.subTest(value=str(x)[:20]),self.assertRaises(ReadinessError):self.check(x)
+            with self.subTest(value=str(x)[:20]),self.assertRaises(ReadinessError):inspect_release_readiness(x)
     def test_control_chars_or_giant_note_denied(self):
         for val in ('bad\nsecret','x'*301,''):
             d=candidate();d['gates'][0]['evidence_note']=val
