@@ -77,7 +77,7 @@
         "kind": "REAL_SOURCE_OFFLINE_POSTGRES_CORE_SANDBOX_INTEGRATION",
         "document": "bridge/neurofactory/coordination/ONE_TASK_INTEGRATION_EVIDENCE_20261016_RU.md",
         "test_path": "bridge/neurofactory/coordination/test_pinned_core_host_one_task.py",
-        "test_blob_sha": "fe592cd8dbc48af768b9f1058cc293a219577840",
+        "test_blob_sha": "9a145c2916878e85fc86f44c716bfc7fe0be5364",
         "workflow_path": ".github/workflows/neurofactory-coordination-pinned-one-task.yml",
         "workflow_blob_sha": "75cf43c390eb5f18b3d576332a210859deaa0d9f",
         "exact_ci_tested_coordinator_sha": "d0468825b84c57e718e00811e5c5fc1bd44e6b78",
@@ -104,7 +104,28 @@
         "independent_new_integration_review": false,
         "release_approved": false,
         "initial_failed_run": 38889571997,
-        "initial_failed_reason": "PIP_SYSTEM_INSTALL_EACCES_BEFORE_ANY_TEST; TEMP_VENV_FIX"
+        "initial_failed_reason": "PIP_SYSTEM_INSTALL_EACCES_BEFORE_ANY_TEST; TEMP_VENV_FIX",
+        "previous_test_blob_sha": "fe592cd8dbc48af768b9f1058cc293a219577840",
+        "gap_negative_reproducer": {
+          "kind": "TEST_ONLY_MISSING_CENTRAL_RECIPIENT_FENCING",
+          "exact_tested_coordinator_sha": "b7574c37d517e55ddcc15b9da7d3d246878656a1",
+          "github_actions_run_id": 38890797714,
+          "github_actions_job_id": 116939549656,
+          "tests_passed": 8,
+          "tests_failed": 0,
+          "additional_negative_cases": 2,
+          "host_blocked_still_allows_explicitly_untrusted_core_test_callback": true,
+          "host_unknown_still_allows_explicitly_untrusted_core_test_callback": true,
+          "production_authorization_bypass_claimed": false,
+          "synthetic_callback_not_authenticated": true,
+          "document": "bridge/neurofactory/coordination/CORE_HOST_RECIPIENT_FENCING_GAP_20261016_RU.md",
+          "host_owner_issue": 14,
+          "core_owner_issue": 9,
+          "review_issue": 11,
+          "real_cas_to_core_recipient_fencing": false,
+          "release_approved": false,
+          "handoff": "PAUSED_BY_USER"
+        }
       }
     },
     "CORE": {
