@@ -1,0 +1,52 @@
+name: Neurofactory coordinator pinned new HOST effect CORE contract
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/test_pinned_host_effect_core_contract.py
+      - .github/workflows/neurofactory-coordination-host-effect-contract.yml
+permissions:
+  contents: read
+jobs:
+  pinned-contract-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_COORD_OFFLINE_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ce6191153d0a0c1d742de6233897186a0b46896b
+          path: _pinned_fixture/core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5c0132d1c53d3d569dd66967915203069e2a25e8
+          path: _pinned_fixture/host
+          persist-credentials: false
+      - name: Install ephemeral PostgreSQL client
+        run: |
+          python3 -m venv .nf-ephemeral-venv
+          .nf-ephemeral-venv/bin/python -m pip install --disable-pip-version-check --no-input 'psycopg[binary]==3.2.6'
+      - name: Verify exact HOST gate denial and unchanged CORE signature
+        run: .nf-ephemeral-venv/bin/python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_pinned_host_effect_core_contract.py' -v
