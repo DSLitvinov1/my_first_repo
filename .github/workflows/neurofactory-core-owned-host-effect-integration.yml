@@ -27,6 +27,7 @@ jobs:
           --health-retries 15
     env:
       NF_CORE_FENCED_TEST_ONLY: "1"
+      NF_CORE_OFFLINE_FIXTURE: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
     steps:
