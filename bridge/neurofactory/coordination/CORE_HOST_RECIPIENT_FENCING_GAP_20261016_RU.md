@@ -31,3 +31,10 @@ HOST `OfflineCAS.claim` и CORE `OneTaskCore.enqueue/claim/apply_offline_test` �
 
 ## Запреты
 Нет реальных моделей, платных API, пользовательских проектов, реальной очереди, публикации, автоматического merge, Windows writer или возобновления HANDOFF. Этот документ не является разрешением на запуск.
+
+## Дополнительная проверка истёкшей центральной аренды / 2026-10-16
+- COORD-only исходник `test_pinned_core_host_one_task.py` после третьего negative case exact commit `9b24d8bd19ce177ba6adbc0fc5c631a166a105ae`, test physical Git blob `8b6bd47bd710984a0f76f0139f44f880277f40a0`; CORE/HOST executable SHA unchanged.
+- GitHub-hosted run https://github.com/DSLitvinov1/my_first_repo/actions/runs/38893361829, job `116947929993`, actual completed/success, `Ran 9 tests`, `OK` (not a system release audit).
+- Third negative: in **ephemeral** PostgreSQL `nf_test`, test fixture advances `lease_deadline` into the past; existing HOST `OfflineCAS.claim()` correctly refuses a replacement client while status remains LEASED and epoch stays 1; an independent synthetic positive CORE callback can still cause one local OFFLINE_TEST file write, without consulting HOST deadline. Confirmed log `NF_INTEGRATION_GAP_HOST_EXPIRED_CORE_LOCAL_TEST_WROTE=CONFIRMED`.
+- This does NOT demonstrate acceptance of a stale token by a real API because no such integrated receiver exists. The missing central-to-CORE per-effect authorization is still BLOCKED; expected production remedy remains unchanged. No live user effect, secret, model, publication or deployment.
+- Operator-authorized TWO-PHYSICAL-HOST acceptance plan: `bridge/neurofactory/coordination/TWO_PHYSICAL_HOSTS_ACCEPTANCE_PLAN_20261016_RU.md` (prepared, NOT executed; no machine/operator assigned).
