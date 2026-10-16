@@ -51,9 +51,10 @@ class RealPinnedTestIntegration(unittest.TestCase):
         # The test runner may contain later test-only commits, so verify its
         # physical source Git blob matches its latest source-pinned baseline.
         core_path="bridge/neurofactory/development/core_owned/one_task_core.py"
-        original_blob=git(root,"rev-parse",CORE_SHA+":"+core_path)
+        # GitHub checkout is shallow; compare the verified physical source
+        # blob from CORE exact ce619... without depending on ancestor fetch.
         current_blob=git(root,"hash-object",core_path)
-        if original_blob!=current_blob:
+        if current_blob!="85cc94497c9a1590091d2ccd41c8be8d5948c0cb":
             raise RuntimeError("CORE source changed unexpectedly")
         host=root/"_pinned_fixture"/"host"
         if git(host,"rev-parse","HEAD")!=HOST_SHA:
