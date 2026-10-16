@@ -1,0 +1,27 @@
+name: Neurofactory coordinator release-readiness advisory gate
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/release_readiness.py
+      - bridge/neurofactory/coordination/test_release_readiness.py
+      - bridge/neurofactory/coordination/release_readiness_20261016.json
+      - .github/workflows/neurofactory-coordination-release-readiness.yml
+permissions:
+  contents: read
+jobs:
+  fail-closed-advisory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Print exact source SHA
+        run: git rev-parse HEAD
+      - name: Narrow nonlive 10-gate checklist scenarios
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_release_readiness.py' -v
