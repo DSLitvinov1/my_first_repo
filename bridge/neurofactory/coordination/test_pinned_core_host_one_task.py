@@ -199,6 +199,49 @@ class ExactPinnedOneTask(unittest.TestCase):
         self.assertEqual(self.q.snapshot()["state"],"EMPTY")
         self.assertFalse((self.q.sandbox/TARGET).exists())
 
+    def _explicitly_untrusted_offline_write(self):
+        """Deliberate test-only callback; proves absence of HOST->CORE fencing."""
+        self.assertEqual(self.q.enqueue(
+            self.spec, trusted_approval_check=lambda task: task == self.spec)["state"], "QUEUED")
+        lease = self.q.claim("synthetic-local-only", now=1000, lease_seconds=90)
+        content = "DIAGNOSTIC_UNFENCED_LOCAL_WRITE = True\\n"
+        proposal = {
+            "schema": "neurofactory.core.proposal.v1", "target": TARGET,
+            "content": content,
+            "content_sha256": hashlib.sha256(content.encode("utf8")).hexdigest(),
+            "mode": "OFFLINE_TEST",
+        }
+        receipt = self.q.apply_offline_test(TASK, lease["token"], proposal, now=1001)
+        self.assertEqual((self.q.sandbox / TARGET).read_text("utf8"), content)
+        self.assertEqual(receipt["result_sha256"], hashlib.sha256(content.encode()).hexdigest())
+        self.assertFalse(receipt["published"])
+        self.assertFalse(receipt["model_invoked"])
+        self.assertFalse(receipt["review_approved"])
+        self.assertFalse(self._report()["real_recipient_fencing"])
+        self.assertEqual(self._report()["release"], "BLOCKED_TEST_ONLY")
+
+    def test_host_rejected_task_still_writable_by_independent_core_test_callback(self):
+        """Negative integration witness, NOT authorization or a deployed exploit."""
+        self.seed(False)
+        denied = self.hostcas.claim(TASK, "synthetic-host-client", secrets.token_hex(16))
+        self.assertEqual(denied["status"], "BLOCKED")
+        self._explicitly_untrusted_offline_write()
+        print("NF_INTEGRATION_GAP_HOST_BLOCK_CORE_LOCAL_TEST_WROTE=CONFIRMED")
+        print("NF_PRODUCTION_EXECUTION_PERMISSION=FALSE")
+
+    def test_host_unknown_still_writable_by_independent_core_test_callback(self):
+        """UNKNOWN cannot fence the current test-only CORE recipient."""
+        self.seed(True)
+        central = self.hostcas.claim(TASK, "synthetic-host-client", secrets.token_hex(16))
+        self.assertEqual(central["status"], "CLAIMED")
+        self.assertTrue(self.hostcas.mark_unknown(
+            TASK, "synthetic-host-client", central["lease_epoch"], central["fencing_token"]))
+        self.assertEqual(self.hostcas.public_state(TASK)["status"], "UNKNOWN")
+        self._explicitly_untrusted_offline_write()
+        self.assertEqual(self.hostcas.public_state(TASK)["status"], "UNKNOWN")
+        print("NF_INTEGRATION_GAP_HOST_UNKNOWN_CORE_LOCAL_TEST_WROTE=CONFIRMED")
+        print("NF_AUTOMATIC_RECOVERY_OR_LIVE_ADMISSION=FALSE")
+
     def test_cas_result_is_not_real_core_exclusive_authorization(self):
         self.seed(True)
         host_lease=self.hostcas.claim(TASK,"pc-synthetic-a",secrets.token_hex(16))
