@@ -159,7 +159,7 @@ class RealPinnedTestIntegration(unittest.TestCase):
                        {"host_claim":dict(held,lease_epoch=held["lease_epoch"]+1)}):
             with self.subTest(change=str(change)[:20]):
                 with self.assertRaises(FencedOfflineBoundaryError):
-                    self.run_bridge(held,**change)
+                    self.run_bridge(change.get("host_claim",held),**{k:v for k,v in change.items() if k!="host_claim"})
         self.no_write()
 
     def test_duplicate_reserved_intent_zero_write(self):
