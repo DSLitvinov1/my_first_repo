@@ -156,6 +156,29 @@
           "real_owner_authorized_two_host_trial": false,
           "known_operator_and_auditor_assigned": false
         }
+      },
+      "pinned_host_effect_core_contract": {
+        "document": "bridge/neurofactory/coordination/HOST_EFFECT_RESERVATION_COMPATIBILITY_20261016_RU.md",
+        "test_path": "bridge/neurofactory/coordination/test_pinned_host_effect_core_contract.py",
+        "workflow_path": ".github/workflows/neurofactory-coordination-host-effect-contract.yml",
+        "exact_tested_coordinator_sha": "1b18db66a26add49d576c8f62c64d8b6f620af11",
+        "host_sha": "5c0132d1c53d3d569dd66967915203069e2a25e8",
+        "core_sha": "ce6191153d0a0c1d742de6233897186a0b46896b",
+        "run_id": 38960295197,
+        "job_id": 117173353199,
+        "tests_passed": 7,
+        "failures": 0,
+        "negative_cases": [
+          "HOST_BLOCKED",
+          "HOST_UNKNOWN",
+          "LEASE_EXPIRED",
+          "WRONG_WORKER_OR_EPOCH",
+          "DUPLICATE_REQUEST"
+        ],
+        "core_real_receiver_consumes_new_host_reservation": false,
+        "live_authorized": false,
+        "release_approved": false,
+        "review_independent": false
       }
     },
     "CORE": {
@@ -394,12 +417,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "head": "5c0132d1c53d3d569dd66967915203069e2a25e8",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_WITNESS_NARROW_TECHNICAL_REVIEW_PASS_DEPLOYMENT_MISSING",
+      "status": "OFFLINE_EFFECT_INTENT_13_TESTS_PASS_NO_LIVE_API_OR_RECEIVER",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -505,6 +528,22 @@
           "independent_review_issue_comment": 6198317460,
           "independent_review_scope": "TEST_ONLY_OFFLINE_REPLAY_ROLLBACK_FORGERY_NO_REAL_ANCHOR",
           "independent_reviewer_external_identity": false
+        },
+        "offline_effect_reservation": {
+          "exact_executable_commit": "5c0132d1c53d3d569dd66967915203069e2a25e8",
+          "executed_run_id": 38959994211,
+          "job_id": 117172339701,
+          "host_author_owned_tests_passed": 13,
+          "failed": 0,
+          "ephemeral_postgres16": true,
+          "protected_owner_issuer": false,
+          "external_signer_key_custody": false,
+          "receiver_side_fenced_file_effect": false,
+          "remote_api_authenticated": false,
+          "physical_two_hosts_tested": false,
+          "output_kind": "TEST_ONLY_DURABLE_PRE_EFFECT_INTENT_NOT_AUTHORIZATION",
+          "receiver_integration": "CORE_NOT_CONSUMING_EFFECT_FENCE",
+          "external_release_approved": false
         }
       },
       "blockers": [
