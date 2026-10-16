@@ -167,5 +167,22 @@ class IntakeTests(unittest.TestCase):
         self.con=sqlite3.connect(self.path)
         self.assertEqual(self.count(),1)
 
+    def test_api_unhashable_event_kind_denied(self):
+        raw,_=self.api()
+        body=json.loads(raw)
+        body["kind"]=["TASK_CREATED"]
+        with self.assertRaises(IntakeRejected):
+            self.ingest("authorized_api",self.sign("authorized_api",body))
+    def test_registry_bad_mode_and_profile_types_denied(self):
+        for field in ("mode","profile"):
+            reg=dict(PROJECTS["DSLitvinov1/my_first_repo"])
+            reg[field]=["AUTOMATIC"]
+            with self.subTest(field=field),self.assertRaises(IntakeRejected):
+                self.ingest(pair=self.gh(),registry={"DSLitvinov1/my_first_repo":reg})
+    def test_invalid_unicode_rejected_before_sqlite(self):
+        body={"action":"opened","repository":{"full_name":"DSLitvinov1/my_first_repo"},
+              "issue":{"number":32,"state":"open","title":"Bad\\ud800"}}
+        with self.assertRaises(IntakeRejected):
+            self.ingest(pair=self.sign("github_issues",body))
 if __name__=="__main__":
     unittest.main()
