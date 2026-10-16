@@ -179,11 +179,49 @@
         "live_authorized": false,
         "release_approved": false,
         "review_independent": false
+      },
+      "core_host_legacy_closeout_20261017": {
+        "evi_doc": "bridge/neurofactory/coordination/CORE_HOST_LEGACY_CLOSEOUT_EVIDENCE_20261017_RU.md",
+        "core_sha": "9313d508a1f5d9288f18046abf5130b46bedc194",
+        "core_file_blob": "ab1471813c6da29407c913b974a2209467a4b961",
+        "host_sha": "5c0132d1c53d3d569dd66967915203069e2a25e8",
+        "review_sha": "dfed53bbe9587e2644ccfc2799a0583508e88b66",
+        "core_legacy_direct_write_disabled": true,
+        "test_fixture_requires_ephemeral_switch": true,
+        "protected_issuer_and_external_antirollback_deployed": false,
+        "protected_receiver_fenced_effect_deployed": false,
+        "real_two_physical_nodes_tested": false,
+        "review_separately_authorized_independent_actor": false,
+        "release_approved": false,
+        "tested_core_linux_windows": {
+          "run": 38982994520,
+          "linux_tests": 29,
+          "windows": "PASS"
+        },
+        "tested_core_uid": {
+          "run": 38982994564,
+          "status": "PASS"
+        },
+        "tested_core_host_fixture": {
+          "run": 38983065738,
+          "job": 117248149814,
+          "tests": 7,
+          "status": "PASS_TEST_ONLY"
+        },
+        "tested_review_owned_negative": {
+          "run": 38983203314,
+          "job": 117248590133,
+          "tests": 6,
+          "status": "APPROVE_NARROW_SOURCE_ONLY"
+        },
+        "pre_fix_failed_run": 38982994521,
+        "handoff": "PAUSED_BY_USER",
+        "live_execution_allowed": false
       }
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "ce6191153d0a0c1d742de6233897186a0b46896b",
+      "head": "9313d508a1f5d9288f18046abf5130b46bedc194",
       "issue": 9,
       "owner": "CORE",
       "status": "CORE_SQLITE_SNAPSHOT_NARROW_INDEPENDENT_PASS_LIVE_BLOCKED",
@@ -249,7 +287,7 @@
     },
     "REVIEW": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "d1de711b2429e336f88fa1f6ec7ccd6c424d5fe1",
+      "head": "dfed53bbe9587e2644ccfc2799a0583508e88b66",
       "owner": "REVIEW",
       "status": "TWO_TECHNICAL_NARROW_REVIEWS_PASSED_NO_EXTERNAL_RELEASE_APPROVAL",
       "issue": 11,
