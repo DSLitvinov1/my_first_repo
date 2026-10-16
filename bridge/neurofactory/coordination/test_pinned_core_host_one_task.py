@@ -267,6 +267,71 @@ class ExactPinnedOneTask(unittest.TestCase):
         print("NF_INTEGRATION_GAP_HOST_EXPIRED_CORE_LOCAL_TEST_WROTE=CONFIRMED")
         print("NF_CURRENT_SHARED_RECEIVER_EXPIRY_PROOF=ABSENT")
 
+    def _second_independent_synthetic_core_write(self, worker_id):
+        """Isolated SECOND local CORE state; NOT a second physical host."""
+        other_root = self.base / ("workspace-" + worker_id)
+        other_root.mkdir(mode=0o700)
+        other = self.core.OneTaskCore(other_root, self.repo)
+        self.assertEqual(other.enqueue(
+            self.spec, trusted_approval_check=lambda task: task == self.spec)["state"],
+            "QUEUED")
+        local = other.claim(worker_id, now=1000, lease_seconds=90)
+        data = "SECOND_INDEPENDENT_LOCAL_WORKSPACE = True\\n"
+        suggestion = {
+            "schema": "neurofactory.core.proposal.v1",
+            "target": TARGET,
+            "content": data,
+            "content_sha256": hashlib.sha256(data.encode("utf8")).hexdigest(),
+            "mode": "OFFLINE_TEST",
+        }
+        receipt = other.apply_offline_test(TASK, local["token"], suggestion, now=1001)
+        output = other.sandbox / TARGET
+        self.assertEqual(output.read_bytes(), data.encode("utf8"))
+        self.assertEqual(receipt["result_sha256"], hashlib.sha256(data.encode()).hexdigest())
+        self.assertEqual(other.snapshot()["state"], "CHECKPOINTED_TEST")
+        self.assertFalse(receipt["published"])
+        self.assertFalse(receipt["model_invoked"])
+        self.assertNotEqual(other.sandbox, self.q.sandbox)
+        return other, output
+
+    def test_host_loser_can_still_write_independent_core_workspace(self):
+        """Host loser lacks fencing token; separate CORE TEST stub ignores this."""
+        self.seed(True)
+        winner = self.hostcas.claim(TASK, "synthetic-winner", secrets.token_hex(16))
+        loser = self.hostcas.claim(TASK, "synthetic-loser", secrets.token_hex(16))
+        self.assertEqual(winner["status"], "CLAIMED")
+        self.assertEqual(winner["lease_epoch"], 1)
+        self.assertEqual(loser["status"], "NOT_CLAIMED")
+        self.assertNotIn("fencing_token", loser)
+        separate, output = self._second_independent_synthetic_core_write("synthetic-loser")
+        self.assertTrue(output.is_file())
+        self.assertEqual(separate.snapshot()["attempts"], 1)
+        self.assertEqual(self.hostcas.public_state(TASK)["epoch"], 1)
+        self.assertFalse(self._report()["real_recipient_fencing"])
+        print("NF_INTEGRATION_GAP_HOST_LOSER_LOCAL_TEST_WROTE=CONFIRMED")
+        print("NF_DISTINCT_PHYSICAL_HOSTS=NOT_TESTED")
+
+    def test_host_duplicate_request_denied_but_disjoint_core_state_replays_test(self):
+        """Host blocks replay; a FRESH CORE TEST state reaccepts same task."""
+        self.seed(True)
+        request_id = secrets.token_hex(16)
+        first = self.hostcas.claim(TASK, "synthetic-winner", request_id)
+        self.assertEqual(first["status"], "CLAIMED")
+        self._explicitly_untrusted_offline_write()
+        repeat = self.hostcas.claim(TASK, "synthetic-winner", request_id)
+        self.assertEqual(repeat["status"], "BLOCKED")
+        self.assertNotIn("fencing_token", repeat)
+        second_core, second_output = self._second_independent_synthetic_core_write(
+            "synthetic-retry")
+        self.assertTrue(second_output.is_file())
+        self.assertEqual(second_core.snapshot()["attempts"], 1)
+        self.assertEqual(self.q.snapshot()["attempts"], 1)
+        self.assertNotEqual(second_output, self.q.sandbox / TARGET)
+        self.assertEqual(self.hostcas.public_state(TASK)["epoch"], 1)
+        self.assertFalse(self._report()["real_recipient_fencing"])
+        print("NF_INTEGRATION_GAP_CROSS_WORKSPACE_REDELIVERY_TEST_WROTE_TWICE=CONFIRMED")
+        print("NF_DISTINCT_PHYSICAL_HOSTS=NOT_TESTED")
+
     def test_cas_result_is_not_real_core_exclusive_authorization(self):
         self.seed(True)
         host_lease=self.hostcas.claim(TASK,"pc-synthetic-a",secrets.token_hex(16))
