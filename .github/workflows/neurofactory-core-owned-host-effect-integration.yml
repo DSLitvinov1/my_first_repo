@@ -1,0 +1,46 @@
+name: Neurofactory CORE exact HOST pre-effect isolated integration
+on:
+  push:
+    branches: [neurofactory-core-queue-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/fenced_offline_core.py'
+      - 'bridge/neurofactory/development/core_owned/test_fenced_offline_core.py'
+      - '.github/workflows/neurofactory-core-owned-host-effect-integration.yml'
+permissions:
+  contents: read
+jobs:
+  pinned-host-offline-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_CORE_FENCED_TEST_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 5c0132d1c53d3d569dd66967915203069e2a25e8
+          path: _pinned_fixture/host
+          persist-credentials: false
+      - name: Setup ephemeral Python test dependencies
+        run: |
+          python3 -m venv .nf-core-fence-venv
+          .nf-core-fence-venv/bin/python -m pip install --disable-pip-version-check --no-input 'psycopg[binary]==3.2.6'
+      - name: Exact HOST+CORE synthetic five-negative one-positive
+        run: .nf-core-fence-venv/bin/python -B -m unittest discover -s bridge/neurofactory/development/core_owned -p 'test_fenced_offline_core.py' -v
