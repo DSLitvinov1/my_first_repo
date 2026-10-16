@@ -1,21 +1,21 @@
 {
   "schema": 2,
   "project": "НЕЙРОЗАВОД",
-  "recorded_at_date": "2026-10-15",
+  "recorded_at_date": "2026-10-16",
   "owner": "COORDINATOR",
   "primary_issue": 3,
   "roadmap_issue": 8,
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOSTED_LINUX_19_PASS_DIAGNOSTIC_ONLY_REVIEW_PENDING",
+      "status": "RELEASE_ENDGAME_READINESS_PROJECTOR_TESTED_14_PASS_NO_LIVE",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
       "owner": "COORDINATOR",
       "evidence": "New TRUSTED HOST Issue14, owner registry and central multi-PC protocol in coordination/",
       "host_witness_read_only_boundary": {
-        "status": "AUTHOR_HOSTED_LINUX_19_PASS_INDEPENDENT_REVIEW_PENDING",
+        "status": "APPROVE_NARROW_REVIEW_TECHNICAL_FORMAT_ONLY_NO_LIVE",
         "source": "bridge/neurofactory/coordination/mvp_host_witness_boundary.py",
         "source_blob_sha": "295cf93b9414dc6adb3fc7392bcea5457af25176",
         "tests": "bridge/neurofactory/coordination/test_mvp_host_witness_boundary.py",
@@ -25,7 +25,7 @@
         "committed_candidate_sha_before_registry_update": "7986089931905c2cf1c6e08a4aefd5ad527b33bf",
         "local_git_hash_object_matches_remote_blobs": true,
         "github_ci_for_this_change": "HOSTED_19_PASS_AT_EXACT_EXECUTABLE_SOURCE_SHA_2058646",
-        "independent_review": "PENDING_ON_NEW_COORD_SOURCE_AND_HOST_WITNESS",
+        "independent_review": "REVIEW_OWNER_NARROW_TECHNICAL_PASS_NOT_EXTERNAL_IDENTITY",
         "field_origin_decision": "bridge/neurofactory/coordination/CORE_HOST_FIELD_ORIGIN_V1_RU.md",
         "host_witness_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
         "output_kind": "READ_ONLY_FORMAT_ONLY_BLOCKED_NONLIVE_DIAGNOSTIC_ONLY",
@@ -53,7 +53,25 @@
         "host_witness_summary_cannot_authenticate_project_source_policy_target": true,
         "latest_owned_workflow": ".github/workflows/neurofactory-coordination-host-witness-targeted.yml",
         "field_origin_document_blob_sha": "0360b8cc3d5652de17c7c254ac60e6ae984d8eb2",
-        "exact_code_and_test_blobs_verified_after_hosted_run": true
+        "exact_code_and_test_blobs_verified_after_hosted_run": true,
+        "independent_review_run": 38778823126,
+        "independent_review_issue_comment": 6198381375
+      },
+      "release_readiness": {
+        "state": "AUTHOR_GITHUB_HOSTED_LINUX_SUCCESS_EXTERNAL_AUTH_MISSING",
+        "source_path": "bridge/neurofactory/coordination/release_readiness.py",
+        "tests_path": "bridge/neurofactory/coordination/test_release_readiness.py",
+        "gates_path": "bridge/neurofactory/coordination/release_readiness_20261016.json",
+        "closure_plan": "bridge/neurofactory/coordination/RELEASE_COMPLETION_PLAN_20261016_RU.md",
+        "exact_tested_source_sha": "ebe5bb1dbe7a1d244eabcd98c42c8da712dd3422",
+        "successful_run": 38875918637,
+        "successful_job": 116890821226,
+        "tests_pass": 14,
+        "original_red_run": 38875847372,
+        "original_red_reason": "AUTHOR_TEST_HARNESS_NONE_SENTINEL_MISROUTED; FIXED_IN_TEST",
+        "independent_new_module_review": false,
+        "release_approved": false,
+        "execution_allowed": false
       }
     },
     "CORE": {
@@ -124,9 +142,9 @@
     },
     "REVIEW": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "ba3b0f02824cc75614f796b927332546c207be47",
+      "head": "d1de711b2429e336f88fa1f6ec7ccd6c424d5fe1",
       "owner": "REVIEW",
-      "status": "TECHNICALLY_INDEPENDENT_NARROW_HOST_DB_ROLE_CHECK_PASS_RELEASE_REJECT",
+      "status": "TWO_TECHNICAL_NARROW_REVIEWS_PASSED_NO_EXTERNAL_RELEASE_APPROVAL",
       "issue": 11,
       "blockers": [
         "new CORE/host protected trust implementation absent"
@@ -154,7 +172,21 @@
           "authenticated_external_authority": false,
           "privileged_admin_rewrite": "POSSIBLE"
         },
-        "release_verdict": "REJECT_LIVE"
+        "release_verdict": "REJECT_LIVE",
+        "host_witness_latest": {
+          "audited_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+          "run": 38778247421,
+          "comment": 6198317460,
+          "scope": "TEST_ONLY_SIGNED_WITNESS",
+          "release": false
+        },
+        "coordinator_latest": {
+          "audited_sha": "fa52b66c30a1901c0e00bc2d9fba9639d6c2d7e3",
+          "run": 38778823126,
+          "comment": 6198381375,
+          "scope": "READ_ONLY_FORMAT_ONLY",
+          "release": false
+        }
       }
     },
     "PROVIDERS": {
@@ -209,11 +241,11 @@
     },
     "SKILLS": {
       "repo": "DSLitvinov1/lesson3.1",
-      "head": "35012d3cc45293f3a9fbfa2230cf9cec3acd57b1",
+      "head": "e15970bf9c18e99217fe5d6e9fbe63f1f836dcf8",
       "draft_pr": 558,
       "owner": "SKILLS",
       "issue": 543,
-      "status": "DRAFT_PR558_12_DISABLED_19_PREPARED_SECURITY_NF07_FIX_OWN_4_PASS_NO_EXTERNAL_SIGNOFF",
+      "status": "DRAFT_12_DISABLED_19_PREPARED_NF09_OWN_TESTS_INDEPENDENT_RELEASE_PENDING",
       "evidence": {
         "parent_pr": 550,
         "parent_sha": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
@@ -226,6 +258,12 @@
           "exact_sha": "35012d3cc45293f3a9fbfa2230cf9cec3acd57b1",
           "independent_approval": false,
           "source_scope": "core_intake_preview restricted to local prepared catalog read-only"
+        },
+        "nf09_early_input_budget": {
+          "sha": "e15970bf9c18e99217fe5d6e9fbe63f1f836dcf8",
+          "run": 38778374587,
+          "author_tests_pass": 28,
+          "independent_review": false
         }
       },
       "blockers": [
@@ -253,14 +291,15 @@
     },
     "UI": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "7169fc40272c560355e245491affbc79e8d41711",
+      "head": "d1d7404a2ffcb1d825438c110d0aac2bb2dc8d7b",
       "issue": 10,
       "owner": "UI_ISOLATED_READ_ONLY",
-      "status": "OFFLINE_BROWSER_UI_ONLY_NO_EXECUTION",
+      "status": "OFFLINE_KEYBOARD_BROWSER_CHROMIUM_WEBKIT_OWN_TESTS_NO_LIVE",
       "evidence": {
         "issue10_comment": 6192047894,
         "local_chromium_mobile_and_desktop_own_tests": "PASS",
-        "independent_release_approval": false
+        "independent_release_approval": false,
+        "author_chromium_webkit_a11y_run": 38779333998
       },
       "blockers": [
         "no trusted live issuer data source",
@@ -276,7 +315,7 @@
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_SIGNED_WITNESS_MATCH_AND_ROLLBACK_DETECTION_TESTED_ISSUER_NOT_DEPLOYED",
+      "status": "OFFLINE_WITNESS_NARROW_TECHNICAL_REVIEW_PASS_DEPLOYMENT_MISSING",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -377,7 +416,11 @@
           "external_monotonic_sequence_durably_protected": false,
           "independent_reviewer_approval": false,
           "network_calls": 0,
-          "actual_external_credentials": false
+          "actual_external_credentials": false,
+          "independent_review_run": 38778247421,
+          "independent_review_issue_comment": 6198317460,
+          "independent_review_scope": "TEST_ONLY_OFFLINE_REPLAY_ROLLBACK_FORGERY_NO_REAL_ANCHOR",
+          "independent_reviewer_external_identity": false
         }
       },
       "blockers": [
@@ -385,7 +428,6 @@
         "offline CAS fixture_authorized not secure owner authentication",
         "real separated OS identities/ACL and sandbox parent isolation missing",
         "cross-PC API/fencing and two-physical-client test absent",
-        "independent review exact latest host SHA missing",
         "CORE new SHA no independent live approval",
         "real independent monotonic highwater persistence and protected public-key pin not deployed",
         "real host OS isolation not attested",
@@ -395,8 +437,7 @@
         "separate actual host signer/key custody and antirollback trust root not deployed",
         "PostgreSQL role isolation is only ephemeral DB logins, not Linux/Windows host OS isolation",
         "database owner can disable trigger and coherently fork head/history; independently pinned source and real signer not implemented",
-        "external witness comparison detects DB rollback only with independently sourced valid pinned signing key and latest witness sequence; actual pin custody and durable antirollback root absent",
-        "new signed witness comparison exact SHA lacks separate independent reviewer acceptance"
+        "external witness comparison detects DB rollback only with independently sourced valid pinned signing key and latest witness sequence; actual pin custody and durable antirollback root absent"
       ],
       "resume": "Owner adopts physical host/custody, deploy protected issuer and API only after permission, prove 2 physical PCs and independent exact-SHA hostile REVIEW; remain STOP",
       "initial_base_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
@@ -463,9 +504,10 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "REVIEW #11: independent targeted HOST witness comparator exact SHA 02646ccb71b3892dc08f68a76525937cfe2ed194, coherent DB-admin rollback/fork, false witness, wrong signer and stolen/self-chosen stale external pin; no production approval",
-    "REVIEW #11: independent targeted COORD exact source mvp_host_witness_boundary.py current blob and pinned 19 author Linux tests; reject forged source same task, dangerous provider aliases and any live authorization",
-    "Real approved and isolated HOST OS signer/key custody/out-of-DB monotonic head/owner permission, followed by authenticated 2 physical PC lease+receiver fencing and exact CORE/HOST release review; all live gates blocked"
+    "Authorize a real TRUSTED HOST Linux operator and distinct signer custodian, independently secured non-DB public-key pin and monotonic highwater; code and real proof under host-owned paths only",
+    "Implement authenticated central CAS API with receiver epoch/idempotency and stop-on-UNKNOWN; verify across two physically distinct authorized clients",
+    "Fix CORE real OS sandbox parent relocation and source/owner authorization, then independent exact-SHA negative REVIEW and one no-model real sandbox transaction",
+    "Confirm real local free Qwen resources and independently sign model+OPS+UI+SKILLS gates separately, then explicit user resume for HANDOFF and separately approved production release"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
