@@ -1,0 +1,76 @@
+{
+  "schema": "neurofactory.coordination.release_readiness.v1",
+  "project": "НЕЙРОЗАВОД",
+  "gates": [
+    {
+      "id": "OWNER_AND_PROJECT_AUTHORITY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "DEPLOYMENT_MISSING",
+      "source_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "evidence_note": "Real owner authentication, repository allowlist and issuer grants missing."
+    },
+    {
+      "id": "EXTERNAL_SIGNER_KEY_CUSTODY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "evidence_note": "Ed25519 synthetic fixture tested; separate trusted signer and protected key absent."
+    },
+    {
+      "id": "OFF_DB_MONOTONIC_ANTIROLLBACK",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "evidence_note": "PostgreSQL admin can rewrite history; no protected out-of-DB head or replay pin."
+    },
+    {
+      "id": "REAL_OS_WRITER_ISOLATION",
+      "lane": "CORE",
+      "reported_state": "DEPLOYMENT_MISSING",
+      "source_sha": "ce6191153d0a0c1d742de6233897186a0b46896b",
+      "evidence_note": "Same-UID parent relocation and Windows ACL/reparse safety not attested."
+    },
+    {
+      "id": "AUTHENTICATED_CENTRAL_CAS",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "evidence_note": "Two connections on one ephemeral GitHub runner only; no authenticated cross-PC API."
+    },
+    {
+      "id": "RECIPIENT_FENCING_IDEMPOTENCY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "NOT_STARTED",
+      "source_sha": "02646ccb71b3892dc08f68a76525937cfe2ed194",
+      "evidence_note": "No authenticated effect receiver; UNKNOWN must prohibit automatic replay."
+    },
+    {
+      "id": "TWO_PHYSICAL_HOST_ADVERSARIAL_E2E",
+      "lane": "CORE",
+      "reported_state": "NOT_STARTED",
+      "source_sha": "ce6191153d0a0c1d742de6233897186a0b46896b",
+      "evidence_note": "Two genuinely distinct authorized computers and crash/replay tests absent."
+    },
+    {
+      "id": "MODEL_RESOURCE_PROVENANCE",
+      "lane": "PROVIDERS",
+      "reported_state": "INCOMPLETE",
+      "source_sha": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+      "evidence_note": "Last local Windows evidence has no running Ollama and under 2 GiB available RAM."
+    },
+    {
+      "id": "EXTERNAL_INDEPENDENT_RELEASE_SIGNOFF",
+      "lane": "REVIEW",
+      "reported_state": "REVIEW_PENDING",
+      "source_sha": "d1de711b2429e336f88fa1f6ec7ccd6c424d5fe1",
+      "evidence_note": "Narrow technical checks passed; authenticated external release signer missing."
+    },
+    {
+      "id": "HANDOFF_EXPLICIT_UNPAUSE",
+      "lane": "HANDOFF",
+      "reported_state": "REVIEW_PENDING",
+      "source_sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "evidence_note": "User suspension of HANDOFF remains in effect; no explicit restart approval."
+    }
+  ]
+}
