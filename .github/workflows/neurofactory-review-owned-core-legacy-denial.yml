@@ -1,0 +1,30 @@
+name: Neurofactory REVIEW exact CORE no-legacy-write negative
+on:
+  push:
+    branches: [neurofactory-review-owned-20261013]
+    paths:
+      - 'bridge/neurofactory/development/review_owned/independent_core_legacy_denial_20261017.py'
+      - '.github/workflows/neurofactory-review-owned-core-legacy-denial.yml'
+permissions:
+  contents: read
+jobs:
+  review-core-legacy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      NF_REVIEW_READ_ONLY_FIXTURE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 9313d508a1f5d9288f18046abf5130b46bedc194
+          path: _review_fixture/core
+          persist-credentials: false
+      - name: Review isolated legacy-path denial independently of author tests
+        run: python3 -B -m unittest discover -s bridge/neurofactory/development/review_owned -p 'independent_core_legacy_denial_20261017.py' -v
+      - name: Ensure clean tracked checkout
+        run: git diff --exit-code
