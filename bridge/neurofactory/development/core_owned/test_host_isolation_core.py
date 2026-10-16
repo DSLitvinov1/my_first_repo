@@ -85,7 +85,7 @@ print(json.dumps(out, sort_keys=True))
 
             fixture.admit()
             claim = fixture.q.claim("trusted-host", now=100, lease_seconds=10)
-            receipt = fixture.q.apply_offline_test(fixture.spec["task_id"],
+            receipt = fixture.q.apply_fixture_offline_test(fixture.spec["task_id"],
                                                    claim["token"],
                                                    fixture.proposal(), now=101)
             self.assertEqual(fixture.q.snapshot()["state"], "CHECKPOINTED_TEST")

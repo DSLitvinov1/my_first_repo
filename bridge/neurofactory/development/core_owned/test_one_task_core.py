@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from one_task_core import CoreSafetyError, OneTaskCore, EMPTY_SHA, _canonical
 
@@ -21,6 +22,9 @@ def git(repo, *args):
 
 class CoreOnceTests(unittest.TestCase):
     def setUp(self):
+        fixture_guard = patch.dict(os.environ, {"NF_CORE_OFFLINE_FIXTURE": "1"})
+        fixture_guard.start()
+        self.addCleanup(fixture_guard.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.base = pathlib.Path(self.temp.name)
@@ -63,10 +67,19 @@ class CoreOnceTests(unittest.TestCase):
             "mode": "OFFLINE_TEST"
         }
 
+    def test_legacy_direct_writer_is_disabled_even_after_positive_test_enqueue(self):
+        self.admit()
+        claim = self.q.claim("worker-one", now=1000, lease_seconds=200)
+        with self.assertRaisesRegex(CoreSafetyError, "LEGACY_WRITE_DISABLED"):
+            self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                                      self.proposal(), now=1001)
+        self.assertFalse((self.q.sandbox / TARGET).exists())
+        self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
+
     def test_one_file_real_offline_write_and_checkpoint(self):
         self.assertEqual(self.admit()["state"], "QUEUED")
         claim = self.q.claim("worker-one", now=1000, lease_seconds=200)
-        receipt = self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+        receipt = self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                             self.proposal(), now=1010)
         path = self.q.sandbox / TARGET
         self.assertEqual(path.read_text("utf8"), "VALUE = 123\n")
@@ -117,7 +130,7 @@ except CoreSafetyError:
         self.admit()
         held = self.q.claim("expiry-worker", now=100, lease_seconds=10)
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], held["token"],
+            self.q.apply_fixture_offline_test(self.spec["task_id"], held["token"],
                                       self.proposal(), now=110)
         self.assertFalse((self.q.sandbox / TARGET).exists())
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
@@ -139,7 +152,7 @@ except CoreSafetyError:
             con.execute("UPDATE single_job SET state='APPLYING' WHERE singleton=1")
         self.assertEqual(self.q.recover(now=115)["state"], "NEEDS_MANUAL_REVIEW")
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=115)
+            self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=115)
         self.assertFalse((self.q.sandbox / TARGET).exists())
 
     @unittest.skipIf(os.name == "nt", "Windows file writer intentionally blocked until trusted ACL host")
@@ -168,7 +181,7 @@ def die_after_effect(src, dst, **kwargs):
     if kwargs.get("dst_dir_fd") is not None:
         os._exit(87)
 os.replace = die_after_effect
-core.apply_offline_test(task, token, proposal, now=101)
+core.apply_fixture_offline_test(task, token, proposal, now=101)
 raise AssertionError("injection did not intercept target replace")
 """
         process = subprocess.run(
@@ -186,7 +199,7 @@ raise AssertionError("injection did not intercept target replace")
         with self.assertRaises(CoreSafetyError):
             self.q.claim("another-worker", now=120)
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+            self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                       self.proposal("VALUE = 999\\n"), now=120)
         self.assertEqual(target.read_text("utf8"), self.proposal()["content"])
 
@@ -195,7 +208,7 @@ raise AssertionError("injection did not intercept target replace")
         self.admit()
         claim = self.q.claim("windows-host", now=100, lease_seconds=10)
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+            self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                       self.proposal(), now=101)
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
         self.assertFalse((self.q.sandbox / TARGET).exists())
@@ -222,7 +235,7 @@ raise AssertionError("injection did not intercept target replace")
 
         with patch.object(os, "replace", side_effect=swap_before_replace):
             with self.assertRaises(CoreSafetyError):
-                self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+                self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                           self.proposal(), now=101)
         self.assertTrue(swapped, "attack must actually occur at effect boundary")
         self.assertFalse((attacker / target.name).exists())
@@ -287,11 +300,11 @@ raise AssertionError("injection did not intercept target replace")
         self.admit()
         self.q.claim("worker", now=100, lease_seconds=100)
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], "fake", self.proposal(), now=101)
+            self.q.apply_fixture_offline_test(self.spec["task_id"], "fake", self.proposal(), now=101)
         bad = self.proposal()
         bad["content_sha256"] = "a" * 64
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], "fake", bad, now=101)
+            self.q.apply_fixture_offline_test(self.spec["task_id"], "fake", bad, now=101)
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
 
     def test_sandbox_preimage_tamper_refused(self):
@@ -301,14 +314,14 @@ raise AssertionError("injection did not intercept target replace")
         self.secure_parents(target)
         target.write_text("intruder")
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=101)
+            self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=101)
         self.assertEqual(target.read_text(), "intruder")
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
 
     def test_test_completion_tamper_stops_on_recovery(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
-        self.q.apply_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=101)
+        self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"], self.proposal(), now=101)
         (self.q.sandbox / TARGET).write_text("replaced")
         self.assertEqual(self.q.recover(now=220)["state"], "NEEDS_MANUAL_REVIEW")
         with self.assertRaises(CoreSafetyError):
@@ -337,7 +350,7 @@ raise AssertionError("injection did not intercept target replace")
         fake = self.proposal()
         fake["mode"] = "PROVIDER_UNVERIFIED"
         with self.assertRaises(CoreSafetyError):
-            self.q.apply_offline_test(self.spec["task_id"], claim["token"], fake, now=101)
+            self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"], fake, now=101)
         self.assertEqual(self.q.snapshot()["state"], "CLAIMED")
 
     def test_markdown_provider_mapping_without_model_execution(self):
@@ -366,7 +379,7 @@ raise AssertionError("injection did not intercept target replace")
     def test_external_anchor_rejects_consistent_local_db_and_file_forgery(self):
         self.admit()
         claim = self.q.claim("host", now=100, lease_seconds=10)
-        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+        self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                   self.proposal(), now=101)
         external_reference = self.q.checkpoint_fingerprint()
         checked = self.q.check_external_checkpoint(external_reference)
@@ -400,7 +413,7 @@ raise AssertionError("injection did not intercept target replace")
         from unittest.mock import patch
         self.admit()
         held = self.q.claim("worker", now=100, lease_seconds=10)
-        self.q.apply_offline_test(self.spec["task_id"], held["token"],
+        self.q.apply_fixture_offline_test(self.spec["task_id"], held["token"],
                                   self.proposal(), now=101)
         anchored = self.q.checkpoint_fingerprint()
         original_snapshot = self.q.snapshot
@@ -433,7 +446,7 @@ raise AssertionError("injection did not intercept target replace")
         from unittest.mock import patch
         self.admit()
         claim = self.q.claim("reader-host", now=100, lease_seconds=10)
-        receipt = self.q.apply_offline_test(
+        receipt = self.q.apply_fixture_offline_test(
             self.spec["task_id"], claim["token"], self.proposal(), now=101)
         path = self.q.sandbox / TARGET
         outcome = {}
@@ -481,7 +494,7 @@ raise AssertionError("injection did not intercept target replace")
     def test_poisoned_receipt_cannot_appear_successful(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
-        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+        self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                   self.proposal(), now=101)
         with sqlite3.connect(self.q.db) as db:
             receipt = json.loads(db.execute(
@@ -495,7 +508,7 @@ raise AssertionError("injection did not intercept target replace")
     def test_poisoned_result_digest_cannot_appear_successful(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
-        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+        self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                   self.proposal(), now=101)
         with sqlite3.connect(self.q.db) as db:
             db.execute("UPDATE single_job SET result_sha256=? WHERE singleton=1",
@@ -514,7 +527,7 @@ raise AssertionError("injection did not intercept target replace")
     def test_checkpointed_snapshot_must_read_back_result(self):
         self.admit()
         claim = self.q.claim("worker", now=100)
-        self.q.apply_offline_test(self.spec["task_id"], claim["token"],
+        self.q.apply_fixture_offline_test(self.spec["task_id"], claim["token"],
                                   self.proposal(), now=101)
         (self.q.sandbox / TARGET).write_text("tampered after commit", "utf8")
         with self.assertRaises(CoreSafetyError):

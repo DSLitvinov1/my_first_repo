@@ -89,7 +89,7 @@ class FencedOfflineTestBridge:
             raise FencedOfflineBoundaryError("central HOST denies synthetic pre-effect")
         # The only effect is genuine CORE's existing OFFLINE_TEST sandbox write.
         # This is NOT authorization for a live model, external file or publisher.
-        return self.core.apply_offline_test(task_id, core_token, proposal, now=now)
+        return self.core.apply_fixture_offline_test(task_id, core_token, proposal, now=now)
 
     @staticmethod
     def _canonical_core_spec(spec):

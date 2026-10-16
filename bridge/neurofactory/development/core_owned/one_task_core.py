@@ -507,6 +507,32 @@ class OneTaskCore:
                                 "publication": False, "paid_api": False}}
 
     def apply_offline_test(self, task_id, token, proposal, *, now=None):
+        """Fail closed: the old local-token-only writer is never an authority.
+
+        In particular, a positive enqueue test callback, SQLite claim or
+        caller-supplied HOST status cannot grant a real filesystem effect.
+        Production acceptance requires a separate protected signed issuer,
+        durable highwater and a fenced destination. Those are NOT deployed.
+        """
+        raise CoreSafetyError(
+            "LEGACY_WRITE_DISABLED: no authenticated HOST recipient-side authorization"
+        )
+
+    def apply_fixture_offline_test(self, task_id, token, proposal, *, now=None):
+        """Inert temporary sandbox TEST writer; never production authorization.
+
+        This preserves the existing deterministic CORE unit test behavior only
+        under an explicit disposable fixture switch and private temp workspace.
+        Caller-controlled environment is NOT a security principal. Therefore
+        any result of this function is never a real approved effect, and no
+        production code is permitted to invoke it.
+        """
+        scratch = pathlib.Path(tempfile.gettempdir()).resolve()
+        if (os.environ.get("NF_CORE_OFFLINE_FIXTURE") != "1"
+                or not self.root.resolve().is_relative_to(scratch)
+                or not self.repo.resolve().is_relative_to(scratch)):
+            raise CoreSafetyError("Offline fixture unavailable outside isolated temporary test")
+
         """Only trusted deterministic TEST output. No subprocess/model/remote publication."""
         if type(proposal) is not dict or set(proposal) != PROPOSAL_KEYS:
             raise CoreSafetyError("One exact inert text proposal required")

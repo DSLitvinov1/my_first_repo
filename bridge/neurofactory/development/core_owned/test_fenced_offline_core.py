@@ -54,7 +54,7 @@ class RealPinnedTestIntegration(unittest.TestCase):
         # GitHub checkout is shallow; compare the verified physical source
         # blob from CORE exact ce619... without depending on ancestor fetch.
         current_blob=git(root,"hash-object",core_path)
-        if current_blob!="85cc94497c9a1590091d2ccd41c8be8d5948c0cb":
+        if current_blob!="ab1471813c6da29407c913b974a2209467a4b961":
             raise RuntimeError("CORE source changed unexpectedly")
         host=root/"_pinned_fixture"/"host"
         if git(host,"rev-parse","HEAD")!=HOST_SHA:
@@ -131,6 +131,13 @@ class RealPinnedTestIntegration(unittest.TestCase):
     def no_write(self):
         self.assertFalse((self.core.sandbox/TARGET).exists())
         self.assertEqual(self.core.snapshot()["state"],"CLAIMED")
+
+    def test_unfenced_legacy_core_entrypoint_denies_even_with_valid_local_claim(self):
+        with self.assertRaisesRegex(one_task_core.CoreSafetyError,
+                                    "LEGACY_WRITE_DISABLED"):
+            self.core.apply_offline_test(
+                TASK, self.local["token"], self.proposal, now=101)
+        self.no_write()
 
     def test_denied_host_claim_zero_write(self):
         with self.assertRaises(FencedOfflineBoundaryError):
