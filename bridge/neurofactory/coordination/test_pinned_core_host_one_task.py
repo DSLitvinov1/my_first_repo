@@ -242,6 +242,31 @@ class ExactPinnedOneTask(unittest.TestCase):
         print("NF_INTEGRATION_GAP_HOST_UNKNOWN_CORE_LOCAL_TEST_WROTE=CONFIRMED")
         print("NF_AUTOMATIC_RECOVERY_OR_LIVE_ADMISSION=FALSE")
 
+    def test_host_expired_lease_cannot_reclaim_but_local_test_recipient_still_writes(self):
+        """Prove absent shared expiry admission (test-only; NEVER a live write)."""
+        self.seed(True)
+        worker = "synthetic-host-client"
+        first = self.hostcas.claim(TASK, worker, secrets.token_hex(16),
+                                   lease_seconds=1)
+        self.assertEqual(first["status"], "CLAIMED")
+        self.assertEqual(first["lease_epoch"], 1)
+        # Ephemeral nf_test database fixture only: model time advancing without
+        # sleep. OfflineCAS correctly refuses a second claim after expiry.
+        self.db.execute(
+            "UPDATE nf_task SET lease_deadline=clock_timestamp() - INTERVAL '2 seconds' "
+            "WHERE task_id=%s", (TASK,))
+        self.assertEqual(
+            self.hostcas.claim(TASK, "synthetic-other-worker", secrets.token_hex(16))["status"],
+            "NOT_CLAIMED")
+        self.assertEqual(self.hostcas.public_state(TASK)["epoch"], 1)
+        self.assertEqual(self.hostcas.public_state(TASK)["status"], "LEASED")
+        # Local CORE ignores the HOST deadline entirely when the synthetic,
+        # independently provided positive callback is used. This must NOT be
+        # confused with a stale fencing token accepted by an actual HOST API.
+        self._explicitly_untrusted_offline_write()
+        print("NF_INTEGRATION_GAP_HOST_EXPIRED_CORE_LOCAL_TEST_WROTE=CONFIRMED")
+        print("NF_CURRENT_SHARED_RECEIVER_EXPIRY_PROOF=ABSENT")
+
     def test_cas_result_is_not_real_core_exclusive_authorization(self):
         self.seed(True)
         host_lease=self.hostcas.claim(TASK,"pc-synthetic-a",secrets.token_hex(16))
