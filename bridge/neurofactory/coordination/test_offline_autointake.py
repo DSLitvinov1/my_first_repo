@@ -181,8 +181,9 @@ class IntakeTests(unittest.TestCase):
                 self.ingest(pair=self.gh(),registry={"DSLitvinov1/my_first_repo":reg})
     def test_invalid_unicode_rejected_before_sqlite(self):
         body={"action":"opened","repository":{"full_name":"DSLitvinov1/my_first_repo"},
-              "issue":{"number":32,"state":"open","title":"Bad\\ud800"}}
+              "issue":{"number":32,"state":"open","title":"Bad"+chr(0xD800)}}
+        raw=json.dumps(body,ensure_ascii=True).encode("ascii")
         with self.assertRaises(IntakeRejected):
-            self.ingest(pair=self.sign("github_issues",body))
+            self.ingest(pair=self.sign("github_issues",body,raw=raw))
 if __name__=="__main__":
     unittest.main()
