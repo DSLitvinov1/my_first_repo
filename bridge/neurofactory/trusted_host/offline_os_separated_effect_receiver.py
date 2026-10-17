@@ -101,6 +101,14 @@ def serve_once(config_dir):
                     req=json.loads(raw.decode("ascii"))
                     if type(req) is not dict or set(req)!={"schema","signed_packet","witness","signed_owner_grant","content_base64"} or req["schema"]!="neurofactory.recipient.request.fixture.v1":
                         _deny("malformed request")
+                    # Mandatory in THIS protected OS endpoint. Explicit
+                    # null must never select the legacy signer-only test route.
+                    owner=req["signed_owner_grant"]
+                    if (type(owner) is not dict or
+                        set(owner)!={"statement","signature_base64"} or
+                        type(owner["statement"]) is not dict or
+                        type(owner["signature_base64"]) is not str):
+                        _deny("signed owner grant required; downgrade forbidden")
                     content=base64.b64decode(req["content_base64"],validate=True)
                     if len(content)>65536:_deny("bounded one-file content only")
                     pub=base64.b64decode(cfg["issuer_public_base64"],validate=True)
