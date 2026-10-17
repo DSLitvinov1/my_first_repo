@@ -244,6 +244,47 @@
         "host_issuer_authenticated": false,
         "handoff": "PAUSED_BY_USER",
         "evidence_doc": "bridge/neurofactory/coordination/ADVISORY_UI_PROJECTION_EVIDENCE_20261017_RU.md"
+      },
+      "signed_fenced_receiver_20261017": {
+        "document": "bridge/neurofactory/coordination/HOST_CORE_PROTECTED_RECEIVER_EVIDENCE_20261017_RU.md",
+        "core_exact_sha": "05ab48bf5b04818df2b632906886610587cad642",
+        "trusted_host_candidate_sha": "0c33d8181e102e2ca3f47559ae6abeb2f4b72757",
+        "trusted_host_recheck_remediation_sha": "6bb33d4cdaa26abee6b6f9961b9f1ff5e546ba4e",
+        "core_signed_scope_candidate_sha": "d38bc974578960ee4a7c57edb411d049acc909a1",
+        "coordinator_exact_pinned_remediation_test_sha": "b5c26799ca313c9224b857d1837a590d13c533ff",
+        "review_exact_sha": "d0f5e338c859016664924424405866ba8d445607",
+        "runs": {
+          "signed_core_scope": 39025646182,
+          "cross_component_before_remediation": 39025938343,
+          "review_pre_remediation": 39026114292,
+          "host_locked_receiver": 39026318143,
+          "cross_component_after_remediation": 39026412065,
+          "review_patched_host": 39026524104
+        },
+        "verified_pass_counts": {
+          "core_signed_scope": 17,
+          "initial_cross_component": 8,
+          "host_prior_regressions": 15,
+          "host_locked_targeted": 33,
+          "after_remediation_cross_component": 8,
+          "review_patched": 13
+        },
+        "one_inert_actual_fixture_file_permitted": true,
+        "double_delivery_no_second_file": true,
+        "five_denials_test_only_pass": true,
+        "post_check_external_db_revocation_row_lock_mitigation_pass": true,
+        "same_privileged_db_connection_can_mutate_without_separate_os_identity": true,
+        "truly_independent_operational_reviewer_signed": false,
+        "external_protected_signer_provisioned": false,
+        "independent_owner_rights_authority": false,
+        "receiver_production_os_isolation": false,
+        "independent_antirollback_storage": false,
+        "actual_two_distinct_authorized_physical_machines": false,
+        "source_merged": false,
+        "live_execution_allowed": false,
+        "release_approved": false,
+        "handoff": "PAUSED_BY_USER",
+        "verdict": "NARROW_TESTS_PASS_UNPROTECTED_OPERATOR_BOUNDARY_REJECT_LIVE"
       }
     },
     "CORE": {
