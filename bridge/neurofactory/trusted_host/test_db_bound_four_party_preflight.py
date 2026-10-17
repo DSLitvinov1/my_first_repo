@@ -173,12 +173,14 @@ class SQLSignedEffectsE2E(unittest.TestCase):
              self.four.bodies["witness"]["commit_sequence"]))
 
     def test_wrong_witness_highwater_or_idempotency_denied(self):
-        self.db.execute("""UPDATE nf_trusted_host.effect_receipt
-                          SET external_witness_sequence=99""")
-        # Standard SQL trigger blocks malicious modification of UNKNOWN, so
-        # simulate DBA snapshot replacement by TRUNCATE and fraudulent INSERT.
-        # Preflight must still detect mismatch against signed witness.
-        # The mutation above MUST be rejected; see independent test below.
+        # Local SQL immutable trigger denies direct rewrite. A DBA who can
+        # TRUNCATE can still replace with a false record: see next scenario.
+        with self.assertRaises(psycopg.errors.RaiseException):
+            self.db.execute("""UPDATE nf_trusted_host.effect_receipt
+                              SET external_witness_sequence=99""")
+        self.assertEqual(self.db.execute(
+            "SELECT external_witness_sequence FROM nf_trusted_host.effect_receipt"
+        ).fetchone()[0],12)
 
     def test_real_db_rollback_replacement_does_not_imply_witness_integrity(self):
         self.db.execute("TRUNCATE nf_trusted_host.effect_receipt")
