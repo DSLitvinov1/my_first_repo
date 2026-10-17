@@ -21,7 +21,7 @@ def run_uid(uid,*args,input=None,timeout=9):
     return subprocess.run(["sudo","-n","-u",uid,"env",
        "NF_OPERATOR_ANCHOR_FIXTURE_ONLY=1",
        "NF_HOST_RECEIVER_FIXTURE_ONLY=1","NF_RECEIVER_OS_FIXTURE_ONLY=1",
-       PY,*map(str,args)],capture_output=True,input=input,
+       "PYTHONPATH="+str(STAGE),PY,*map(str,args)],capture_output=True,input=input,
        text=input is None,timeout=timeout)
 def uid(name):
     return int(subprocess.check_output(["id","-u",name],text=True).strip())
