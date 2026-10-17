@@ -1,0 +1,51 @@
+name: Neurofactory COORD pinned CORE HOST receiver one effect
+on:
+  push:
+    branches: [neurofactory-coord-pinned-receiver-20261017]
+    paths:
+      - bridge/neurofactory/coordination/test_pinned_core_host_real_receiver.py
+      - .github/workflows/neurofactory-coord-pinned-receiver.yml
+permissions:
+  contents: read
+jobs:
+  bounded-receiver:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_HOST_RECEIVER_FIXTURE_ONLY: "1"
+      NF_CORE_OFFLINE_RECEIVER_TEST_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 05ab48bf5b04818df2b632906886610587cad642
+          path: _e2e_fixture/core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 0c33d8181e102e2ca3f47559ae6abeb2f4b72757
+          path: _e2e_fixture/host
+          persist-credentials: false
+      - name: Isolated disposable Python dependencies
+        run: |
+          python3 -m venv .nf-coord-e2e
+          .nf-coord-e2e/bin/python -m pip install --disable-pip-version-check --no-input 'psycopg[binary]==3.2.6' 'cryptography==46.0.3'
+      - name: Cross-component actual bounded receiver file, five denies and replay
+        run: .nf-coord-e2e/bin/python -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_pinned_core_host_real_receiver.py' -v
