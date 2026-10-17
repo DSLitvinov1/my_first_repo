@@ -1,0 +1,48 @@
+name: Neurofactory CORE exact signed HOST scope offline E2E
+on:
+  push:
+    branches: [neurofactory-core-queue-owned-20261013]
+    paths:
+      - bridge/neurofactory/development/core_owned/signed_scope_fixture_core.py
+      - bridge/neurofactory/development/core_owned/test_signed_scope_fixture_core.py
+      - .github/workflows/neurofactory-core-owned-signed-scope-fixture.yml
+permissions:
+  contents: read
+jobs:
+  offline-signed-scope:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_CORE_SIGNED_SCOPE_FIXTURE: "1"
+      NF_CORE_FENCED_TEST_ONLY: "1"
+      NF_CORE_OFFLINE_FIXTURE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 66dfbc6957c04cd9f8d19ba52ec783fa1dec129d
+          path: _pinned_fixture/host
+          persist-credentials: false
+      - name: Install isolated test-only libraries
+        run: |
+          python3 -m venv .nf-signed-fixture
+          .nf-signed-fixture/bin/python -m pip install --disable-pip-version-check --no-input 'psycopg[binary]==3.2.6' 'cryptography==46.0.3'
+      - name: Verify signed scoped HOST fixture and one deterministic CORE synthetic effect
+        run: .nf-signed-fixture/bin/python -B -m unittest discover -s bridge/neurofactory/development/core_owned -p 'test_signed_scope_fixture_core.py' -v
