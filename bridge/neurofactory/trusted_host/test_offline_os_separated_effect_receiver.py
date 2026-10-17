@@ -467,6 +467,37 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
         print("NF_RECIPIENT_LEDGER_OS_UID_PROTECTION_ENFORCED",flush=True)
 
+
+    def test_protected_journal_concurrent_claims_allow_only_one(self):
+        from concurrent.futures import ThreadPoolExecutor
+        proc_script=(
+            "import sys,time;from offline_recipient_protected_journal "
+            "import RecipientProtectedJournal,ProtectedEffectDenied;\n"
+            "try:\n"
+            " with RecipientProtectedJournal(sys.argv[1]).intent_once("
+            "task_id=sys.argv[2],operation_id='race-owner-test',"
+            "target=sys.argv[3],content_sha256=sys.argv[4]):\n"
+            "  time.sleep(.18)\n"
+            "  print('ACQUIRED_ONE',flush=True)\n"
+            "except ProtectedEffectDenied:\n"
+            " print('DENIED_RACE',flush=True)\n"
+        )
+        task=self.fx.packet["payload"]["task_id"]
+        digest=hashlib.sha256(CONTENT).hexdigest()
+        def race(_):
+            return run_uid("nf_effect","-c",proc_script,self.receiver_config,
+                           task,TARGET,digest,timeout=8)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(race,(1,2)))
+        self.assertTrue(all(p.returncode==0 for p in results),
+                        str([(p.returncode,p.stderr[:120]) for p in results]))
+        self.assertEqual(sum("ACQUIRED_ONE" in p.stdout for p in results),1)
+        self.assertEqual(sum("DENIED_RACE" in p.stdout for p in results),1)
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
+        print("NF_PROTECTED_RECEIPT_OS_FLOCK_ONE_OF_TWO_CONCURRENT",flush=True)
+
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
 if __name__=="__main__":unittest.main()
