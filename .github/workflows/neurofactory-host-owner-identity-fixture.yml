@@ -1,0 +1,39 @@
+name: Neurofactory test-only independently pinned owner-key scope verification
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_owner_grant_admission.py
+      - bridge/neurofactory/trusted_host/test_offline_owner_grant_admission.py
+      - .github/workflows/neurofactory-host-owner-identity-fixture.yml
+permissions:
+  contents: read
+jobs:
+  protected-external-owner-key-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create real distinct Linux signer and DB worker users
+        run: |
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_signer
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_db_actor
+          test "$(id -u nf_signer)" != "$(id -u nf_db_actor)"
+      - name: Prepare ephemeral crypto verifier, source only, no secrets copied
+        run: |
+          python3 -m venv /tmp/nf-owner-verify-venv
+          /tmp/nf-owner-verify-venv/bin/python -m pip install --no-input --disable-pip-version-check cryptography==46.0.3
+          mkdir -p /tmp/nf-owner-verify-source
+          cp bridge/neurofactory/trusted_host/offline_owner_grant_admission.py /tmp/nf-owner-verify-source/
+          cp bridge/neurofactory/trusted_host/offline_operator_anchor.py /tmp/nf-owner-verify-source/
+          cp bridge/neurofactory/trusted_host/signed_effect_permit.py /tmp/nf-owner-verify-source/
+      - name: Verify exact signer-owned owner-key scope without real owner admission
+        run: |
+          git rev-parse HEAD
+          NF_OWNER_TEST_PYTHON=/tmp/nf-owner-verify-venv/bin/python NF_OWNER_TEST_STAGE=/tmp/nf-owner-verify-source /tmp/nf-owner-verify-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_owner_grant_admission.py' -v

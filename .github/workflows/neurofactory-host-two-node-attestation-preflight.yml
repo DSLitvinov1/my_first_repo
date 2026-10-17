@@ -1,0 +1,28 @@
+name: Neurofactory two-node authorization bundle fixture checks
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_two_node_admission_gate.py
+      - bridge/neurofactory/trusted_host/test_offline_two_node_admission_gate.py
+      - .github/workflows/neurofactory-host-two-node-attestation-preflight.yml
+permissions:
+  contents: read
+jobs:
+  synthetic-signatures-only-no-install-or-reboot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Show exact candidate SHA
+        run: git rev-parse HEAD
+      - name: Install temporary isolated signature-verification runtime
+        run: |
+          python3 -m venv /tmp/nf-two-node-gate
+          /tmp/nf-two-node-gate/bin/python -m pip install --disable-pip-version-check --no-input cryptography==46.0.3
+      - name: Check only signed synthetic two-node authorization structure
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 /tmp/nf-two-node-gate/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_two_node_admission_gate.py' -v

@@ -1,0 +1,43 @@
+name: Neurofactory TRUSTED HOST ephemeral PostgreSQL role isolation
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_db_roles_guard.sql
+      - bridge/neurofactory/trusted_host/test_offline_db_roles_guard.py
+      - .github/workflows/neurofactory-trusted-host-owned-db-roles-targeted.yml
+permissions:
+  contents: read
+jobs:
+  postgres-role-boundary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NF_EPHEMERAL_POSTGRES_DSN: postgresql://nf_test:nf_test_ephemeral_only@127.0.0.1:5432/nf_test
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create disposable Python test environment only
+        run: |
+          python3 -m venv .nf-dbrole-test-venv
+          .nf-dbrole-test-venv/bin/python -m pip install --disable-pip-version-check 'psycopg[binary]==3.2.6'
+      - name: Run only isolated SQL role and append-only privilege checks
+        run: .nf-dbrole-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_db_roles_guard.py' -v

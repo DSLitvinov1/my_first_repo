@@ -1,0 +1,28 @@
+name: NF HOST witness independently verifies signed issuer and owner
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_witness_signed_scope_gate.py
+      - bridge/neurofactory/trusted_host/test_offline_witness_signed_scope_gate.py
+      - .github/workflows/neurofactory-host-dual-signed-witness.yml
+permissions:
+  contents: read
+jobs:
+  scope-verified-before-effect-fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exact source commit under test
+        run: git rev-parse HEAD
+      - name: Temporary only cryptographic verifier
+        run: |
+          python3 -m venv /tmp/nf-witness-scope
+          /tmp/nf-witness-scope/bin/python -m pip install --no-input --disable-pip-version-check cryptography==46.0.3
+      - name: Witness independently checks owner and issuer signatures and exact effect scope
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 /tmp/nf-witness-scope/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_witness_signed_scope_gate.py' -v

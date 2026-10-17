@@ -1,0 +1,31 @@
+name: Neurofactory HOST monotonic anchor logic offline
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_operator_anchor.py
+      - bridge/neurofactory/trusted_host/test_offline_operator_anchor_logic.py
+      - .github/workflows/neurofactory-trusted-host-owned-anchor-logic.yml
+permissions:
+  contents: read
+jobs:
+  protected-checkpoint-logic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      NF_OPERATOR_ANCHOR_FIXTURE_ONLY: "1"
+      PYTHONNOUSERSITE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated crypto dependency
+        run: |
+          python3 -m venv .nf-anchor-test-venv
+          .nf-anchor-test-venv/bin/python -m pip install --disable-pip-version-check --no-input cryptography==46.0.3
+      - name: Test signature and monotonic checkpoint without real authority
+        run: |
+          git rev-parse HEAD
+          .nf-anchor-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_operator_anchor_logic.py' -v

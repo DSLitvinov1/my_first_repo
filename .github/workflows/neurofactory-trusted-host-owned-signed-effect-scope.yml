@@ -1,0 +1,30 @@
+name: Neurofactory trusted host signed per-effect scope targeted
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/signed_effect_permit.py
+      - bridge/neurofactory/trusted_host/test_signed_effect_permit.py
+      - .github/workflows/neurofactory-trusted-host-owned-signed-effect-scope.yml
+permissions:
+  contents: read
+jobs:
+  isolated-scope-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated cryptographic test dependency
+        run: |
+          python3 -m venv .nf-offline-crypto-venv
+          .nf-offline-crypto-venv/bin/python -m pip install --disable-pip-version-check --no-input cryptography==46.0.3
+      - name: Record exact candidate SHA
+        run: git rev-parse HEAD
+      - name: Verify Ed25519 scope, expiry, forged signed caller and fail closed
+        run: .nf-offline-crypto-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_signed_effect_permit.py' -v

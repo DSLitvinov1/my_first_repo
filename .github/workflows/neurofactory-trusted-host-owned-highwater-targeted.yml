@@ -1,0 +1,44 @@
+name: Neurofactory TRUSTED HOST offline PostgreSQL highwater targeted
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_highwater.py
+      - bridge/neurofactory/trusted_host/offline_highwater_schema.sql
+      - bridge/neurofactory/trusted_host/test_offline_highwater.py
+      - .github/workflows/neurofactory-trusted-host-owned-highwater-targeted.yml
+permissions:
+  contents: read
+jobs:
+  offline-highwater:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NF_EPHEMERAL_POSTGRES_DSN: postgresql://nf_test:nf_test_ephemeral_only@127.0.0.1:5432/nf_test
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install test PostgreSQL driver only into disposable venv
+        run: |
+          python3 -m venv .nf-highwater-venv
+          .nf-highwater-venv/bin/python -m pip install --disable-pip-version-check 'psycopg[binary]==3.2.6'
+      - name: Run only new offline highwater monotonic/replay checks
+        run: .nf-highwater-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_highwater.py' -v

@@ -1,0 +1,52 @@
+name: NF HOST separate owner proof and outside DB witness candidates
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_github_owner_key_enrollment.py
+      - bridge/neurofactory/trusted_host/test_offline_github_owner_key_enrollment.py
+      - bridge/neurofactory/trusted_host/offline_external_effect_witness.py
+      - bridge/neurofactory/trusted_host/test_offline_external_effect_witness.py
+      - .github/workflows/neurofactory-host-external-witness-and-owner-enrollment.yml
+permissions:
+  contents: read
+jobs:
+  owner-key-possession-synthetic-then-separated-witness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      NF_WITNESS_ISOLATED_TEST_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin candidate and inspect Linux runtime
+        run: |
+          git rev-parse HEAD
+          id
+      - name: Create fully disposable separated witness and receiver user identities
+        run: |
+          sudo groupadd --system nf_witness_ipc
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_witness
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_effect
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_db_actor
+          sudo usermod -aG nf_witness_ipc nf_witness
+          sudo usermod -aG nf_witness_ipc nf_effect
+          test "$(id -u nf_witness)" != "$(id -u nf_effect)"
+          test "$(id -u nf_effect)" != "$(id -u nf_db_actor)"
+      - name: Prepare ephemeral public crypto runtime, never enroll real owner keys
+        run: |
+          python3 -m venv /tmp/nf-witness-venv
+          /tmp/nf-witness-venv/bin/python -m pip install --no-input --disable-pip-version-check cryptography==46.0.3
+          mkdir -p /tmp/nf-witness-source
+          cp bridge/neurofactory/trusted_host/offline_github_owner_key_enrollment.py /tmp/nf-witness-source/
+          cp bridge/neurofactory/trusted_host/offline_external_effect_witness.py /tmp/nf-witness-source/
+      - name: Test operator-signed Github rights fixture plus owner fresh key proof
+        run: |
+          NF_WITNESS_TEST_PYTHON=/tmp/nf-witness-venv/bin/python NF_WITNESS_TEST_STAGE=/tmp/nf-witness-source /tmp/nf-witness-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_github_owner_key_enrollment.py' -v
+      - name: Test differently privileged witness recipient runtime and after-local-rollback deny
+        run: |
+          NF_WITNESS_TEST_PYTHON=/tmp/nf-witness-venv/bin/python NF_WITNESS_TEST_STAGE=/tmp/nf-witness-source /tmp/nf-witness-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_external_effect_witness.py' -v

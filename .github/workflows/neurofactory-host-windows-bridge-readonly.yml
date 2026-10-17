@@ -1,0 +1,42 @@
+name: Neurofactory authorized Windows reserve runner read-only preflight
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - .github/workflows/neurofactory-host-windows-bridge-readonly.yml
+permissions:
+  contents: read
+jobs:
+  read-only-bridge-status-no-system-change:
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 4
+    steps:
+      - name: Print safe anonymous readiness only (do not touch host files)
+        shell: powershell
+        run: |
+          Write-Output 'NF_WINDOWS_BRIDGE_READONLY_BEGIN'
+          Write-Output "runner_os=$env:RUNNER_OS"
+          $os = Get-CimInstance Win32_OperatingSystem
+          if ($null -ne $os) {
+            Write-Output "windows_version=$($os.Version)"
+            Write-Output "total_ram_gib=$([math]::Round($os.TotalVisibleMemorySize/1048576,2))"
+            Write-Output "free_ram_gib=$([math]::Round($os.FreePhysicalMemory/1048576,2))"
+          }
+          $runtime = Get-Command python.exe -ErrorAction SilentlyContinue
+          Write-Output "python_command_available=$([bool]$runtime)"
+          $ollama = Get-Command ollama.exe -ErrorAction SilentlyContinue
+          Write-Output "ollama_command_available=$([bool]$ollama)"
+          $qwenInstalled = $false
+          if ($null -ne $ollama) {
+            # Do not execute a model or call any network endpoint.
+            # A readable model-list call is omitted to avoid touching
+            # production local services.
+            $qwenInstalled = $false
+          }
+          Write-Output "qwen_model_verified=false"
+          Write-Output "trusted_host_authorized=false"
+          Write-Output "second_physical_device_verified=false"
+          Write-Output "performed_file_write=false"
+          Write-Output "performed_service_install=false"
+          Write-Output 'NF_WINDOWS_BRIDGE_READONLY_END'

@@ -1,0 +1,28 @@
+name: Neurofactory TRUSTED HOST offline final pinned checkpoint chain
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_chain_guard.py
+      - bridge/neurofactory/trusted_host/test_offline_chain_guard.py
+      - .github/workflows/neurofactory-trusted-host-owned-chain-guard-targeted.yml
+permissions:
+  contents: read
+jobs:
+  offline-chain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Ed25519 test dependency in disposable virtual environment
+        run: |
+          python3 -m venv .nf-chain-test-venv
+          .nf-chain-test-venv/bin/python -m pip install --disable-pip-version-check 'cryptography==44.0.3'
+      - name: Test only new exact externally pinned signed chain boundary
+        run: .nf-chain-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_chain_guard.py' -v
