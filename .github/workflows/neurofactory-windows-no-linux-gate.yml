@@ -1,0 +1,28 @@
+name: Neurofactory Windows local trusted runtime no Linux preflight
+on:
+  push:
+    branches:
+      - neurofactory-windows-local-trusted-runtime-20261018
+    paths:
+      - bridge/neurofactory/trusted_host/windows_trusted_runtime_preflight.ps1
+      - bridge/neurofactory/trusted_host/test_windows_trusted_runtime_preflight.ps1
+      - .github/workflows/neurofactory-windows-no-linux-gate.yml
+permissions:
+  contents: read
+jobs:
+  policy-on-disposable-windows:
+    # Explicitly GitHub-hosted disposable Windows CI, NOT owner's paired PC.
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only Windows local TRUSTED HOST architecture checks
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/bridge/neurofactory/trusted_host/test_windows_trusted_runtime_preflight.ps1"
+      - name: Confirm no repository tracked state changed
+        shell: pwsh
+        run: |
+          git diff --exit-code
