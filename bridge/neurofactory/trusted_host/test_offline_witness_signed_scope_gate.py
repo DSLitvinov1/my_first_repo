@@ -26,7 +26,7 @@ class WitnessRejectsUnattestedScopes(unittest.TestCase):
         self.owner=Ed25519PrivateKey.generate()
         self.policy={
             "schema":"nf.witness.pinned_scope.test.v1",
-            "owner_id":"151650108","repo_id":"723328237",
+            "owner_id":"151650108","github_owner_numeric_id":"151650108","repo_id":"723328237",
             "repository":"DSLitvinov1/my_first_repo",
             "project_id":"nf-sandbox","worker_id":"worker-sandbox-01",
             "issuer_public_base64":b64(pub(self.issuer)),
