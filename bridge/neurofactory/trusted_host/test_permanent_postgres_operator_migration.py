@@ -111,7 +111,7 @@ class PermanentDBSchemaTests(unittest.TestCase):
     def test_mismatched_file_digest_and_delete_denied(self):
         self.lease()
         self.receipt()
-        with self.assertRaises(psycopg.errors.CheckViolation):
+        with self.assertRaises(psycopg.errors.RaiseException):
             self.conn.execute(
                 """UPDATE nf_trusted_host.effect_receipt
                    SET status='COMPLETED',receiver_file_sha256=%s,
