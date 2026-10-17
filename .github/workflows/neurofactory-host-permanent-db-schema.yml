@@ -1,0 +1,44 @@
+name: Neurofactory HOST permanent DB schema no runtime activation
+on:
+  push:
+    branches: [neurofactory-host-independent-production-scope-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/permanent_postgres_operator_migration.sql
+      - bridge/neurofactory/trusted_host/test_permanent_postgres_operator_migration.py
+      - .github/workflows/neurofactory-host-permanent-db-schema.yml
+permissions:
+  contents: read
+jobs:
+  verify-only-migration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_schema_ci
+          POSTGRES_PASSWORD: nf_schema_ephemeral_password
+          POSTGRES_DB: nf_schema_verify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_schema_ci -d nf_schema_verify"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      NF_DB_SCHEMA_CI_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolate disposable PostgreSQL migration test dependencies
+        run: |
+          python3 -m venv .nf-psql-verify
+          .nf-psql-verify/bin/python -m pip install --disable-pip-version-check --no-input 'psycopg[binary]==3.2.6'
+      - name: Validate permanent schema rollback is NOT trust authority
+        run: |
+          .nf-psql-verify/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_permanent_postgres_operator_migration.py' -v
+      - name: Ensure test did not alter tracked sources
+        run: git diff --exit-code
