@@ -181,7 +181,11 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         signer=run_uid("nf_db_actor","-c",
             "import sys;open(sys.argv[1]).read()",self.home/"issuer-private.raw")
         self.assertNotEqual(signer.returncode,0)
-        self.assertFalse(self.fx.fspath().exists())
+        # The untrusted test runner cannot even stat the protected root.
+        # Assert absence from the actual recipient's UID instead.
+        self.assertNotEqual(subprocess.run(
+            ["sudo","-n","-u","nf_effect","test","-e",str(self.fx.fspath())],
+            capture_output=True).returncode,0)
     def test_one_actual_file_with_three_distinct_uid_and_receipt(self):
         res=self.send()
         self.assertEqual(res["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
