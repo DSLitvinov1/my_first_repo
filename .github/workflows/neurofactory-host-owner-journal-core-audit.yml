@@ -36,12 +36,13 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 4a068968d5a34d0f7998b7da4d22640160b90b23
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
           path: .nf_core_pinned
           persist-credentials: false
       - name: Verify exact CORE HEAD and audited HOST execution blobs
         run: |
-          test "$(git -C .nf_core_pinned rev-parse HEAD)" = "4a068968d5a34d0f7998b7da4d22640160b90b23"
+          test "$(git -C .nf_core_pinned rev-parse HEAD)" = "beb08eff32923d8ca364aabfde0458f380acf8e7"
+          test "$(git -C .nf_core_pinned hash-object bridge/neurofactory/development/core_owned/offline_os_receiver_client.py)" = "417f7c1713c8333ff10a79962aafecf87a863cff"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_os_separated_effect_receiver.py)" = "0ddc789db0d5d0336d34eda06c61c1fddfd1fa85"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_recipient_protected_journal.py)" = "578e2114c971529039d9a3e151c0fe37c103cfa1"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_operator_gated_receiver.py)" = "69252e0f5eba806095570c739deea77aab55ff06"
