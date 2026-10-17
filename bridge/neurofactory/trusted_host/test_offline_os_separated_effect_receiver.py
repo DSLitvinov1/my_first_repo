@@ -132,7 +132,7 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
                 raise AssertionError(who+" exited: "+proc.stderr.read()[:550])
             time.sleep(.03)
         raise AssertionError("no Unix listener from "+who)
-    def start(self,*,start_signer=True):
+    def start(self,*,start_signer=True,crash_after_fsync=False):
         if start_signer:
             self.signer_proc=subprocess.Popen(["sudo","-n","-u","nf_signer","env",
                 "NF_OPERATOR_ANCHOR_FIXTURE_ONLY=1",PY,str(SIGNER_SERVER),"serve",
@@ -143,12 +143,13 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
            "NF_HOST_RECEIVER_FIXTURE_ONLY=1",
            "NF_OPERATOR_ANCHOR_FIXTURE_ONLY=1",
            "NF_RECEIVER_OS_FIXTURE_ONLY=1",
+           "NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH="+("1" if crash_after_fsync else "0"),
            "PYTHONPATH="+str(STAGE),PY,str(RECEIVER_SERVER),
            str(self.receiver_config)],
            stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         self.ready("nf_effect",self.receiver_socket,self.recipient_proc)
-    def send(self,*,start_signer=True):
-        self.start(start_signer=start_signer)
+    def send(self,*,start_signer=True,crash_after_fsync=False):
+        self.start(start_signer=start_signer,crash_after_fsync=crash_after_fsync)
         code=("import json,socket,sys;"
               "s=socket.socket(socket.AF_UNIX);s.settimeout(7);"
               "s.connect(sys.argv[1]);"
@@ -411,6 +412,60 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.fx.db.execute(
             "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],1)
         print("NF_REAL_QWEN_ACTUAL_CORE_CLAIM_OS_HOST_ONCE_PASSED",flush=True)
+
+
+    def protected_effect_state(self):
+        program=("import sys,json;from offline_recipient_protected_journal "
+                 "import RecipientProtectedJournal;"
+                 "print(json.dumps(RecipientProtectedJournal(sys.argv[1]).inspect(sys.argv[2])))")
+        out=run_uid("nf_effect","-c",program,self.receiver_config,
+                    self.fx.packet["payload"]["task_id"])
+        self.assertEqual(out.returncode,0,out.stderr)
+        return json.loads(out.stdout)
+
+    def test_protected_journal_postgres_rollback_and_lost_target_no_repeat(self):
+        original=self.send()
+        self.assertEqual(original["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        # Only an authorized fixture root simulates a DB admin rollback and
+        # physically missing file; a worker can do neither in real OS ACL.
+        self.fx.db.execute("DELETE FROM nf_receiver_effect_journal")
+        remover=run_uid("nf_effect","-c",
+          "from pathlib import Path;import sys;Path(sys.argv[1]).unlink()",
+          self.fx.root/TARGET)
+        self.assertEqual(remover.returncode,0,remover.stderr)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        print("NF_RECIPIENT_PROTECTED_LEDGER_REJECTS_DB_ROLLBACK_AND_MISSING_FILE",flush=True)
+
+    def test_protected_journal_crash_between_fsync_and_receipt_manual_stop(self):
+        denied=self.send(crash_after_fsync=True)
+        self.assertEqual(denied["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],
+                         "UNKNOWN_MANUAL_RECONCILIATION")
+        self.assertEqual(self.hash_file_from_recipient_uid(),
+                         hashlib.sha256(CONTENT).hexdigest())
+        self.fx.db.execute("DELETE FROM nf_receiver_effect_journal")
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],
+                         "UNKNOWN_MANUAL_RECONCILIATION")
+        print("NF_RECIPIENT_PROTECTED_LEDGER_PERSISTS_UNKNOWN_AFTER_RESTART",flush=True)
+
+    def test_protected_journal_worker_cannot_delete_or_alter_evidence(self):
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        target=self.receiver_config/"nf-protected-effect-journal"
+        denied=run_uid("nf_db_actor","-c",
+             "from pathlib import Path;import sys;list(Path(sys.argv[1]).iterdir())",
+             target)
+        self.assertNotEqual(denied.returncode,0)
+        denied=run_uid("nf_db_actor","-c",
+             "from pathlib import Path;import sys;Path(sys.argv[1]).rmdir()",
+             target)
+        self.assertNotEqual(denied.returncode,0)
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        print("NF_RECIPIENT_LEDGER_OS_UID_PROTECTION_ENFORCED",flush=True)
 
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
