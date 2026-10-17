@@ -10,7 +10,7 @@ CASES=(((0,0),0),((2,3),5),((-4,7),3),((10,-8),2),
 ALLOWED=(ast.Module,ast.FunctionDef,ast.arguments,ast.arg,ast.Return,
          ast.If,ast.Compare,ast.BoolOp,ast.BinOp,ast.UnaryOp,ast.Name,
          ast.Load,ast.Constant,ast.Mod,ast.Eq,ast.NotEq,ast.And,ast.Or,
-         ast.Not,ast.UAdd,ast.USub,ast.Add,ast.Pass)
+         ast.Not,ast.UAdd,ast.USub,ast.Add,ast.Expr,ast.Pass)
 def mem():
     for line in Path("/proc/meminfo").read_text().splitlines():
         if line.startswith("MemAvailable:"):return int(line.split()[1])*1024
@@ -45,6 +45,10 @@ def verify(answer):
     for a in fn.args.args:a.annotation=None
     for node in ast.walk(tree):
         if not isinstance(node,ALLOWED):raise ValueError("unsafe syntax "+type(node).__name__)
+        # A string-only docstring is inert; executable expressions remain forbidden.
+        if isinstance(node,ast.Expr) and not (
+            isinstance(node.value,ast.Constant) and type(node.value.value) is str):
+            raise ValueError("executable expression")
         if isinstance(node,ast.Name) and node.id not in ("a","b"):raise ValueError("external name")
     scope={}
     exec(compile(ast.fix_missing_locations(tree),"<pure_candidate>","exec"),
