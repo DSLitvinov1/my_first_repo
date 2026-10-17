@@ -555,12 +555,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "e13c97db92e736d41262412632d2abc2197526ba",
+      "head": "619a0dda44a778251e67073386b9d7342aa23a21",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "DISPOSABLE_EFFECT_RECEIVER_CENTRAL_LEASE_LOCK_THROUGH_FSYNC_16_PASS_NOT_REAL_ROOT",
+      "status": "OPERATOR_EPHEMERAL_PRIVATE_KEY_HIGHWATER_14_LOGIC_GREEN_CROSS_UID_UNPROVEN_LIVE_BLOCKED",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -732,6 +732,32 @@
           "current_pg_lease_row_lock_held_through_effect": true,
           "concurrent_pg_revocation_statement_timeout_expected": true,
           "previous_green_before_toctou_hardening": 39025550761
+        },
+        "operator_antirollback_fixture_20261017": {
+          "source_path": "bridge/neurofactory/trusted_host/offline_operator_anchor.py",
+          "source_blob": "a762cf1854d0d8191db8891e2d8236c699d248d5",
+          "test_path": "bridge/neurofactory/trusted_host/test_offline_operator_anchor_logic.py",
+          "test_blob": "978c796b60e6d7493f302b8da69c991ae7ee6d7b",
+          "exact_tested_sha": "129e5d87ff20e7c9c2f70f87287687bf578a0299",
+          "hosted_run": 39057194884,
+          "hosted_job": 117467474892,
+          "negative_logic_tests_pass": 14,
+          "crossuid_postgresql_test_run": 39056827506,
+          "crossuid_postgresql_result": "RED_ENVIRONMENT_PYTHON_PERMISSION_DENIED_12_SETUP_FAILURES",
+          "crossuid_postgresql_confirmed_pass": 0,
+          "separate_os_principals_verified": false,
+          "independent_signer_production_custody": false,
+          "untrusted_DB_rollback_protection_implemented_as_prototype": true,
+          "DB_admin_rollback_experiment_verified": false,
+          "protected_highwater_production_authorized": false,
+          "authenticated_real_user_ownership": false,
+          "externally_trusted_public_key_pinning_attested": false,
+          "receiver_linked_to_anchor": false,
+          "private_key_uploaded_to_GitHub": false,
+          "live_server_deployed": false,
+          "production_writer_enabled": false,
+          "independently_reviewed": false,
+          "doc": "bridge/neurofactory/trusted_host/OPERATOR_ANCHOR_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -818,11 +844,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "REAL HOST owner and real custodial signer: independent operator/owner/repo credentials, separate OS principals, protected persistent signing key, external antirollback highwater, authenticated HTTPS epoch+fence API; no production install or key disclosure without permission",
-    "CORE production receiver: secure authenticated current lease and idempotency at ALL side-effect entrypoints, OS-protected destination, fail closed when HOST unavailable/UNKNOWN, old apply_offline_test remains permanently disabled",
-    "REVIEW distinct separately authorized auditor: independent negative tests against HOST effect receiver exact source blob 3e9949e... + CORE client blob fffe9c..., new 16 and 9 host-run evidence, TOCTOU lease revocation and crash/replay",
-    "Test 2 truly distinct explicitly authorized physical computers; only after secured HOST approvals perform one no-model operation, external review of receipts and failover",
-    "Local Qwen resource check, OPS backup restore, actual backend UI RBAC and project auto intake all after safe foundation; HANDOFF PAUSED, no PR merges/paid APIs/publishing"
+    "TRUSTED HOST: finish true separately permissioned OS signer runtime verification, key custody and protected append-only highwater: first cross-UID postgres DB-admin rollback test was ENVIRONMENT RED; 14/14 same-UID logic ONLY and not release",
+    "TRUSTED HOST: authoritative real owner/project/repo/source identity registry, externally pinned root and authenticated Unix-socket/mTLS server; operator-controlled key never exposed to DB/CORE; verify with separate authorized machine",
+    "CORE: real receiver-side OS principal, signed grant+current PG lease/epoch fencing/idempotency/UNKNOWN checked at final file write; old writer still disabled",
+    "REVIEW #11: independent separate authorized reviewer on exact HOST signer anchor 619a0d... and CORE/HOST protected receiver, crash/DB-admin rollback and parent relocation attack",
+    "Two truly distinct physical authorized machines, actual Qwen after resources verified, OPS backup+restore, UI authenticated backend. Production release forbidden until formal approval",
+    "HANDOFF PAUSED_BY_USER, no paid APIs, merges or publications"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
