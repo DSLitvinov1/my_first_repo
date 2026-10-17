@@ -86,6 +86,22 @@ class PermanentDBSchemaTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(row,("UNKNOWN",None))
 
+    def test_cannot_insert_completed_receipt_without_prior_unknown(self):
+        self.lease()
+        with self.assertRaises(psycopg.errors.RaiseException):
+            self.conn.execute(
+                """INSERT INTO nf_trusted_host.effect_receipt(
+                    task_id, operation_id, idempotency_key, signed_scope_sha256,
+                    target_sha256, content_sha256, external_witness_root_sha256,
+                    external_witness_sequence, status, receiver_file_sha256,
+                    completed_at)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'COMPLETED',%s,clock_timestamp())""",
+                (self.task,"op-one","b"*64,self.sha,"c"*64,
+                 "d"*64,"e"*64,10,"d"*64))
+        self.assertEqual(self.conn.execute(
+            "SELECT count(*) FROM nf_trusted_host.effect_receipt"
+        ).fetchone()[0],0)
+
     def test_duplicate_task_or_idempotency_denied(self):
         self.lease()
         self.receipt()
