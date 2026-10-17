@@ -568,6 +568,21 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
 
+    def test_owner_grant_restart_rollback_keeps_effect_locked(self):
+        first=self.send()
+        self.assertEqual(first["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        original_sha=self.hash_file_from_recipient_uid()
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        # Simulate DB-administrator rolling the effect receipt back.
+        # The recipient and signer processes are restarted by send().
+        self.fx.db.execute("DELETE FROM nf_receiver_effect_journal")
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        self.assertEqual(self.hash_file_from_recipient_uid(),original_sha)
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
+        print("NF_OWNER_SIGNED_PERMIT_OS_RECEIVER_RESTART_DB_ROLLBACK_REPLAY_DENIED",flush=True)
+
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
 if __name__=="__main__":unittest.main()
