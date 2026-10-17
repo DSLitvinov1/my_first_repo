@@ -1,0 +1,30 @@
+name: Neurofactory protected four-party effect scope (no authority)
+on:
+  push:
+    branches: [neurofactory-host-independent-production-scope-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/independent_four_party_scope.py
+      - bridge/neurofactory/trusted_host/test_independent_four_party_scope.py
+      - .github/workflows/neurofactory-independent-four-party-scope.yml
+permissions:
+  contents: read
+jobs:
+  bounded-four-roles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated test-only crypto dependency
+        run: |
+          python3 -m venv .nf-four-party-venv
+          .nf-four-party-venv/bin/python -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Four external public keys signed owner scope and no release
+        run: |
+          .nf-four-party-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_independent_four_party_scope.py -v
+      - name: Verify no modified files in working checkout
+        run: git diff --exit-code
