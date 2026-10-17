@@ -81,8 +81,8 @@ def check_signer_owned_scope(home, *, signed_permit, witness,
     if policy["allowed_claim_sha256"]!=digest:
         _deny("scope does not match protected claim")
     # Must hold a current independently signed head attesting same digest.
-    if type(witness.get("certificate")) is not dict or
-        witness["certificate"].get("claim_sha256")!=digest:
+    if (type(witness.get("certificate")) is not dict or
+        witness["certificate"].get("claim_sha256")!=digest):
         _deny("signed monotonic claim differs from proposed effect")
     try:
         current=verify_current(
