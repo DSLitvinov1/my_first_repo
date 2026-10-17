@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "NEW_OPERATOR_OWNER_KEY_PROOF_7_PASS_REMOTE_WITNESS_7_PASS_V2_FINAL_PROTECTED_EFFECT_3_PASS_RELEASE_BLOCKED",
+      "status": "OWNER_OPERATOR_CHALLENGE_7_PASS_EXTERNAL_WITNESS_7_PASS_V2_3_PASS_FULL_RECEIVER_REGRESSION_25_PASS_LIVE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -650,7 +650,7 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "062d7ca8a6bc0dde8eeedf959cbbb17ff2a5bee1",
+      "head": "eb449496ba32882a9652d4cf1ca705a6f0506aa9",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
@@ -1051,7 +1051,14 @@
           "full_physical_machine_reboot_tested": false,
           "independent_review_verdict": false,
           "production_allowed": false,
-          "document": "bridge/neurofactory/trusted_host/OWNER_CHALLENGE_AND_EXTERNAL_WITNESS_EVIDENCE_20261017_RU.md"
+          "document": "bridge/neurofactory/trusted_host/OWNER_CHALLENGE_AND_EXTERNAL_WITNESS_EVIDENCE_20261017_RU.md",
+          "modified_full_recipient_regression_run": 39069220676,
+          "modified_full_recipient_regression_job": 117503140684,
+          "modified_full_recipient_regression_tested_sha": "3a4e4f869f7f3f7822a96614fc1535bde5e16deb",
+          "modified_full_recipient_regression_total_pass": 25,
+          "v2_new_cases_in_full_matrix": 3,
+          "old_and_modified_regression_cases": 22,
+          "real_hardware_reboot": false
         }
       },
       "blockers": [
