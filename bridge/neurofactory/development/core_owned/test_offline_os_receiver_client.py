@@ -51,7 +51,10 @@ class OSBoundCORETests(unittest.TestCase):
            "task_id":TASK,"project_id":"nf-sandbox",
            "source_sha40":"a"*40,"source_file_sha256":"b"*64,
            "target":TARGET,"worker_id":WORKER,
-           "proposed_content_sha256":sha(CONTENT)},"signature_base64":"fixture"}
+           "proposed_content_sha256":sha(CONTENT),
+           "owner_id":"sandbox-owner","repository":"DSLitvinov1/my_first_repo",
+           "operation_id":"core-client-one","lease_epoch":2,
+           "expires_unix":int(time.time())+120},"signature_base64":"fixture"}
         self.receipt={"status":"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY",
                       "file_sha256":sha(CONTENT),"live_execution_allowed":False}
         self.client=CoreProtectedUnixReceiverClient(self.core,socket_path=self.sock,
@@ -60,12 +63,22 @@ class OSBoundCORETests(unittest.TestCase):
         for k,v in self.old.items():
             if v is None:os.environ.pop(k,None)
             else:os.environ[k]=v
-    def call(self,proposal=None,packet=None,client=None):
+    def owner_grant(self,packet=None):
+        payload=self.packet["payload"] if packet is None else packet["payload"]
+        stmt={k:payload[k] for k in ("owner_id","repository","project_id",
+             "task_id","worker_id","source_sha40","target","operation_id","lease_epoch")}
+        stmt["expires_unix"]=min(payload["expires_unix"],int(time.time())+70)
+        stmt["permit_sha256"]=hashlib.sha256(json.dumps(
+            payload,sort_keys=True,separators=(",",":"),ensure_ascii=True).encode()).hexdigest()
+        return {"statement":stmt,"signature_base64":"owner-signed-mock-only"}
+    def call(self,proposal=None,packet=None,client=None,owner_grant=None):
+        packet=self.packet if packet is None else packet
         return (self.client if client is None else client).propose_once(
              task_id=TASK,worker_id=WORKER,core_token="single-core-token",
              proposal=self.proposal if proposal is None else proposal,
-             signed_packet=self.packet if packet is None else packet,
-             witness={"certificate":"not independent owner approval"})
+             signed_packet=packet,
+             witness={"certificate":"not independent owner approval"},
+             signed_owner_grant=self.owner_grant(packet) if owner_grant is None else owner_grant)
     def serve_one(self,receipt=None):
         ready=threading.Event()
         def server():
@@ -126,6 +139,24 @@ class OSBoundCORETests(unittest.TestCase):
         t=self.serve_one(dict(self.receipt,live_execution_allowed=True))
         with self.assertRaises(CoreOSRouteDenied):self.call()
         t.join(3)
+    def test_owner_grant_rejected_when_missing_on_core_route(self):
+        with self.assertRaises(CoreOSRouteDenied):
+            self.call(owner_grant={})
+    def test_owner_grant_different_signed_operation_rejected_by_core(self):
+        grant=self.owner_grant()
+        grant["statement"]["operation_id"]="another-op"
+        with self.assertRaises(CoreOSRouteDenied):
+            self.call(owner_grant=grant)
+    def test_owner_grant_wrong_permit_hash_rejected(self):
+        grant=self.owner_grant()
+        grant["statement"]["permit_sha256"]="f"*64
+        with self.assertRaises(CoreOSRouteDenied):
+            self.call(owner_grant=grant)
+    def test_owner_grant_expired_denied_before_ipc(self):
+        grant=self.owner_grant()
+        grant["statement"]["expires_unix"]=int(time.time())-1
+        with self.assertRaises(CoreOSRouteDenied):
+            self.call(owner_grant=grant)
     def test_host_unreachable_blocks_without_mutating(self):
         with self.assertRaises(CoreOSRouteDenied):self.call()
         self.assertEqual(list(self.dir.iterdir()),[])
