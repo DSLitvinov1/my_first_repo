@@ -1,0 +1,66 @@
+[
+  {
+    "lane": "CORE",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-core-queue-owned-20261013",
+    "sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/9",
+    "phase": "waiting_dependency"
+  },
+  {
+    "lane": "TRUSTED_HOST",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-trusted-host-owned-20261015",
+    "sha": "02972424eefabcd61d21100611e3eace4c6c3d5e",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/14",
+    "phase": "blocked"
+  },
+  {
+    "lane": "PROVIDERS",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-providers-ollama-worker-20261015",
+    "sha": "827b654d9f7c6a10a9b90a9c97802e63116711b9",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/pull/13",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "COORDINATOR",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-coordinator-mvp-status-20261015",
+    "sha": "e0a1891d0b3c534b6d1e2ae198b35938f8364cad",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/3",
+    "phase": "testing"
+  },
+  {
+    "lane": "OPS",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-ops-completion-20261015",
+    "sha": "e32acaba8a3c6b5dc724cc08c84ad033190b9efe",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/6",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "SKILLS",
+    "repository": "DSLitvinov1/lesson3.1",
+    "branch": "neurofactory-skills-schema-bool-hardening-20261015",
+    "sha": "e15970bf9c18e99217fe5d6e9fbe63f1f836dcf8",
+    "issue_url": "https://github.com/DSLitvinov1/lesson3.1/pull/558",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "UI",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-ui-readonly-mvp-20261015",
+    "sha": "56a375a2f76bdaf56932f21b392a9d133f740913",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/10",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "HANDOFF",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/4",
+    "phase": "paused"
+  }
+]

@@ -1,0 +1,76 @@
+{
+  "schema": "neurofactory.coordination.release_readiness.v1",
+  "project": "НЕЙРОЗАВОД",
+  "gates": [
+    {
+      "id": "OWNER_AND_PROJECT_AUTHORITY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "DEPLOYMENT_MISSING",
+      "source_sha": "4221aaea1d549dd872fe189b551879b873bc4e47",
+      "evidence_note": "PR18 verifies four synthetic signed scopes; no real owner/operator enrollment, live repository ACL attestation or protected production grants."
+    },
+    {
+      "id": "EXTERNAL_SIGNER_KEY_CUSTODY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "02972424eefabcd61d21100611e3eace4c6c3d5e",
+      "evidence_note": "HOST V4 owner+issuer signatures pass isolated CI; temporary keys only, no separately enrolled long-lived operational key custody."
+    },
+    {
+      "id": "OFF_DB_MONOTONIC_ANTIROLLBACK",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "4221aaea1d549dd872fe189b551879b873bc4e47",
+      "evidence_note": "HOST test witness and SQL scope diagnostics exist; DB snapshot rollback remains possible without live independently protected off-host highwater."
+    },
+    {
+      "id": "REAL_OS_WRITER_ISOLATION",
+      "lane": "CORE",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+      "evidence_note": "CORE+HOST disposable Linux distinct-UID receiver tests exist; no approved permanent OS account boundaries or physical Windows/Linux installation."
+    },
+    {
+      "id": "AUTHENTICATED_CENTRAL_CAS",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "OFFLINE_ONLY",
+      "source_sha": "4221aaea1d549dd872fe189b551879b873bc4e47",
+      "evidence_note": "PR18 PostgreSQL16 read-lock four-role diagnostic 27/27 on ephemeral runner; lock ends before effect, no production authenticated lease fencing."
+    },
+    {
+      "id": "RECIPIENT_FENCING_IDEMPOTENCY",
+      "lane": "TRUSTED_HOST",
+      "reported_state": "INCOMPLETE",
+      "source_sha": "02972424eefabcd61d21100611e3eace4c6c3d5e",
+      "evidence_note": "HOST V4 disposable signed witness file effects pass CI, but no nonfixture final writer holding live lease fence, external witness and receipt atomically."
+    },
+    {
+      "id": "TWO_PHYSICAL_HOST_ADVERSARIAL_E2E",
+      "lane": "CORE",
+      "reported_state": "NOT_STARTED",
+      "source_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+      "evidence_note": "Only one authorized Windows bridge previously visible; no two independent physical nodes, real kernel reboot, DB restore, five denies and one success."
+    },
+    {
+      "id": "MODEL_RESOURCE_PROVENANCE",
+      "lane": "PROVIDERS",
+      "reported_state": "INCOMPLETE",
+      "source_sha": "827b654d9f7c6a10a9b90a9c97802e63116711b9",
+      "evidence_note": "Separate Qwen0.5B CPU inference proven on ephemeral GitHub Linux; no current user Windows model resource proof, live execution authorization or review."
+    },
+    {
+      "id": "EXTERNAL_INDEPENDENT_RELEASE_SIGNOFF",
+      "lane": "REVIEW",
+      "reported_state": "REVIEW_PENDING",
+      "source_sha": "d1de711b2429e336f88fa1f6ec7ccd6c424d5fe1",
+      "evidence_note": "Issue11 records own narrow CI only; no separately authorized signed REVIEW approval for exact latest CORE/HOST/PR18 release candidates."
+    },
+    {
+      "id": "HANDOFF_EXPLICIT_UNPAUSE",
+      "lane": "HANDOFF",
+      "reported_state": "REVIEW_PENDING",
+      "source_sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "evidence_note": "HANDOFF remains PAUSED_BY_USER. No separate new user unpause request or independent safety/release approval."
+    }
+  ]
+}

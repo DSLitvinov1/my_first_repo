@@ -1,0 +1,30 @@
+name: Neurofactory Coordinator MVP status contract smoke
+on:
+  push:
+    branches: [neurofactory-coordinator-mvp-status-20261015]
+    paths:
+      - 'bridge/neurofactory/coordination/mvp_status_projection.py'
+      - 'bridge/neurofactory/coordination/test_mvp_status_projection.py'
+      - 'bridge/neurofactory/coordination/mvp_status_snapshot_20261015.json'
+      - '.github/workflows/neurofactory-coordination-mvp-status-smoke.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordination-mvp-status-20261015
+  cancel-in-progress: false
+jobs:
+  offline_contract_smoke:
+    runs-on: [self-hosted, Windows, X64, chatgpt-bridge-priority]
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact commit, no stored credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check only newly developed coordinator projection
+        shell: cmd
+        run: |
+          set PYTHONDONTWRITEBYTECODE=1
+          python -B -m unittest discover -s bridge/neurofactory/coordination -p test_mvp_status_projection.py -v
+          if errorlevel 1 exit /b 1
+          python -B bridge/neurofactory/coordination/mvp_status_projection.py bridge/neurofactory/coordination/mvp_status_snapshot_20261015.json > NUL

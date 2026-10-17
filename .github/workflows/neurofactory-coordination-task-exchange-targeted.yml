@@ -1,0 +1,32 @@
+name: Neurofactory coordinator exact task contract targeted checks
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/mvp_task_exchange.py
+      - bridge/neurofactory/coordination/test_mvp_task_exchange.py
+      - bridge/neurofactory/coordination/mvp_task_view.py
+      - bridge/neurofactory/coordination/test_mvp_task_view.py
+      - .github/workflows/neurofactory-coordination-task-exchange-targeted.yml
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordination-task-exchange-20261015
+  cancel-in-progress: false
+jobs:
+  targeted-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Read-only checkout without saved credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check exact contract and read-only view, no external APIs
+        run: |
+          python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_mvp_task_exchange.py' -v
+          python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_mvp_task_view.py' -v

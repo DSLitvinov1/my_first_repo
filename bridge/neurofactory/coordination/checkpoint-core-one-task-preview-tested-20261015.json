@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "project": "НЕЙРОЗАВОД",
+  "role": "COORDINATOR",
+  "as_of": "2026-10-15",
+  "branch": "neurofactory-coordinator-mvp-status-20261015",
+  "draft_pr": 12,
+  "previous_checkpoint": "20481097e9eace92cc6bb8e918f9a03b44dff337",
+  "own_new_feature": {
+    "module": "bridge/neurofactory/coordination/mvp_core_preview_check.py",
+    "tests": "bridge/neurofactory/coordination/test_mvp_core_preview_check.py",
+    "workflow": ".github/workflows/neurofactory-coordination-core-preview-targeted.yml",
+    "function": "inspect_core_preview; verify exact CORE ten-field task manifest, canonical SHA256 full task snapshot, original Git SHA40 and file SHA256 distinct, deterministic core_owned to src/docs mapping, model allowlist, no ambiguous permission escalation, no traversal/windows device paths; returns only format compatibility with zero grants",
+    "side_effects": "NONE; no model, no filesystem, no SQLite, no network, no authorizations",
+    "test_evidence": {
+      "run": 38659398066,
+      "job": 116176806872,
+      "head_sha": "646bd3a2513537a9f32262ed30bba4f368e468ed",
+      "host": "GitHub-hosted Ubuntu 24.04",
+      "pass": 15,
+      "total": 15,
+      "conclusion": "completed/success",
+      "raw_log_checked": true,
+      "independent_review": false
+    },
+    "test_limit": "synthetic CORE-spec fixture; not a real cross-branch invocation of CORE code"
+  },
+  "previous_own_test_scenarios": {
+    "core_exchange": 22,
+    "task_view": 10,
+    "provider_wire": 12,
+    "provider_evidence_view": 11,
+    "total_distinct": 55,
+    "not_reexecuted_this_cycle": true,
+    "new_total_distinct_scenarios": 70
+  },
+  "owner_current": {
+    "CORE": {
+      "head": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
+      "previous_failed_head": "1b54f5fd37a00fd52a8535e1ed5f23fd7b3cece5",
+      "old_failed_run": 38659107250,
+      "fixed_targeted_run": 38659194020,
+      "job": 116176145765,
+      "pass": 21,
+      "total": 21,
+      "ownership_run": 38659194036,
+      "new_contract": true,
+      "features": [
+        "single job queue",
+        "single host SQLite BEGIN IMMEDIATE lease and CAS-like token",
+        "one sandbox file offline atomic replace",
+        "durable pre-effect APPLYING",
+        "readback checkpoint",
+        "uncertain receipt -> manual STOP",
+        "read-only provider_preview v1"
+      ],
+      "limits": [
+        "single host only",
+        "trusted host approval callback not independent reviewer",
+        "no cross-host queue atomics",
+        "no real Ollama",
+        "no signed global publisher receipt"
+      ],
+      "review_issue": 11,
+      "review_request_comment": 6181407004,
+      "independent_verdict": "REJECT_OLD_A667_SHA_NEW_FA92_SECURITY_FIX_AWAITING_INDEPENDENT_REVIEW",
+      "tested_linux_windows_final": {
+        "run": 38660103278,
+        "ubuntu_job": 116179126043,
+        "ubuntu_result": "23 PASS 1 platform SKIP of 24 tests",
+        "windows_job": 116179126312,
+        "windows_result": "2 narrowly scoped PASS (writer refuses, Windows reserved paths)",
+        "status": "completed/success",
+        "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8"
+      }
+    },
+    "PROVIDERS": {
+      "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+      "pr": 13,
+      "own_windows_linux_targeted_run": 38656535978,
+      "independent_reviews": 0,
+      "last_self_hosted_resource_run": 38652410062,
+      "free_ram_bytes": 934338560,
+      "ollama_process_seen": false,
+      "real_model_inference": false,
+      "private_receipt": "owner-controlled evidence; no external cryptographic attestation"
+    },
+    "OPS": {
+      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "own_ci_run": 38652940146,
+      "linux_tests_pass": 34,
+      "windows_tests_pass": 34,
+      "independent_issue": 6,
+      "independent_reviewer": "NOT_ASSIGNED",
+      "read_only_layers": 3
+    },
+    "SKILLS": {
+      "unified_draft_pr": 550,
+      "head": "43cec90717314ab3ce44ea485fbbf5e7800ee392",
+      "candidate_skills": 12,
+      "approved_skills": 0,
+      "profiles": 19,
+      "real_installed": 0,
+      "own_targeted_tests_reported": 30,
+      "full_exact_repo_suite": "NOT_EXECUTED",
+      "independent_pr_reviews": 0
+    },
+    "HANDOFF": {
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "state": "PAUSED_BY_USER"
+    }
+  },
+  "windows_old": {
+    "run": 38643604899,
+    "job": 116124933092,
+    "status": "QUEUED",
+    "duplicated": false,
+    "not_applicable_to_new_contract": true
+  },
+  "architecture_decision": {
+    "provider_wire": "neurofactory.coordination.provider_bridge.v1 READ_ONLY / exact request+binding and permissions all false",
+    "input_snapshot": "SHA256 canonical JSON of full CORE task spec including source_sha, source_sha256, approval_commit; distinct from source bytes hash and commit",
+    "core_relative_mapping": "core_owned/<suffix> => docs/<suffix> for markdown else src/<suffix>; read-only syntax check only",
+    "trusted_origin": "MISSING, no user-supplied approval JSON or test callback is production attestation",
+    "durable_checkpoint": "SQLite local, external monotonic trusted attestation MISSING",
+    "global_lease": "NOT IMPLEMENTED across hosts, no real publishing",
+    "reviewer": "CORE Issue #11 independent SHA-specific verdict required, cannot self-review"
+  },
+  "policy": {
+    "core_live_execution": "P0_BLOCKED_PENDING_EXACT_FA92_INDEPENDENT_REVIEW_AND_TRUST_GATES",
+    "review": "PENDING_EXACT_FA92_INDEPENDENT_REVIEW",
+    "providers_real_qwen": "RESOURCE_BLOCKED",
+    "ops_live": "BLOCKED",
+    "skills_activation": "BLOCKED",
+    "paid_api": "FORBIDDEN",
+    "merge": "FORBIDDEN",
+    "publication": "FORBIDDEN",
+    "handoff": "PAUSED_BY_USER"
+  },
+  "no_unauthorized_actions": {
+    "changed_only_coordination_and_own_workflow": true,
+    "no_foreign_branch_edit": true,
+    "no_merge": true,
+    "no_live_queue": true,
+    "no_model_download": true,
+    "no_paid_api": true,
+    "no_replayed_old_windows": true,
+    "no_handoff_activation": true
+  },
+  "next_trigger": "Independent REVIEW targeted attack on exact fa92 + origin-bound receipt and approval; no live inference, no additional old Windows smoke or model calls",
+  "source_review_updated": "2026-10-15",
+  "latest_core_security_state": {
+    "new_head": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
+    "tested_linux_windows": {
+      "run": 38660103278,
+      "ubuntu_job": 116179126043,
+      "ubuntu_result": "23 PASS 1 platform SKIP of 24 tests",
+      "windows_job": 116179126312,
+      "windows_result": "2 narrowly scoped PASS (writer refuses, Windows reserved paths)",
+      "status": "completed/success",
+      "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8"
+    },
+    "windows_before_fix": {
+      "sha": "5e6e1d0f0bb10ddb9ff122c12c570be08d466a0f",
+      "run": 38659680346,
+      "status": "Windows FAIL WinError32 queue.sqlite3 after child killed; fixed SQLite connection-lifetime issue in next exact SHA"
+    },
+    "independent_review": {
+      "reviewed_old_sha": "a6677ca6de0f995a297d6f75824e9e8b91ee8de9",
+      "review_owned_sha": "69e7ba4c19383913ef9fb8a5d04f68a7d5ba29fb",
+      "run": 38659617801,
+      "issue11_comment": 6181469741,
+      "verdict": "REJECT_FOR_LIVE_ON_OLD_SHA",
+      "reproduced_defects": [
+        "parent directory symlink swapped between safe path check and os.replace wrote outside sandbox (POSIX same-account synthetic fixture)",
+        "local sqlite receipt metadata forged approval/model/publish under database write access"
+      ],
+      "latest_sha_repro": "PENDING_EXACT_FA92_INDEPENDENT_REVIEW",
+      "latest_source_inspection": "Previously mutable destination path replaced with descriptor-relative POSIX write and Windows-disabled writer at fa92; needs independent same-UID attacker negative test on EXACT FA92",
+      "updated_p0_owner_issue9_comment": 6181501620,
+      "latest_core_review_request_issue11_comment": 6181529663,
+      "independent_signoff_on_current_sha": "MISSING"
+    },
+    "decision": "P0 live release blocked pending independent review of narrowed POSIX sandbox fix on fa92 and separate origin-bound receipt/external approval/lease gates",
+    "remaining_gates": [
+      "safe sandbox file-write boundary against parent swap",
+      "separate external authenticated approval and monotonic trusted receipt",
+      "global cross-host lease or explicit supported single-host deployment",
+      "independent security review of final exact CORE SHA",
+      "Ollama local resources >= floor and model actually running",
+      "owner coordinator written release"
+    ],
+    "sandbox_fix_candidate": {
+      "source_sha": "fa92a2eb2d23ce1575da7090444eb6b82b63dee8",
+      "posix": "new _write_one_pinned O_DIRECTORY/O_NOFOLLOW + dirfd relative replace/readback/identity check; independent hostile rename attack NOT retested yet",
+      "windows": "file writer explicitly disabled/fail closed (not working on Windows)",
+      "comparison_to_rejected_SHA": "old symlink parent swap vulnerable on a667, new exact fix not independently APPROVED",
+      "reviewer_issue11_update_comment": 6181529663,
+      "blocker": "independent A+B rerun on exact fa92 SHA, host ACL/source of authorization, monotonic external checkpoint, cross-host lease all missing"
+    }
+  }
+}

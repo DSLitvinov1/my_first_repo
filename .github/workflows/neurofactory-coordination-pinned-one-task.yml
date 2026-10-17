@@ -1,0 +1,55 @@
+name: Neurofactory coordinator pinned CORE HOST one-task offline
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/test_pinned_core_host_one_task.py
+      - .github/workflows/neurofactory-coordination-pinned-one-task.yml
+permissions:
+  contents: read
+jobs:
+  pinned-single-task-no-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_COORD_OFFLINE_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Checkout isolated COORD own test harness
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Checkout pinned CORE read-only source
+        uses: actions/checkout@v4
+        with:
+          ref: ce6191153d0a0c1d742de6233897186a0b46896b
+          path: _pinned_fixture/core
+          persist-credentials: false
+      - name: Checkout pinned TRUSTED HOST read-only source
+        uses: actions/checkout@v4
+        with:
+          ref: 02646ccb71b3892dc08f68a76525937cfe2ed194
+          path: _pinned_fixture/host
+          persist-credentials: false
+      - name: Install isolated postgres client dependency
+        run: |
+          python3 -m venv .nf-ephemeral-venv
+          .nf-ephemeral-venv/bin/python -m pip install --disable-pip-version-check --no-input "psycopg[binary]==3.2.6"
+      - name: Pin source HEADs and execute one synthetic file once
+        run: .nf-ephemeral-venv/bin/python -B -m unittest discover -s bridge/neurofactory/coordination -p "test_pinned_core_host_one_task.py" -v

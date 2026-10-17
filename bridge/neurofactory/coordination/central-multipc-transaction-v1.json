@@ -1,0 +1,309 @@
+{
+  "schema": "neurofactory.coordination.central_dispatch.v1",
+  "revision": "2026-10-15",
+  "status": "TARGET_ARCHITECTURE_APPROVED_ON_PAPER_NOT_IMPLEMENTED",
+  "issue": 14,
+  "coordination_issue": 3,
+  "roadmap_issue": 8,
+  "owner": {
+    "lane": "trusted_host",
+    "assigned_principal": null,
+    "acceptance": "REQUIRED",
+    "reserved_branch": "neurofactory-trusted-host-owned-20261015",
+    "branch_created": true,
+    "allowed_paths": [
+      "bridge/neurofactory/trusted_host/",
+      ".github/workflows/neurofactory-trusted-host-owned-"
+    ],
+    "branch_initial_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
+    "offline_implementation_owner": "COORDINATOR_TEMPORARY_USER_AUTHORIZED_NO_INDEPENDENT_APPROVAL",
+    "draft_pr": 15,
+    "offline_candidate_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2"
+  },
+  "topology": {
+    "dispatch_authority": "ONE_SELF_HOSTED_POSTGRESQL_PLUS_AUTHENTICATED_HTTPS_API",
+    "replicas": "NO_MULTIPLE_INDEPENDENT_QUEUE_MASTERS",
+    "external_issuer": "SEPARATE_OS_IDENTITY_SIGNED_MONOTONIC_APPEND_ONLY_RECEIPT_NOT_PROVISIONED",
+    "core_writer_identity": "PROTECTED_SEPARATE_OS_PRINCIPAL_REQUIRED",
+    "provider_identity": "LOW_PRIVILEGE_NO_SANDBOX_ANCESTOR_RENAME",
+    "remote_workers": "MULTIPLE_UNTRUSTED_WINDOWS_OR_LINUX_PC_WITHOUT_DIRECT_DB_ACCESS",
+    "central_host_deployed": false,
+    "issuer_deployed": false,
+    "os_acl_attested": false
+  },
+  "task_binding": {
+    "required": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "target",
+      "policy_sha256",
+      "max_budget_units",
+      "authorization_receipt_ref"
+    ],
+    "identity_sha_fields_distinct": [
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256"
+    ],
+    "idempotent_submit": {
+      "unique_key": "task_id",
+      "same_payload": "RETURN_EXISTING_STATUS_READ_ONLY",
+      "different_payload": "BLOCK_COLLISION"
+    }
+  },
+  "claim": {
+    "request_fields": [
+      "task_id",
+      "worker_id",
+      "request_id",
+      "expected_status"
+    ],
+    "response_fields": [
+      "claim_status",
+      "lease_epoch",
+      "fencing_token",
+      "server_lease_expires_at",
+      "issuer_receipt_ref"
+    ],
+    "allowed_claim_statuses": [
+      "CLAIMED",
+      "NOT_CLAIMED",
+      "BLOCKED"
+    ],
+    "single_transaction": "POSTGRES_ROW_LOCK_AND_COMPARE_AND_SWAP_ON_EXPECTED_STATE",
+    "clock": "CENTRAL_SERVER_ONLY",
+    "lease_epoch": "MONOTONIC_INTEGER_PER_TASK",
+    "fencing_token_visibility": "SECRET_NEVER_IN_ISSUES_CI_UI_OPS",
+    "worker_identity_authentication": "REQUIRED_EXTERNALLY_SIGNED",
+    "temporary_lease_reclaim": "ONLY_WHEN_ZERO_PRE_SIDE_EFFECT_AND_ISSUER_PROVES_NO_EFFECT",
+    "multiple_winner_permission": false,
+    "ephemeral_cas_test": {
+      "run_id": 38724948294,
+      "job_id": 116388365652,
+      "tests_pass": 14,
+      "postgres_version": "16",
+      "scope": "two_concurrent_connections_on_one_ubuntu_runner",
+      "not_two_independent_pcs": true,
+      "no_signing": true,
+      "provenance": "14/14 previous own offline PostgreSQL run; unchanged tests not repeated"
+    }
+  },
+  "status_machine": {
+    "states": [
+      "PROPOSED",
+      "AUTHORIZED",
+      "QUEUED",
+      "LEASED",
+      "PRE_SIDE_EFFECT",
+      "UNKNOWN",
+      "NEEDS_MANUAL_RECONCILIATION",
+      "CHECKPOINTED",
+      "BLOCKED"
+    ],
+    "normal_flow": [
+      "PROPOSED",
+      "AUTHORIZED",
+      "QUEUED",
+      "LEASED",
+      "PRE_SIDE_EFFECT",
+      "CHECKPOINTED"
+    ],
+    "unknown": "NEEDS_MANUAL_RECONCILIATION",
+    "after_pre_side_effect_reassignment": false,
+    "after_unknown_automatic_retry": false,
+    "completion_requires": "SIGNED_EFFECT_READBACK_AND_CORE_EXACT_SOURCE_DIGEST"
+  },
+  "events": {
+    "kinds": [
+      "AUTHORIZE_TASK",
+      "LEASE_CLAIM",
+      "PRE_SIDE_EFFECT",
+      "EFFECT_READBACK",
+      "MANUAL_STOP"
+    ],
+    "required_fields": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "event_kind",
+      "event_sequence",
+      "prior_event_digest_sha256",
+      "core_checkpoint_digest_sha256",
+      "issuer_identity",
+      "issuer_key_id",
+      "issued_at_utc",
+      "lease_epoch",
+      "worker_id",
+      "fencing_token_sha256",
+      "idempotency_key",
+      "signature",
+      "policy_sha256",
+      "target"
+    ],
+    "issuer_key_in_repo": false,
+    "strictly_increasing_sequence": true,
+    "append_only": true,
+    "anti_rollback": true,
+    "independently_trusted_issuer": false,
+    "event_schema_revision": "v1.1-test-only-no-live-approval",
+    "signed_payload_common_fields": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "event_kind",
+      "event_sequence",
+      "prior_event_digest_sha256",
+      "core_checkpoint_digest_sha256",
+      "issuer_identity",
+      "issuer_key_id",
+      "issued_at_utc",
+      "policy_sha256",
+      "target"
+    ],
+    "detached_envelope_fields": [
+      "payload",
+      "signature_base64"
+    ],
+    "per_event_required_fields": {
+      "AUTHORIZE_TASK": [],
+      "LEASE_CLAIM": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256"
+      ],
+      "PRE_SIDE_EFFECT": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256",
+        "idempotency_key"
+      ],
+      "EFFECT_READBACK": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256",
+        "idempotency_key"
+      ],
+      "MANUAL_STOP": [
+        "lease_epoch",
+        "worker_id",
+        "fencing_token_sha256"
+      ]
+    },
+    "effect_readback_signed_fields": [
+      "schema",
+      "task_id",
+      "project_id",
+      "input_core_sha40",
+      "source_file_sha256",
+      "input_task_sha256",
+      "event_kind",
+      "event_sequence",
+      "prior_event_digest_sha256",
+      "core_checkpoint_digest_sha256",
+      "issuer_identity",
+      "issuer_key_id",
+      "issued_at_utc",
+      "lease_epoch",
+      "worker_id",
+      "fencing_token_sha256",
+      "idempotency_key",
+      "policy_sha256",
+      "target"
+    ],
+    "external_pins_required_for_effect": [
+      "task_id",
+      "input_core_sha40",
+      "issuer_identity",
+      "issuer_key_id",
+      "prior_event_digest_sha256",
+      "event_sequence",
+      "lease_epoch",
+      "worker_id",
+      "fencing_token_sha256",
+      "idempotency_key",
+      "project_id",
+      "source_file_sha256",
+      "input_task_sha256",
+      "policy_sha256",
+      "target"
+    ],
+    "security_semantics": "Fields are kind-specific. SIGNED EFFECT_READBACK MUST bind epoch, worker, fencing token digest, idempotency key against independent current CAS/issuer context; signing alone never authorizes execution. Detached signature is outside payload. Exact project, source file SHA256, input snapshot SHA256, policy SHA256 and canonical target path are inside signed payload and compared to independent protected caller context.",
+    "publisher_allowed": false,
+    "offline_signed_binding_run": 38729474058,
+    "offline_signed_binding_tests_pass": 26
+  },
+  "exactly_once_limitations": {
+    "central_cas_solves": "ONE_ACTIVE_LEASE_WINNER_PER_TASK_WITH_CURRENT_EPOCH",
+    "does_not_automatically_solve": "ARBITRARY_EXTERNAL_SIDE_EFFECT_EXACTLY_ONCE",
+    "requires": "FENCING_AT_SIDE_EFFECT_RECEIVER_OR_IDEMPOTENT_RECEIVER_PLUS_SIGNED_OUTCOME",
+    "unknown_external_receipt": "STOP_NO_RETRY_PENDING_MANUAL_RECONCILIATION"
+  },
+  "security_gates": {
+    "host_linux_distinct_identity_real": "NOT_DEPLOYED",
+    "host_windows_dacl_reparse": "NOT_PROVEN",
+    "same_uid_rename_risk": "NOT_RESOLVED",
+    "independent_signing_issuer": "NOT_DEPLOYED_ED25519_SIGNED_EFFECT_CONTEXT_OFFLINE_ONLY",
+    "central_postgres_cas": "OFFLINE_ONE_DB_TWO_CONNECTIONS_TESTED_NO_DEPLOYMENT",
+    "replayed_fencing_negative_tests": "NOT_RUN",
+    "cross_pc_two_worker_test": "NOT_RUN",
+    "review_exact_sha": "REJECT_LIVE_INDEPENDENT_LATEST_CORE_EXACT_PENDING",
+    "provider_real_local_model": "RESOURCE_BLOCKED",
+    "skills": "INACTIVE",
+    "ops": "READ_ONLY_NOT_INDEPENDENTLY_REVIEWED",
+    "ui": "UNASSIGNED_READ_ONLY",
+    "god_mode": "UNIQUE_SCOPE_REQUIRED",
+    "handoff": "PAUSED_BY_USER",
+    "release": "BLOCKED"
+  },
+  "owned_by": {
+    "central_postgres_api": "TRUSTED_HOST",
+    "external_issuer_implementation": "TRUSTED_HOST_DISTINCT_SERVICE_IDENTITY",
+    "core_writer": "CORE",
+    "model": "PROVIDERS",
+    "review": "REVIEW",
+    "dashboard": "UI_READ_ONLY",
+    "status_projection": "OPS_READ_ONLY",
+    "orchestration_contract": "COORDINATOR"
+  },
+  "test_requirements": [
+    "two different host identities simultaneously claim exact task -> one winner",
+    "stale epoch and duplicate request_id -> no second effect",
+    "crash before pre_side_effect -> reclaim only after independent zero-effect proof",
+    "crash after pre_side_effect -> UNKNOWN, no automatic replay",
+    "same uid sandbox parent relocated outside -> no bytes outside sandbox",
+    "coherent SQLite+output+locally recomputed digest -> external signer denies",
+    "journal anti-rollback and forged issuer signer/sequence -> deny",
+    "real Windows ACL/reparse owner isolation -> deny to untrusted actor",
+    "offline network partition and issuer outage -> STOP",
+    "wrong SHA40/source-file-SHA256/input-task-SHA256 -> deny",
+    "hosted CORE exact SHA signed independent reviewer -> APPROVE before one sandbox E2E"
+  ],
+  "audit": {
+    "core_current_sha": "a8f946f10ca9fbb962623537551414230906e4d2",
+    "core_owned_short_linux_run": 38662104225,
+    "core_owned_short_linux_pass": 1,
+    "core_review_issue": 11,
+    "core_independent_latest_comment": 6181833967,
+    "core_independent_latest_verdict": "REJECT_LIVE",
+    "providers_sha": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+    "ops_sha": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+    "skills_final_candidate_sha": "aa791f9ad47b0ab471932f516d24756bbd51d420",
+    "skills_parent_clean_run": 38659826061,
+    "skills_parent_clean_pass": 86,
+    "god_mode_sha": "18532efce7d23aaf959e0c4c50227723970dc8f5",
+    "handoff_sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+    "old_windows_coordinator_run": 38643604899,
+    "old_windows_status": "QUEUED"
+  },
+  "documentation": "bridge/neurofactory/coordination/CENTRAL_MULTIPC_TRANSACTION_V1_RU.md"
+}

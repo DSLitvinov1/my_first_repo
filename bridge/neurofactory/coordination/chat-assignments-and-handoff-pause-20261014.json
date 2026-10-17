@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "project": "НЕЙРОЗАВОД",
   "as_of": "2026-10-14",
   "authority": "COORDINATOR assignment, adoption by each ChatGPT chat must be explicitly confirmed",
@@ -140,6 +140,38 @@
       ],
       "next": "Only after one designated chat accepts role: create isolated branch; develop mock-only Russian PC/mobile UI with zero launch controls; independent review before any live bindings",
       "cannot": "No writes to CORE, OPS, providers, coordination, production or real GitHub; no run/queue publisher, no paid services"
+    },
+    {
+      "id": "trusted_host",
+      "primary_chat": "Existing main coordinator chat — TEMPORARY OFFLINE TRUSTED HOST implementer, no new chat",
+      "repository": "DSLitvinov1/my_first_repo",
+      "branch": "neurofactory-trusted-host-owned-20261015",
+      "branch_status": "DRAFT_PR15_OFFLINE_TARGETED_TESTS_PASS",
+      "status": "OFFLINE_CAS_AND_ED25519_SOURCE_EFFECT_POLICY_40_SELF_TESTS_NO_LIVE",
+      "issue": 14,
+      "responsibility": "Own future central transaction and external checkpoint proofs, not CORE or PROVIDERS operations",
+      "allowed": [
+        "bridge/neurofactory/trusted_host/",
+        ".github/workflows/neurofactory-trusted-host-owned-"
+      ],
+      "live_execution": false,
+      "owner_acceptance": "COORDINATOR_TEMPORARY_OFFLINE_CODE_ONLY_USER_AUTHORIZED",
+      "base_main_sha": "9b051e982052d2dbceb2009f0caa87e156ae7226",
+      "pr": 15,
+      "source_sha": "3724dda83f7b352cb535c87e95687ae9b12957f2",
+      "security_owner_acceptance": false
+    },
+    {
+      "id": "god_mode",
+      "primary_chat": "GOD MODE (requires SKILLS scope agreement before any write)",
+      "repository": "DSLitvinov1/lesson3.1",
+      "branch": "neurofactory-godmode-autonomy-isolated-20261014",
+      "status": "P2_UNIQUE_OWNERSHIP_SCOPE_REQUIRED",
+      "issue": 541,
+      "allowed": [],
+      "responsibility": "Separate offline candidate; no rights to active task execution, SKILLS files, or live workers until unique scope and independent acceptance",
+      "live_execution": false,
+      "owner_acceptance": false
     }
   ],
   "conflicts_and_holds": [

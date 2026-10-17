@@ -1,0 +1,186 @@
+{
+  "schema": 3,
+  "project": "НЕЙРОЗАВОД",
+  "date": "2026-10-15",
+  "candidate_branch": "neurofactory-coordinator-mvp-status-20261015",
+  "kind": "isolation_safe_component_compatibility",
+  "new_code": "bridge/neurofactory/coordination/mvp_task_exchange.py",
+  "new_tests": "bridge/neurofactory/coordination/test_mvp_task_exchange.py",
+  "interfaces": [
+    "start",
+    "authorize",
+    "prepare_request",
+    "record_provider_result",
+    "attest_source",
+    "checkpoint",
+    "restore",
+    "stop_notice",
+    "project"
+  ],
+  "properties": {
+    "no_network": true,
+    "no_model_inference": true,
+    "no_queue_write": true,
+    "no_publication": true,
+    "no_paid_api": true,
+    "portable_checksum_not_signature": true,
+    "external_approval_callback_required": true,
+    "external_source_readback_callback_required": true,
+    "checkpoint_restore_external_verifier_required": true,
+    "handoff_paused": true,
+    "no_automatic_retry_on_stop": true,
+    "status_card_never_authorizes_action": true
+  },
+  "compatibility": [
+    {
+      "lane": "CORE",
+      "sha": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "incompatible": "Existing queue accepts 2..8 jobs and pins public-lab branch while new sandbox contract prepares 1 task with pinned input source SHA.",
+      "owner_action": "Own-code admission of single approved sandbox task, lease/CAS, crash/UNKNOWN receipt and independent source readback; preserve legacy tests."
+    },
+    {
+      "lane": "PROVIDERS",
+      "sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+      "incompatible": "Resolved: own workflow path scope in PR13; still mismatched CORE input hash definition (input_sha256 is task/snapshot, not source file) and CORE target relative namespace; provider is proposal-only and returns no verified source commit.",
+      "owner_action": "Return envelope bound to task_id and CORE input SHA, durable attempt ID and outcome; rename workflow into authorized prefix; collect Windows and independent review.",
+      "head": "33c8df8cc579698c937fc008dfe06bf9581d37a6",
+      "current_pr": 13,
+      "local_contract_response": "mvp_provider_wire.py is pure validated translation requiring separate trusted CORE mapping, returns unverified proposal digest only; no actual CORE access",
+      "owner_fix": "Confirm with CORE #9 trusted request digest semantics, target allowlist, durable task id, independent readback. PR13 Windows hosted 19/19 per owner but not real Ollama, no independent approval."
+    },
+    {
+      "lane": "OPS",
+      "stable": "b908b78f35dcdd7a88eb0d939c748df0c5856328",
+      "experimental": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
+      "incompatible": "OPS now has its own verified-by-syntax two-layer read-only board bundle; our new single-task card is a third distinct schema and must not be silently treated as attested live data.",
+      "owner_action": "Add isolated read-only conversion for task projection, mark untrusted source as UNKNOWN, no recovery or release permission; review issue #6.",
+      "experimental_head": "c41cb9ee0d91964cdf81bfd9052ca7e03b9b381f",
+      "owner_fix": "OPS #6 owner decides an optional task-card read-only add-on. Its targeted run #38649341882 Windows+Linux successful, independently signed verdict still absent."
+    },
+    {
+      "lane": "SKILLS",
+      "sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
+      "incompatible": "PR545 extends 12 skills and 19 profiles with executor profiles and review attestation but never substitutes for trusted external host reviewer; no approved active skill or verified deployment.",
+      "owner_action": "Keep all inactive until independently authenticated exact-SHA verdict, run full stored Python tests.",
+      "head": "7852d1bb8017b2bd646d0e52979e12a80ed063d4",
+      "owner_fix": "Independent SKILLS audit exact PR545 SHA, verify signed external reviewer; keep preview-only and no CORE integration."
+    },
+    {
+      "lane": "UI",
+      "pr": 12,
+      "sha": "65a2146e69afd2b1c1c8df52a2e9c77c78a737aa",
+      "incompatible": "Existing lane-board projection is distinct from new per-task stage projection; its fixture pins stale coordinator SHA cd7a34. PR #12 Windows smoke run #38643604899 queued at last verification.",
+      "owner_action": "Use separate read-only adapter and UNKNOWN marker, no running actions; do not rerun same queued Windows smoke."
+    }
+  ],
+  "windows_pr12": {
+    "run_id": 38643604899,
+    "job_id": 116124933092,
+    "status": "QUEUED_NOT_RERUN",
+    "scope": "old lane status projector only"
+  },
+  "release_status": "INTEGRATION_CANDIDATE_ONLY_NO_APPROVAL_NO_PUBLICATION",
+  "new_view_adapter": "bridge/neurofactory/coordination/mvp_task_view.py",
+  "new_view_tests": "bridge/neurofactory/coordination/test_mvp_task_view.py",
+  "test_evidence": {
+    "exchange": "22 targeted Python tests SAVED, NOT RUN",
+    "view": "10/10 local Python unittest PASS and py_compile PASS; exact git blobs verified",
+    "readback": "13/13 ownership/source presence checks on prior exchange version",
+    "windows": "PR12 existing run 38643604899 QUEUED, not rerun"
+  },
+  "rechecked": "2026-10-15",
+  "actual_owner_heads": {
+    "CORE": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "PROVIDERS_PR13": "33c8df8cc579698c937fc008dfe06bf9581d37a6",
+    "OPS": "c41cb9ee0d91964cdf81bfd9052ca7e03b9b381f",
+    "SKILLS_PR545": "7852d1bb8017b2bd646d0e52979e12a80ed063d4",
+    "HANDOFF": "279995e7fa252882fceec7ee2e955884382c4f54"
+  },
+  "latest_provider_pr": 13,
+  "provider_pr13_changes": {
+    "base": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+    "scope_fix": "removed .github/workflows/neurofactory-providers-isolated-regression.yml; added allowed .github/workflows/neurofactory-providers-owned-targeted-worker.yml",
+    "result": "PROPOSED_UNVERIFIED with input_sha256, model, proposed_files; no actual CORE source SHA",
+    "tests": {
+      "run_id": 38648742867,
+      "windows_job_id": 116142008817,
+      "linux_job_id": 116142009150,
+      "status": "both jobs SUCCESS; own tests 19 each; no live Qwen"
+    }
+  },
+  "bridge": {
+    "path": "bridge/neurofactory/coordination/mvp_provider_wire.py",
+    "tests": "bridge/neurofactory/coordination/test_mvp_provider_wire.py",
+    "exact_provider_schema": "neurofactory.providers.request.v1 / neurofactory.providers.result.v1",
+    "request_contract": "Requires independent authenticated CORE path mapping and input digest; does not turn into live invocation",
+    "reply_contract": "Checks proposal content SHA256, source binding, zero paid API, no publish or self-approval; strips raw content; returns only UNVERIFIED or BLOCKED",
+    "new_test_evidence": {
+      "run_id": 38650127588,
+      "job_id": 116146567101,
+      "exact_source_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "tests": 12,
+      "conclusion": "success"
+    }
+  },
+  "updated_test_evidence": {
+    "exchange": {
+      "run_id": 38649785184,
+      "job_id": 116145446509,
+      "head_sha": "8681a18feff94e4537be5b703efb746a8adc188d",
+      "cases": 22,
+      "conclusion": "success"
+    },
+    "view": {
+      "run_id": 38649785184,
+      "cases": 10,
+      "conclusion": "success"
+    },
+    "wire": {
+      "run_id": 38650127588,
+      "job_id": 116146567101,
+      "cases": 12,
+      "conclusion": "success"
+    },
+    "total_cases": 44,
+    "scope": "targeted GitHub-hosted Ubuntu tests, not independent source review",
+    "old_windows_run": {
+      "run_id": 38643604899,
+      "job_id": 116124933092,
+      "status": "queued; no rerun",
+      "scope": "old status projector only"
+    }
+  },
+  "latest_verified_source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+  "latest_verified_wire_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+  "latest_own_tests": {
+    "exchange_and_view": {
+      "run": 38650279255,
+      "job": 116147073996,
+      "source_sha": "005b0f8556c7964e6425e363018e1ba14d2fa70b",
+      "exchange_pass": 22,
+      "view_pass": 10,
+      "conclusion": "SUCCESS"
+    },
+    "provider_wire": {
+      "run": 38650127588,
+      "job": 116146567101,
+      "source_sha": "f13458d03aaafe3fdb34d6cf3a161c200266f55d",
+      "pass": 12,
+      "conclusion": "SUCCESS"
+    },
+    "total_unique_test_cases": 44,
+    "review": "SELF_TESTS_ONLY_NOT_INDEPENDENT"
+  },
+  "model_allowlist_alignment": "coordinator metadata contract recognizes qwen2.5-coder:1.5b, model NOT verified installed or executed",
+  "external_gates": {
+    "CORE_NEW_CONTRACT": "MISSING",
+    "REVIEW_EXACT_CORE_SHA": "MISSING",
+    "PROVIDERS_REAL_LOCAL_QWEN": "NOT_VERIFIED",
+    "PROVIDERS_PR13_INDEPENDENT_REVIEW": "MISSING",
+    "OPS_INDEPENDENT_REVIEW": "MISSING",
+    "SKILLS_EXTERNAL_APPROVAL": "MISSING",
+    "HANDOFF": "PAUSED_BY_USER",
+    "RELEASE": "BLOCKED"
+  },
+  "provider_source_digest_semantics": "input_sha256 supplied by trusted CORE task snapshot must not be confused with source_sha or source_sha256 of source file; path mapping CORE core_owned to provider src/docs must be authenticated"
+}

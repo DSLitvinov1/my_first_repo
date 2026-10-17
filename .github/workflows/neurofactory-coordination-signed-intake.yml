@@ -1,0 +1,34 @@
+name: Neurofactory coordinator signed intake offline tests
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/offline_autointake.py
+      - bridge/neurofactory/coordination/test_offline_autointake.py
+      - bridge/neurofactory/coordination/offline_intake_gateway.py
+      - bridge/neurofactory/coordination/test_offline_intake_gateway.py
+      - bridge/neurofactory/coordination/advisory_snapshot.py
+      - bridge/neurofactory/coordination/test_advisory_snapshot.py
+      - .github/workflows/neurofactory-coordination-signed-intake.yml
+permissions:
+  contents: read
+jobs:
+  offline-advisory-intake:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record exact tested SHA
+        run: git rev-parse HEAD
+      - name: Verify signed GitHub Issues API import with durable SQLite dedup
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_offline_autointake.py' -v
+      - name: Verify loopback HTTP listener never dispatches any task
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_offline_intake_gateway.py' -v
+      - name: Verify UI advisory preview repo-scoped readonly and no authority
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_advisory_snapshot.py' -v

@@ -1,0 +1,25 @@
+name: Neurofactory coordinator signed effect wire contract targeted
+on:
+  push:
+    branches:
+      - neurofactory-coordinator-mvp-status-20261015
+    paths:
+      - bridge/neurofactory/coordination/test_signed_effect_contract_v1.py
+      - bridge/neurofactory/coordination/central-multipc-transaction-v1.json
+      - bridge/neurofactory/coordination/trust-host-boundary-v1.json
+      - .github/workflows/neurofactory-coordination-signed-effect-contract-targeted.yml
+permissions:
+  contents: read
+jobs:
+  schema-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check only new canonical signed-effect contract consistency
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_signed_effect_contract_v1.py' -v

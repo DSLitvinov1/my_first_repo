@@ -1,0 +1,66 @@
+[
+  {
+    "lane": "CORE",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-core-queue-owned-20261013",
+    "sha": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/9",
+    "phase": "waiting_dependency"
+  },
+  {
+    "lane": "PROVIDERS",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-providers-resilience-20261014",
+    "sha": "f25b67fe9e66998c7291e2dbc26e139abe8b04cc",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/5",
+    "phase": "candidate"
+  },
+  {
+    "lane": "COORDINATOR",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-chat-coordination-20261013",
+    "sha": "cd7a34cb52f5d4b72740a2046f9c5abc121dab65",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/3",
+    "phase": "implementation"
+  },
+  {
+    "lane": "REVIEW",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-review-owned-20261013",
+    "sha": "c2510f1f35c946dea0c7a33786960e4875984ace",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/11",
+    "phase": "waiting_dependency"
+  },
+  {
+    "lane": "OPS",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-ops-completion-20261015",
+    "sha": "08645ded5ee5588e709efb00ee9c965cd7a6fdcf",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/6",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "SKILLS",
+    "repository": "DSLitvinov1/lesson3.1",
+    "branch": "neurofactory-skills-unified-profiles-20261015",
+    "sha": "d2f4ed71efd2d253b0a6e048fe0da884a70dba24",
+    "issue_url": "https://github.com/DSLitvinov1/lesson3.1/pull/542",
+    "phase": "waiting_review"
+  },
+  {
+    "lane": "HANDOFF",
+    "repository": "DSLitvinov1/my_first_repo",
+    "branch": "neurofactory-model-handoff-owned-20261013",
+    "sha": "279995e7fa252882fceec7ee2e955884382c4f54",
+    "issue_url": "https://github.com/DSLitvinov1/my_first_repo/issues/4",
+    "phase": "paused"
+  },
+  {
+    "lane": "GODMODE",
+    "repository": "DSLitvinov1/lesson3.1",
+    "branch": "neurofactory-godmode-autonomy-isolated-20261014",
+    "sha": "18532efce7d23aaf959e0c4c50227723970dc8f5",
+    "issue_url": "https://github.com/DSLitvinov1/lesson3.1/pull/541",
+    "phase": "waiting_review"
+  }
+]

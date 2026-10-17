@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "owner": "COORDINATOR",
+  "date": "2026-10-15",
+  "previous_checkpoint": "f7837aa06a71d0fbc189e50979e61e545627c914",
+  "branch": "neurofactory-coordinator-mvp-status-20261015",
+  "draft_pr": 12,
+  "pre_checkpoint_code_head": "4409e57f8c0d2306502998694576d1ad57547271",
+  "meaningful_change": {
+    "component": "bridge/neurofactory/coordination/mvp_provider_evidence_view.py",
+    "defect": "Pure-data evidence binding incorrectly allowed src/../foo.py and boolean schema True in place of numeric 1; this did not write files or grant execution.",
+    "fix": "Strict relative src/docs path allowlist with no empty/dot/dotdot/hidden components and supported extensions, exact integer schema; no live execution, external provenance, publishing or retries granted.",
+    "changed_source_files": [
+      "bridge/neurofactory/coordination/mvp_provider_evidence_view.py",
+      "bridge/neurofactory/coordination/test_mvp_provider_evidence_view.py"
+    ],
+    "incident_class": "P1 scoped candidate validation defect; no demonstrated live side effect."
+  },
+  "test_evidence": {
+    "run_id": 38656053080,
+    "job_id": 116165965597,
+    "tested_commit": "4409e57f8c0d2306502998694576d1ad57547271",
+    "host": "GitHub-hosted Ubuntu 24.04",
+    "tests_pass": 11,
+    "tests_total": 11,
+    "status": "completed/success",
+    "journal_checked": true,
+    "previous_intermediate_run": {
+      "run_id": 38656007297,
+      "source_sha": "92222674e78ad910738a2e058cfb0345d7d899a9",
+      "status": "FAIL due to incorrectly escaped safe-path regex; corrected in f6b8047 and final tests PASS"
+    },
+    "not_independent_review": true,
+    "heavy_matrix_repeated": false
+  },
+  "prior_test_evidence": {
+    "exchange_and_task_card": {
+      "run": 38650279255,
+      "tests": 32,
+      "success": true
+    },
+    "provider_wire": {
+      "run": 38650127588,
+      "tests": 12,
+      "success": true
+    },
+    "evidence_prior": {
+      "run": 38655276877,
+      "tests": 8,
+      "success": true
+    },
+    "current_distinct_test_case_count": 55,
+    "self_hosted_old_windows": {
+      "run_id": 38643604899,
+      "job_id": 116124933092,
+      "status": "queued",
+      "rerun": false
+    }
+  },
+  "owner_snapshot": {
+    "CORE": {
+      "head": "a86ad93046f739db03f80013b6498a0bb0d2eb7b",
+      "new_one_task_contract": false,
+      "action": "Own lease/CAS, trust/source digest, crash checkpoint, UNKNOWN publisher before REVIEW #11"
+    },
+    "REVIEW": {
+      "status": "WAIT_NEW_CORE_SHA",
+      "issue": 11
+    },
+    "PROVIDERS": {
+      "head": "62714aec6bb1208fe94233e775455fce6204576a",
+      "draft_pr": 13,
+      "own_windows_and_linux_targeted_run": 38655657608,
+      "private_receipt": "guarded author-owned evidence and .seal; no independently anchored provenance",
+      "independent_pr_reviews": 0,
+      "last_real_windows_run": 38652410062,
+      "free_ram_bytes": 934338560,
+      "ollama_process_seen": false,
+      "live_inference": false,
+      "action": "No real inference until >=2GiB RAM and functional Ollama, plus CORE writer/reviewer; no raw model reply in GitHub"
+    },
+    "OPS": {
+      "head": "4d9d712b1d73eb2142cc012419c79c3c7a89eca5",
+      "own_ci_run": 38652940146,
+      "linux_pass": 34,
+      "windows_pass": 34,
+      "independent_issue": 6,
+      "independent_reviewer_unassigned": true,
+      "status": "Read-only three layers only; no live data rights"
+    },
+    "SKILLS": {
+      "canonical_profiles_pr": 548,
+      "head_548": "a57c39d2ffc12c0d2fb95a7031c660023eb34fa5",
+      "schema_guard_pr": 549,
+      "head_549": "0f4f40f41db71cbb32418096ba107de115a1c065",
+      "branch_conflict": "PR548 and PR549 diverge from shared #547; neither exact head automatically includes both real SKILL.md readback and strict schema guard.",
+      "candidate_skills": 12,
+      "approved_skills": 0,
+      "profiles": 19,
+      "independent_approvals": 0,
+      "action": "One SKILLS owner must reconcile both security patches in own scope before independent review; no activation"
+    },
+    "HANDOFF": {
+      "head": "279995e7fa252882fceec7ee2e955884382c4f54",
+      "status": "PAUSED_BY_USER"
+    }
+  },
+  "provisional_contract": {
+    "provider_bridge": "neurofactory.coordination.provider_bridge.v1; request/binding/permissions all false",
+    "private_receipt": "Metadata only, source origin unverified, no signed host anchor accepted by coordinator",
+    "ui_ops": "Separate untrusted lane board, project diagnostic and task-card; UNKNOWN on missing provenance",
+    "skills_preview": "Provisional only; no CORE intake approval"
+  },
+  "gates": {
+    "CORE": "WAIT",
+    "REVIEW": "WAIT",
+    "PROVIDERS_REAL_OLLAMA": "RESOURCE_BLOCKED",
+    "PROVIDERS_INDEPENDENT_REVIEW": "MISSING",
+    "OPS_INDEPENDENT_REVIEW": "MISSING",
+    "SKILLS_INDEPENDENT_REVIEW": "MISSING",
+    "WINDOWS_OLD_SMOKE": "QUEUED",
+    "HANDOFF": "PAUSED_BY_USER",
+    "RELEASE": "BLOCKED"
+  },
+  "no_side_effects": {
+    "no_live_model_call": true,
+    "no_paid_api": true,
+    "no_owner_file_change": true,
+    "no_merge": true,
+    "no_handoff": true,
+    "no_queue_run": true,
+    "no_publisher": true,
+    "no_repeated_old_windows": true
+  },
+  "next_event": "New CORE exact safe one-job commit; or new real Windows resources/Ollama condition; or independent auditor signed review; or SKILLS own reconciliation; otherwise P2 no repeat status-only checkpoint."
+}
