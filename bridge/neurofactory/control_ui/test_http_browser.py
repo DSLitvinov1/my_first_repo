@@ -38,7 +38,7 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
         for asset in ("index.html", "styles.css", "demo-data.js", "app.js"):
             assert loaded.get(origin + "/" + asset) == 200, ("asset not served", asset, loaded)
         assert page.evaluate("document.styleSheets.length") >= 1, "CSS did not load"
-        assert page.locator("#navigation button").count() == 9, "missing navigation sections"
+        assert page.locator("#navigation button").count() == 10, "missing navigation sections"
         assert "Демонстрационные данные" in page.locator(".warning-strip").inner_text()
         assert "UNKNOWN" in page.locator("#main-content").inner_text()
         for nav, heading in (
@@ -60,6 +60,48 @@ def check(browser, origin: str, name: str, width: int, height: int) -> None:
         page.reload(wait_until="load")
         assert "HTTP браузерный тест" not in page.locator("#main-content").inner_text(), "candidate persisted unexpectedly"
         assert "Демонстрационные данные" in page.locator(".warning-strip").inner_text()
+        # Existing UI now accepts a SEPARATE locally imported read-only
+        # coordinator inbox projection, without connecting to an API.
+        page.get_by_role("button", name="Входящие задания").click()
+        page.get_by_role("heading", name="Входящие задания", exact=True).wait_for()
+        with TemporaryDirectory() as tmp:
+            p = Path(tmp) / "advisory.json"
+            base = {
+                "schema":"neurofactory.coordination.advisory_cards.v1",
+                "kind":"READ_ONLY_UNVERIFIED_UI_DATA",
+                "cards":[{"event_key":"authorized_api:task-01",
+                    "repository":"DSLitvinov1/my_first_repo",
+                    "project_id":"nf-sandbox",
+                    "kind":"TASK_CREATED","mode":"AUTOMATIC","profile":"web",
+                    "advisory_status":"PENDING_OWNER_APPROVAL",
+                    "description":"Read only test card, not real work",
+                    "created_at":"2026-10-17T00:00:00.000Z",
+                    "authentic_owner_approval_verified":False,
+                    "execution_allowed":False,"queue_write_allowed":False,
+                    "publication_allowed":False,"paid_api_allowed":False}],
+                "has_more":False,"next_before_rowid":None,
+                "live_execution_allowed":False,
+                "approval_from_snapshot_allowed":False,
+                "queue_write_allowed":False,
+                "handoff":"PAUSED_BY_USER"
+            }
+            p.write_text(json.dumps(base),encoding="utf8")
+            page.locator("#inbox-input").set_input_files(str(p))
+            page.get_by_text("Read only test card, not real work").wait_for(timeout=4000)
+            assert page.get_by_text("Ожидает разрешение").count() >= 1
+            assert "без исполнения" in page.locator("#main-content").inner_text().lower()
+            forged = json.loads(json.dumps(base))
+            forged["cards"][0]["execution_allowed"] = True
+            p.write_text(json.dumps(forged),encoding="utf8")
+            page.locator("#toast").evaluate("(el) => { el.hidden=true; el.textContent=''; }")
+            page.locator("#inbox-input").set_input_files(str(p))
+            page.locator("#toast").filter(has_text="Карточки отклонены").wait_for(state="visible")
+            assert page.get_by_text("Read only test card, not real work").count() == 1
+            # File import never grants execution even when a client forges
+            # elevated permissions, and never makes outgoing API requests.
+            page.get_by_role("button", name="Сброс").click()
+            page.get_by_role("button", name="Входящие задания").click()
+            page.get_by_text("Снимок не загружен").wait_for(timeout=4000)
         # Accessibility regression: Import must be reachable by keyboard and launch
         # the native file chooser (also when its visible text is hidden on mobile).
         import_button = page.get_by_role("button", name="Импорт JSON")
