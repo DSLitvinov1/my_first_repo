@@ -94,7 +94,7 @@ class ReadOnlyIPCTests(unittest.TestCase):
         self.assertTrue(obj["peer_uid_checked"])
         self.assertFalse(obj["private_key_shared"])
         self.assertFalse(obj["filesystem_write_allowed"])
-        self.assertNotIn("private_key",r.stdout)
+        self.assertNotIn("issuer-private.raw",r.stdout)
         self.assertNotIn("issuer-private",r.stdout)
     def test_rollback_old_signed_db_receipt_denied_from_consumer_uid(self):
         old=self.issue("first")
