@@ -63,7 +63,9 @@ class ReadOnlyIPCTests(unittest.TestCase):
             str(self.home),str(self.sock),str(target)],
             stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
         for _ in range(80):
-            if self.sock.exists():break
+            if subprocess.run(["sudo","-n","-u","nf_signer","test","-S",str(self.sock)],
+                              stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:
+                break
             if self.proc.poll() is not None:
                 raise AssertionError("signer IPC exited before bound socket: "+
                                      self.proc.stderr.read()[:150])
