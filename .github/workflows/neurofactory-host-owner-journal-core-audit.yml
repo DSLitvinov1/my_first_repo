@@ -1,0 +1,77 @@
+name: Neurofactory HOST pinned owner grant and protected receipt audit
+on:
+  push:
+    branches: [neurofactory-host-owner-journal-core-audit-20261017]
+    paths:
+      - bridge/neurofactory/trusted_host/test_pinned_owner_journal_core_audit.py
+      - .github/workflows/neurofactory-host-owner-journal-core-audit.yml
+permissions:
+  contents: read
+jobs:
+  exact-three-uid-owner-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_OPERATOR_ANCHOR_FIXTURE_ONLY: "1"
+      NF_HOST_RECEIVER_FIXTURE_ONLY: "1"
+      NF_RECEIVER_OS_FIXTURE_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 4a068968d5a34d0f7998b7da4d22640160b90b23
+          path: .nf_core_pinned
+          persist-credentials: false
+      - name: Verify exact CORE HEAD and audited HOST execution blobs
+        run: |
+          test "$(git -C .nf_core_pinned rev-parse HEAD)" = "4a068968d5a34d0f7998b7da4d22640160b90b23"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_os_separated_effect_receiver.py)" = "823a808347414c77c83bf8c91b9211ce5bd2a16f"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_recipient_protected_journal.py)" = "578e2114c971529039d9a3e151c0fe37c103cfa1"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_operator_gated_receiver.py)" = "69252e0f5eba806095570c739deea77aab55ff06"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_owner_grant_admission.py)" = "fbe8a1f1d00c07e94f80d48bb8289b64887c85bc"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_operator_ipc.py)" = "e2b5c2e6218b55f50ff8e61d0e538fecc91f7327"
+          test "$(git hash-object bridge/neurofactory/trusted_host/test_offline_os_separated_effect_receiver.py)" = "f2337a21149fd54a5eb7e1d119e4c82b5cc1d4fc"
+      - name: Create THREE disposable and distinct OS owners on ONE runner
+        run: |
+          sudo groupadd --system nf_operator_ipc
+          sudo groupadd --system nf_recipient_ipc
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_signer
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_db_actor
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_effect
+          sudo usermod -aG nf_operator_ipc nf_signer
+          sudo usermod -aG nf_operator_ipc nf_effect
+          sudo usermod -aG nf_recipient_ipc nf_db_actor
+          sudo usermod -aG nf_recipient_ipc nf_effect
+          test "$(id -u nf_signer)" != "$(id -u nf_effect)"
+          test "$(id -u nf_signer)" != "$(id -u nf_db_actor)"
+          test "$(id -u nf_effect)" != "$(id -u nf_db_actor)"
+      - name: Install fixture-only dependencies and staged executable source
+        run: |
+          python3 -m venv /tmp/nf-owner-ledger-audit-venv
+          /tmp/nf-owner-ledger-audit-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" "cryptography==46.0.3"
+          mkdir -p /tmp/nf-ipc-source
+          for name in offline_operator_anchor.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_recipient_protected_journal.py offline_owner_grant_admission.py offline_cas.py offline_effect_reservation.py; do
+            cp "bridge/neurofactory/trusted_host/$name" /tmp/nf-ipc-source/
+          done
+          cp .nf_core_pinned/bridge/neurofactory/development/core_owned/one_task_core.py /tmp/nf-ipc-source/
+          cp .nf_core_pinned/bridge/neurofactory/development/core_owned/offline_os_receiver_client.py /tmp/nf-ipc-source/
+      - name: Signed owner scope, persistent protected receipt, crash/rollback, REAL CORE narrow evidence
+        run: |
+          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-owner-ledger-audit-venv/bin/python /tmp/nf-owner-ledger-audit-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p "test_pinned_owner_journal_core_audit.py" -k test_audit_ -v
