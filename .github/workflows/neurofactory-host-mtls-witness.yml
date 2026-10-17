@@ -36,4 +36,4 @@ jobs:
           cp bridge/neurofactory/trusted_host/signed_effect_permit.py /tmp/nf-witness-code/
       - name: Test mutual TLS identity and durable ack with no production deployment
         run: |
-          NF_MTLS_TEST_PYTHON=/tmp/nf-mtls-test/bin/python NF_MTLS_TEST_STAGE=/tmp/nf-witness-code /tmp/nf-mtls-test/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_mtls_witness_transport.py' -k scoped_ -v
+          NF_MTLS_TEST_PYTHON=/tmp/nf-mtls-test/bin/python NF_MTLS_TEST_STAGE=/tmp/nf-witness-code /tmp/nf-mtls-test/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_mtls_witness_transport.py' -v
