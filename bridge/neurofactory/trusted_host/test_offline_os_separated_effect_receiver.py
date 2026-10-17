@@ -285,11 +285,14 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         target="bridge/neurofactory/development/core_owned/qwen_from_real_core.py"
         core_root=self.root/"nf-core-worker-state"
         source_repo=self.root/"nf-worker-local-git"
+        subprocess.run(["sudo","-n","install","-d","-m","0700",
+            "-o","nf_db_actor","-g","nf_db_actor",str(core_root),str(source_repo)],
+            check=True)
         creator=("import pathlib,sys,subprocess,json,hashlib,time;"
           "from one_task_core import OneTaskCore,EMPTY_SHA,_canonical;"
           "root=pathlib.Path(sys.argv[1]);"
           "repo=pathlib.Path(sys.argv[2]);"
-          "repo.mkdir(mode=0o700);"
+          "repo.mkdir(mode=0o700,exist_ok=True);"
           "subprocess.run(['git','init','-q',str(repo)],check=True);"
           "subprocess.run(['git','-C',str(repo),'config','user.name','NF fixture'],check=True);"
           "subprocess.run(['git','-C',str(repo),'config','user.email','nf@invalid.test'],check=True);"
