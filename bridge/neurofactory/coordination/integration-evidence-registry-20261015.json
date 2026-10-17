@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "OFFLINE_ADVISORY_GITHUB_API_SIGNED_INTAKE_35_GREEN_LEGACY_CORE_DENY_RECONCILED",
+      "status": "SIGNED_INTAKE_35_GREEN_READ_ONLY_UI_PROJECTION_15_GREEN_NONLIVE",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -219,6 +219,31 @@
         "paid_api": false,
         "handoff": "PAUSED_BY_USER",
         "evidence": "bridge/neurofactory/coordination/AUTO_INTAKE_EVIDENCE_20261017_RU.md"
+      },
+      "advisory_ui_snapshot": {
+        "status": "AUTHOR_GITHUB_HOSTED_SUCCESS_READ_ONLY_NO_ACTIONS",
+        "source_path": "bridge/neurofactory/coordination/advisory_snapshot.py",
+        "source_blob_sha": "d3008a41e42afd52f6e0b469e8ec6350500c309d",
+        "tests_path": "bridge/neurofactory/coordination/test_advisory_snapshot.py",
+        "tests_blob_sha": "8168795980c064bd14af7be35d733cbb8eef71fd",
+        "workflow_path": ".github/workflows/neurofactory-coordination-signed-intake.yml",
+        "tested_coordinator_exact_sha": "d815d77c7dcee8a5b7048884022a06e9a98b63dc",
+        "hosted_run": 38984833514,
+        "job": 117253750505,
+        "original_red_run": 38984799273,
+        "original_red_reason": "TEST HELPER REPLACED EXPLICIT NONE WITH ALLOWED DEFAULT, FIXED IN TEST ONLY",
+        "previous_signed_intake_tests_pass": 24,
+        "previous_local_http_tests_pass": 11,
+        "new_snapshot_tests_pass": 15,
+        "total_targeted_suite_tests_pass": 50,
+        "view_scope": "EXPLICIT_CALLER_REPOSITORY_FILTER_NOT_AUTHENTICATED_OWNER",
+        "production_ui_backend_integration": false,
+        "independent_code_review": false,
+        "live_api_access": false,
+        "command_actions_allowed": false,
+        "host_issuer_authenticated": false,
+        "handoff": "PAUSED_BY_USER",
+        "evidence_doc": "bridge/neurofactory/coordination/ADVISORY_UI_PROJECTION_EVIDENCE_20261017_RU.md"
       }
     },
     "CORE": {
@@ -378,6 +403,14 @@
           "run": 38652410062,
           "free_ram_bytes": 934338560,
           "ollama_process_detected": false
+        },
+        "windows_remote_resource_readcheck": {
+          "state": "BLOCKED_REMOTE_DESKTOP_COMMANDER_MONTHLY_USAGE_LIMIT",
+          "device_count_visible": 1,
+          "device_online_at_attempt": true,
+          "resource_inventory_obtained": false,
+          "resource_changes_made": false,
+          "retry_performed": false
         }
       },
       "blockers": [
@@ -692,11 +725,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST #14: deploy externally approved signer and per-task real owner/source/repository policy authorization, out-of-DB immutable monotonic head; no real keys or services without owner approval",
-    "CORE #9: keep legacy direct writer permanently DENIED, implement authenticated recipient-side external issuer/epoch/fence/idempotency checked at actual OS-protected file-effect boundary",
-    "REVIEW #11: independent narrow new auto-intake HMAC/SQL dedup/localhost gateway review and separate operator-certified release proof for real HOST+CORE",
-    "COORD/UI: consume advisory-only signed issue/API/import candidate messages; no automatic queue execution until true HOST release approval",
-    "Two genuinely distinct authorized physical computers, local free model resource proof, backup/recovery, validated production release and explicit HANDOFF authorization"
+    "TRUSTED HOST #14: real independently protected signer/owner/project/source issuer, antirollback highwater separate DB principal and authenticated CAS/recipient fencing; HOST offline reservation no execution",
+    "CORE #9: maintain disabled legacy direct writing and introduce real per-effect approved signed HOST epoch/idempotency checks inside separately privileged destination",
+    "UI #10: consume COORD read-only advisory snapshot only through authenticated backend, project scope from protected owner session, 2 statuses shown without execution buttons",
+    "REVIEW #11: narrow independent audit of new COORD advisory snapshot exact code + operator-level separate release review for real CORE/HOST SHA",
+    "PROVIDERS: local Windows inventory not obtained due connected Desktop Commander monthly tool limit, do not retry; use authorized alternative/next limit reset; do not infer Qwen readiness",
+    "Two genuine authorized physical computers and real local model + restore/rollback tests, explicit release signoff; HANDOFF PAUSED_BY_USER"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
