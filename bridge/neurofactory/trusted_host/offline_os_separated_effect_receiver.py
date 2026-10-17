@@ -20,6 +20,7 @@ import psycopg
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from offline_fenced_file_receiver import OfflineFencedFileReceiver
 from offline_operator_gated_receiver import OperatorGatedOfflineReceiver
+from offline_recipient_protected_journal import RecipientProtectedJournal
 
 _MAX=110000
 _SCHEMA="neurofactory.os_separated_recipient.fixture.v1"
@@ -115,9 +116,16 @@ def serve_once(config_dir):
                             pinned_signer_uid=cfg["signer_uid"],
                             independently_pinned_public_sha=cfg["signer_public_sha"],
                             independently_pinned_public_b64=cfg["signer_public_base64"])
+                        # This is protected by nf_effect, not DB or worker.
+                        # It persists across one-shot daemon restarts and
+                        # refuses a second effect even after PostgreSQL rollback.
+                        protected=RecipientProtectedJournal(config_dir)
                         report=gated.apply_fixture_with_operator_witness_once(
                             signed_packet=req["signed_packet"],witness=req["witness"],
-                            content=content)
+                            content=content,protected_journal=protected,
+                            simulate_crash_after_fsync=(
+                                os.environ.get("NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH")
+                                =="1"))
                         response={"status":"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY",
                                   "file_sha256":report["content_sha256"],
                                   "live_execution_allowed":False}
