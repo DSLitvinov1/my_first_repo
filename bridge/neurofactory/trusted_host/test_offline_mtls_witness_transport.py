@@ -51,6 +51,7 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
              "-g","nf_witness","-m","0700",str(self.store)],check=True)
         self.addCleanup(lambda:subprocess.run(["sudo","-n","rm","-rf","--",str(self.store)],check=True))
         ca=_key()
+        self.ca_key=ca
         cacert=_certificate(ca,"NF temporary fixture CA","NF temporary fixture CA",ca,ca=True)
         srv=_key();cli=_key()
         srvcert=_certificate(srv,"nf-witness.test","NF temporary fixture CA",ca)
@@ -175,12 +176,17 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
         adversary=_key()
         # CA-signed other cert is NOT sufficient: exact TLS DER pin is needed.
         # Issue via same fixture issuer, but use separate key.
-        # Recreate a temporary dedicated CA for this client to force TLS deny.
-        other=self.root/"untrusted_client.key"
+        # A SECOND still-CA-signed client must be refused by exact DER pin
+        # even though its certificate chain and client EKU are valid.
+        other=self.root/"other_client.key"
+        othercert=self.root/"other_client.crt"
         other.write_bytes(_pemkey(adversary));other.chmod(0o600)
+        othercert.write_bytes(_certificate(
+            adversary,"nf-other-client.test","NF temporary fixture CA",
+            self.ca_key,client=True).public_bytes(serialization.Encoding.PEM))
         subprocess.run(["sudo","-n","chown","nf_effect:nf_effect",str(other)],check=True)
         self.listen()
-        r=self.call(private_key=other)
+        r=self.call(private_key=other,certificate=othercert)
         self.assertNotEqual(r.returncode,0)
         self.assertEqual(self.count(),0)
 if __name__=="__main__":unittest.main()
