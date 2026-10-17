@@ -57,7 +57,7 @@ class AdvisorySnapshotTests(unittest.TestCase):
         self.event()
         for value in ([],(),[REPO,REPO],"*",["*"],[True],None):
             with self.subTest(value=str(value)[:30]),self.assertRaises(AdvisorySnapshotError):
-                self.cards(repos=value)
+                preview_advisory_cards(self.con,allowed_repositories=value)
     def test_real_cursor_pages_are_stable(self):
         for i in range(7):
             self.event(f"event-{i:03d}")
