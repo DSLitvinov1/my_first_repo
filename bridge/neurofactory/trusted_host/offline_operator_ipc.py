@@ -57,15 +57,32 @@ def serve_once(home, socket_path, *, allowed_peer_uid):
                     return
                 try:
                     req=json.loads(raw.decode("ascii"))
-                    if type(req) is not dict or set(req)!={"schema","packet","public_sha","public_key"} or req["schema"]!="neurofactory.operator.readonly_current.v1":
+                    if type(req) is not dict or type(req.get("schema")) is not str:
                         _deny("invalid schema")
-                    result=verify_current(
-                        root,req["packet"],req["public_sha"],req["public_key"])
-                    ret={"status":"CURRENT_CHECK_ONLY_NOT_AUTHORITY",
-                        "current_sequence":result["sequence"],
-                        "head":result["head"],
-                        "peer_uid_checked":True,"private_key_shared":False,
-                        "owner_authenticated":False,"filesystem_write_allowed":False}
+                    if (req["schema"]=="neurofactory.operator.readonly_current.v1"
+                            and set(req)=={"schema","packet","public_sha","public_key"}):
+                        result=verify_current(
+                            root,req["packet"],req["public_sha"],req["public_key"])
+                        ret={"status":"CURRENT_CHECK_ONLY_NOT_AUTHORITY",
+                            "current_sequence":result["sequence"],
+                            "head":result["head"],
+                            "peer_uid_checked":True,"private_key_shared":False,
+                            "owner_authenticated":False,"filesystem_write_allowed":False}
+                    elif (req["schema"]=="neurofactory.operator.scope_check_fixture.v1"
+                          and set(req)=={"schema","signed_permit","witness","public_sha","public_key"}):
+                        from offline_signer_scope_guard import check_signer_owned_scope
+                        result=check_signer_owned_scope(
+                            root,signed_permit=req["signed_permit"],
+                            witness=req["witness"],current_key_fingerprint=req["public_sha"],
+                            current_public_b64=req["public_key"])
+                        ret={"status":result["status"],
+                             "signed_permit_sha256":result["signed_permit_sha256"],
+                             "operation_id":result["operation_id"],
+                             "current_signer_sequence":result["current_signer_sequence"],
+                             "peer_uid_checked":True,"private_key_shared":False,
+                             "owner_authenticated":False,"filesystem_write_allowed":False}
+                    else:
+                        _deny("invalid request shape")
                 except (ValueError,UnicodeError,TypeError,OperatorAnchorDenied):
                     ret={"status":"DENIED_WITNESS","filesystem_write_allowed":False}
                 conn.sendall(json.dumps(ret,sort_keys=True,separators=(",",":")).encode())
