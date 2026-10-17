@@ -230,7 +230,8 @@ class TwoPhysicalNodeClaimsTests(unittest.TestCase):
             {"attempt_nonce":[]},
         ):
             with self.subTest(change=change):
-                pkt=self.packet("node-beta","DENIED_NO_EFFECT",**change)
+                pkt=self.packet("node-beta",change.get("outcome","DENIED_NO_EFFECT"),
+                                **{k:v for k,v in change.items() if k!="outcome"})
                 with self.assertRaises(WitnessRejected):
                     self.check([self.packets[0],pkt])
 

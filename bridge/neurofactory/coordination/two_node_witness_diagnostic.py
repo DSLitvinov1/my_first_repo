@@ -126,7 +126,7 @@ def inspect_two_node_witnesses(envelopes, *, operator_pinned_nodes,
     for node_id, cfg in operator_pinned_nodes.items():
         if (not _valid(node_id, _NODE) or type(cfg) is not dict or
                 set(cfg) != {"public_key", "physical_claim_sha256"} or
-                type(cfg["public_key"]) is not Ed25519PublicKey or
+                not isinstance(cfg["public_key"], Ed25519PublicKey) or
                 not _valid(cfg["physical_claim_sha256"], _SHA64)):
             raise WitnessRejected("invalid separate operator node pin")
     pins = list(operator_pinned_nodes.values())
