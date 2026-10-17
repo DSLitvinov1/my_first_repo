@@ -6,6 +6,8 @@ on:
     paths:
       - bridge/neurofactory/trusted_host/offline_operator_ipc.py
       - bridge/neurofactory/trusted_host/test_offline_operator_ipc.py
+      - bridge/neurofactory/trusted_host/offline_signer_scope_guard.py
+      - bridge/neurofactory/trusted_host/test_offline_signer_scope_ipc.py
       - .github/workflows/neurofactory-trusted-host-owned-operator-ipc.yml
 permissions:
   contents: read
@@ -38,7 +40,10 @@ jobs:
           mkdir -p /tmp/nf-ipc-source
           cp bridge/neurofactory/trusted_host/offline_operator_anchor.py /tmp/nf-ipc-source/
           cp bridge/neurofactory/trusted_host/offline_operator_ipc.py /tmp/nf-ipc-source/
+          cp bridge/neurofactory/trusted_host/offline_signer_scope_guard.py /tmp/nf-ipc-source/
+          cp bridge/neurofactory/trusted_host/signed_effect_permit.py /tmp/nf-ipc-source/
       - name: Verify read-only SO_PEERCRED Unix socket signer owner and rollback denial
         run: |
           git rev-parse HEAD
+          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-operator-ipc-venv/bin/python /tmp/nf-operator-ipc-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_signer_scope_ipc.py' -v
           NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-operator-ipc-venv/bin/python /tmp/nf-operator-ipc-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_operator_ipc.py' -v
