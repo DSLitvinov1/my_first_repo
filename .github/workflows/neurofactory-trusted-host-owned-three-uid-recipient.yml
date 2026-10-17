@@ -37,6 +37,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: DSLitvinov1/my_first_repo
+          ref: 2205354c39103612183cf4cc44f61e6f204137a0
+          path: .nf_core_pinned
+          persist-credentials: false
+      - name: Confirm independent CORE source pinned exact SHA
+        run: |
+          test "$(git -C .nf_core_pinned rev-parse HEAD)" = "2205354c39103612183cf4cc44f61e6f204137a0"
       - name: Create three actual disposable separate Linux OS identities
         run: |
           sudo groupadd --system nf_operator_ipc
@@ -59,6 +68,8 @@ jobs:
           for name in offline_operator_anchor.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_cas.py offline_effect_reservation.py; do
             cp "bridge/neurofactory/trusted_host/$name" /tmp/nf-ipc-source/
           done
+          cp .nf_core_pinned/bridge/neurofactory/development/core_owned/one_task_core.py /tmp/nf-ipc-source/
+          cp .nf_core_pinned/bridge/neurofactory/development/core_owned/offline_os_receiver_client.py /tmp/nf-ipc-source/
       - name: Verify isolated recipient alone can write approved scratch file and cannot replay it
         run: |
           git rev-parse HEAD
