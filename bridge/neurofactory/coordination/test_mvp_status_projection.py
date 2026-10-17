@@ -1,9 +1,11 @@
 """Small targeted contract checks; no network, Qwen, GitHub writes or runner restarts."""
 import json
+import io
+from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
 import unittest
-from mvp_status_projection import projection, InvalidSnapshot, read_fixture
+from mvp_status_projection import projection, projection_v2, InvalidSnapshot, read_fixture, main
 
 def sample(lane="CORE", phase="implementation"):
     return {
@@ -26,6 +28,56 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(r["lanes"][0]["reported_phase"], "implementation")
         self.assertEqual(r["lanes"][0]["evidence_status"], "not_verified")
         self.assertFalse(r["lanes"][0]["release_allowed"])
+    def test_v2_shows_trusted_host_without_breaking_v1(self):
+        old=projection([])
+        new=projection_v2([])
+        self.assertEqual((old["schema"],len(old["lanes"])),(1,9))
+        self.assertNotIn("TRUSTED_HOST",[x["lane"] for x in old["lanes"]])
+        self.assertEqual((new["schema"],len(new["lanes"])),(2,10))
+        host=new["lanes"][1]
+        self.assertEqual(host["lane"],"TRUSTED_HOST")
+        self.assertEqual((host["reported_phase"],host["evidence_status"]),("unknown","not_verified"))
+        self.assertIs(host["release_allowed"],False)
+        for key in ("external_execution_allowed","external_publication_allowed","automatic_retry_allowed"):
+            self.assertIs(new[key],False)
+
+    def test_v2_host_candidate_is_not_approved(self):
+        row=sample(lane="TRUSTED_HOST",phase="blocked")
+        row["branch"]="neurofactory-trusted-host-owned-20261015"
+        row["issue_url"]="https://github.com/DSLitvinov1/my_first_repo/issues/14"
+        output=projection_v2([row])
+        host=output["lanes"][1]
+        self.assertEqual(host["reported_phase"],"blocked")
+        self.assertEqual(host["evidence_status"],"not_verified")
+        self.assertIs(host["release_allowed"],False)
+        self.assertEqual(output["provenance"],"self_reported_git_refs_not_attested")
+
+    def test_v2_rejects_wrong_host_issue(self):
+        row=sample(lane="TRUSTED_HOST")
+        for url in ("https://github.com/DSLitvinov1/my_first_repo/issues/9",
+                    "https://github.com/DSLitvinov1/my_first_repo/pull/12",
+                    "https://github.com/DSLitvinov1/lesson3.1/pull/558"):
+            with self.subTest(url=url),self.assertRaises(InvalidSnapshot):
+                projection_v2([row | {"issue_url":url}])
+
+    def test_v2_rejects_duplicate_and_oversized_board(self):
+        row=sample(lane="TRUSTED_HOST")
+        row["issue_url"]="https://github.com/DSLitvinov1/my_first_repo/pull/15"
+        with self.assertRaises(InvalidSnapshot): projection_v2([row,row])
+        with self.assertRaises(InvalidSnapshot): projection_v2([row]*11)
+
+    def test_v2_cli_requires_explicit_opt_in(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"snapshot.json"
+            p.write_text("[]",encoding="utf-8")
+            with redirect_stdout(io.StringIO()) as output:
+                main([str(p)])
+            self.assertEqual(json.loads(output.getvalue())["schema"],1)
+            with redirect_stdout(io.StringIO()) as output:
+                main([str(p),"--with-trusted-host"])
+            report=json.loads(output.getvalue())
+            self.assertEqual((report["schema"],len(report["lanes"])),(2,10))
+
     def test_duplicate_lane_rejected(self):
         with self.assertRaises(InvalidSnapshot): projection([sample(), sample()])
     def test_spoofed_release_denied(self):
