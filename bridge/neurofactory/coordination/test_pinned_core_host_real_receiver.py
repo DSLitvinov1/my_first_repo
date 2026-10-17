@@ -19,8 +19,8 @@ import unittest
 import psycopg
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-CORE_SHA="05ab48bf5b04818df2b632906886610587cad642"
-HOST_SHA="6bb33d4cdaa26abee6b6f9961b9f1ff5e546ba4e"
+CORE_SHA="a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff"
+HOST_SHA="e13c97db92e736d41262412632d2abc2197526ba"
 TASK="NF-DEV-05-Q987"
 PROJECT="nf-sandbox"
 WORKER="fixture-worker-01"
