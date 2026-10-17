@@ -1,0 +1,39 @@
+name: Neurofactory genuine Qwen bounded Python program generation
+on:
+  push:
+    branches:
+      - neurofactory-providers-ollama-worker-20261015
+    paths:
+      - bridge/neurofactory/providers/real_qwen_new_code_probe.py
+      - .github/workflows/neurofactory-providers-new-real-qwen-code.yml
+permissions:
+  contents: read
+jobs:
+  qwen-cpu-single-proposal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NF_REAL_QWEN_NEW_CODE_TEST_ONLY: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "45"
+      CUDA_VISIBLE_DEVICES: ""
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Pin source and record hosted model machine resources
+        run: |
+          git rev-parse HEAD
+          free -m
+          df -m /tmp
+      - name: Install free CPU bounded transformers dependencies in disposable runtime
+        run: |
+          python3 -m venv /tmp/nf-new-qwen-code-venv
+          /tmp/nf-new-qwen-code-venv/bin/python -m pip install --no-input --disable-pip-version-check "torch==2.6.0+cpu" --index-url https://download.pytorch.org/whl/cpu
+          /tmp/nf-new-qwen-code-venv/bin/python -m pip install --no-input --disable-pip-version-check "transformers==4.51.3" "huggingface-hub==0.30.2" "safetensors==0.5.3"
+      - name: Execute one real fresh model call and pure no-builtins eight-case unit tests
+        run: |
+          /tmp/nf-new-qwen-code-venv/bin/python -B bridge/neurofactory/providers/real_qwen_new_code_probe.py

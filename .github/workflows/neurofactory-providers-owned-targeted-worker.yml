@@ -1,0 +1,44 @@
+name: Neurofactory PROVIDERS targeted worker tests
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [neurofactory-providers-resilience-20261014]
+    paths:
+      - bridge/neurofactory/providers/ollama_worker.py
+      - bridge/neurofactory/providers/test_ollama_worker.py
+      - bridge/neurofactory/providers/provider_interface.py
+      - bridge/neurofactory/providers/test_provider_interface.py
+      - bridge/neurofactory/providers/local_qwen.py
+      - bridge/neurofactory/providers/coordinator_adapter.py
+      - bridge/neurofactory/providers/test_coordinator_adapter.py
+      - bridge/neurofactory/providers/test_coordinator_wire.py
+      - bridge/neurofactory/providers/evidence_receipt.py
+      - bridge/neurofactory/providers/test_evidence_receipt.py
+      - bridge/neurofactory/providers/test_evidence_hardening.py
+      - bridge/neurofactory/providers/windows_private_acl.py
+      - bridge/neurofactory/providers/test_windows_private_acl.py
+      - .github/workflows/neurofactory-providers-owned-targeted-worker.yml
+permissions:
+  contents: read
+jobs:
+  worker-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate only touched worker paths
+        run: python -m py_compile bridge/neurofactory/providers/ollama_worker.py bridge/neurofactory/providers/local_qwen.py bridge/neurofactory/providers/test_ollama_worker.py bridge/neurofactory/providers/provider_interface.py bridge/neurofactory/providers/test_provider_interface.py bridge/neurofactory/providers/coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_adapter.py bridge/neurofactory/providers/test_coordinator_wire.py bridge/neurofactory/providers/evidence_receipt.py bridge/neurofactory/providers/test_evidence_receipt.py bridge/neurofactory/providers/test_evidence_hardening.py bridge/neurofactory/providers/windows_private_acl.py bridge/neurofactory/providers/test_windows_private_acl.py
+      - name: Targeted private Windows ACL and evidence security regression
+        run: |
+          python -m unittest discover -s bridge/neurofactory/providers -p "test_evidence_receipt.py" -v
+          python -m unittest discover -s bridge/neurofactory/providers -p "test_evidence_hardening.py" -v
+          python -m unittest discover -s bridge/neurofactory/providers -p "test_windows_private_acl.py" -v

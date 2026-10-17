@@ -1,0 +1,39 @@
+name: Neurofactory providers real CPU Qwen 0.5B single bounded inference
+on:
+  push:
+    branches:
+      - neurofactory-providers-ollama-worker-20261015
+    paths:
+      - bridge/neurofactory/providers/real_qwen_cpu_probe.py
+      - .github/workflows/neurofactory-providers-real-qwen-cpu-probe.yml
+permissions:
+  contents: read
+jobs:
+  genuine-cpu-only-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NF_QWEN_REAL_INFERENCE_EXPLICIT_TEST_ONLY: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HUB_DISABLE_XET: "1"
+      HF_HUB_DOWNLOAD_TIMEOUT: "45"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      CUDA_VISIBLE_DEVICES: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record exact source SHA and platform resource evidence
+        run: |
+          git rev-parse HEAD
+          free -m
+          df -m /tmp
+      - name: Install bounded CPU inference dependencies without paid APIs
+        run: |
+          python3 -m venv .nf-real-qwen-venv
+          .nf-real-qwen-venv/bin/python -m pip install --no-input --disable-pip-version-check "torch==2.6.0+cpu" --index-url https://download.pytorch.org/whl/cpu
+          .nf-real-qwen-venv/bin/python -m pip install --no-input --disable-pip-version-check "transformers==4.51.3" "huggingface-hub==0.30.2" "safetensors==0.5.3"
+      - name: Generate exactly one real local model response, no project files
+        run: |
+          .nf-real-qwen-venv/bin/python -B bridge/neurofactory/providers/real_qwen_cpu_probe.py
