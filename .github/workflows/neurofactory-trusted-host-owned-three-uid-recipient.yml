@@ -71,7 +71,7 @@ jobs:
           python3 -m venv /tmp/nf-os-recipient-venv
           /tmp/nf-os-recipient-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" cryptography==46.0.3
           mkdir -p /tmp/nf-ipc-source
-          for name in offline_operator_anchor.py offline_owner_grant_admission.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_recipient_protected_journal.py offline_external_effect_witness.py offline_kernel_reboot_evidence.py offline_cas.py offline_effect_reservation.py; do
+          for name in offline_operator_anchor.py offline_owner_grant_admission.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_recipient_protected_journal.py offline_external_effect_witness.py offline_mtls_witness_transport.py offline_kernel_reboot_evidence.py offline_cas.py offline_effect_reservation.py; do
             cp "bridge/neurofactory/trusted_host/$name" /tmp/nf-ipc-source/
           done
           cp .nf_core_pinned/bridge/neurofactory/development/core_owned/one_task_core.py /tmp/nf-ipc-source/
@@ -79,4 +79,4 @@ jobs:
       - name: Verify isolated recipient alone can write approved scratch file and cannot replay it
         run: |
           git rev-parse HEAD
-          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-os-recipient-venv/bin/python /tmp/nf-os-recipient-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_os_separated_effect_receiver.py' -v
+          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-os-recipient-venv/bin/python /tmp/nf-os-recipient-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_os_separated_effect_receiver.py' -k external_mtls_v3_ -v
