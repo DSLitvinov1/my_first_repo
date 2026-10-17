@@ -199,6 +199,21 @@ class SQLSignedEffectsE2E(unittest.TestCase):
         # DBA could instead reinsert matching old data: SQL-only check is
         # NOT an off-host monotonic proof; never return effect authority.
 
+    def test_identical_old_sql_snapshot_cannot_be_mistaken_for_real_witness(self):
+        # A privileged DBA can DELETE+restore all SQL rows, preserving old
+        # signed scope values. The signature and SQL match again, but that
+        # cannot prove off-machine monotonic witness state or authorise effect.
+        self.db.execute("TRUNCATE nf_trusted_host.effect_receipt")
+        self._insert_only_receipt()
+        result=self.admit()
+        self.assertEqual(result["status"],
+                         "PINNED_SIGNATURES_AND_LIVE_SQL_MATCH_NO_EFFECT_AUTHORITY")
+        self.assertFalse(result["durable_witness_actually_rechecked_out_of_band"])
+        self.assertFalse(result["db_rollback_protection_confirmed"])
+        self.assertFalse(result["production_effect_authorized"])
+        self.assertFalse(result["automatic_retry_allowed"])
+        print("NF_SQL_RESTORE_MATCH_STILL_NO_PRODUCTION_EFFECT=PASS")
+
     def test_forged_or_unsigned_owner_denied_even_if_sql_is_current(self):
         p=dict(self.four.packets)
         changed=dict(p["owner"])
