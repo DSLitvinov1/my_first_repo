@@ -35,17 +35,17 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: b5c26799ca313c9224b857d1837a590d13c533ff
+          ref: 88908ec6e8f8ded1e6add59f24ca53f613f715e0
           path: _receiver_audit_source/coordinator
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 05ab48bf5b04818df2b632906886610587cad642
+          ref: a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff
           path: _receiver_audit_source/coordinator/_e2e_fixture/core
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 6bb33d4cdaa26abee6b6f9961b9f1ff5e546ba4e
+          ref: e13c97db92e736d41262412632d2abc2197526ba
           path: _receiver_audit_source/coordinator/_e2e_fixture/host
           persist-credentials: false
       - name: Isolated crypto and database client
