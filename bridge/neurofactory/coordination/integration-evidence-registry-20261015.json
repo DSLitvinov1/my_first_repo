@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOST_FSYNC_RECEIVER_AND_CORE_ROUTE_REAL_TESTED_15_PLUS_9_RELEASE_STILL_BLOCKED",
+      "status": "HOST_LEASE_LOCK_THROUGH_REAL_TEMP_EFFECT_16_GREEN_CORE_REPINNED_9_GREEN_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -248,10 +248,10 @@
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "03c844e01a00440794f13061652025d326f1f2a9",
+      "head": "a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff",
       "issue": 9,
       "owner": "CORE",
-      "status": "CORE_TO_HOST_REAL_SANDBOX_FILE_9_PASS_TEST_ONLY_NO_PROD_GUARD",
+      "status": "CORE_TO_REPINNED_HOST_LEASE_LOCKED_SINGLE_REAL_TEST_FILE_9_PASS_NONLIVE",
       "evidence": {
         "author_linux_host_smoke": {
           "run": 38662104225,
@@ -327,12 +327,12 @@
           "owner_branch": "neurofactory-core-queue-owned-20261013",
           "source": "bridge/neurofactory/development/core_owned/offline_receiver_client.py",
           "source_git_blob": "fffe9c513f3acc6e5d11e7baa26917648d6f9a4f",
-          "tests_git_blob": "57453cf4a6e7f0f950d0fcf3f299702fc5676abe",
-          "exact_executed_sha": "bb5ec473ff62e29ba75b69b88bedbde3f7d02b4a",
-          "exact_pinned_HOST_sha": "0c33d8181e102e2ca3f47559ae6abeb2f4b72757",
-          "document_sha": "03c844e01a00440794f13061652025d326f1f2a9",
-          "run": 39025759130,
-          "job": 117376302089,
+          "tests_git_blob": "8a74936ded5481a32e8e8a7ec5a4767971d10b1a",
+          "exact_executed_sha": "cd150b2aa2e50120b5d5a20bceef20f02265d22a",
+          "exact_pinned_HOST_sha": "1575812f75040d9f53435c652fc053adc487f5b7",
+          "document_sha": "a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff",
+          "run": 39026235993,
+          "job": 117377656333,
           "passed": 9,
           "failed": 0,
           "one_real_ephemeral_file_written": true,
@@ -555,12 +555,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "d7422cb599920de816ebcf94f2721dc26d0a5f32",
+      "head": "e13c97db92e736d41262412632d2abc2197526ba",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "REAL_TEMP_FILE_RECEIVER_FSYNC_IDEMPOTENCY_15_PASS_NONLIVE_UNPROTECTED_ROOT",
+      "status": "DISPOSABLE_EFFECT_RECEIVER_CENTRAL_LEASE_LOCK_THROUGH_FSYNC_16_PASS_NOT_REAL_ROOT",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -706,13 +706,13 @@
         "offline_receiver_real_file": {
           "owner_branch": "neurofactory-trusted-host-owned-20261015",
           "source": "bridge/neurofactory/trusted_host/offline_fenced_file_receiver.py",
-          "source_git_blob": "96739ec56183aca55b4102c4d0bb5cc6f3dabc9c",
-          "tests_git_blob": "577c88638044042dc162a72aeb5edb79554bd7ee",
-          "executed_sha": "0c33d8181e102e2ca3f47559ae6abeb2f4b72757",
-          "evidence_doc_sha": "d7422cb599920de816ebcf94f2721dc26d0a5f32",
-          "run": 39025550761,
-          "job": 117375710353,
-          "passed": 15,
+          "source_git_blob": "3e9949e733c67c99e55a7513b24c6093bc3e530e",
+          "tests_git_blob": "16aaea959f6dd61ecb0fb8037fc609271959183c",
+          "executed_sha": "1575812f75040d9f53435c652fc053adc487f5b7",
+          "evidence_doc_sha": "e13c97db92e736d41262412632d2abc2197526ba",
+          "run": 39026180709,
+          "job": 117377501220,
+          "passed": 16,
           "failed": 0,
           "earlier_red_run": 39025499816,
           "red_reason": "shared class DB connection closed by outage testcase; per-test db setup fixed",
@@ -728,7 +728,10 @@
           "OS_principal_separated": false,
           "production_authenticated_cas": false,
           "live_deployment": false,
-          "external_independent_review": false
+          "external_independent_review": false,
+          "current_pg_lease_row_lock_held_through_effect": true,
+          "concurrent_pg_revocation_statement_timeout_expected": true,
+          "previous_green_before_toctou_hardening": 39025550761
         }
       },
       "blockers": [
@@ -815,11 +818,11 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST #14: real separately authorized issuer and protected key/owner ACL, independently fixed off-DB antirollback highwater and authenticated HTTPS central CAS, OS-principalled receiver with durable effect fences; TEST_ONLY receiver is not a live signed authority",
-    "CORE #9: integrate production forced authenticated receiver check on all actual filesystem writes only after protected HOST service/identity is proven; retain permanently disabled legacy direct writer",
-    "REVIEW #11: newly request exact code independent negative tests for HOST receiver 96739ec... and CORE wrapper fffe9c... pinned runners #39025550761 #39025759130, with reviewer other than same credentials for release",
-    "Two actually different authorized physical machines, live source owner verification, real free local Qwen with resource budget and safe backup-restore drills are still not demonstrated",
-    "UI displays local imported readonly advisory cards; protected viewer RBAC+live API not deployed. HANDOFF PAUSED; no merge paid APIs or publication."
+    "REAL HOST owner and real custodial signer: independent operator/owner/repo credentials, separate OS principals, protected persistent signing key, external antirollback highwater, authenticated HTTPS epoch+fence API; no production install or key disclosure without permission",
+    "CORE production receiver: secure authenticated current lease and idempotency at ALL side-effect entrypoints, OS-protected destination, fail closed when HOST unavailable/UNKNOWN, old apply_offline_test remains permanently disabled",
+    "REVIEW distinct separately authorized auditor: independent negative tests against HOST effect receiver exact source blob 3e9949e... + CORE client blob fffe9c..., new 16 and 9 host-run evidence, TOCTOU lease revocation and crash/replay",
+    "Test 2 truly distinct explicitly authorized physical computers; only after secured HOST approvals perform one no-model operation, external review of receipts and failover",
+    "Local Qwen resource check, OPS backup restore, actual backend UI RBAC and project auto intake all after safe foundation; HANDOFF PAUSED, no PR merges/paid APIs/publishing"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
