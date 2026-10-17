@@ -78,6 +78,28 @@ class ProjectionTests(unittest.TestCase):
             report=json.loads(output.getvalue())
             self.assertEqual((report["schema"],len(report["lanes"])),(2,10))
 
+    def test_v2_pinned_snapshot_displays_blocked_trusted_host(self):
+        fixture=Path(__file__).with_name("mvp_status_snapshot_v2_20261018.json")
+        rows=read_fixture(fixture)
+        report=projection_v2(rows)
+        self.assertEqual(report["schema"],2)
+        self.assertEqual(len(report["lanes"]),10)
+        self.assertEqual(len(rows),8)
+        host=next(x for x in report["lanes"] if x["lane"]=="TRUSTED_HOST")
+        self.assertEqual(host["reported_phase"],"blocked")
+        self.assertEqual(host["commit"],"02972424eefabcd61d21100611e3eace4c6c3d5e")
+        self.assertEqual(host["evidence_status"],"not_verified")
+        self.assertIs(host["release_allowed"],False)
+        self.assertTrue(all(x["release_allowed"] is False for x in report["lanes"]))
+        self.assertEqual(report["provenance"],"self_reported_git_refs_not_attested")
+        self.assertIs(report["external_execution_allowed"],False)
+        self.assertIs(report["external_publication_allowed"],False)
+        self.assertIs(report["automatic_retry_allowed"],False)
+        self.assertEqual(report["cost_authorized_usd"],0)
+        self.assertEqual(next(x for x in report["lanes"] if x["lane"]=="REVIEW")["reported_phase"],"unknown")
+        handoff=next(x for x in report["lanes"] if x["lane"]=="HANDOFF")
+        self.assertEqual(handoff["reported_phase"],"paused")
+
     def test_duplicate_lane_rejected(self):
         with self.assertRaises(InvalidSnapshot): projection([sample(), sample()])
     def test_spoofed_release_denied(self):
