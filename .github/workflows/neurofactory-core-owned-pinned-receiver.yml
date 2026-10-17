@@ -39,7 +39,7 @@ jobs:
       - name: Pin tested HOST source checkout
         uses: actions/checkout@v4
         with:
-          ref: 0c33d8181e102e2ca3f47559ae6abeb2f4b72757
+          ref: 1575812f75040d9f53435c652fc053adc487f5b7
           path: .nf_pinned_host
           persist-credentials: false
       - name: Install test-only isolated dependencies
