@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOST_NON_DB_DURABLE_4_PASS_OWNER_KEY_FIXTURE_6_PASS_GLOBAL_RELEASE_BLOCKED",
+      "status": "REAL_GITHUB_ADMIN_CHECKED_OWNER_SIGNATURE_FINAL_RECIPIENT_FIXTURE_5PASS_CORE_13PASS_E2E_1PASS_RECOVERY_1PASS_LIVE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -248,10 +248,10 @@
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "4a068968d5a34d0f7998b7da4d22640160b90b23",
+      "head": "beb08eff32923d8ca364aabfde0458f380acf8e7",
       "issue": 9,
       "owner": "CORE",
-      "status": "REAL_CORE_GIT_SQLITE_TO_THREE_OS_UID_HOST_QWEN_PREVIOUS_REAL_CODE_10_PASS_OFFLINE",
+      "status": "SIGNED_OWNER_GRANT_REQUIRED_IN_OFFLINE_RECEIVER_CLIENT_CORE_GIT_SQLITE_E2E_1_GREEN",
       "evidence": {
         "author_linux_host_smoke": {
           "run": 38662104225,
@@ -363,6 +363,24 @@
           "physical_two_machines_tested": false,
           "independent_external_review": false,
           "doc": "bridge/neurofactory/development/core_owned/CORE_OS_PROTECTED_RECEIVER_QWEN_E2E_EVIDENCE_20261017_RU.md"
+        },
+        "core_owner_signed_unix_route_20261017": {
+          "source_blob": "417f7c1713c8333ff10a79962aafecf87a863cff",
+          "test_blob": "09a6ed2f77b137830c6089d61b677ed098c61d25",
+          "targeted_run": 39066623324,
+          "targeted_job": 117495541151,
+          "tested_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+          "modified_scope_negative_tests_pass": 13,
+          "combined_real_core_git_sqlite_host_run": 39066701612,
+          "combined_real_core_git_sqlite_host_job": 117495769458,
+          "combined_tested_host_sha": "941eb52f944b706c78106def584c087a661212af",
+          "combined_new_test_pass": 1,
+          "real_model_generation_reused_prior_exact_sha": "a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe",
+          "own_core_direct_local_writer_reenabled": false,
+          "owner_signature_cryptographic_verification_delegated_to_pinned_signer": true,
+          "user_file_written": false,
+          "live_owner_enrolled": false,
+          "independent_human_review": false
         }
       },
       "blockers": [
@@ -632,12 +650,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "e9a3685a22cd95cd83cb9f48d24996ccdd3524c4",
+      "head": "0d17c08e68802e1be34445ac4eeefb766e826345",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OS_UID_RECEIVER_PROTECTED_DURABLE_NON_PG_UNKNOWN_RACE_4_GREEN_SIGNER_PINNED_OWNER_KEY_6_GREEN_NO_REAL_OWNER",
+      "status": "MANDATORY_EXACT_OWNER_SIGNATURE_ENFORCED_AT_FINAL_OS_RECEIVER_FIXTURE_5_GREEN_PG_RESTART_1_GREEN_NO_REAL_KEY_ENROLLMENT",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -956,6 +974,43 @@
           "handoff_activated": false,
           "operational_status": "REJECT_LIVE",
           "evidence": "bridge/neurofactory/trusted_host/PROTECTED_JOURNAL_AND_OWNER_KEY_EVIDENCE_20261017_RU.md"
+        },
+        "mandatory_owner_signed_final_recipient_20261017": {
+          "recipient_source_blob": "823a808347414c77c83bf8c91b9211ce5bd2a16f",
+          "signer_ipc_source_blob": "e2b5c2e6218b55f50ff8e61d0e538fecc91f7327",
+          "signer_gate_source_blob": "69252e0f5eba806095570c739deea77aab55ff06",
+          "pre_pinned_owner_grant_source_blob": "fbe8a1f1d00c07e94f80d48bb8289b64887c85bc",
+          "owner_grant_e2e_source_test_blob": "0e535c028c61e4e7133b2f9f8e01e07218a90478",
+          "new_valid_owner_and_negative_tests_run": 39066486281,
+          "owner_e2e_exact_tested_sha": "1185bad7ae01be067e0ec5b39df4744a60a7540c",
+          "owner_e2e_pass": 5,
+          "owner_missing_denied_before_any_journal": true,
+          "owner_forged_signature_denied": true,
+          "owner_signed_other_repo_denied": true,
+          "owner_expired_denied": true,
+          "one_owner_scope_gated_sandbox_file_fsynced": true,
+          "real_owner_enrolled": false,
+          "signer_operator_owned_pinned_public_key_fixture": true,
+          "real_github_owner_login": "DSLitvinov1",
+          "github_account_repo_admin_permission_confirmed": [
+            "DSLitvinov1/my_first_repo",
+            "DSLitvinov1/lesson3.1"
+          ],
+          "github_current_rights_evidence_type": "connected GitHub repository collaborator permission API; not owner signature proof",
+          "external_real_owner_public_key_bound_to_github_identity": false,
+          "reboot_process_db_rollback_run": 39067031249,
+          "reboot_process_exact_host_test_sha": "4fd218533092176958a5f806f5ed15af10d561ea",
+          "reboot_process_targeted_tests_pass": 1,
+          "signer_and_recipient_PROCESS_restarted": true,
+          "database_receipt_deleted_replay_denied": true,
+          "physical_machine_reboot_verified": false,
+          "full_vm_snapshot_rollback_denied": false,
+          "two_distinct_authorized_physical_computers_tested": false,
+          "outside_vm_monotonic_root_pinned": false,
+          "independent_authorized_review": false,
+          "live_release_allowed": false,
+          "evidence_doc": "bridge/neurofactory/trusted_host/MANDATORY_OWNER_SIGNATURE_IN_FINAL_RECIPIENT_EVIDENCE_20261017_RU.md",
+          "operator_runbook": "bridge/neurofactory/trusted_host/OWNER_REPO_SIGNER_RECOVERY_OPERATOR_RUNBOOK_20261017_RU.md"
         }
       },
       "blockers": [
@@ -1042,12 +1097,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "P0: obtain operator-verified REAL owner_id/repo-admin authorization out of band and pin owner key before enabling mandatory per-task owner signature at OS-effect receiver; present cryptographic 6/6 fixture is NOT real identity proof",
-    "P0: establish durable externally pinned trust root and protected ledger beyond shared single VM/root rollback; snapshot/power-loss recovery, independent machine-bound OS auth and real central PostgreSQL lease arbiter",
-    "P0: REJECT LIVE remains: only 1 connected user Windows machine listed; GitHub-hosted 3 Linux UIDs are ONE ephemeral host, two distinct authorized physical PCs not jointly exercised",
-    "P0: independent authorized REVIEW #11 must verify new exact HOST blobs 578e... db8a... fa9e... fbe8... on tested 4/4 SHA e23d9a... and 6/6 SHA f42f69...; comments aren't human signed verdict",
-    "P1: genuine Qwen generated Python verified 8 pure tests #39063107445, archived output validated in genuine CORE to OS-protected HOST #39064047131, but a FRESH Qwen in current centrally authenticated same live lease not done; current 0.5B backend not admitted",
-    "P1: OPS live backup restore/physical reboot and UI live auth remain unproven; no paid API, no merge, no HANDOFF, no production queue"
+    "P0: Real operator must bind ACTUAL authenticated owner GitHub login DSlitvinov1/repo ID/admin permission to durable owner Ed25519 key by out-of-band signed challenge, store sealed signer identity with hardware/external monotonic root; synthetic owner key currently only CI",
+    "P0: Mandatory signed owner permit now enforced at isolated TEST receiver and CORE forwards it; production receiver service not deployed on owner-approved separate protected OS domain, old fixture APIs remain test-only",
+    "P0: prove real machine hard reboot/backup and whole-VM snapshot rollback resistance using outside-VM append-only highwater; latest validated only separate signer/receiver PROCESS restarts after PG journal removal and one host CI",
+    "P0: physically two different explicitly authorized machines and independent external human REVIEW exact source SHA needed; no third-party signoff in submitted GitHub PR15 reviews",
+    "P1: fresh Qwen Qwen2.5-0.5B proven generated one Python function 8 cases prior GH #39063107445, bytes reused in host integration but not yet new generation in one current central lease/authorized provider allowlist",
+    "P1: remain no paid API/no production queue/no HANDOFF/no merge/no user OS modification"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
