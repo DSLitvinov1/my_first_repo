@@ -58,16 +58,17 @@ class OperatorGatedTests(TestCase):
             independently_pinned_public_sha="e"*64,
             independently_pinned_public_b64="test_public_key_fixture")
     def call(self,*,report=None,packet=None,data=CONTENT,side_effect=None):
-        with patch("offline_operator_gated_receiver.client_send",
+        socket_patch=patch("offline_operator_gated_receiver.client_send",
                    side_effect=side_effect,
-                   return_value=self.expected_report if report is None else report
-                   ) as ipc:
-            with patch.object(OfflineFencedFileReceiver,"write_fixture_once",
-                              return_value=self.underlying) as filewriter:
-                fn=lambda:self.guard.apply_fixture_with_operator_witness_once(
-                    signed_packet=self.packet if packet is None else packet,
-                    witness=self.witness,content=data)
-                return fn,ipc,filewriter
+                   return_value=self.expected_report if report is None else report)
+        ipc=socket_patch.start();self.addCleanup(socket_patch.stop)
+        writer_patch=patch.object(OfflineFencedFileReceiver,"write_fixture_once",
+                                  return_value=self.underlying)
+        filewriter=writer_patch.start();self.addCleanup(writer_patch.stop)
+        fn=lambda:self.guard.apply_fixture_with_operator_witness_once(
+            signed_packet=self.packet if packet is None else packet,
+            witness=self.witness,content=data)
+        return fn,ipc,filewriter
     def test_scope_consented_still_nonlive_and_routes_exact_one_effect(self):
         fn,ipc,writer=self.call()
         r=fn()
