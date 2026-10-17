@@ -5,7 +5,7 @@ cannot traverse or write the private receiver-owned root or receiver config.
 ONLY nf_effect OS UID invokes the actual O_EXCL/PG-fenced test file receiver.
 All accounts, credentials, keys, DB and files are disposable synthetic CI.
 """
-import base64, hashlib, json, os, subprocess, tempfile, time, unittest
+import base64, hashlib, json, os, socket, subprocess, tempfile, time, unittest
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -169,6 +169,7 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
            "NF_HOST_RECEIVER_FIXTURE_ONLY=1",
            "NF_OPERATOR_ANCHOR_FIXTURE_ONLY=1",
            "NF_RECEIVER_OS_FIXTURE_ONLY=1",
+           "NF_MTLS_WITNESS_TEST_ONLY=1",
            "NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH="+("1" if crash_after_fsync else "0"),
            "PYTHONPATH="+str(STAGE),PY,str(RECEIVER_SERVER),
            str(self.receiver_config)],
@@ -722,6 +723,112 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.witness_process.wait(timeout=3)
         self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
         self.assertEqual(self._witness_count(),1)
+
+    def _configure_mtls_loopback_witness(self,*,wrong_server_pin=False):
+        from test_offline_mtls_witness_transport import _key,_certificate,_pemkey,_sha
+        from cryptography.hazmat.primitives import serialization as ser
+        self._external_witness_fixture()
+        ca=_key();server_key=_key();client_key=_key()
+        self.mtls_ca=self.root/"test-mtls-ca.pem"
+        self.mtls_server_cert=self.root/"test-server-cert.pem"
+        self.mtls_client_cert=self.root/"test-client-cert.pem"
+        cacert=_certificate(ca,"NF temporary fixture CA",
+                             "NF temporary fixture CA",ca,ca=True)
+        srvcert=_certificate(server_key,"nf-witness.test",
+                             "NF temporary fixture CA",ca)
+        clicert=_certificate(client_key,"nf-receiver.test",
+                             "NF temporary fixture CA",ca,client=True)
+        self.mtls_ca.write_bytes(cacert.public_bytes(ser.Encoding.PEM))
+        self.mtls_server_cert.write_bytes(srvcert.public_bytes(ser.Encoding.PEM))
+        self.mtls_client_cert.write_bytes(clicert.public_bytes(ser.Encoding.PEM))
+        self.mtls_server_key=self.witness_store/"mtls-server-key.pem"
+        self.mtls_client_key=self.receiver_config/"mtls-client-key.pem"
+        for who,path,raw in (
+            ("nf_witness",self.mtls_server_key,_pemkey(server_key)),
+            ("nf_effect",self.mtls_client_key,_pemkey(client_key))):
+            w=subprocess.run(["sudo","-n","-u",who,PY,"-c",
+                        self.saver,str(path)],input=raw,
+                        capture_output=True,timeout=7)
+            self.assertEqual(w.returncode,0,w.stderr[:300])
+        getpub=("import base64,sys;from cryptography.hazmat.primitives "
+               "import serialization;from offline_external_effect_witness "
+               "import keypair,pin_private_dir;"
+               "key=keypair(pin_private_dir(sys.argv[1]));"
+               "print(base64.b64encode(key.public_key().public_bytes("
+               "serialization.Encoding.Raw,serialization.PublicFormat.Raw)).decode())")
+        pub=run_uid("nf_witness","-c",getpub,self.witness_store)
+        self.assertEqual(pub.returncode,0,pub.stderr)
+        with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1",0))
+            self.mtls_port=sock.getsockname()[1]
+        cfg=dict(self.config)
+        cfg.update(schema="neurofactory.os_separated_recipient.mtls_loopback_fixture.v3",
+          witness_host="127.0.0.1",witness_port=self.mtls_port,
+          witness_client_cert=str(self.mtls_client_cert),
+          witness_client_key=str(self.mtls_client_key),
+          witness_ca_cert=str(self.mtls_ca),
+          witness_server_cert_sha256=("0"*64 if wrong_server_pin else
+                      _sha(srvcert.public_bytes(ser.Encoding.DER))),
+          witness_public_base64=pub.stdout.strip())
+        cfgfile=self.receiver_config/"receiver.json"
+        removed=run_uid("nf_effect","-c",
+            "from pathlib import Path;import sys;Path(sys.argv[1]).unlink()",cfgfile)
+        self.assertEqual(removed.returncode,0,removed.stderr)
+        self.private_write("nf_effect",cfgfile,cfg)
+    def _start_mtls_loopback_witness(self,*,drop=False):
+        source=STAGE/"offline_mtls_witness_transport.py"
+        self.witness_process=subprocess.Popen([
+            "sudo","-n","-u","nf_witness","env",
+            "NF_WITNESS_ISOLATED_TEST_ONLY=1",
+            "NF_MTLS_WITNESS_TEST_ONLY=1",
+            "NF_WITNESS_SIMULATE_CRASH_BEFORE_ACK="+("1" if drop else "0"),
+            "PYTHONPATH="+str(STAGE),PY,str(source),"test-serve-once",
+            str(self.witness_store),str(self.mtls_port),
+            str(self.mtls_server_cert),str(self.mtls_server_key),
+            str(self.mtls_ca),
+            self._mtls_client_fingerprint()],stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,text=True)
+        time.sleep(.22)
+        self.assertIsNone(self.witness_process.poll(),"temporary witness exited before connection")
+    def _mtls_client_fingerprint(self):
+        from cryptography import x509
+        from cryptography.hazmat.primitives import serialization as ser
+        return hashlib.sha256(x509.load_pem_x509_certificate(
+            self.mtls_client_cert.read_bytes()).public_bytes(ser.Encoding.DER)).hexdigest()
+    def test_external_mtls_v3_final_file_and_reverted_local_receipt_no_repeat(self):
+        self._configure_mtls_loopback_witness()
+        self._start_mtls_loopback_witness()
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
+        original=self.hash_file_from_recipient_uid()
+        self.fx.db.execute("DELETE FROM nf_receiver_effect_journal")
+        removed=run_uid("nf_effect","-c",
+          "import shutil,sys;from pathlib import Path;"
+          "Path(sys.argv[1]).unlink();shutil.rmtree(sys.argv[2])",
+          self.fx.root/TARGET,self.receiver_config/"nf-protected-effect-journal")
+        self.assertEqual(removed.returncode,0,removed.stderr)
+        self.assertNotEqual(original,"")
+        self._start_mtls_loopback_witness()
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
+        print("NF_V3_MTLS_SIGNER_TO_WITNESS_TRUE_FILE_ONCE_LOCAL_ROLLBACK_DENIED",flush=True)
+    def test_external_mtls_v3_lost_confirmation_never_writes_file(self):
+        self._configure_mtls_loopback_witness()
+        self._start_mtls_loopback_witness(drop=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+    def test_external_mtls_v3_unpinned_server_key_denies_before_effect(self):
+        self._configure_mtls_loopback_witness(wrong_server_pin=True)
+        self._start_mtls_loopback_witness()
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),0)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
 if __name__=="__main__":unittest.main()
