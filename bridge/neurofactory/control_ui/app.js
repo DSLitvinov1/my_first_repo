@@ -1,11 +1,11 @@
 "use strict";
 /* Read-only local browser UI. Data never leaves this document. */
 (() => {
-  const NAMES = {dashboard:"Главная панель",projects:"Проекты",queue:"Очередь заданий",workers:"Исполнители",errors:"Ошибки и блокировки",checkpoints:"Контрольные точки",reviews:"Независимая проверка",task:"Карточка задания",new:"Новый проект"};
-  const ICONS = {dashboard:"▦",projects:"▱",queue:"☷",workers:"♙",errors:"△",checkpoints:"◷",reviews:"◇",task:"▤",new:"＋"};
+  const NAMES = {dashboard:"Главная панель",inbox:"Входящие задания",projects:"Проекты",queue:"Очередь заданий",workers:"Исполнители",errors:"Ошибки и блокировки",checkpoints:"Контрольные точки",reviews:"Независимая проверка",task:"Карточка задания",new:"Новый проект"};
+  const ICONS = {dashboard:"▦",inbox:"✉",projects:"▱",queue:"☷",workers:"♙",errors:"△",checkpoints:"◷",reviews:"◇",task:"▤",new:"＋"};
   const LANES = ["CORE","PROVIDERS","COORDINATOR","REVIEW","OPS","SKILLS","UI","HANDOFF","GODMODE"];
   const PHASE = {unknown:"Неизвестно",candidate:"Кандидат",implementation:"Разработка",testing:"Тестирование",waiting_dependency:"Ожидает зависимость",waiting_review:"Ожидает проверку",blocked:"Заблокировано",paused:"На паузе"};
-  const state = {page:"dashboard",mode:"demo",bundle:structuredClone(window.NF_DEMO),candidates:[],query:"",taskId:null};
+  const state = {page:"dashboard",mode:"demo",bundle:structuredClone(window.NF_DEMO),candidates:[],inbox:null,query:"",taskId:null};
   const $ = id => document.getElementById(id);
   const root = $("main-content");
   function node(tag, cls, content) { const n=document.createElement(tag); if(cls)n.className=cls;if(content!==undefined)n.textContent=String(content);return n; }
@@ -101,6 +101,58 @@
   function goButton(text,to){const b=node("button","outline-btn",text);b.type="button";b.addEventListener("click",()=>navigate(to));return b;}
   function laneKind(phase){return phase==="paused"||phase==="blocked"?"block":phase==="waiting_review"||phase==="waiting_dependency"?"wait":"unknown";}
   function laneRows(parent,items){const rows=add(parent,node("div","rows"));for(const item of items){const r=add(rows,node("div","item-row")),left=add(r,node("div","left-meta"));add(left,node("div","icon-tile",item.lane.slice(0,1)));const meta=add(left,node("div"));add(meta,node("div","item-title",item.lane));add(meta,node("div","item-meta",item.commit?compact(item.commit,18):"Источник не указан"));add(r,pill(PHASE[item.reported_phase]||"Неизвестно",laneKind(item.reported_phase)));}}
+  function validateInbox(x){
+    if(!exact(x,["schema","kind","cards","has_more","next_before_rowid","live_execution_allowed","approval_from_snapshot_allowed","queue_write_allowed","handoff"])
+      ||x.schema!=="neurofactory.coordination.advisory_cards.v1"
+      ||x.kind!=="READ_ONLY_UNVERIFIED_UI_DATA"
+      ||!Array.isArray(x.cards)||x.cards.length>50
+      ||typeof x.has_more!=="boolean"
+      ||(x.next_before_rowid!==null&&(!Number.isSafeInteger(x.next_before_rowid)||x.next_before_rowid<1))
+      ||(x.has_more&&x.next_before_rowid===null)||(!x.has_more&&x.next_before_rowid!==null)
+      ||x.live_execution_allowed!==false||x.approval_from_snapshot_allowed!==false
+      ||x.queue_write_allowed!==false||x.handoff!=="PAUSED_BY_USER")deny();
+    const keys=["event_key","repository","project_id","kind","mode","profile",
+      "advisory_status","description","created_at","authentic_owner_approval_verified",
+      "execution_allowed","queue_write_allowed","publication_allowed","paid_api_allowed"];
+    const ids=new Set();
+    for(const c of x.cards){
+      if(!exact(c,keys)||typeof c.event_key!=="string"
+        ||!/^[A-Za-z0-9_.:\/-]{3,300}$/.test(c.event_key)||ids.has(c.event_key)
+        ||typeof c.repository!=="string"||!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(c.repository)
+        ||(c.project_id!==null&&(typeof c.project_id!=="string"||!/^[a-z][a-z0-9-]{2,39}$/.test(c.project_id)))
+        ||!["TASK_CREATED","PROJECT_CREATED"].includes(c.kind)
+        ||!["MANUAL","SEMI_AUTOMATIC","AUTOMATIC"].includes(c.mode)
+        ||!["web","telegram","crm","analysis","general"].includes(c.profile)
+        ||!["PENDING_OWNER_APPROVAL","ADVISORY_READY_NO_EXECUTION"].includes(c.advisory_status)
+        ||typeof c.description!=="string"||new TextEncoder().encode(c.description).length>240
+        ||c.description.length===0||/[\x00-\x1F\x7F]/.test(c.description)
+        ||typeof c.created_at!=="string"||c.created_at.length<10||c.created_at.length>40
+        ||c.authentic_owner_approval_verified!==false
+        ||c.execution_allowed!==false||c.queue_write_allowed!==false
+        ||c.publication_allowed!==false||c.paid_api_allowed!==false)deny();
+      ids.add(c.event_key);
+    }
+    return x;
+  }
+  function inbox(){
+    headline("Входящие задания","Только импорт подписанной локальной проекции координатора. Без исполнения.");
+    warning();
+    const c=card(root,"Карточки новых проектов и задач","НЕТ РАЗРЕШЕНИЯ НА ИСПОЛНЕНИЕ");
+    if(!state.inbox)return empty(c,"Снимок не загружен","Используйте «Импорт заданий» для файла проверенного координатором локального отчёта.");
+    kv(c,"Карточек в импортированном снимке",state.inbox.cards.length);
+    kv(c,"Дополнительные страницы",state.inbox.has_more?"Есть — загрузите другой снимок вручную":"Нет");
+    if(!state.inbox.cards.length)return empty(c,"Нет карточек в снимке","Пустой локальный файл не подтверждает отсутствие реальных новых задач.");
+    for(const entry of state.inbox.cards){
+      const row=add(c,node("div","item-row")),meta=add(row,node("div","left-meta"));
+      add(meta,node("div","icon-tile","✉"));
+      const txt=add(meta,node("div"));
+      add(txt,node("div","item-title",entry.description));
+      add(txt,node("div","item-meta",entry.repository+" · "+(entry.project_id||"Проект не подключён")));
+      add(txt,node("div","item-meta","Источник не аттестован · "+entry.kind));
+      add(row,pill(entry.advisory_status==="PENDING_OWNER_APPROVAL"?"Ожидает разрешение":"Кандидат — без запуска",
+        entry.advisory_status==="PENDING_OWNER_APPROVAL"?"wait":"unknown"));
+    }
+  }
   function overview(){headline("Центр наблюдения","Единая точка обзора процессов и задач — без управления исполнением.");warning();const b=state.bundle,p=b.project_detail,m=add(root,node("div","metric-grid"));metric(m,"Направления",b.board.lanes.length,"Заявленные, не аттестованы","▦");metric(m,"Задания в снимке",p.queue.length,"Не реальная очередь","☷");metric(m,"Проверенные источники","0","Независимая аттестация отсутствует","◇");metric(m,"Доступные команды","0","Режим только для чтения","⊘");const cols=add(root,node("div","columns"));const left=add(cols,node("div")),right=add(cols,node("div"));let c=card(left,"Направления разработки","9 областей");laneRows(c,b.board.lanes.slice(0,6));add(c,navButton("Все направления →","projects"));c=card(right,"Состояние источников","Только заявленные данные");kv(c,"Windows-мост",p.bridge.display_state);kv(c,"Подтверждение очереди","NOT_VERIFIED");kv(c,"Независимая приёмка","Ожидается");kv(c,"Последний подтверждённый запуск в снимке","UNKNOWN");let inf=add(c,node("div","narrow-info"));add(inf,node("span",null,"ⓘ"));add(inf,node("span",null,"Даже совпавшие SHA не доказывают происхождение снимка."));c=card(right,"Контроль безопасности");kv(c,"Запуск моделей","Запрещён");kv(c,"Повтор / восстановление","Запрещены");kv(c,"Публикация / слияние","Запрещены");add(c,pill("HANDOFF PAUSED","block"));}
   function projects(){headline("Проекты и направления","Все статусы — сообщения из снимка, а не подтверждённая работа." );warning();const tb=add(root,node("div","toolbar"));const search=add(tb,node("input","search"));search.id="projects-search";search.type="search";search.placeholder="Поиск по направлениям";search.value=state.query;search.setAttribute("aria-label","Поиск проекта");add(tb,goButton("＋ Демо-проект","new"));const c=card(root,"Реестр направлений","Источники NOT_VERIFIED");const wrap=add(c,node("div","table-scroll"));const table=add(wrap,node("table")),thead=add(table,node("thead")),hr=add(thead,node("tr"));for(const s of ["Направление","Заявленная фаза","Доказательства","SHA"])add(hr,node("th",null,s));const tbody=add(table,node("tbody"));function fill(){tbody.replaceChildren();const items=state.bundle.board.lanes.filter(x=>x.lane.toLowerCase().includes(state.query.toLowerCase()));for(const x of items){const tr=add(tbody,node("tr"));add(tr,node("td","cell-main",x.lane));const t=add(tr,node("td"));add(t,pill(PHASE[x.reported_phase]||"UNKNOWN",laneKind(x.reported_phase)));add(tr,node("td",null,"NOT_VERIFIED"));add(tr,node("td","mono",compact(x.commit,14)));}for(const x of state.candidates.filter(x=>x.name.toLowerCase().includes(state.query.toLowerCase()))){const tr=add(tbody,node("tr"));add(tr,node("td","cell-main",x.name+" (локально)"));add(tr,node("td",null,"Кандидат"));add(tr,node("td",null,"Только память браузера"));add(tr,node("td",null,"—"));}if(!tbody.children.length){const tr=add(tbody,node("tr")),td=add(tr,node("td",null,"По запросу ничего не найдено"));td.colSpan=4;}}search.addEventListener("input",()=>{state.query=search.value;fill();});fill();}
   function queue(){headline("Очередь заданий","Отображается только содержимое локального снимка без исполнения.");warning();const c=card(root,"Задания","НЕ РЕАЛЬНАЯ ОЧЕРЕДЬ");const q=state.bundle.project_detail.queue;if(!q.length)return empty(c,"Нет подтверждённых записей","Пустой массив не подтверждает, что реальная очередь свободна.");for(const t of q){const r=add(c,node("div","item-row")),left=add(r,node("div","left-meta"));add(left,node("div","icon-tile","☷"));const meta=add(left,node("div"));add(meta,node("div","item-title",t.task_id));add(meta,node("div","item-meta","Заявлено: "+t.reported_state+" · checkpoint "+t.checkpoint.reported_state));const right=add(r,node("div","surface-buttons"));add(right,pill(t.display_state==="BLOCKED"?"BLOCKED":"UNKNOWN",t.display_state==="BLOCKED"?"block":"unknown"));add(right,navButton("Карточка →","task",t.task_id));}}
@@ -112,10 +164,20 @@
   function fresh(){headline("Создание демо-проекта","Локальная карточка-кандидат только в памяти вкладки. Никуда не отправляется.");warning();const c=card(root,"Новый учебный кандидат");c.classList.add("form-card");const note=add(c,node("div","callout","Этот экран ничего не создаёт в реальном «Нейрозаводе», GitHub или очереди. После перезагрузки вкладки локальные кандидаты исчезнут."));const form=add(c,node("form"));form.id="candidate-form";const f1=add(form,node("div","field"));const l1=add(f1,node("label",null,"Название проекта"));l1.htmlFor="candidate-name";const inp=add(f1,node("input"));inp.id="candidate-name";inp.name="name";inp.required=true;inp.maxLength=64;inp.placeholder="Например, Тестовый каталог";const f2=add(form,node("div","field")),l2=add(f2,node("label",null,"Описание"));l2.htmlFor="candidate-note";const ta=add(f2,node("textarea"));ta.id="candidate-note";ta.maxLength=300;ta.placeholder="Что планируется проверить в демонстрации";const b=add(form,node("button","primary-btn","Сохранить локального кандидата"));b.type="submit";form.addEventListener("submit",event=>{event.preventDefault();const name=inp.value.trim(),description=ta.value.trim();if(name.length<3){notify("Название: минимум 3 символа",true);return;}state.candidates.push({name,description});notify("Демо-кандидат сохранён только в памяти вкладки");state.query="";navigate("projects");});}
   function notify(message,bad=false){const t=$("toast");t.textContent=message;t.className="toast"+(bad?" bad":"");t.hidden=false;clearTimeout(notify.timeout);notify.timeout=setTimeout(()=>{t.hidden=true;},4200);}
   function navigate(name){if(!Object.hasOwn(NAMES,name))return;state.page=name;window.location.hash=name;render();window.scrollTo({top:0,behavior:"instant"});}
-  function render(){root.replaceChildren();$("crumb").textContent=NAMES[state.page];$("navigation").querySelectorAll("button").forEach(b=>{const active=b.dataset.route===state.page;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});const fn={dashboard:overview,projects,queue,workers,errors,checkpoints,reviews,task,new:fresh}[state.page];fn();}
+  function render(){root.replaceChildren();$("crumb").textContent=NAMES[state.page];$("navigation").querySelectorAll("button").forEach(b=>{const active=b.dataset.route===state.page;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});const fn={dashboard:overview,inbox,projects,queue,workers,errors,checkpoints,reviews,task,new:fresh}[state.page];fn();}
   function setup(){for(const [route,name] of Object.entries(NAMES)){const b=add($("navigation"),node("button","nav-link"));b.type="button";b.dataset.route=route;add(b,node("span","glyph",ICONS[route]));add(b,node("span",null,name));b.addEventListener("click",()=>navigate(route));}
     $("import-btn").addEventListener("click",()=> $("file-input").click());
-    $("reset-btn").addEventListener("click",()=>{state.bundle=structuredClone(window.NF_DEMO);state.mode="demo";state.candidates=[];state.query="";navigate("dashboard");notify("Демонстрация восстановлена. Сохранённых данных нет.");});
+    $("import-inbox-btn").addEventListener("click",()=> $("inbox-input").click());
+    $("inbox-input").addEventListener("change",async event=>{
+      const f=event.target.files?.[0];event.target.value="";if(!f)return;
+      if(f.size>128*1024){notify("Снимок заданий больше 128 КБ отклонён",true);return;}
+      try {
+        const parsed=validateInbox(strictParse(await f.text()));
+        state.inbox=parsed;navigate("inbox");
+        notify("Карточки импортированы только для чтения; запуск запрещён.");
+      } catch(error) {notify("Карточки отклонены: "+(error.message||"неверный JSON"),true);}
+    });
+    $("reset-btn").addEventListener("click",()=>{state.bundle=structuredClone(window.NF_DEMO);state.mode="demo";state.candidates=[];state.inbox=null;state.query="";navigate("dashboard");notify("Демонстрация восстановлена. Сохранённых данных нет.");});
     $("file-input").addEventListener("change",async event=>{const f=event.target.files?.[0];event.target.value="";if(!f)return;if(f.size>512*1024){notify("Снимок больше 512 КБ отклонён",true);return;}try{const raw=await f.text();const parsed=validate(strictParse(raw));state.bundle=parsed;state.mode="import";state.candidates=[];state.query="";navigate("dashboard");notify("Локальный снимок принят. Источник остаётся NOT_VERIFIED.");}catch(error){notify("Файл отклонён: "+(error.message||"некорректный JSON"),true);}});
     window.addEventListener("hashchange",()=>{const name=location.hash.slice(1);if(Object.hasOwn(NAMES,name)&&state.page!==name){state.page=name;render();}});
     state.page=Object.hasOwn(NAMES,location.hash.slice(1))?location.hash.slice(1):"dashboard";try{validate(state.bundle);}catch(e){root.textContent="Ошибка встроенного снимка: интерфейс заблокирован";return;}render();}
