@@ -203,4 +203,9 @@ class RealSignedOperatorBoundHostEffect(unittest.TestCase):
         self.assertNotEqual(res.returncode,0)
         self.assertEqual(self.fx.db.execute("SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
 
+def load_tests(loader, tests, pattern):
+    # BasePG is imported as a fixture helper, not a second unchanged test
+    # matrix. Target just the six new signer→HOST final-effect cases.
+    return loader.loadTestsFromTestCase(RealSignedOperatorBoundHostEffect)
+
 if __name__=="__main__":unittest.main()
