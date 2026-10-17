@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOST_V4_DOUBLE_SIGNED_WITNESS_SCOPE_15_PASS_TLS12_PASS_FILE4_PASS_FULL32_PASS_NO_REAL_BRIDGE_EXECUTION_RELEASE_BLOCKED",
+      "status": "P0_SIGNED_SCOPE_AT_REMOTE_WITNESS_15_12_4_32_GREEN_BRIDGE_QUOTA_WINDOWS_DIAG_QUEUED_NO_LIVE",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -650,7 +650,7 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "65b49716785cef2b6601521affcdd8a1eab25fba",
+      "head": "02972424eefabcd61d21100611e3eace4c6c3d5e",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
@@ -1128,7 +1128,15 @@
           "bridge_remote_execution_performed": false,
           "any_production_worker_started": false,
           "release_allowed": false,
-          "evidence": "bridge/neurofactory/trusted_host/DUAL_SIGNED_INDEPENDENT_WITNESS_AND_BRIDGE_EVIDENCE_20261018_RU.md"
+          "evidence": "bridge/neurofactory/trusted_host/DUAL_SIGNED_INDEPENDENT_WITNESS_AND_BRIDGE_EVIDENCE_20261018_RU.md",
+          "windows_selfhosted_readonly_diagnostic_run": 39074665194,
+          "windows_selfhosted_readonly_diagnostic_status": "QUEUED_NOT_EXECUTED",
+          "windows_bridge_readonly_workflow": ".github/workflows/neurofactory-host-windows-bridge-readonly.yml",
+          "windows_selfhosted_runner_confirmed": false,
+          "desktop_commander_monthly_quota_exceeded": true,
+          "bridge_execution_successfully_completed": false,
+          "host_evidence_latest_doc_commit": "02972424eefabcd61d21100611e3eace4c6c3d5e",
+          "production_end_to_end_validated": false
         }
       },
       "blockers": [
