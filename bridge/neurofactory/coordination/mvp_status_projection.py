@@ -11,6 +11,14 @@ from pathlib import Path
 import re
 
 LANES = ("CORE", "PROVIDERS", "COORDINATOR", "REVIEW", "OPS", "SKILLS", "UI", "HANDOFF", "GODMODE")
+# v2 is opt-in to avoid breaking existing nine-lane consumers.
+LANES_V2 = ("CORE", "TRUSTED_HOST", "PROVIDERS", "COORDINATOR", "REVIEW", "OPS", "SKILLS", "UI", "HANDOFF", "GODMODE")
+_HOST_EVIDENCE_URLS = frozenset((
+    "https://github.com/DSLitvinov1/my_first_repo/issues/14",
+    "https://github.com/DSLitvinov1/my_first_repo/pull/15",
+    "https://github.com/DSLitvinov1/my_first_repo/pull/17",
+    "https://github.com/DSLitvinov1/my_first_repo/pull/18",
+))
 PHASES = frozenset(("candidate", "implementation", "testing", "waiting_dependency",
                     "waiting_review", "blocked", "paused"))
 GITHUB = re.compile(r"^https://github\.com/DSLitvinov1/(?:my_first_repo|lesson3\.1)/(?:issues|pull)/[1-9][0-9]{0,8}$")
@@ -23,16 +31,24 @@ class InvalidSnapshot(ValueError):
     pass
 
 def projection(observations):
-    """Produce bounded user-visible statuses from untrusted, pinned metadata."""
-    if not isinstance(observations, list) or len(observations) > len(LANES):
+    """Legacy nine-lane v1 projection; retain compatibility."""
+    return _projection(observations, LANES, 1)
+
+def projection_v2(observations):
+    """Opt-in ten-lane read-only board, including critical TRUSTED_HOST."""
+    return _projection(observations, LANES_V2, 2)
+
+def _projection(observations, lanes, schema):
+    """Produce bounded advisory statuses from untrusted, pinned metadata."""
+    if type(observations) is not list or len(observations) > len(lanes):
         raise InvalidSnapshot("unexpected observation list")
     output = {lane: {
         "lane": lane, "reported_phase": "unknown", "evidence_status": "not_verified",
         "release_allowed": False, "commit": None, "issue_url": None, "source": None
-    } for lane in LANES}
+    } for lane in lanes}
     seen = set()
     for row in observations:
-        if not isinstance(row, dict) or set(row) != ALLOWED:
+        if type(row) is not dict or set(row) != ALLOWED:
             raise InvalidSnapshot("unknown or missing observation field")
         lane = row["lane"]
         if not isinstance(lane, str) or lane not in output or lane in seen:
@@ -47,6 +63,10 @@ def projection(observations):
             raise InvalidSnapshot("unsafe, unpinned or unverifiable observation")
         if url.split("/")[4] != repo.split("/")[1]:
             raise InvalidSnapshot("evidence repository mismatch")
+        if lane == "TRUSTED_HOST" and (
+            repo != "DSLitvinov1/my_first_repo" or url not in _HOST_EVIDENCE_URLS
+        ):
+            raise InvalidSnapshot("TRUSTED_HOST must cite its assigned issue or draft PR")
         if lane == "HANDOFF" and phase != "paused":
             raise InvalidSnapshot("HANDOFF must remain paused")
         output[lane] = {
@@ -55,7 +75,7 @@ def projection(observations):
             "release_allowed": False, "commit": sha,
             "issue_url": url, "source": {"repository": repo, "branch": branch}
         }
-    return {"schema": 1, "kind": "read_only_coordination_board",
+    return {"schema": schema, "kind": "read_only_coordination_board",
             "provenance": "self_reported_git_refs_not_attested", "cost_authorized_usd": 0,
             "external_execution_allowed": False, "external_publication_allowed": False,
             "automatic_retry_allowed": False, "lanes": list(output.values())}
@@ -81,8 +101,11 @@ def read_fixture(path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Generate read-only board from candidate snapshot")
     parser.add_argument("snapshot", type=Path)
+    parser.add_argument("--with-trusted-host", action="store_true",
+                        help="Opt in to ten-lane v2; nine-lane v1 remains the default")
     args=parser.parse_args(argv)
-    print(json.dumps(projection(read_fixture(args.snapshot)),ensure_ascii=False,sort_keys=True,indent=2))
+    renderer = projection_v2 if args.with_trusted_host else projection
+    print(json.dumps(renderer(read_fixture(args.snapshot)),ensure_ascii=False,sort_keys=True,indent=2))
 
 if __name__ == "__main__":
     main()
