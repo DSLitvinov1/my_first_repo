@@ -12,8 +12,8 @@ $ErrorActionPreference = 'Stop'
 $blockers = [System.Collections.Generic.List[string]]::new()
 $observedServices = [ordered]@{}
 
-$isWindows = $env:OS -eq 'Windows_NT'
-if (-not $isWindows) {
+$runningOnWindows = $env:OS -eq 'Windows_NT'
+if (-not $runningOnWindows) {
     $blockers.Add('WINDOWS_OS_NOT_PRESENT')
 }
 
@@ -26,7 +26,7 @@ foreach ($serviceName in $serviceNames) {
     $exists = $false
     $nonRoot = $false
     $accountKind = 'NOT_INSPECTED'
-    if ($isWindows) {
+    if ($runningOnWindows) {
         try {
             $svc = Get-CimInstance -ClassName Win32_Service -Filter ("Name='" + $serviceName + "'") -ErrorAction Stop
             if ($null -ne $svc) {
@@ -54,7 +54,7 @@ foreach ($serviceName in $serviceNames) {
 }
 
 $tpmPresent = $false
-if ($isWindows) {
+if ($runningOnWindows) {
     try {
         $tpm = Get-Tpm -ErrorAction Stop
         if ($null -ne $tpm) {
@@ -69,7 +69,7 @@ if (-not $tpmPresent) {
 }
 
 $protectedTrustStoreExists = $false
-if ($isWindows -and -not [string]::IsNullOrWhiteSpace($env:ProgramData)) {
+if ($runningOnWindows -and -not [string]::IsNullOrWhiteSpace($env:ProgramData)) {
     $protectedTrustStore = Join-Path $env:ProgramData 'Neurofactory\Trust'
     $protectedTrustStoreExists = Test-Path -LiteralPath $protectedTrustStore -PathType Container
 }
@@ -101,7 +101,7 @@ $report = [ordered]@{
     windows_instead_of_linux_allowed_by_architecture = $true
     linux_server_required_for_local_pilot = $false
     host_trust_boundary_required = $true
-    current_os_is_windows = $isWindows
+    current_os_is_windows = $runningOnWindows
     observed_service_state = $observedServices
     tpm_hardware_presence_only = $tpmPresent
     protected_trust_directory_present_only = $protectedTrustStoreExists
