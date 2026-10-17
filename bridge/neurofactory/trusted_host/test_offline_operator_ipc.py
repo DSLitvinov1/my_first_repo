@@ -70,7 +70,9 @@ class ReadOnlyIPCTests(unittest.TestCase):
                 raise AssertionError("signer IPC exited before bound socket: "+
                                      self.proc.stderr.read()[:150])
             time.sleep(0.04)
-        self.assertTrue(self.sock.exists())
+        self.assertEqual(subprocess.run(
+            ["sudo","-n","-u","nf_signer","test","-S",str(self.sock)],
+            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode,0)
     def call(self,user,req):
         p=self.base/"request.json"
         p.write_text(json.dumps(req),encoding="ascii")
