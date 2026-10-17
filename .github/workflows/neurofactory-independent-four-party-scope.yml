@@ -5,6 +5,8 @@ on:
     paths:
       - bridge/neurofactory/trusted_host/independent_four_party_scope.py
       - bridge/neurofactory/trusted_host/test_independent_four_party_scope.py
+      - bridge/neurofactory/trusted_host/operator_installed_public_pins.py
+      - bridge/neurofactory/trusted_host/test_operator_installed_public_pins.py
       - .github/workflows/neurofactory-independent-four-party-scope.yml
 permissions:
   contents: read
@@ -26,5 +28,8 @@ jobs:
       - name: Four external public keys signed owner scope and no release
         run: |
           .nf-four-party-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_independent_four_party_scope.py -v
+      - name: Validate four independently pinned root-owned identities fail closed
+        run: |
+          .nf-four-party-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_operator_installed_public_pins.py -v
       - name: Verify no modified files in working checkout
         run: git diff --exit-code
