@@ -79,6 +79,13 @@ CREATE TABLE IF NOT EXISTS nf_trusted_host.effect_receipt (
 CREATE OR REPLACE FUNCTION nf_trusted_host.reject_receipt_mutation()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER AS $$
 BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.status <> 'UNKNOWN' OR NEW.receiver_file_sha256 IS NOT NULL
+            OR NEW.completed_at IS NOT NULL THEN
+            RAISE EXCEPTION 'TRUSTED HOST receipt must first persist UNKNOWN';
+        END IF;
+        RETURN NEW;
+    END IF;
     IF TG_OP = 'DELETE' THEN
         RAISE EXCEPTION 'TRUSTED HOST receipt deletion denied, external witness required';
     END IF;
@@ -103,7 +110,7 @@ $$;
 
 DROP TRIGGER IF EXISTS nf_receipt_no_rewrite ON nf_trusted_host.effect_receipt;
 CREATE TRIGGER nf_receipt_no_rewrite
-BEFORE UPDATE OR DELETE ON nf_trusted_host.effect_receipt
+BEFORE INSERT OR UPDATE OR DELETE ON nf_trusted_host.effect_receipt
 FOR EACH ROW EXECUTE FUNCTION nf_trusted_host.reject_receipt_mutation();
 
 CREATE INDEX IF NOT EXISTS nf_host_lease_state_deadline
