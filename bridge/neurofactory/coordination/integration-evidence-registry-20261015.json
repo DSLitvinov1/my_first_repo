@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "REAL_TEMP_FILE_SIGNER_GATED_6_PASS_QWEN_PREVIOUS_REAL_OUTPUT_MAPPED_10_PASS_RELEASE_BLOCKED",
+      "status": "REAL_QWEN_8_TESTED_REAL_ONE_TASK_CORE_TO_THREE_OS_UID_PG_FILE_10_PASS_REJECT_LIVE",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -248,10 +248,10 @@
     },
     "CORE": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff",
+      "head": "4a068968d5a34d0f7998b7da4d22640160b90b23",
       "issue": 9,
       "owner": "CORE",
-      "status": "CORE_TO_REPINNED_HOST_LEASE_LOCKED_SINGLE_REAL_TEST_FILE_9_PASS_NONLIVE",
+      "status": "REAL_CORE_GIT_SQLITE_TO_THREE_OS_UID_HOST_QWEN_PREVIOUS_REAL_CODE_10_PASS_OFFLINE",
       "evidence": {
         "author_linux_host_smoke": {
           "run": 38662104225,
@@ -347,6 +347,22 @@
           "two_physical_machines_tested": false,
           "external_independent_review": false,
           "live_release_authorized": false
+        },
+        "core_unix_recipient_test_20261017": {
+          "module": "bridge/neurofactory/development/core_owned/offline_os_receiver_client.py",
+          "tested_module_sha": "2205354c39103612183cf4cc44f61e6f204137a0",
+          "new_policy_test_run": 39063596314,
+          "new_unit_tests_pass": 9,
+          "unit_test_scope": "simulated_CORE_and_mock_socket_transport_only",
+          "full_real_core_e2e_host_run": 39064047131,
+          "full_e2e_scope": "actual SQLite OneTaskCore Git source claim+OS-separated signer and receiver+PG real file",
+          "qwen_generated_sha256": "a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe",
+          "real_user_project_changed": false,
+          "legacy_direct_core_writer_reenabled": false,
+          "live_owner_signed_approved": false,
+          "physical_two_machines_tested": false,
+          "independent_external_review": false,
+          "doc": "bridge/neurofactory/development/core_owned/CORE_OS_PROTECTED_RECEIVER_QWEN_E2E_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -410,10 +426,10 @@
     },
     "PROVIDERS": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "305403c0be584bd0926f717124d7c99f200ce1ce",
+      "head": "827b654d9f7c6a10a9b90a9c97802e63116711b9",
       "pr": 13,
       "owner": "PROVIDERS",
-      "status": "PREVIOUS_REAL_QWEN_CPU_19_TOKENS_PLUS_UNTRUSTED_HISTORICAL_PROPOSAL_10_GREEN_NO_CORE_WRITE",
+      "status": "GENUINE_NEW_QWEN_CPU_PYTHON_SOURCE_8_CASES_SUCCESS_ARCHIVED_E2E_TRANSFER_TO_CORE_HOST",
       "evidence": {
         "hosted_targeted": {
           "run": 38655657608,
@@ -478,6 +494,25 @@
           "real_core_owner_binding": false,
           "file_applied": false,
           "live_auth": false
+        },
+        "new_real_qwen_python_program_20261017": {
+          "source": "bridge/neurofactory/providers/real_qwen_new_code_probe.py",
+          "tested_executable_sha": "3de70c5c9eb136a13ae449e1c229473edc0ebfbd",
+          "real_cpu_model_run": 39063107445,
+          "real_cpu_model_job": 117484992039,
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+          "source_sha256": "a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe",
+          "number_model_generated_tokens": 88,
+          "verified_pure_function_cases": 8,
+          "first_model_failed_format_ci": 39062809771,
+          "second_model_rejected_docstring_ci": 39062976884,
+          "no_programmatic_repair_or_preexisting_fallback": true,
+          "file_effect_with_real_core_host_run": 39064047131,
+          "same_host_run_as_live_model_generation": false,
+          "live_queue_model_admitted": false,
+          "official_independent_audit": false,
+          "doc": "bridge/neurofactory/providers/REAL_QWEN_GENERATED_PYTHON_PROGRAM_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -597,12 +632,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "114266f653c72127eaa5e2c52136ccd66fc27bd4",
+      "head": "3101875b4f56ae83b0cc92300aca9544a5ad21ed",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "SIGNER_OWNED_SCOPE_8_PASS_PEERCRED_6_PASS_WRITER_BOUNDARY_11_PASS_REAL_ONE_FILE_6_PASS_NONLIVE",
+      "status": "THREE_DISTINCT_OS_UID_ONE_REAL_FILE_8_PASS_GENUINE_QWEN_PROVENANCE_TO_ACTUAL_CORE_PG_10_PASS_NONLIVE",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -854,6 +889,38 @@
           "independent_release_verdict": false,
           "production_allowed": false,
           "evidence": "bridge/neurofactory/trusted_host/SIGNER_POLICY_TO_REAL_HOST_EFFECT_EVIDENCE_20261017_RU.md"
+        },
+        "three_os_principal_protected_recipient_20261017": {
+          "module": "bridge/neurofactory/trusted_host/offline_os_separated_effect_receiver.py",
+          "source_blob": "030a4c12111417af23e5dfa3fe4d61daf110312f",
+          "source_test": "bridge/neurofactory/trusted_host/test_offline_os_separated_effect_receiver.py",
+          "targeted_basic_run": 39062600272,
+          "basic_tests_passed": 8,
+          "pinned_real_core_sha": "2205354c39103612183cf4cc44f61e6f204137a0",
+          "qwen_code_real_generation_run": 39063107445,
+          "actual_e2e_run": 39064047131,
+          "actual_e2e_job": 117487828242,
+          "actually_tested_host_sha": "1259444474c837bde9a2a28532073263d4371236",
+          "latest_e2e_count": 10,
+          "latest_e2e_failed": 0,
+          "real_git_source_commit_fixture": true,
+          "actual_one_task_core_sqlite_enqueued_and_claimed": true,
+          "real_os_uid_signer_separated": true,
+          "real_os_uid_worker_separated": true,
+          "real_os_uid_recipient_separated": true,
+          "actual_once_fsynced_py_file": true,
+          "duplicate_replay_denied": true,
+          "db_current_lease_receipt_verified": true,
+          "qwen_code_sha256": "a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe",
+          "model_run_concurrent_with_effect": false,
+          "model_bytes_from_prior_verified_real_generation": true,
+          "formal_owner_authorization": false,
+          "independent_signer_key_custody_external_human": false,
+          "live_deployment": false,
+          "two_physical_machines": false,
+          "independent_human_review": false,
+          "production_permission": false,
+          "evidence": "bridge/neurofactory/trusted_host/THREE_UID_OS_PROTECTED_FINAL_RECIPIENT_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -940,11 +1007,11 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "OWNER-approved durable signer trust root and owner/repo ACL externally provisioned + separate OS protected recipient: direct test-only HOST receiver remains callable, so no claimed all-path protection",
-    "REVIEW #11 genuinely authorized distinct reviewer validates exact 6 physical-file guarded test SHA 269ac28... + signer policy/IPC and residual privileged bypass/race/reboot risk",
-    "PROVIDERS #5 adapt new real Qwen generation to approved model backend; historical 10/10 projection is untrusted and not in current Ollama allowlist; never autoapply",
-    "Two distinct authorized physical PCs, real key provisioning, protected restore/backup and independent release verdict are STILL missing; user computer untouched",
-    "HANDOFF PAUSED_BY_USER, no paid APIs, no production queue, no deployments, no PR merge"
+    "P0: independent real human owner entitlement and immutable allowlist/keys outside fixture; permanent separately secured HOST signer/effect OS principals across hard reboot; no DB/admin rollback allowing a second irreversible effect",
+    "P0: independent authorized REVIEW #11 verdict on exact HOST 1259444.., CORE 2205354.. and Qwen 3de70c.., including audit of direct old test-only receiver route and privileged bypass",
+    "P0: two actual separate authorized physical computers and real crash-after-fsync-before-receipt recovery drill with signed owner permissions; existing GitHub-hosted 3 UID on one node does NOT satisfy",
+    "P1: genuine Qwen CPU proved 8 pure program tests and staged later into full CORE git/SQLite lease to HOST test-only fsync file; need fresh model output in same authenticated task lease and explicit provider allowlist review",
+    "P1: production owner-approved project discovery/UI live RBAC, OPS backup restore, no paid API/HANDOFF/merge until REVIEW authorized"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
