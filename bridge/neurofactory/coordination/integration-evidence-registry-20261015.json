@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "SIGNED_ANCHOR_TWO_UID_12_PASS_UNIX_WITNESS_6_PASS_QWEN_CPU_REAL_INFERENCE_RELEASE_BLOCKED",
+      "status": "REAL_TEMP_FILE_SIGNER_GATED_6_PASS_QWEN_PREVIOUS_REAL_OUTPUT_MAPPED_10_PASS_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -410,10 +410,10 @@
     },
     "PROVIDERS": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "32438f5d33dcfe5be617bd485889208aa1fdc35f",
+      "head": "305403c0be584bd0926f717124d7c99f200ce1ce",
       "pr": 13,
       "owner": "PROVIDERS",
-      "status": "ONE_REAL_FREE_QWEN_0_5B_CPU_INFERENCE_SUCCESS_WITHOUT_FILES_OR_CORE",
+      "status": "PREVIOUS_REAL_QWEN_CPU_19_TOKENS_PLUS_UNTRUSTED_HISTORICAL_PROPOSAL_10_GREEN_NO_CORE_WRITE",
       "evidence": {
         "hosted_targeted": {
           "run": 38655657608,
@@ -461,6 +461,23 @@
           "model_in_user_computer": false,
           "human_independent_model_review": false,
           "source_doc": "bridge/neurofactory/providers/REAL_QWEN_CPU_PROOF_20261017_RU.md"
+        },
+        "archived_real_qwen_to_result_v1_20261017": {
+          "source_blob": "9a77091eaa2c202d651d0df1584d25749d46022c",
+          "test_blob": "e5e4fb571566d3674ee442c81ea6e47c3f6c1c28",
+          "tested_sha": "789810075b0410e06bd26a510b48c04084c8fdd5",
+          "run": 39060485897,
+          "job": 117477268668,
+          "tests_pass": 10,
+          "prior_real_model_inference_run": 39057951286,
+          "response_sha256": "0a4215b15a5f936050147a658ee4468b2a00e94f2a65ccf20b48513c89ded305",
+          "format": "neurofactory.providers.result.v1",
+          "status": "PROPOSED_UNVERIFIED",
+          "inference_during_this_test": false,
+          "ollama_current_allowlist_compatible": false,
+          "real_core_owner_binding": false,
+          "file_applied": false,
+          "live_auth": false
         }
       },
       "blockers": [
@@ -580,12 +597,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "f09367970b903a84f101f8d79b47020874d844a7",
+      "head": "114266f653c72127eaa5e2c52136ccd66fc27bd4",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "TWO_DISTINCT_OS_UID_PG_ROLLBACK_12_GREEN_SIGNER_READONLY_UNIX_PEERCRED_6_GREEN_NOT_PROD",
+      "status": "SIGNER_OWNED_SCOPE_8_PASS_PEERCRED_6_PASS_WRITER_BOUNDARY_11_PASS_REAL_ONE_FILE_6_PASS_NONLIVE",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -807,6 +824,36 @@
           "independently_authorized_owner": false,
           "actually_live_running": false,
           "production_release_allowed": false
+        },
+        "operator_gated_file_20261017": {
+          "scope_source_blob": "6906a2769f563a0269c264a4c153882c53d2d9ab",
+          "ipc_source_blob": "651277394acc0869ff628c8578300818a23e55be",
+          "guarded_receiver_source_blob": "f4af58853773192c82142794aadd48be48e5b2fe",
+          "e2e_test_blob": "93e97b139f94f73446bce9a0b0b20aacb072255c",
+          "isolated_scoped_unit_ci": 39060266399,
+          "scope_tests_pass": 8,
+          "peercred_regressions_pass": 6,
+          "new_guard_unit_tests_pass": 11,
+          "actual_file_gated_e2e_ci": 39060860013,
+          "actual_file_gated_e2e_job": 117478348199,
+          "exact_gated_e2e_tested_sha": "269ac28e0ed891c456ca72480f20f130897040f5",
+          "new_gated_e2e_tests_pass": 6,
+          "first_e2e_ci_39060781264": "22_PASS_INCLUDED_16_OLD_IMPORTS; FIXED_AND_RERUN_6_NEW_ONLY",
+          "two_distinct_linux_uids_on_one_host": true,
+          "actually_gated_temp_file_written_once": true,
+          "operator_policy_protected_from_db_actor": true,
+          "operator_scope_ed25519_current_tip_verified": true,
+          "peer_uid_verified_both_directions": true,
+          "target_and_lease_checked_in_pg": true,
+          "duplicate_and_rollback_and_outage_denied": true,
+          "real_human_owner_authorization": false,
+          "externally_provisioned_durable_key": false,
+          "standalone_os_protected_writer": false,
+          "original_offline_receiver_direct_entrypoint_still_callable": true,
+          "two_physical_authorized_computers_tested": false,
+          "independent_release_verdict": false,
+          "production_allowed": false,
+          "evidence": "bridge/neurofactory/trusted_host/SIGNER_POLICY_TO_REAL_HOST_EFFECT_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -893,12 +940,11 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST #14: distinct Linux UID key+monotonic highwater and read-only local Unix SO_PEERCRED witness were proven in 18 hosted tests; next independently pinned operator owner/repo ACL and isolated OS-protected final writer, authentic lease/epoch and persistence across machine restarts",
-    "CORE #9: protect entire effect entrypoints with producer-owner-pinned live issuer, receiver-side idempotency/current lease and fail-closed UNKNOWN, then safely integrate actual Qwen proposal only after independent authorization",
-    "PROVIDERS #5: genuine CPU Qwen2.5-0.5B generation proven hosted 39057951286; adapt untrusted proposal to current one-shot provider contract with model output no direct write; no API charges",
-    "REVIEW #11: independent signed owner+key custody and two OS UID rollback evidence on exact SHA, verify Unix socket spoofing and signer key missing on client, human release signoff outstanding",
-    "Two genuinely different authorized physical PCs with cross-machine crash/rollback tests, OPS backup restore and UI authenticated backend remain required; producer key and HTTPS API not deployed",
-    "HANDOFF remains PAUSED_BY_USER; no paid APIs, no PR merges, no production worker activation"
+    "OWNER-approved durable signer trust root and owner/repo ACL externally provisioned + separate OS protected recipient: direct test-only HOST receiver remains callable, so no claimed all-path protection",
+    "REVIEW #11 genuinely authorized distinct reviewer validates exact 6 physical-file guarded test SHA 269ac28... + signer policy/IPC and residual privileged bypass/race/reboot risk",
+    "PROVIDERS #5 adapt new real Qwen generation to approved model backend; historical 10/10 projection is untrusted and not in current Ollama allowlist; never autoapply",
+    "Two distinct authorized physical PCs, real key provisioning, protected restore/backup and independent release verdict are STILL missing; user computer untouched",
+    "HANDOFF PAUSED_BY_USER, no paid APIs, no production queue, no deployments, no PR merge"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
@@ -914,5 +960,11 @@
       38729591779
     ],
     "resolved": true
+  },
+  "operator_to_receiver_physical_nodes_acceptance_20261017": {
+    "plan": "bridge/neurofactory/coordination/TWO_PHYSICAL_NODES_ACCEPTANCE_RUNBOOK_20261017_RU.md",
+    "two_physical_machines_tested": false,
+    "authorized_owner_approval": false,
+    "independent_reviewer_approved": false
   }
 }
