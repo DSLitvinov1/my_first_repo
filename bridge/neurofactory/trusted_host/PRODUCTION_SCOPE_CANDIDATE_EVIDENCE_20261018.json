@@ -1,0 +1,67 @@
+{
+  "schema": "neurofactory.trusted_host.production_scope_candidate.v1",
+  "date": "2026-10-18",
+  "verdict": "INDEPENDENT_SCOPE_AND_DB_SOURCE_TESTED_NOT_DEPLOYED",
+  "release": "REJECT_LIVE",
+  "handoff": "PAUSED_BY_USER",
+  "base_host_exact_sha": "4b8d5afd13f51d767bf2640d58fedcee44bd6b85",
+  "core_pinned_signed_grant_exact_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+  "independent_scope_exact_test_sha": "fb06fac43547a60115d827d235d1e625b2841ec0",
+  "permanent_db_exact_test_sha": "dc65a70bcb8cc4445b6e247fe2ec61e9c9541718",
+  "files": {
+    "bridge/neurofactory/trusted_host/independent_four_party_scope.py": "14a454be9e0b96425e4f43b193abf9d47c481afe",
+    "bridge/neurofactory/trusted_host/test_independent_four_party_scope.py": "7df98df68ed3c92c4ef2b3f7fb81b77bfdb6b868",
+    "bridge/neurofactory/trusted_host/operator_installed_public_pins.py": "b24606347054705ab91e6c76809cbdb39e191af0",
+    "bridge/neurofactory/trusted_host/test_operator_installed_public_pins.py": "9edfbd243757d6891b121a80cd41f47c706693d9",
+    "bridge/neurofactory/trusted_host/permanent_postgres_operator_migration.sql": "bb6a8b4094357e1e0b4b5de7bb2b1c3a61a1aee4",
+    "bridge/neurofactory/trusted_host/test_permanent_postgres_operator_migration.py": "75942febad0597614793a4dd29d64f34908335ba",
+    "bridge/neurofactory/trusted_host/PRODUCTION_FOUR_PARTY_SCOPE_AND_DB_OPERATOR_PLAN_20261018_RU.md": "aa77113be4231a4161bfd3d9f2d09f69090c3dc7"
+  },
+  "verified_tests": [
+    {
+      "run_id": 39073415339,
+      "job_id": 117515538074,
+      "status": "success",
+      "tests": 24,
+      "description": "four signed parties; operator public pins; NO execution authority"
+    },
+    {
+      "run_id": 39073799970,
+      "job_id": 117516679867,
+      "status": "success",
+      "tests": 9,
+      "description": "PostgreSQL16 permanent DDL tested in ephemeral DB only; UNKNOWN-first, duplicate receipts, SQL rollback limitations"
+    },
+    {
+      "run_id": 39069220676,
+      "status": "success",
+      "tests": 25,
+      "description": "previous HOST offline four Linux UID fixture on one hosted runner"
+    }
+  ],
+  "actual_state": {
+    "permanent_linux_host_authorized": false,
+    "production_db_installed": false,
+    "real_private_keys_generated_or_imported": false,
+    "independent_operator_physical_identity_attested": false,
+    "independent_external_witness_deployed": false,
+    "nonfixture_receiver_service_deployed": false,
+    "actual_kernel_reboot_after_prestate": false,
+    "two_independent_authorized_physical_nodes": false,
+    "five_live_negative_trials": false,
+    "one_live_synthetic_effect": false,
+    "independent_human_reviewer_signed": false,
+    "production_queue_started": false,
+    "production_execution_allowed": false,
+    "auto_retry_unknown_allowed": false,
+    "host_branch_merged": false,
+    "draft_review_required": true
+  },
+  "external_blockers": [
+    "One Windows device known; no independently authorised Linux and second distinct PC",
+    "Desktop Commander command quota paused; not retried",
+    "No protected real TPM/HSM or independent operator authorization",
+    "No independent signed REVIEW and real hardware reboot/journal evidence"
+  ],
+  "scope_boundary": "All changes confined to new branch; fixtures remain test-only; no user device modified or rebooted; neither cryptographic validity nor SQL schema issues permission to write."
+}
