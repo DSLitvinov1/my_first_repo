@@ -232,7 +232,7 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         content=generated.encode("utf8")
         digest=hashlib.sha256(content).hexdigest()
         self.assertEqual(digest,"a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe")
-        target="bridge/neurofactory/development/core_owned/qwen_generated_leap_sandbox.py"
+        target="bridge/neurofactory/development/core_owned/qwen_generated_add_sandbox.py"
         # The temporary operator, never the model/worker, provisions a new
         # exact signer-owned scope for the previously checked model bytes.
         self.fx.db.execute("UPDATE nf_effect_intent SET target=%s",(target,))
