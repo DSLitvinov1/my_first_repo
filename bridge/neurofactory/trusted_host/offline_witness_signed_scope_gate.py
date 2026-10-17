@@ -34,7 +34,7 @@ _OWNER_FIELDS = frozenset({
     "lease_epoch", "permit_sha256", "expires_unix",
 })
 _POLICY_FIELDS = frozenset({
-    "schema", "owner_id", "repo_id", "repository",
+    "schema", "owner_id", "github_owner_numeric_id", "repo_id", "repository",
     "project_id", "worker_id", "issuer_public_base64",
     "owner_public_base64", "issuer_sha256", "owner_sha256",
 })
@@ -76,7 +76,8 @@ def scope_verified_claim(envelope, policy, *, now_unix=None):
         type(policy["repository"]) is not str or
         type(policy["project_id"]) is not str or
         type(policy["worker_id"]) is not str or
-        policy["owner_id"]!="151650108" or
+        type(policy["github_owner_numeric_id"]) is not str or
+        policy["github_owner_numeric_id"]!="151650108" or
         policy["repo_id"]!="723328237"):
         reject()
     issuer=public(policy["issuer_public_base64"],policy["issuer_sha256"])
@@ -119,7 +120,7 @@ def scope_verified_claim(envelope, policy, *, now_unix=None):
             reject()
     digest=hashlib.sha256(permit_bytes).hexdigest()
     if (statement["permit_sha256"]!=digest or
-        claim["owner_id"]!=policy["owner_id"] or
+        claim["owner_id"]!=policy["github_owner_numeric_id"] or
         claim["repo_id"]!=policy["repo_id"] or
         claim["task_id"]!=body["task_id"] or
         claim["operation_id"]!=body["operation_id"] or
