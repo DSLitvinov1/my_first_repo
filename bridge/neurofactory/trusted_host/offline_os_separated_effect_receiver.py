@@ -99,7 +99,7 @@ def serve_once(config_dir):
                     if not raw or len(raw)>_MAX:
                         _deny("oversized request")
                     req=json.loads(raw.decode("ascii"))
-                    if type(req) is not dict or set(req)!={"schema","signed_packet","witness","content_base64"} or req["schema"]!="neurofactory.recipient.request.fixture.v1":
+                    if type(req) is not dict or set(req)!={"schema","signed_packet","witness","signed_owner_grant","content_base64"} or req["schema"]!="neurofactory.recipient.request.fixture.v1":
                         _deny("malformed request")
                     content=base64.b64decode(req["content_base64"],validate=True)
                     if len(content)>65536:_deny("bounded one-file content only")
@@ -123,6 +123,7 @@ def serve_once(config_dir):
                         report=gated.apply_fixture_with_operator_witness_once(
                             signed_packet=req["signed_packet"],witness=req["witness"],
                             content=content,protected_journal=protected,
+                            signed_owner_grant=req["signed_owner_grant"],
                             simulate_crash_after_fsync=(
                                 os.environ.get("NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH")
                                 =="1"))
