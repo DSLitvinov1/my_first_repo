@@ -42,12 +42,12 @@ jobs:
       - name: Verify exact CORE HEAD and audited HOST execution blobs
         run: |
           test "$(git -C .nf_core_pinned rev-parse HEAD)" = "4a068968d5a34d0f7998b7da4d22640160b90b23"
-          test "$(git hash-object bridge/neurofactory/trusted_host/offline_os_separated_effect_receiver.py)" = "823a808347414c77c83bf8c91b9211ce5bd2a16f"
+          test "$(git hash-object bridge/neurofactory/trusted_host/offline_os_separated_effect_receiver.py)" = "0ddc789db0d5d0336d34eda06c61c1fddfd1fa85"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_recipient_protected_journal.py)" = "578e2114c971529039d9a3e151c0fe37c103cfa1"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_operator_gated_receiver.py)" = "69252e0f5eba806095570c739deea77aab55ff06"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_owner_grant_admission.py)" = "fbe8a1f1d00c07e94f80d48bb8289b64887c85bc"
           test "$(git hash-object bridge/neurofactory/trusted_host/offline_operator_ipc.py)" = "e2b5c2e6218b55f50ff8e61d0e538fecc91f7327"
-          test "$(git hash-object bridge/neurofactory/trusted_host/test_offline_os_separated_effect_receiver.py)" = "f2337a21149fd54a5eb7e1d119e4c82b5cc1d4fc"
+          test "$(git hash-object bridge/neurofactory/trusted_host/test_offline_os_separated_effect_receiver.py)" = "18e0b972e9b6d1530a27e48821cce395950ef1d0"
       - name: Create THREE disposable and distinct OS owners on ONE runner
         run: |
           sudo groupadd --system nf_operator_ipc
