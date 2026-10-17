@@ -136,6 +136,17 @@ def _signed(envelope, role, pub, expected_fields, scope_hash):
             type(body.get("scope_sha256")) is not str or
             body["scope_sha256"] != scope_hash):
         _deny()
+    # Validate flat bounded types BEFORE canonical encoding to avoid huge
+    # nested/oversize attacker objects consuming work or recursion budget.
+    for value in body.values():
+        if type(value) is str:
+            if not 1 <= len(value) <= 350:
+                _deny()
+        elif type(value) is int:
+            if not 0 <= value < 2**63:
+                _deny()
+        else:
+            _deny()
     sig = envelope["signature_base64"]
     if type(sig) is not str or len(sig) != 88:
         _deny()
