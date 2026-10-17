@@ -48,7 +48,8 @@ class OperatorGatedOfflineReceiver:
                                                    witness,content,
                                                    simulate_crash_after_fsync=False,
                                                    protected_journal=None,
-                                                   signed_owner_grant=None):
+                                                   signed_owner_grant=None,
+                                                   external_witness_config=None):
         if (type(content) is not bytes or len(content)>65536 or
             type(signed_packet) is not dict or
             type(witness) is not dict or
@@ -115,6 +116,31 @@ class OperatorGatedOfflineReceiver:
               check["owner_authenticated"] is not False or
               check["filesystem_write_allowed"] is not False):
             _reject()
+        if external_witness_config is not None:
+            if signed_owner_grant is None:
+                _reject()
+            cfg=external_witness_config
+            if type(cfg) is not dict or set(cfg)!={"socket","uid","public"}:
+                _reject()
+            import secrets
+            from offline_external_effect_witness import request_once,WitnessDenied
+            body=signed_packet["payload"]
+            claim={"schema":"nf.remote_witness.claim.v1",
+                "owner_id":"151650108","repo_id":"723328237",
+                "task_id":body["task_id"],"operation_id":body["operation_id"],
+                "target":body["target"],"lease_epoch":body["lease_epoch"],
+                "permit_sha256":digest,
+                "content_sha256":hashlib.sha256(content).hexdigest(),
+                "nonce":secrets.token_hex(32)}
+            try:
+                ack=request_once(cfg["socket"],claim,
+                        expected_witness_uid=cfg["uid"],
+                        pinned_witness_public_b64=cfg["public"])
+                if ack["status"]!="REMOTE_UID_WITNESS_PRECOMMIT_TEST_ONLY":
+                    _reject()
+            except (WitnessDenied,ValueError,OSError,KeyError):
+                _reject()
+
         # The signer has already verified all exact owner/source/worker
         # claims. An *optional* independent OS-owned protected ledger must
         # reserve UNKNOWN durably before the DB journal and file effect.
