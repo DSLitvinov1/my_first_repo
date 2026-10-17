@@ -120,7 +120,10 @@ class OperatorGatedOfflineReceiver:
             if signed_owner_grant is None:
                 _reject()
             cfg=external_witness_config
-            if type(cfg) is not dict or set(cfg)!={"socket","uid","public"}:
+            if type(cfg) is not dict or (
+                set(cfg)!={"socket","uid","public"} and
+                set(cfg)!={"mode","host","port","client_cert","client_key",
+                            "ca_cert","server_cert_sha256","public"}):
                 _reject()
             import secrets
             from offline_external_effect_witness import request_once,WitnessDenied
@@ -133,12 +136,24 @@ class OperatorGatedOfflineReceiver:
                 "content_sha256":hashlib.sha256(content).hexdigest(),
                 "nonce":secrets.token_hex(32)}
             try:
-                ack=request_once(cfg["socket"],claim,
+                if "mode" in cfg:
+                    if cfg["mode"]!="MTLS_LOOPBACK_TEST_ONLY":
+                        _reject()
+                    from offline_mtls_witness_transport import request_test_once
+                    ack=request_test_once(cfg["host"],cfg["port"],claim,
+                        client_cert=cfg["client_cert"],client_key=cfg["client_key"],
+                        ca_cert=cfg["ca_cert"],
+                        pinned_server_cert_sha256=cfg["server_cert_sha256"],
+                        pinned_witness_public_b64=cfg["public"])
+                    if ack["status"]!="MUTUAL_TLS_REMOTE_WITNESS_DURABLE_TEST_ONLY":
+                        _reject()
+                else:
+                    ack=request_once(cfg["socket"],claim,
                         expected_witness_uid=cfg["uid"],
                         pinned_witness_public_b64=cfg["public"])
-                if ack["status"]!="REMOTE_UID_WITNESS_PRECOMMIT_TEST_ONLY":
-                    _reject()
-            except (WitnessDenied,ValueError,OSError,KeyError):
+                    if ack["status"]!="REMOTE_UID_WITNESS_PRECOMMIT_TEST_ONLY":
+                        _reject()
+            except (WitnessDenied,ValueError,OSError,KeyError,TypeError):
                 _reject()
 
         # The signer has already verified all exact owner/source/worker
