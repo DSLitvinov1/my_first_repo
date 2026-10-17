@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "HOST_LEASE_LOCK_THROUGH_REAL_TEMP_EFFECT_16_GREEN_CORE_REPINNED_9_GREEN_RELEASE_BLOCKED",
+      "status": "SIGNED_ANCHOR_TWO_UID_12_PASS_UNIX_WITNESS_6_PASS_QWEN_CPU_REAL_INFERENCE_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -410,10 +410,10 @@
     },
     "PROVIDERS": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "53a025361c2038c6e9960d0c96634c372e41cdf7",
+      "head": "32438f5d33dcfe5be617bd485889208aa1fdc35f",
       "pr": 13,
       "owner": "PROVIDERS",
-      "status": "P2_NO_REAL_OLLAMA_RESOURCE_OR_SIGNED_REVIEW",
+      "status": "ONE_REAL_FREE_QWEN_0_5B_CPU_INFERENCE_SUCCESS_WITHOUT_FILES_OR_CORE",
       "evidence": {
         "hosted_targeted": {
           "run": 38655657608,
@@ -436,6 +436,31 @@
           "resource_inventory_obtained": false,
           "resource_changes_made": false,
           "retry_performed": false
+        },
+        "real_qwen_20261017": {
+          "source": "bridge/neurofactory/providers/real_qwen_cpu_probe.py",
+          "source_blob": "3b4a638a29e132356ed29afd538c43f2d2ef2b50",
+          "exact_tested_sha": "15c27b4143961812b8b7744c1d3f4d77e4313698",
+          "model": "Qwen/Qwen2.5-0.5B-Instruct",
+          "model_revision_sha40": "7ae557604adf67be50417f59c2c2f167def9a775",
+          "parameter_count": 494032768,
+          "generated_tokens": 19,
+          "actual_output_sha256": "0a4215b15a5f936050147a658ee4468b2a00e94f2a65ccf20b48513c89ded305",
+          "observed_runner_available_ram_mib": 14783,
+          "observed_runner_disk_free_mib": 86597,
+          "generate_elapsed_sec": 6.1,
+          "run": 39057951286,
+          "job": 117469724333,
+          "hosted_run_status": "SUCCESS",
+          "real_model_loaded": true,
+          "real_cpu_generation": true,
+          "no_approved_core_task": true,
+          "model_generated_file_applied": false,
+          "project_files_modified": false,
+          "paid_api": false,
+          "model_in_user_computer": false,
+          "human_independent_model_review": false,
+          "source_doc": "bridge/neurofactory/providers/REAL_QWEN_CPU_PROOF_20261017_RU.md"
         }
       },
       "blockers": [
@@ -555,12 +580,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "619a0dda44a778251e67073386b9d7342aa23a21",
+      "head": "f09367970b903a84f101f8d79b47020874d844a7",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OPERATOR_EPHEMERAL_PRIVATE_KEY_HIGHWATER_14_LOGIC_GREEN_CROSS_UID_UNPROVEN_LIVE_BLOCKED",
+      "status": "TWO_DISTINCT_OS_UID_PG_ROLLBACK_12_GREEN_SIGNER_READONLY_UNIX_PEERCRED_6_GREEN_NOT_PROD",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -742,10 +767,10 @@
           "hosted_run": 39057194884,
           "hosted_job": 117467474892,
           "negative_logic_tests_pass": 14,
-          "crossuid_postgresql_test_run": 39056827506,
-          "crossuid_postgresql_result": "RED_ENVIRONMENT_PYTHON_PERMISSION_DENIED_12_SETUP_FAILURES",
-          "crossuid_postgresql_confirmed_pass": 0,
-          "separate_os_principals_verified": false,
+          "crossuid_postgresql_test_run": 39058020638,
+          "crossuid_postgresql_result": "PASS_12_OF_12_DISTINCT_OS_UIDS_ONE_RUNNER",
+          "crossuid_postgresql_confirmed_pass": 12,
+          "separate_os_principals_verified": true,
           "independent_signer_production_custody": false,
           "untrusted_DB_rollback_protection_implemented_as_prototype": true,
           "DB_admin_rollback_experiment_verified": false,
@@ -757,7 +782,31 @@
           "live_server_deployed": false,
           "production_writer_enabled": false,
           "independently_reviewed": false,
-          "doc": "bridge/neurofactory/trusted_host/OPERATOR_ANCHOR_EVIDENCE_20261017_RU.md"
+          "doc": "bridge/neurofactory/trusted_host/OPERATOR_ANCHOR_EVIDENCE_20261017_RU.md",
+          "crossuid_postgresql_exact_sha": "7a6232259de92d6372dc0ec6c181f17d2039af20",
+          "crossuid_postgresql_job": 117469922719,
+          "DB_actor_key_read_denied": true,
+          "DB_actor_tip_rewrite_denied": true,
+          "DB_admin_old_signed_receipt_rollback_rejected": true,
+          "physically_distinct_computers_verified": false,
+          "unix_socket_readonly_verifier": {
+            "status": "TEST_ONLY_PEERCRED_GROUP_ISOLATED_6_PASS",
+            "source": "bridge/neurofactory/trusted_host/offline_operator_ipc.py",
+            "source_blob": "29fb807894e453137ff84c853dc95099d174790e",
+            "tests_blob": "11111fd9872294d1ff25945387c432d70c16d8d2",
+            "exact_tested_sha": "face1dc014bb3198d14c69cd2173a60b3bbbdd2b",
+            "run": 39058565281,
+            "job": 117471499690,
+            "passed": 6,
+            "private_key_shared": false,
+            "permission_to_write_files": false,
+            "read_only_current_signed_witness": true,
+            "unauthorized_same_group_other_UID_rejected": true,
+            "real_receiver_integrated": false
+          },
+          "independently_authorized_owner": false,
+          "actually_live_running": false,
+          "production_release_allowed": false
         }
       },
       "blockers": [
@@ -844,12 +893,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST: finish true separately permissioned OS signer runtime verification, key custody and protected append-only highwater: first cross-UID postgres DB-admin rollback test was ENVIRONMENT RED; 14/14 same-UID logic ONLY and not release",
-    "TRUSTED HOST: authoritative real owner/project/repo/source identity registry, externally pinned root and authenticated Unix-socket/mTLS server; operator-controlled key never exposed to DB/CORE; verify with separate authorized machine",
-    "CORE: real receiver-side OS principal, signed grant+current PG lease/epoch fencing/idempotency/UNKNOWN checked at final file write; old writer still disabled",
-    "REVIEW #11: independent separate authorized reviewer on exact HOST signer anchor 619a0d... and CORE/HOST protected receiver, crash/DB-admin rollback and parent relocation attack",
-    "Two truly distinct physical authorized machines, actual Qwen after resources verified, OPS backup+restore, UI authenticated backend. Production release forbidden until formal approval",
-    "HANDOFF PAUSED_BY_USER, no paid APIs, merges or publications"
+    "TRUSTED HOST #14: distinct Linux UID key+monotonic highwater and read-only local Unix SO_PEERCRED witness were proven in 18 hosted tests; next independently pinned operator owner/repo ACL and isolated OS-protected final writer, authentic lease/epoch and persistence across machine restarts",
+    "CORE #9: protect entire effect entrypoints with producer-owner-pinned live issuer, receiver-side idempotency/current lease and fail-closed UNKNOWN, then safely integrate actual Qwen proposal only after independent authorization",
+    "PROVIDERS #5: genuine CPU Qwen2.5-0.5B generation proven hosted 39057951286; adapt untrusted proposal to current one-shot provider contract with model output no direct write; no API charges",
+    "REVIEW #11: independent signed owner+key custody and two OS UID rollback evidence on exact SHA, verify Unix socket spoofing and signer key missing on client, human release signoff outstanding",
+    "Two genuinely different authorized physical PCs with cross-machine crash/rollback tests, OPS backup restore and UI authenticated backend remain required; producer key and HTTPS API not deployed",
+    "HANDOFF remains PAUSED_BY_USER; no paid APIs, no PR merges, no production worker activation"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
