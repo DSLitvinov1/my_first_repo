@@ -8,6 +8,7 @@ All accounts, credentials, keys, DB and files are disposable synthetic CI.
 import base64, hashlib, json, os, subprocess, tempfile, time, unittest
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from offline_operator_anchor import _canonical
 from test_offline_fenced_file_receiver import (
     TestSignedLiveLeaseOfflineEffect as BasePG, CONTENT, TARGET)
@@ -80,6 +81,18 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
                     "os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600);"
                     "os.write(f,sys.stdin.buffer.read());os.fsync(f);os.close(f)")
         self.private_write("nf_signer",self.home/"pinned-effect-scope.json",policy)
+        self.owner_private=Ed25519PrivateKey.generate()
+        owner_pub=self.owner_private.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        owner_enrollment={
+            "schema":"neurofactory.owner.authority_pin_fixture.v1",
+            "owner_id":body["owner_id"],
+            "repository":body["repository"],
+            "project_id":body["project_id"],
+            "owner_public_key_base64":base64.b64encode(owner_pub).decode(),
+            "operator_pinned_fingerprint":hashlib.sha256(owner_pub).hexdigest()}
+        self.private_write("nf_signer",self.home/"pinned-project-owner-authority.json",
+                           owner_enrollment)
         config={
             "schema":"neurofactory.os_separated_recipient.fixture.v1",
             "receiver_root":str(self.fx.root),
@@ -114,11 +127,23 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         subprocess.run(["sudo","-n","rm","-rf","--",str(self.home),
             str(self.signer_api),str(self.receiver_config),
             str(self.receiver_api)],check=True)
+    def owner_grant(self,packet=None):
+        payload=self.fx.packet["payload"] if packet is None else packet["payload"]
+        names=("owner_id","repository","project_id","task_id","worker_id",
+               "source_sha40","target","operation_id","lease_epoch")
+        statement={k:payload[k] for k in names}
+        statement["permit_sha256"]=hashlib.sha256(_canonical(payload)).hexdigest()
+        statement["expires_unix"]=min(payload["expires_unix"],int(time.time())+45)
+        return {"statement":statement,
+                "signature_base64":base64.b64encode(
+                    self.owner_private.sign(_canonical(statement))).decode()}
     def write_request(self,packet=None,witness=None,content=CONTENT, extra=None):
+        packet=self.fx.packet if packet is None else packet
         request={
             "schema":"neurofactory.recipient.request.fixture.v1",
-            "signed_packet":self.fx.packet if packet is None else packet,
+            "signed_packet":packet,
             "witness":self.witness if witness is None else witness,
+            "signed_owner_grant":self.owner_grant(packet),
             "content_base64":base64.b64encode(content).decode()}
         if extra:request.update(extra)
         self.reqfile.write_text(json.dumps(request),encoding="ascii")
