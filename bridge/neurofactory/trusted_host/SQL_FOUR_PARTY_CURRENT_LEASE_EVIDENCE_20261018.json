@@ -1,0 +1,46 @@
+{
+  "schema": "neurofactory.production_bound_lease_signed_scope_evidence.v1",
+  "date": "2026-10-18",
+  "branch": "neurofactory-host-independent-production-scope-20261018",
+  "exact_source_commit_under_test": "635ae5db74cedf4b650509b63f8ae351791eabce",
+  "core_exact_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+  "host_previous_owned_baseline": "4b8d5afd13f51d767bf2640d58fedcee44bd6b85",
+  "files": {
+    "bridge/neurofactory/trusted_host/db_bound_four_party_preflight.py": "644fa6ddbeb8fe73ee61d8a29acf6620a24804be",
+    "bridge/neurofactory/trusted_host/test_db_bound_four_party_preflight.py": "5fcce66c17440120655993cd08c58a1952e8f2ff",
+    "bridge/neurofactory/trusted_host/permanent_postgres_operator_migration.sql": "bb6a8b4094357e1e0b4b5de7bb2b1c3a61a1aee4"
+  },
+  "verification": {
+    "last_ci_run": 39075748570,
+    "last_ci_job": 117522422075,
+    "url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/39075748570",
+    "conclusion": "success",
+    "total_tests": "27/27 PASS",
+    "integrated_db_bound_scenarios": 12,
+    "imported_existing_four_party_tests": 15,
+    "one_authorized_scope_diagnostic": "PINNED_SIGNATURES_AND_LIVE_SQL_MATCH_NO_EFFECT_AUTHORITY",
+    "outcome_effects": 0,
+    "real_external_operator_enrolled": false,
+    "physical_linux_host_seen": false
+  },
+  "checked_conditions": [
+    "independent operator, owner, HOST and witness signed statement scoped to one operation",
+    "root-owned public-pin loader contract; test monkeypatch uses ONLY synthetic pinned keys",
+    "current PostgreSQL lease state CLAIMED, epoch, worker, fencing, source SHA, policy hash",
+    "UNKNOWN receipt idempotency, target/content hashes, external witness signed sequence/root",
+    "expired/blocked/stale/foreign/missing/forged claims fail closed",
+    "test privileged DB rollback with matching old SQL rows remains NO EFFECT AUTHORITY"
+  ],
+  "hard_blockers": {
+    "production_effect_receiver_deployed": false,
+    "remote_witness_monotonic_state_independently_readback": false,
+    "hardware_custody_approved": false,
+    "actual_linux_reboot_tested": false,
+    "two_distinct_authorized_physical_machines_tested": false,
+    "separate_review_actor_approved": false,
+    "real_queue_enabled": false,
+    "handoff": "PAUSED_BY_USER",
+    "release_approved": false
+  },
+  "strict_note": "This read-only diagnostic closes consistency of signed scope vs PostgreSQL; locks are released before the function returns. Never use this function's success as permission to write. A real protected receiver must revalidate in a transaction held through the effect, using an independently controlled remote witness to stop DB snapshot rollback."
+}
