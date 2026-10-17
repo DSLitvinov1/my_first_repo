@@ -1,0 +1,30 @@
+name: Neurofactory coordinator two node signed claim diagnostics
+on:
+  push:
+    branches:
+      - neurofactory-coord-two-node-claims-20261017
+    paths:
+      - bridge/neurofactory/coordination/two_node_witness_diagnostic.py
+      - bridge/neurofactory/coordination/test_two_node_witness_diagnostic.py
+      - .github/workflows/neurofactory-coordinator-two-node-claims.yml
+permissions:
+  contents: read
+jobs:
+  two-signed-claims-no-live-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated Ed25519 verifier library
+        run: |
+          python3 -m venv .nf-two-nodes-test
+          .nf-two-nodes-test/bin/python -m pip install --disable-pip-version-check --no-input 'cryptography==46.0.3'
+      - name: Verify 2 signed synthetic observations never grant live execution
+        run: .nf-two-nodes-test/bin/python -B -m unittest discover -s bridge/neurofactory/coordination -p test_two_node_witness_diagnostic.py -v
+      - name: Read-only source remains unchanged
+        run: git diff --exit-code
