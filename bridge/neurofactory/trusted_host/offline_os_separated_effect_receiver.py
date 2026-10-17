@@ -26,6 +26,7 @@ _MAX=110000
 _SCHEMA="neurofactory.os_separated_recipient.fixture.v1"
 _SCHEMA2="neurofactory.os_separated_recipient.external_witness_fixture.v2"
 _SCHEMA3="neurofactory.os_separated_recipient.mtls_loopback_fixture.v3"
+_SCHEMA4="neurofactory.os_separated_recipient.mtls_scoped_fixture.v4"
 _DSN="postgresql://nf_test:nf_test_ephemeral_only@127.0.0.1:5432/nf_test"
 
 class OSReceiverDenied(ValueError): pass
@@ -63,13 +64,13 @@ def _read_config(config_dir):
     network={"witness_host","witness_port","witness_client_cert",
              "witness_client_key","witness_ca_cert","witness_server_cert_sha256",
              "witness_public_base64"}
-    if type(cfg) is not dict or cfg.get("schema") not in (_SCHEMA,_SCHEMA2,_SCHEMA3):
+    if type(cfg) is not dict or cfg.get("schema") not in (_SCHEMA,_SCHEMA2,_SCHEMA3,_SCHEMA4):
         _deny("unknown receiver schema")
     if ((cfg["schema"]==_SCHEMA2 and set(cfg)!=fields|extra) or
-        (cfg["schema"]==_SCHEMA3 and set(cfg)!=fields|network) or
+        (cfg["schema"] in (_SCHEMA3,_SCHEMA4) and set(cfg)!=fields|network) or
         (cfg["schema"]==_SCHEMA and set(cfg)!=fields)):
         _deny("receiver config fields not exact")
-    if cfg["schema"]==_SCHEMA3:
+    if cfg["schema"] in (_SCHEMA3,_SCHEMA4):
         # Before real two-machine authorization permit only loopback under
         # existing independent OS users; CA, client cert and private key are
         # pre-pinned in recipient-only 0600 config, never worker supplied.
@@ -168,7 +169,9 @@ def serve_once(config_dir):
                                 "uid":cfg["witness_uid"],
                                 "public":cfg["witness_public_base64"]}
                                if cfg["schema"]==_SCHEMA2 else (
-                               {"mode":"MTLS_LOOPBACK_TEST_ONLY",
+                               {"mode":("MTLS_LOOPBACK_DOUBLE_SIGNED_WITNESS_TEST_ONLY"
+                                        if cfg["schema"]==_SCHEMA4 else
+                                        "MTLS_LOOPBACK_TEST_ONLY"),
                                 "host":cfg["witness_host"],
                                 "port":cfg["witness_port"],
                                 "client_cert":cfg["witness_client_cert"],
@@ -176,7 +179,7 @@ def serve_once(config_dir):
                                 "ca_cert":cfg["witness_ca_cert"],
                                 "server_cert_sha256":cfg["witness_server_cert_sha256"],
                                 "public":cfg["witness_public_base64"]}
-                               if cfg["schema"]==_SCHEMA3 else None)),
+                               if cfg["schema"] in (_SCHEMA3,_SCHEMA4) else None)),
                             simulate_crash_after_fsync=(
                                 os.environ.get("NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH")
                                 =="1"))
