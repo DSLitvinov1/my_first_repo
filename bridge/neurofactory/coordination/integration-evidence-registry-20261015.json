@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "REAL_GITHUB_ADMIN_CHECKED_OWNER_SIGNATURE_FINAL_RECIPIENT_FIXTURE_5PASS_CORE_13PASS_E2E_1PASS_RECOVERY_1PASS_LIVE_BLOCKED",
+      "status": "NEW_OPERATOR_OWNER_KEY_PROOF_7_PASS_REMOTE_WITNESS_7_PASS_V2_FINAL_PROTECTED_EFFECT_3_PASS_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -650,12 +650,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "0d17c08e68802e1be34445ac4eeefb766e826345",
+      "head": "062d7ca8a6bc0dde8eeedf959cbbb17ff2a5bee1",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "MANDATORY_EXACT_OWNER_SIGNATURE_ENFORCED_AT_FINAL_OS_RECEIVER_FIXTURE_5_GREEN_PG_RESTART_1_GREEN_NO_REAL_KEY_ENROLLMENT",
+      "status": "GITHUB_NUMERIC_ID_OPERATOR_CHALLENGE_7_PASS_EXTERNAL_WITNESS_7_PASS_PINNED_V2_FINAL_EFFECT_3_PASS_NOT_REAL_TRUST_DOMAIN",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -1011,6 +1011,47 @@
           "live_release_allowed": false,
           "evidence_doc": "bridge/neurofactory/trusted_host/MANDATORY_OWNER_SIGNATURE_IN_FINAL_RECIPIENT_EVIDENCE_20261017_RU.md",
           "operator_runbook": "bridge/neurofactory/trusted_host/OWNER_REPO_SIGNER_RECOVERY_OPERATOR_RUNBOOK_20261017_RU.md"
+        },
+        "journal_on_separate_attested_uid_and_owner_key_enrollment_20261017": {
+          "owner_operator_proof_module": "bridge/neurofactory/trusted_host/offline_github_owner_key_enrollment.py",
+          "owner_module_blob": "e69e5c611cfce6b13c15f984ab79e0c8e5371f6f",
+          "owner_test_module": "bridge/neurofactory/trusted_host/test_offline_github_owner_key_enrollment.py",
+          "witness_source": "bridge/neurofactory/trusted_host/offline_external_effect_witness.py",
+          "witness_source_blob": "1dbdffcfa78a4b0c5ab8a196d7d8deadadc7d4ab",
+          "witness_test_module": "bridge/neurofactory/trusted_host/test_offline_external_effect_witness.py",
+          "exact_owner_and_witness_unit_sha": "d69552bdc3e3b81889f4280378fc6ad9d92b6066",
+          "owner_and_witness_unit_run": 39068798565,
+          "owner_and_witness_unit_job": 117501908200,
+          "owner_cryptographic_challenge_tests_passed": 7,
+          "separated_system_uid_witness_tests_passed": 7,
+          "concrete_github_owner_id": "151650108",
+          "concrete_github_repo_id": "723328237",
+          "actual_github_api_admin_access_observed": true,
+          "actual_user_cryptographic_private_key_verified": false,
+          "independently_attested_operator_snapshot": false,
+          "owner_public_key_registered_persistently": false,
+          "monotonic_owner_nonce_persisted": false,
+          "final_owner_private_key_not_in_repo": true,
+          "external_witness_separate_linux_uid": true,
+          "witness_independent_physical_hardware": false,
+          "witness_remote_across_authenticated_network": false,
+          "witness_signed_ack_pinned_public_key": true,
+          "witness_pre_fs_sync_unknown_reservation": true,
+          "final_v2_source_blob": "7ec17e812686e59dc18aee580b8d3289fab43b69",
+          "gated_v2_source_blob": "5128337a8b626f4822a6f7878e58762b8cf65fe6",
+          "v2_exact_e2e_test_sha": "3332b6f95368b1c288c476eb5792c4e397b3df50",
+          "v2_full_actual_fsync_pg_e2e_run": 39069156061,
+          "v2_full_e2e_job": 117502952085,
+          "v2_new_tests_passed": 3,
+          "restored_local_db_and_recipient_state_v2_denies_against_separate_uid_highwater": true,
+          "v2_witness_lost_ack_denies_any_file_effect": true,
+          "v2_false_witness_public_key_denies_any_file_effect": true,
+          "all_4_uid_on_same_ephemeral_runner": true,
+          "actual_two_physical_hosts_verified": false,
+          "full_physical_machine_reboot_tested": false,
+          "independent_review_verdict": false,
+          "production_allowed": false,
+          "document": "bridge/neurofactory/trusted_host/OWNER_CHALLENGE_AND_EXTERNAL_WITNESS_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -1097,12 +1138,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "P0: Real operator must bind ACTUAL authenticated owner GitHub login DSlitvinov1/repo ID/admin permission to durable owner Ed25519 key by out-of-band signed challenge, store sealed signer identity with hardware/external monotonic root; synthetic owner key currently only CI",
-    "P0: Mandatory signed owner permit now enforced at isolated TEST receiver and CORE forwards it; production receiver service not deployed on owner-approved separate protected OS domain, old fixture APIs remain test-only",
-    "P0: prove real machine hard reboot/backup and whole-VM snapshot rollback resistance using outside-VM append-only highwater; latest validated only separate signer/receiver PROCESS restarts after PG journal removal and one host CI",
-    "P0: physically two different explicitly authorized machines and independent external human REVIEW exact source SHA needed; no third-party signoff in submitted GitHub PR15 reviews",
-    "P1: fresh Qwen Qwen2.5-0.5B proven generated one Python function 8 cases prior GH #39063107445, bytes reused in host integration but not yet new generation in one current central lease/authorized provider allowlist",
-    "P1: remain no paid API/no production queue/no HANDOFF/no merge/no user OS modification"
+    "P0: operator with independent access must LIVE-verify actual GitHub stable numeric repo/user ID and admin ACL, attest owner challenge, persist consumed nonces and enroll owner public key in signer hardware/protected key custody; only synthetic owner key verified today",
+    "P0: move remote witness from separate Linux UID on same temporary GitHub runner onto second physically distinct owner-authorized host with signed peer identity/mTLS and externally durable highwater; presently full-VM rollback of both roles remains OPEN",
+    "P0: run actual power interruption/reboot and database + recipient full-machine restore with separate witness unaffected; one physical user Windows PC online, two physical authorized nodes NOT confirmed",
+    "P0: independent external authorized human REVIEW #11 inspect exact V2 source 7ec17e8..., gate 5128337..., witness 1dbdffc..., owner verifier e69e5..., tests 7+7+3; formal separate signed verdict MISSING",
+    "P1: fresh true local Qwen model in a single centrally authorized lease still not operational; historic genuine Qwen generation #39063107445 passed and historical sample applied test-only through CORE/receiver, not production admission",
+    "Keep HANDOFF PAUSED_BY_USER, all PRs draft, no branch merge, no paid API, production queue prohibited."
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
