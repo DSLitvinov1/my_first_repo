@@ -74,14 +74,12 @@ class OperatorAnchorLogicTests(unittest.TestCase):
         with self.assertRaises(OperatorAnchorDenied):
             bootstrap(self.home)
         self.assertEqual(self.check(p)["sequence"],1)
-    def test_malformed_anchor_fails_closed(self):
+    def test_malformed_anchor_fails_closed_after_valid_signature(self):
+        packet=self.make("one legitimate signed event")
+        self.assertEqual(self.check(packet)["sequence"],1)
         (self.home/"protected-anchor.json").write_text("{}",encoding="ascii")
-        with self.assertRaises(OperatorAnchorDenied):
-            self.check(self.make_after_damage_dummy())
-    def make_after_damage_dummy(self):
-        return {"certificate":{},"signature_base64":"","kind":
-                "MONOTONIC_FIXTURE_WITNESS_NOT_OPERATION_APPROVAL",
-                "execution_allowed":False}
+        with self.assertRaisesRegex(OperatorAnchorDenied,"damaged monotonic anchor"):
+            self.check(packet)
     def test_duplicate_key_or_unexpected_fields_in_packet_denied(self):
         p=self.make("x")
         p=dict(p,operator_approved=True)
