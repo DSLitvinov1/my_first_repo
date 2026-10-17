@@ -532,6 +532,32 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         print("NF_REAL_SIGNED_OWNER_GRANT_TO_PROTECTED_FINAL_EFFECT_ONCE",flush=True)
 
+    def test_private_journal_kernel_reboot_witness_rejects_service_restart(self):
+        # PRE is durable under nf_effect, not PostgreSQL or DB actor.
+        # AFTER on the SAME Linux boot must be denied even if the signer,
+        # recipient and checker processes have all stopped/restarted.
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        import hashlib as _hashlib
+        trial=_hashlib.sha256(b"ephemeral-real-boot-preflight").hexdigest()
+        task=self.fx.packet["payload"]["task_id"]
+        witness_file=STAGE/"offline_kernel_reboot_evidence.py"
+        pins=("beb08eff32923d8ca364aabfde0458f380acf8e7",
+              "03cbb2776283a50bc0825769239e5cbebc53be71")
+        before=run_uid("nf_effect",witness_file,"before",self.receiver_config,
+                       task,trial,*pins)
+        self.assertEqual(before.returncode,0,before.stderr)
+        self.assertEqual(json.loads(before.stdout)["status"],
+                         "BEFORE_REBOOT_SAVED_TEST_ONLY")
+        # Separate execution, but no Linux kernel reboot: must fail closed.
+        after=run_uid("nf_effect",witness_file,"after",self.receiver_config,
+                      task,trial,*pins)
+        self.assertNotEqual(after.returncode,0)
+        self.assertIn("KERNEL_REBOOT_WITNESS_DENIED_NO_RELEASE",after.stderr)
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        self.assertEqual(self.hash_file_from_recipient_uid(),
+                         _hashlib.sha256(CONTENT).hexdigest())
+        print("NF_KERNEL_REBOOT_WITNESS_REJECTS_PROCESS_ONLY_RESTART",flush=True)
+
     def test_owner_grant_null_and_malformed_denied_before_any_effect(self):
         # Null was a demonstrated downgrade to signer-only legacy fixture.
         # Reject it even if the signer service is available and the lease is valid.

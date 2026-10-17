@@ -67,7 +67,7 @@ jobs:
           python3 -m venv /tmp/nf-os-recipient-venv
           /tmp/nf-os-recipient-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" cryptography==46.0.3
           mkdir -p /tmp/nf-ipc-source
-          for name in offline_operator_anchor.py offline_owner_grant_admission.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_recipient_protected_journal.py offline_cas.py offline_effect_reservation.py; do
+          for name in offline_operator_anchor.py offline_owner_grant_admission.py offline_operator_ipc.py offline_signer_scope_guard.py signed_effect_permit.py offline_fenced_file_receiver.py offline_operator_gated_receiver.py offline_os_separated_effect_receiver.py offline_recipient_protected_journal.py offline_kernel_reboot_evidence.py offline_cas.py offline_effect_reservation.py; do
             cp "bridge/neurofactory/trusted_host/$name" /tmp/nf-ipc-source/
           done
           cp .nf_core_pinned/bridge/neurofactory/development/core_owned/one_task_core.py /tmp/nf-ipc-source/
