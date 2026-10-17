@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "REAL_QWEN_8_TESTED_REAL_ONE_TASK_CORE_TO_THREE_OS_UID_PG_FILE_10_PASS_REJECT_LIVE",
+      "status": "HOST_NON_DB_DURABLE_4_PASS_OWNER_KEY_FIXTURE_6_PASS_GLOBAL_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -632,12 +632,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "3101875b4f56ae83b0cc92300aca9544a5ad21ed",
+      "head": "e9a3685a22cd95cd83cb9f48d24996ccdd3524c4",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "THREE_DISTINCT_OS_UID_ONE_REAL_FILE_8_PASS_GENUINE_QWEN_PROVENANCE_TO_ACTUAL_CORE_PG_10_PASS_NONLIVE",
+      "status": "OS_UID_RECEIVER_PROTECTED_DURABLE_NON_PG_UNKNOWN_RACE_4_GREEN_SIGNER_PINNED_OWNER_KEY_6_GREEN_NO_REAL_OWNER",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -921,6 +921,41 @@
           "independent_human_review": false,
           "production_permission": false,
           "evidence": "bridge/neurofactory/trusted_host/THREE_UID_OS_PROTECTED_FINAL_RECIPIENT_EVIDENCE_20261017_RU.md"
+        },
+        "protected_recipient_durable_and_pinned_owner_20261017": {
+          "recipient_os_journal_source": "bridge/neurofactory/trusted_host/offline_recipient_protected_journal.py",
+          "recipient_os_journal_blob": "578e2114c971529039d9a3e151c0fe37c103cfa1",
+          "wrapped_effect_blob": "db8a6413d01705adff4726d4c10e08603ea720aa",
+          "privileged_os_endpoint_blob": "fa9e5eab68a9e669ce64a05e61243a17dddbcd48",
+          "protected_effect_tests_blob": "1eac73c0bfa6fcdb9f635379525bf1acc879a252",
+          "recovery_targeted_run": 39065521267,
+          "recovery_job": 117492250518,
+          "recovery_exact_tested_sha": "e23d9a0bd83b662b71a8988494f4faadf11d7ce4",
+          "recovery_new_tests_pass": 4,
+          "db_journal_deleted_and_target_removed_repeat_denied": true,
+          "fsync_before_receipt_unknown_survives_one_shot_recipient_restart": true,
+          "worker_uid_cannot_read_or_destroy_outside_db_journal": true,
+          "two_racing_independent_processes_one_receipt_only": true,
+          "restored_complete_VM_image_resistant": false,
+          "root_or_effect_uid_compromise_resistant": false,
+          "hard_reboot_and_two_physical_devices_tested": false,
+          "signer_owned_pin_certificate_source": "bridge/neurofactory/trusted_host/offline_owner_grant_admission.py",
+          "owner_certificate_blob": "fbe8a1f1d00c07e94f80d48bb8289b64887c85bc",
+          "owner_certificate_tests_blob": "61ff4ba311c53c22f3a69f52eec574486d327c12",
+          "owner_test_run": 39065429957,
+          "owner_job": 117491974573,
+          "owner_exact_tested_sha": "f42f692c30ebbe9ab62279b5e9c12be153891842",
+          "owner_test_pass": 6,
+          "test_owner_pre_pinned_ed25519_exact_scope": true,
+          "legal_owner_verified": false,
+          "actual_repo_permissions_verified": false,
+          "verified_owner_grant_mandatory_at_receiver": false,
+          "production_owner_approved": false,
+          "production_authenticated_signer_installed": false,
+          "independent_reviewer_signed_approved": false,
+          "handoff_activated": false,
+          "operational_status": "REJECT_LIVE",
+          "evidence": "bridge/neurofactory/trusted_host/PROTECTED_JOURNAL_AND_OWNER_KEY_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -1007,11 +1042,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "P0: independent real human owner entitlement and immutable allowlist/keys outside fixture; permanent separately secured HOST signer/effect OS principals across hard reboot; no DB/admin rollback allowing a second irreversible effect",
-    "P0: independent authorized REVIEW #11 verdict on exact HOST 1259444.., CORE 2205354.. and Qwen 3de70c.., including audit of direct old test-only receiver route and privileged bypass",
-    "P0: two actual separate authorized physical computers and real crash-after-fsync-before-receipt recovery drill with signed owner permissions; existing GitHub-hosted 3 UID on one node does NOT satisfy",
-    "P1: genuine Qwen CPU proved 8 pure program tests and staged later into full CORE git/SQLite lease to HOST test-only fsync file; need fresh model output in same authenticated task lease and explicit provider allowlist review",
-    "P1: production owner-approved project discovery/UI live RBAC, OPS backup restore, no paid API/HANDOFF/merge until REVIEW authorized"
+    "P0: obtain operator-verified REAL owner_id/repo-admin authorization out of band and pin owner key before enabling mandatory per-task owner signature at OS-effect receiver; present cryptographic 6/6 fixture is NOT real identity proof",
+    "P0: establish durable externally pinned trust root and protected ledger beyond shared single VM/root rollback; snapshot/power-loss recovery, independent machine-bound OS auth and real central PostgreSQL lease arbiter",
+    "P0: REJECT LIVE remains: only 1 connected user Windows machine listed; GitHub-hosted 3 Linux UIDs are ONE ephemeral host, two distinct authorized physical PCs not jointly exercised",
+    "P0: independent authorized REVIEW #11 must verify new exact HOST blobs 578e... db8a... fa9e... fbe8... on tested 4/4 SHA e23d9a... and 6/6 SHA f42f69...; comments aren't human signed verdict",
+    "P1: genuine Qwen generated Python verified 8 pure tests #39063107445, archived output validated in genuine CORE to OS-protected HOST #39064047131, but a FRESH Qwen in current centrally authenticated same live lease not done; current 0.5B backend not admitted",
+    "P1: OPS live backup restore/physical reboot and UI live auth remain unproven; no paid API, no merge, no HANDOFF, no production queue"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
