@@ -285,6 +285,33 @@
         "release_approved": false,
         "handoff": "PAUSED_BY_USER",
         "verdict": "NARROW_TESTS_PASS_UNPROTECTED_OPERATOR_BOUNDARY_REJECT_LIVE"
+      },
+      "signed_fenced_receiver_mainline_final_20261017": {
+        "source": "bridge/neurofactory/coordination/HOST_CORE_PROTECTED_RECEIVER_EVIDENCE_20261017_RU.md",
+        "core_head_under_test": "a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff",
+        "host_head_under_test": "e13c97db92e736d41262412632d2abc2197526ba",
+        "host_receiver_blob_under_test": "3e9949e733c67c99e55a7513b24c6093bc3e530e",
+        "coordinator_e2e_test_sha": "88908ec6e8f8ded1e6add59f24ca53f613f715e0",
+        "review_test_source_sha": "d0f5e338c859016664924424405866ba8d445607",
+        "review_final_pinned_workflow_sha": "59981903d8bd5880f14215d4c00dec3175e7252d",
+        "coordinator_ci_run": 39026760082,
+        "coordinator_ci_job": 117379155615,
+        "coordinator_ci_passed": 8,
+        "review_ci_run": 39026811643,
+        "review_ci_job": 117379306173,
+        "review_ci_passed": 13,
+        "protected_cross_connection_row_lock": true,
+        "same_privileged_identity_tamper_possible": true,
+        "real_external_protected_key_custody": false,
+        "authenticated_owner_permission_registry": false,
+        "external_monotonic_antirootback": false,
+        "authenticated_remote_receiver": false,
+        "independent_human_reviewer_signed": false,
+        "real_two_physical_hosts_tested": false,
+        "release_verdict": "REJECT_LIVE_INDEPENDENT_OPERATOR_MISSING",
+        "handoff": "PAUSED_BY_USER",
+        "live_execution_allowed": false,
+        "release_approved": false
       }
     },
     "CORE": {
