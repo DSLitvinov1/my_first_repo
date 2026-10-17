@@ -5,6 +5,7 @@ on:
       - neurofactory-trusted-host-owned-20261015
     paths:
       - bridge/neurofactory/trusted_host/offline_mtls_witness_transport.py
+      - bridge/neurofactory/trusted_host/offline_witness_signed_scope_gate.py
       - bridge/neurofactory/trusted_host/test_offline_mtls_witness_transport.py
       - .github/workflows/neurofactory-host-mtls-witness.yml
 permissions:
@@ -31,6 +32,8 @@ jobs:
           mkdir -p /tmp/nf-witness-code
           cp bridge/neurofactory/trusted_host/offline_external_effect_witness.py /tmp/nf-witness-code/
           cp bridge/neurofactory/trusted_host/offline_mtls_witness_transport.py /tmp/nf-witness-code/
+          cp bridge/neurofactory/trusted_host/offline_witness_signed_scope_gate.py /tmp/nf-witness-code/
+          cp bridge/neurofactory/trusted_host/signed_effect_permit.py /tmp/nf-witness-code/
       - name: Test mutual TLS identity and durable ack with no production deployment
         run: |
-          NF_MTLS_TEST_PYTHON=/tmp/nf-mtls-test/bin/python NF_MTLS_TEST_STAGE=/tmp/nf-witness-code /tmp/nf-mtls-test/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_mtls_witness_transport.py' -v
+          NF_MTLS_TEST_PYTHON=/tmp/nf-mtls-test/bin/python NF_MTLS_TEST_STAGE=/tmp/nf-witness-code /tmp/nf-mtls-test/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_mtls_witness_transport.py' -k scoped_ -v
