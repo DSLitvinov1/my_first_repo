@@ -40,7 +40,7 @@ class SignerScopeIPCTests(unittest.TestCase):
         subprocess.run(["sudo","-n","chown","nf_signer:nf_signer",str(self.home),str(self.api)],check=True)
         subprocess.run(["sudo","-n","chmod","0700",str(self.home)],check=True)
         subprocess.run(["sudo","-n","chgrp","nf_operator_ipc",str(self.api)],check=True)
-        subprocess.run(["sudo","-n","chmod","2770",str(self.api)],check=True)
+        subprocess.run(["sudo","-n","chmod","2750",str(self.api)],check=True)
         boot=as_signer("bootstrap",self.home)
         self.assertEqual(boot.returncode,0,boot.stderr)
         self.key=json.loads(boot.stdout)
@@ -120,9 +120,11 @@ class SignerScopeIPCTests(unittest.TestCase):
         self.serve()
         f=self.dir/"request.json";f.write_text(json.dumps(req),encoding="ascii");f.chmod(0o644)
         script=("import sys,json;from offline_operator_ipc import client_send;"
-                "print(json.dumps(client_send(sys.argv[1],json.load(open(sys.argv[2])))))")
+                "print(json.dumps(client_send(sys.argv[1],json.load(open(sys.argv[2])),"
+                "pinned_signer_uid=int(sys.argv[3]))))")
         proc=subprocess.run(["sudo","-n","-u",user,"env","PYTHONPATH="+str(BASE),
-             PY,"-c",script,str(self.sock),str(f)],
+             PY,"-c",script,str(self.sock),str(f),
+             subprocess.check_output(["id","-u","nf_signer"],text=True).strip()],
              capture_output=True,text=True,timeout=7)
         if proc.returncode!=0:
             server_error=""
