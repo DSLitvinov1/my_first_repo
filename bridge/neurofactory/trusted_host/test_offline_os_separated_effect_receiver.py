@@ -724,7 +724,8 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
         self.assertEqual(self._witness_count(),1)
 
-    def _configure_mtls_loopback_witness(self,*,wrong_server_pin=False):
+    def _configure_mtls_loopback_witness(self,*,wrong_server_pin=False,scoped=False,
+                                          wrong_witness_owner_pin=False):
         from test_offline_mtls_witness_transport import _key,_certificate,_pemkey,_sha
         from cryptography.hazmat.primitives import serialization as ser
         self._external_witness_fixture()
@@ -762,7 +763,8 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             sock.bind(("127.0.0.1",0))
             self.mtls_port=sock.getsockname()[1]
         cfg=dict(self.config)
-        cfg.update(schema="neurofactory.os_separated_recipient.mtls_loopback_fixture.v3",
+        cfg.update(schema=("neurofactory.os_separated_recipient.mtls_scoped_fixture.v4"
+                           if scoped else "neurofactory.os_separated_recipient.mtls_loopback_fixture.v3"),
           witness_host="127.0.0.1",witness_port=self.mtls_port,
           witness_client_cert=str(self.mtls_client_cert),
           witness_client_key=str(self.mtls_client_key),
@@ -775,14 +777,38 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             "from pathlib import Path;import sys;Path(sys.argv[1]).unlink()",cfgfile)
         self.assertEqual(removed.returncode,0,removed.stderr)
         self.private_write("nf_effect",cfgfile,cfg)
-    def _start_mtls_loopback_witness(self,*,drop=False):
+        if scoped:
+            issuer_public=self.fx.private.public_key().public_bytes(
+                ser.Encoding.Raw,ser.PublicFormat.Raw)
+            owner_public=self.owner_private.public_key().public_bytes(
+                ser.Encoding.Raw,ser.PublicFormat.Raw)
+            if wrong_witness_owner_pin:
+                owner_public=Ed25519PrivateKey.generate().public_key().public_bytes(
+                    ser.Encoding.Raw,ser.PublicFormat.Raw)
+            body=self.fx.packet["payload"]
+            pin={
+                "schema":"nf.witness.pinned_scope.test.v1",
+                "owner_id":body["owner_id"],
+                "github_owner_numeric_id":"151650108",
+                "repo_id":"723328237",
+                "repository":body["repository"],
+                "project_id":body["project_id"],
+                "worker_id":body["worker_id"],
+                "issuer_public_base64":base64.b64encode(issuer_public).decode(),
+                "owner_public_base64":base64.b64encode(owner_public).decode(),
+                "issuer_sha256":hashlib.sha256(issuer_public).hexdigest(),
+                "owner_sha256":hashlib.sha256(owner_public).hexdigest()}
+            self.private_write("nf_witness",
+              self.witness_store/"signed-witness-authority-pin.json",pin)
+    def _start_mtls_loopback_witness(self,*,drop=False,scoped=False):
         source=STAGE/"offline_mtls_witness_transport.py"
         self.witness_process=subprocess.Popen([
             "sudo","-n","-u","nf_witness","env",
             "NF_WITNESS_ISOLATED_TEST_ONLY=1",
             "NF_MTLS_WITNESS_TEST_ONLY=1",
             "NF_WITNESS_SIMULATE_CRASH_BEFORE_ACK="+("1" if drop else "0"),
-            "PYTHONPATH="+str(STAGE),PY,str(source),"test-serve-once",
+            "PYTHONPATH="+str(STAGE),PY,str(source),
+            ("test-serve-scoped-once" if scoped else "test-serve-once"),
             str(self.witness_store),str(self.mtls_port),
             str(self.mtls_server_cert),str(self.mtls_server_key),
             str(self.mtls_ca),
@@ -827,6 +853,39 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         self.witness_process.wait(timeout=4)
         self.assertEqual(self._witness_count(),0)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+
+
+    def test_external_mtls_v4_witness_verifies_both_signatures_before_real_file(self):
+        self._configure_mtls_loopback_witness(scoped=True)
+        self._start_mtls_loopback_witness(scoped=True)
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        self._start_mtls_loopback_witness(scoped=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
+        print("NF_V4_REMOTE_WITNESS_DOUBLE_SIGNED_TRUE_FILE_ONCE",flush=True)
+    def test_external_mtls_v4_wrong_witness_owner_pin_denies_file(self):
+        self._configure_mtls_loopback_witness(scoped=True,wrong_witness_owner_pin=True)
+        self._start_mtls_loopback_witness(scoped=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),0)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+    def test_external_mtls_v4_witness_offline_blocks_without_reservation(self):
+        self._configure_mtls_loopback_witness(scoped=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self._witness_count(),0)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+    def test_external_mtls_v4_dropped_receipt_fails_unknown_without_write(self):
+        self._configure_mtls_loopback_witness(scoped=True)
+        self._start_mtls_loopback_witness(scoped=True,drop=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=4)
+        self.assertEqual(self._witness_count(),1)
         self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
 
 def load_tests(loader,tests,pattern):
