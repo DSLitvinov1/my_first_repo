@@ -141,7 +141,7 @@ class SignerScopeIPCTests(unittest.TestCase):
             ("lease_epoch",8),("operation_id","other-operation"),
             ("project_id","other-project"),("source_sha40","9"*40)]:
             with self.subTest(k=k):
-                p=dict(self.payload,k_dummy="") if False else dict(self.payload)
+                p=dict(self.payload)
                 p[k]=v
                 self.assertEqual(self.send(self.req(packet=self.sign(p)))["status"],"DENIED_WITNESS")
                 self.proc.wait(timeout=3);self.proc=None
@@ -160,7 +160,12 @@ class SignerScopeIPCTests(unittest.TestCase):
         ret=self.send(self.req(),user="nf_unapproved_client")
         self.assertEqual(ret["status"],"DENIED_PEER")
     def test_signer_unavailable_returns_no_fallback_success(self):
-        self.assertFalse(self.sock.exists() if False else False)
+        # An explicitly disabled signer cannot be treated as positive.
+        script=("import socket,sys;s=socket.socket(socket.AF_UNIX);"
+                "s.settimeout(1);s.connect(sys.argv[1])")
+        result=subprocess.run(["sudo","-n","-u","nf_db_actor",PY,"-c",script,
+                str(self.sock)],capture_output=True,timeout=3)
+        self.assertNotEqual(result.returncode,0)
         self.assertNotEqual(subprocess.run(["sudo","-n","-u","nf_db_actor","test","-r",
                      str(self.home/"issuer-private.raw")]).returncode,0)
     def test_db_actor_cannot_replace_signer_owned_scope(self):
