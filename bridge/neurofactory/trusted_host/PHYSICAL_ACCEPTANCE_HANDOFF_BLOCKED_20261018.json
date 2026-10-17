@@ -1,0 +1,71 @@
+{
+  "schema": "neurofactory.trusted_host.physical_acceptance_handoff.v1",
+  "date": "2026-10-18",
+  "release_status": "BLOCKED_NO_EXTERNAL_TRUST",
+  "deployment_status": "NOT_INSTALLED",
+  "source_repository": "DSLitvinov1/my_first_repo",
+  "candidate_preflight_commit": "0ba896a8d3605cfed8ac17e0e6074045a53a45d3",
+  "host_base_commit": "87409fe15543f47f1d6318aaa220b4f547631270",
+  "core_last_confirmed_signed_grant_commit": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+  "source_git_blobs": {
+    "bridge/neurofactory/trusted_host/deployment_readiness_preflight.py": "ad48c5fbd478e334dd085a1f52aae0339fc55cce",
+    "bridge/neurofactory/trusted_host/test_deployment_readiness_preflight.py": "a1ba0d9855af1f4dae9013cbb4b198c1f1880278",
+    "bridge/neurofactory/trusted_host/PERMANENT_HOST_OPERATOR_PROVISIONING_PLAN_20261018_RU.md": "d357bf36f328ea58ffd5c6d1d5110b774916d4fc",
+    ".github/workflows/neurofactory-host-deployment-readiness.yml": "03e6ed04e270b52305a720811c645bbaa78d52a9"
+  },
+  "verified_workflow": {
+    "run_id": 39072238136,
+    "url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/39072238136",
+    "job_id": 117512064013,
+    "test_results": "7/7 PASS",
+    "observed_gate": "NF_HOST_PRODUCTION_INSTALL_READINESS=BLOCKED_TEST_FIXTURE_ONLY",
+    "job_conclusion": "success"
+  },
+  "previous_core_host_lab": {
+    "host_run_id": 39069220676,
+    "host_run_url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/39069220676",
+    "test_results": "25/25 PASS",
+    "physical_machines_tested": 1,
+    "temporary_github_linux_runner": true,
+    "three_or_four_distinct_os_users_are_not_physical_hosts": true
+  },
+  "available_bridge": {
+    "desktop_commander_online_windows_device_count": 1,
+    "authorized_linux_device_count_confirmed": 0,
+    "remote_command_state": "MONTHLY_USAGE_PAUSED_DO_NOT_RETRY",
+    "physically_different_authorized_second_machine_confirmed": false
+  },
+  "external_operator_and_owner_key": {
+    "operator_separately_authorized": false,
+    "permanent_private_signing_key_provisioned": false,
+    "github_owner_repository_acl_independently_proven": false,
+    "external_monotonic_highwater_attested": false,
+    "actual_linux_kernel_reboot_witness": false,
+    "external_hardware_attestation": false
+  },
+  "physical_acceptance": {
+    "test_five_negative_on_two_real_nodes": "NOT_PERFORMED",
+    "test_one_positive_on_two_real_nodes": "NOT_PERFORMED",
+    "kernel_reboot_and_protected_journal_recovery": "NOT_PERFORMED",
+    "second_real_host": "NOT_AVAILABLE"
+  },
+  "review": {
+    "issue_number": 11,
+    "host_draft_pr_number": 15,
+    "preflight_draft_pr_number": 17,
+    "separately_authorized_review_actor": "NOT_ASSIGNED",
+    "signed_external_review_verdict": "NOT_RECEIVED",
+    "live_release_approved": false,
+    "handoff": "PAUSED_BY_USER"
+  },
+  "forbidden_operations": {
+    "merge": false,
+    "install_host_service": false,
+    "reboot_user_device": false,
+    "create_exportable_real_keys": false,
+    "enable_live_queue": false,
+    "pay_for_api": false,
+    "send_real_project_effects": false
+  },
+  "disclaimer": "Hash-pinned code and CI logs are not physical host attestation, independent owner key custody, or reviewer approval. GitHub branch tips can move; verify exact commit and blobs."
+}
