@@ -1,14 +1,14 @@
 {
   "schema": 2,
   "project": "НЕЙРОЗАВОД",
-  "recorded_at_date": "2026-10-17",
+  "recorded_at_date": "2026-10-18",
   "owner": "COORDINATOR",
   "primary_issue": 3,
   "roadmap_issue": 8,
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "OWNER_OPERATOR_CHALLENGE_7_PASS_EXTERNAL_WITNESS_7_PASS_V2_3_PASS_FULL_RECEIVER_REGRESSION_25_PASS_LIVE_BLOCKED",
+      "status": "MTLS_TWO_PEER_CERT_PIN_6_GREEN_REMOTE_WITNESS_PROTOCOL_TEST_ONLY_PRODUCTION_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -650,12 +650,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "eb449496ba32882a9652d4cf1ca705a6f0506aa9",
+      "head": "c2d9ac07038feaee74a9715173e60c9ac129cb0a",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "GITHUB_NUMERIC_ID_OPERATOR_CHALLENGE_7_PASS_EXTERNAL_WITNESS_7_PASS_PINNED_V2_FINAL_EFFECT_3_PASS_NOT_REAL_TRUST_DOMAIN",
+      "status": "TLS13_MUTUAL_CERT_CHAIN_AND_EXACT_PIN_SIGNED_REMOTE_WITNESS_6_PASS_ONE_HOST_NO_REAL_TWO_NODE_RELEASE",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -1059,6 +1059,36 @@
           "v2_new_cases_in_full_matrix": 3,
           "old_and_modified_regression_cases": 22,
           "real_hardware_reboot": false
+        },
+        "mtls_candidate_on_single_host_20261018": {
+          "source": "bridge/neurofactory/trusted_host/offline_mtls_witness_transport.py",
+          "tested_source_commit": "87409fe15543f47f1d6318aaa220b4f547631270",
+          "test_source": "bridge/neurofactory/trusted_host/test_offline_mtls_witness_transport.py",
+          "linux_actions_run": 39071907860,
+          "linux_actions_job": 117511086200,
+          "targeted_tests_passed": 6,
+          "tls_protocol": "TLSv1.3",
+          "mutual_certificate_chain_verification": true,
+          "pinned_exact_der_sha256_both_peers": true,
+          "signed_witness_ack_ed25519": true,
+          "witness_highwater_fsync_before_ack": true,
+          "replay_denied": true,
+          "ack_lost_manual_stop": true,
+          "same_CA_different_client_certificate_denied": true,
+          "wrong_server_fingerprint_denied": true,
+          "wrong_ed25519_receipt_key_denied": true,
+          "network_unavailable_denied": true,
+          "data_path": "127.0.0.1 loopback only",
+          "authorized_distinct_physical_machines_tested": false,
+          "production_listener_implemented": false,
+          "production_remote_witness_integrated_with_final_effect": false,
+          "test_certificates_ephemeral_only": true,
+          "real_owner_key_enrolled": false,
+          "externally_pinned_trusted_root_deployed": false,
+          "hard_machine_reboot_and_backup_restore": false,
+          "signed_independent_review": false,
+          "release_permission": false,
+          "operational_acceptance_procedure": "bridge/neurofactory/trusted_host/TWO_PHYSICAL_NODES_MTLS_WITNESS_ACCEPTANCE_20261018_RU.md"
         }
       },
       "blockers": [
@@ -1145,12 +1175,13 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "P0: operator with independent access must LIVE-verify actual GitHub stable numeric repo/user ID and admin ACL, attest owner challenge, persist consumed nonces and enroll owner public key in signer hardware/protected key custody; only synthetic owner key verified today",
-    "P0: move remote witness from separate Linux UID on same temporary GitHub runner onto second physically distinct owner-authorized host with signed peer identity/mTLS and externally durable highwater; presently full-VM rollback of both roles remains OPEN",
-    "P0: run actual power interruption/reboot and database + recipient full-machine restore with separate witness unaffected; one physical user Windows PC online, two physical authorized nodes NOT confirmed",
-    "P0: independent external authorized human REVIEW #11 inspect exact V2 source 7ec17e8..., gate 5128337..., witness 1dbdffc..., owner verifier e69e5..., tests 7+7+3; formal separate signed verdict MISSING",
-    "P1: fresh true local Qwen model in a single centrally authorized lease still not operational; historic genuine Qwen generation #39063107445 passed and historical sample applied test-only through CORE/receiver, not production admission",
-    "Keep HANDOFF PAUSED_BY_USER, all PRs draft, no branch merge, no paid API, production queue prohibited."
+    "P0: independent authorized operator must enroll real GitHub numeric owner/repo proof-of-possession Ed25519 key and key revocation/nonces outside database; currently synthetic proofs only",
+    "P0: authorize 2 truly distinct physical machines; implement and review a bounded remote witness listener (today loopback-only!) with mutual TLS device credentials and independent trust root, not merely Unix SO_PEERCRED across users",
+    "P0: wire verified network transport as mandatory recipient pre-effect barrier, then prove full live PostgreSQL + file + witness on two authorized hosts with witnessed power reboot/restore and anti-replay",
+    "P0: witness whole-machine snapshot rollback/root compromise requires external WORM/hardware monotonic third trust domain; physical two hosts alone insufficient for simultaneous rollback",
+    "P0: independent authorized REVIEW #11 sign exact tested commits; GitHub issue comments/CI are not release signoff; HANDOFF and real queue remain prohibited",
+    "P1: actual fresh Qwen run inside same centrally authorized lease after real owner/host permits; previous genuine real model code was reused historically in separate runs",
+    "No paid API, merge, user computer changes or server publication without explicit approval."
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
