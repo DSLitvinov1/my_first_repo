@@ -8,7 +8,9 @@ from datetime import datetime,timedelta,timezone
 from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes,serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import rsa,ed25519
+from signed_effect_permit import _validated_payload
+from offline_external_effect_witness import canon
 from cryptography.x509.oid import NameOID,ExtendedKeyUsageOID
 
 PY=os.environ.get("NF_MTLS_TEST_PYTHON")
@@ -103,7 +105,7 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
             try:self.proc.wait(timeout=2)
             except subprocess.TimeoutExpired:self.proc.kill()
         self.proc=None
-    def listen(self,*,drop_ack=False):
+    def listen(self,*,drop_ack=False,scoped=False):
         with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
             sock.bind(("127.0.0.1",0));self.port=sock.getsockname()[1]
         server=("sudo","-n","-u","nf_witness","env",
@@ -111,7 +113,8 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
            "NF_WITNESS_SIMULATE_CRASH_BEFORE_ACK="+("1" if drop_ack else "0"),
            "PYTHONPATH="+str(STAGE),PY,
            str(Path(STAGE)/"offline_mtls_witness_transport.py"),
-           "test-serve-once",str(self.store),str(self.port),str(self.srv_crt),
+           ("test-serve-scoped-once" if scoped else "test-serve-once"),
+           str(self.store),str(self.port),str(self.srv_crt),
            str(self.srv_key),str(self.ca),self.client_fingerprint)
         self.proc=subprocess.Popen(server,stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,text=True)
@@ -119,20 +122,25 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
         self.assertIsNone(self.proc.poll(),
             "test witness failed before client connected")
     def call(self,*,server_pin=None,witness_pub=None,certificate=None,
-             private_key=None):
+             private_key=None,scoped=False):
         cli=("import json,sys;from offline_mtls_witness_transport "
              "import request_test_once;"
              "result=request_test_once('127.0.0.1',int(sys.argv[1]),"
              "json.load(open(sys.argv[2])),"
              "client_cert=sys.argv[3],client_key=sys.argv[4],"
              "ca_cert=sys.argv[5],pinned_server_cert_sha256=sys.argv[6],"
-             "pinned_witness_public_b64=sys.argv[7]);"
+             "pinned_witness_public_b64=sys.argv[7],"
+             "signed_packet=(None if sys.argv[8]=='-' else "
+             "json.load(open(sys.argv[8]))['signed_packet']),"
+             "signed_owner_grant=(None if sys.argv[8]=='-' else "
+             "json.load(open(sys.argv[8]))['signed_owner_grant']));"
              "print(json.dumps(result))")
         return self.run_uid("nf_effect","-c",cli,self.port,self.claimfile,
                  self.cli_crt if certificate is None else certificate,
                  self.cli_key if private_key is None else private_key,
                  self.ca,self.server_fingerprint if server_pin is None else server_pin,
-                 self.witness_public if witness_pub is None else witness_pub)
+                 self.witness_public if witness_pub is None else witness_pub,
+                 self.scopefile if scoped else "-")
     def count(self):
         cmd=("from pathlib import Path;import sys;"
           "print(len(list(Path(sys.argv[1]).glob('target-*.json'))))")
@@ -189,4 +197,116 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
         r=self.call(private_key=other,certificate=othercert)
         self.assertNotEqual(r.returncode,0)
         self.assertEqual(self.count(),0)
+
+    def _setup_scoped_permissions(self):
+        self.issuer_private=ed25519.Ed25519PrivateKey.generate()
+        self.owner_private=ed25519.Ed25519PrivateKey.generate()
+        def b64_pub(k):
+            return _b64(k.public_key().public_bytes(
+                serialization.Encoding.Raw,serialization.PublicFormat.Raw))
+        now=int(time.time())
+        body={
+            "schema":"neurofactory.trusted_host.signed_effect_permit.v1",
+            "purpose":"EFFECT_RESERVATION_SCOPE_ONLY",
+            "issuer_id":"issuer-witness-fixture","key_id":"test-key",
+            "owner_id":"151650108","repository":"DSLitvinov1/my_first_repo",
+            "project_id":"nf-sandbox","task_id":self.claim["task_id"],
+            "worker_id":"worker-sandbox-01",
+            "source_sha40":"a"*40,"source_file_sha256":"b"*64,
+            "input_task_sha256":"c"*64,"policy_sha256":"d"*64,
+            "target":self.claim["target"],
+            "proposed_content_sha256":self.claim["content_sha256"],
+            "fencing_token_sha256":"f"*64,
+            "lease_epoch":self.claim["lease_epoch"],
+            "issued_unix":now-5,"expires_unix":now+110,
+            "idempotency_key":"1"*64,"operation_id":self.claim["operation_id"]}
+        permit=_validated_payload(body)
+        self.claim["permit_sha256"]=_sha(permit)
+        self.claimfile.write_text(json.dumps(self.claim),encoding="ascii")
+        fields=("owner_id","repository","project_id","task_id","worker_id",
+                "source_sha40","target","operation_id","lease_epoch")
+        statement={k:body[k] for k in fields}
+        statement.update(permit_sha256=_sha(permit),expires_unix=now+90)
+        self.envelope={"signed_packet":{
+            "payload":body,"signature_base64":_b64(self.issuer_private.sign(permit))},
+            "signed_owner_grant":{
+                "statement":statement,
+                "signature_base64":_b64(self.owner_private.sign(canon(statement)))}}
+        self.scopefile=self.root/"scope.json"
+        self.scopefile.write_text(json.dumps(self.envelope),encoding="ascii")
+        self.scopefile.chmod(0o644)
+        issuer_pub=self.issuer_private.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        owner_pub=self.owner_private.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        policy={"schema":"nf.witness.pinned_scope.test.v1",
+            "owner_id":"151650108","repo_id":"723328237",
+            "repository":"DSLitvinov1/my_first_repo",
+            "project_id":"nf-sandbox","worker_id":"worker-sandbox-01",
+            "issuer_public_base64":_b64(issuer_pub),
+            "owner_public_base64":_b64(owner_pub),
+            "issuer_sha256":_sha(issuer_pub),"owner_sha256":_sha(owner_pub)}
+        saver=("import os,sys;f=os.open(sys.argv[1],os.O_CREAT|os.O_EXCL|"
+               "os.O_WRONLY,0o600);os.write(f,sys.stdin.buffer.read());"
+               "os.fsync(f);os.close(f)")
+        result=subprocess.run(["sudo","-n","-u","nf_witness","env",
+           "NF_WITNESS_ISOLATED_TEST_ONLY=1",
+           "PYTHONPATH="+str(STAGE),PY,"-c",saver,
+           str(self.store/"signed-witness-authority-pin.json")],
+           input=json.dumps(policy).encode(),capture_output=True,timeout=7)
+        self.assertEqual(result.returncode,0,result.stderr[:250])
+    def test_scoped_valid_signed_owner_and_issuer_required_before_highwater(self):
+        self._setup_scoped_permissions()
+        self.listen(scoped=True)
+        reply=self.call(scoped=True)
+        self.assertEqual(reply.returncode,0,reply.stderr)
+        self.assertEqual(self.count(),1)
+        self.close_server();self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),1)
+    def test_scoped_missing_owner_grant_no_reservation(self):
+        self._setup_scoped_permissions()
+        bundle=json.loads(self.scopefile.read_text())
+        bundle["signed_owner_grant"]=None
+        self.scopefile.write_text(json.dumps(bundle))
+        self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),0)
+    def test_scoped_forged_valid_shape_owner_signature_no_reservation(self):
+        self._setup_scoped_permissions()
+        bundle=json.loads(self.scopefile.read_text())
+        fake=ed25519.Ed25519PrivateKey.generate()
+        bundle["signed_owner_grant"]["signature_base64"]=_b64(
+            fake.sign(canon(bundle["signed_owner_grant"]["statement"])))
+        self.scopefile.write_text(json.dumps(bundle))
+        self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),0)
+    def test_scoped_forged_issuer_signature_no_reservation(self):
+        self._setup_scoped_permissions()
+        bundle=json.loads(self.scopefile.read_text())
+        fake=ed25519.Ed25519PrivateKey.generate()
+        bundle["signed_packet"]["signature_base64"]=_b64(
+            fake.sign(_validated_payload(bundle["signed_packet"]["payload"])))
+        self.scopefile.write_text(json.dumps(bundle))
+        self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),0)
+    def test_scoped_foreign_target_claim_no_reservation(self):
+        self._setup_scoped_permissions()
+        altered=dict(self.claim,target="bridge/neurofactory/development/core_owned/foreign.py")
+        self.claimfile.write_text(json.dumps(altered),encoding="ascii")
+        self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),0)
+    def test_scoped_pinned_authority_absent_denied(self):
+        self._setup_scoped_permissions()
+        out=subprocess.run(["sudo","-n","-u","nf_witness",
+            "rm",str(self.store/"signed-witness-authority-pin.json")],
+            capture_output=True,timeout=5)
+        self.assertEqual(out.returncode,0,out.stderr)
+        self.listen(scoped=True)
+        self.assertNotEqual(self.call(scoped=True).returncode,0)
+        self.assertEqual(self.count(),0)
+
 if __name__=="__main__":unittest.main()
