@@ -124,7 +124,14 @@ class SignerScopeIPCTests(unittest.TestCase):
         proc=subprocess.run(["sudo","-n","-u",user,"env","PYTHONPATH="+str(BASE),
              PY,"-c",script,str(self.sock),str(f)],
              capture_output=True,text=True,timeout=7)
-        self.assertEqual(proc.returncode,0,proc.stderr[:450])
+        if proc.returncode!=0:
+            server_error=""
+            if self.proc is not None:
+                try:self.proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:pass
+                if self.proc.poll() is not None:
+                    server_error=self.proc.stderr.read()[:900]
+            self.fail("client refused: "+proc.stderr[:250]+" server failure: "+server_error)
         return json.loads(proc.stdout)
     def test_exact_owner_scope_current_claim_only_returns_nonlive(self):
         ret=self.send(self.req())
