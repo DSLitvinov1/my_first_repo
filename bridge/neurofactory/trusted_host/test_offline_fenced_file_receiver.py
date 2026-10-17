@@ -221,5 +221,28 @@ class TestSignedLiveLeaseOfflineEffect(unittest.TestCase):
         finally:
             os.environ["NF_HOST_RECEIVER_FIXTURE_ONLY"]=env
 
+    def test_host_lease_row_locked_during_actual_file_effect(self):
+        # A different PostgreSQL connection attempts to revoke the same
+        # lease *inside* the filesystem effect. It must fail to get a lock.
+        # Prior implementation released DB lock before file creation.
+        from unittest.mock import patch
+        import offline_fenced_file_receiver as receiver_module
+        original=receiver_module._create_fenced_new_file
+        def attack_and_then_write(root,target,content):
+            other=connect()
+            try:
+                other.execute("SET statement_timeout = 150")
+                with self.assertRaises(psycopg.errors.QueryCanceled):
+                    other.execute("UPDATE nf_task SET phase='UNKNOWN' WHERE task_id=%s",(TASK,))
+            finally:
+                other.close()
+            original(root,target,content)
+        with patch.object(receiver_module,"_create_fenced_new_file",
+                          side_effect=attack_and_then_write):
+            receipt=self.write()
+        self.assertEqual(receipt["status"],"ONE_FILE_COMPLETED_OFFLINE_TEST_ONLY")
+        self.assertEqual(self.fspath().read_bytes(),CONTENT)
+        self.assertEqual(self.db.execute("SELECT phase FROM nf_task").fetchone()[0],"LEASED")
+
 if __name__=="__main__":
     unittest.main()
