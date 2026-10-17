@@ -1,0 +1,21 @@
+name: CRM bridge availability diagnostic
+on:
+  push:
+    branches: [diagnostic/detail-crm-bridge-20261017]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: github.event_name == 'push' || github.event.pull_request.head.ref == 'diagnostic/detail-crm-bridge-20261017'
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 4
+    steps:
+      - name: Probe without project modifications
+        shell: powershell
+        run: |
+          Write-Host 'Reserved bridge online'
+          Write-Host ('RUNNER_OS=' + $env:RUNNER_OS)
+          Write-Host ('RUNNER_NAME=' + $env:RUNNER_NAME)
+          Write-Host ('PYTHON_AVAILABLE=' + [bool](Get-Command python -ErrorAction SilentlyContinue))
