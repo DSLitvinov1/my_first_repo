@@ -14,7 +14,7 @@ permissions:
 jobs:
   signer-worker-final-file-receiver-test-only:
     runs-on: ubuntu-24.04
-    timeout-minutes: 9
+    timeout-minutes: 12
     services:
       postgres:
         image: postgres:16
@@ -75,4 +75,4 @@ jobs:
       - name: Verify isolated recipient alone can write approved scratch file and cannot replay it
         run: |
           git rev-parse HEAD
-          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-os-recipient-venv/bin/python /tmp/nf-os-recipient-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_os_separated_effect_receiver.py' -k owner_grant_restart_rollback_ -v
+          NF_OPERATOR_IPC_STAGED_SOURCE=/tmp/nf-ipc-source/offline_operator_ipc.py NF_OPERATOR_TEST_PYTHON=/tmp/nf-os-recipient-venv/bin/python /tmp/nf-os-recipient-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_os_separated_effect_receiver.py' -v
