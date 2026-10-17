@@ -1,0 +1,28 @@
+name: Neurofactory CORE read-only OS-receiver Unix client narrow security tests
+on:
+  push:
+    branches:
+      - neurofactory-core-queue-owned-20261013
+    paths:
+      - bridge/neurofactory/development/core_owned/offline_os_receiver_client.py
+      - bridge/neurofactory/development/core_owned/test_offline_os_receiver_client.py
+      - .github/workflows/neurofactory-core-owned-os-receiver-client.yml
+permissions:
+  contents: read
+jobs:
+  no-file-effects-transport-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      NF_CORE_OFFLINE_RECEIVER_TEST_ONLY: "1"
+      NF_RECEIVER_OS_FIXTURE_ONLY: "1"
+      PYTHONNOUSERSITE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exact candidate source commit
+        run: git rev-parse HEAD
+      - name: CORE local claim and privileged HOST peer UID receipt rejection tests
+        run: python3 -B -m unittest discover -s bridge/neurofactory/development/core_owned -p 'test_offline_os_receiver_client.py' -v
