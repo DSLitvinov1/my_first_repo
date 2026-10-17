@@ -1,0 +1,40 @@
+name: Neurofactory HOST nonproduction deployment gate
+on:
+  push:
+    branches: [neurofactory-host-deployment-readiness-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/deployment_readiness_preflight.py
+      - bridge/neurofactory/trusted_host/test_deployment_readiness_preflight.py
+      - .github/workflows/neurofactory-host-deployment-readiness.yml
+permissions:
+  contents: read
+jobs:
+  never-enable-fixture-as-real-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Regression tests for trust-root and fixture runtime deny
+        run: python3 -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_deployment_readiness_preflight.py' -v
+      - name: Physical deployment preflight MUST return exit 2
+        run: |
+          if python3 -B bridge/neurofactory/trusted_host/deployment_readiness_preflight.py --repository . > /tmp/nf-host-readiness.json; then
+            echo "SECURITY FAILURE: test-only host incorrectly approved"
+            exit 1
+          else
+            exit_code=$?
+            test "$exit_code" -eq 2
+          fi
+          python3 - <<'PY'
+          import json
+          s=json.load(open('/tmp/nf-host-readiness.json',encoding='utf-8'))
+          assert s['status']=='BLOCKED_EXTERNAL_ATTESTATION_REQUIRED'
+          assert not s['can_install']
+          assert not s['release_approved']
+          assert not s['live_execution_allowed']
+          assert 'FINAL_RECEIVER_IS_EXPLICITLY_FIXTURE_ONLY' in s['source_blockers']
+          assert 'FINAL_RECEIVER_USES_DISPOSABLE_TEST_DATABASE' in s['source_blockers']
+          print('NF_HOST_PRODUCTION_INSTALL_READINESS=BLOCKED_TEST_FIXTURE_ONLY')
+          PY
