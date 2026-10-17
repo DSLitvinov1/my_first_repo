@@ -1,0 +1,28 @@
+name: Neurofactory Coordinator HOST board v2 isolated Linux tests
+on:
+  push:
+    branches: [neurofactory-coordinator-mvp-status-20261015]
+    paths:
+      - 'bridge/neurofactory/coordination/mvp_status_projection.py'
+      - 'bridge/neurofactory/coordination/test_mvp_status_projection.py'
+      - '.github/workflows/neurofactory-coordination-host-board-v2-linux.yml'
+permissions:
+  contents: read
+concurrency:
+  group: neurofactory-coordination-host-board-v2
+  cancel-in-progress: false
+jobs:
+  read_only_board_tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify v1 compatibility and v2 HOST status
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -B -m py_compile bridge/neurofactory/coordination/mvp_status_projection.py
+          python -B -m unittest discover -s bridge/neurofactory/coordination -p test_mvp_status_projection.py -v
+          python -B bridge/neurofactory/coordination/mvp_status_projection.py bridge/neurofactory/coordination/mvp_status_snapshot_20261015.json --with-trusted-host > /dev/null
