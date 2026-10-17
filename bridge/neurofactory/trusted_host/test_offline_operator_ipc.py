@@ -36,7 +36,7 @@ class ReadOnlyIPCTests(unittest.TestCase):
         subprocess.run(["sudo","-n","chown","nf_signer:nf_signer",str(self.home),str(self.api)],check=True)
         subprocess.run(["sudo","-n","chmod","0700",str(self.home)],check=True)
         subprocess.run(["sudo","-n","chgrp","nf_operator_ipc",str(self.api)],check=True)
-        subprocess.run(["sudo","-n","chmod","2770",str(self.api)],check=True)
+        subprocess.run(["sudo","-n","chmod","2750",str(self.api)],check=True)
         x=signer("bootstrap",self.home)
         self.assertEqual(x.returncode,0,x.stderr)
         self.boot=json.loads(x.stdout)
