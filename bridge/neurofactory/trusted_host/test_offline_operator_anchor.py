@@ -11,7 +11,7 @@ import unittest
 
 import psycopg
 
-MODULE=Path(__file__).with_name("offline_operator_anchor.py")
+MODULE=Path(os.environ.get("NF_OPERATOR_TEST_SOURCE","/nonexistent/blocked"))
 PY=os.environ.get("NF_OPERATOR_TEST_PYTHON")
 DB="postgresql://nf_test:nf_test_ephemeral_only@127.0.0.1:5432/nf_test"
 
