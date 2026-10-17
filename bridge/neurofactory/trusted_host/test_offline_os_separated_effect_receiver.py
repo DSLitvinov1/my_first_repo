@@ -288,6 +288,12 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         subprocess.run(["sudo","-n","install","-d","-m","0700",
             "-o","nf_db_actor","-g","nf_db_actor",str(core_root),str(source_repo)],
             check=True)
+        # CI test runner does not have owner rights to delete worker-private
+        # sandbox. Restore only scratch test ownership before TemporaryDirectory
+        # cleanup, without changing the real protected HOST root.
+        self.addCleanup(lambda:subprocess.run(["sudo","-n","chown","-R",
+            str(os.getuid())+":"+str(os.getgid()),str(core_root),str(source_repo)],
+            check=True))
         creator=("import pathlib,sys,subprocess,json,hashlib,time;"
           "from one_task_core import OneTaskCore,EMPTY_SHA,_canonical;"
           "root=pathlib.Path(sys.argv[1]);"
