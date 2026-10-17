@@ -1,0 +1,36 @@
+name: Neurofactory isolated TLS13 witness mutual identity regression
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_mtls_witness_transport.py
+      - bridge/neurofactory/trusted_host/test_offline_mtls_witness_transport.py
+      - .github/workflows/neurofactory-host-mtls-witness.yml
+permissions:
+  contents: read
+jobs:
+  ephemeral-loopback-two-os-users-no-real-machine-change:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify exact source SHA
+        run: git rev-parse HEAD
+      - name: Two distinct disposable Linux service identities
+        run: |
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_witness
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin nf_effect
+          test "$(id -u nf_witness)" != "$(id -u nf_effect)"
+      - name: Isolated pinned cryptography runtime
+        run: |
+          python3 -m venv /tmp/nf-mtls-test
+          /tmp/nf-mtls-test/bin/python -m pip install --no-input --disable-pip-version-check cryptography==46.0.3
+          mkdir -p /tmp/nf-witness-code
+          cp bridge/neurofactory/trusted_host/offline_external_effect_witness.py /tmp/nf-witness-code/
+          cp bridge/neurofactory/trusted_host/offline_mtls_witness_transport.py /tmp/nf-witness-code/
+      - name: Test mutual TLS identity and durable ack with no production deployment
+        run: |
+          NF_MTLS_TEST_PYTHON=/tmp/nf-mtls-test/bin/python NF_MTLS_TEST_STAGE=/tmp/nf-witness-code /tmp/nf-mtls-test/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_mtls_witness_transport.py' -v
