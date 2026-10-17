@@ -242,6 +242,12 @@ class FourPartyScopeTests(unittest.TestCase):
                 with self.assertRaises(ProductionScopeRejected):
                     self.check(docs=p)
 
+    def test_early_oversize_or_nested_operator_fields_denied(self):
+        for value in ("A" * 351, {"nested": [1, 2]}, True, -1):
+            with self.subTest(value_type=type(value).__name__):
+                with self.assertRaises(ProductionScopeRejected):
+                    self.check(docs=self.with_field("operator","source",value))
+
     def test_fixture_mode_flags_cannot_grant_execution(self):
         with patch.dict(os.environ,{"NF_RECEIVER_OS_FIXTURE_ONLY":"1",
                                     "NF_OPERATOR_ANCHOR_FIXTURE_ONLY":"1",
