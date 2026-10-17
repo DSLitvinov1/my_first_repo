@@ -1,16 +1,16 @@
 {
   "schema": "neurofactory.trusted_host.production_scope_candidate.v1",
   "date": "2026-10-18",
-  "verdict": "INDEPENDENT_SCOPE_AND_DB_SOURCE_TESTED_NOT_DEPLOYED",
+  "verdict": "INDEPENDENT_CRYPTO_SCOPE_AND_DB_SOURCE_TESTED_NO_PHYSICAL_DEPLOYMENT",
   "release": "REJECT_LIVE",
   "handoff": "PAUSED_BY_USER",
   "base_host_exact_sha": "4b8d5afd13f51d767bf2640d58fedcee44bd6b85",
   "core_pinned_signed_grant_exact_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
-  "independent_scope_exact_test_sha": "fb06fac43547a60115d827d235d1e625b2841ec0",
+  "independent_scope_exact_test_sha": "8d71f3decc8598bc5690668c0dccd7177e99d8cb",
   "permanent_db_exact_test_sha": "dc65a70bcb8cc4445b6e247fe2ec61e9c9541718",
   "files": {
-    "bridge/neurofactory/trusted_host/independent_four_party_scope.py": "14a454be9e0b96425e4f43b193abf9d47c481afe",
-    "bridge/neurofactory/trusted_host/test_independent_four_party_scope.py": "7df98df68ed3c92c4ef2b3f7fb81b77bfdb6b868",
+    "bridge/neurofactory/trusted_host/independent_four_party_scope.py": "81c41e4b65d26ea8cb37352cb8568f3b5c8908c9",
+    "bridge/neurofactory/trusted_host/test_independent_four_party_scope.py": "7c833e5d6716c5f62cda4209cd5569608f1b59e6",
     "bridge/neurofactory/trusted_host/operator_installed_public_pins.py": "b24606347054705ab91e6c76809cbdb39e191af0",
     "bridge/neurofactory/trusted_host/test_operator_installed_public_pins.py": "9edfbd243757d6891b121a80cd41f47c706693d9",
     "bridge/neurofactory/trusted_host/permanent_postgres_operator_migration.sql": "bb6a8b4094357e1e0b4b5de7bb2b1c3a61a1aee4",
@@ -19,11 +19,11 @@
   },
   "verified_tests": [
     {
-      "run_id": 39073415339,
-      "job_id": 117515538074,
+      "run_id": 39074199375,
+      "job_id": 117517864021,
       "status": "success",
-      "tests": 24,
-      "description": "four signed parties; operator public pins; NO execution authority"
+      "tests": 25,
+      "description": "15 hardened Ed25519 four-party tests + 10 root public pin checks, all no execution authority"
     },
     {
       "run_id": 39073799970,
