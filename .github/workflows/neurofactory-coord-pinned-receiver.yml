@@ -1,7 +1,7 @@
 name: Neurofactory COORD pinned CORE HOST receiver one effect
 on:
   push:
-    branches: [neurofactory-coord-pinned-receiver-20261017]
+    branches: [neurofactory-coord-pinned-locked-receiver-20261017]
     paths:
       - bridge/neurofactory/coordination/test_pinned_core_host_real_receiver.py
       - .github/workflows/neurofactory-coord-pinned-receiver.yml
@@ -40,7 +40,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 0c33d8181e102e2ca3f47559ae6abeb2f4b72757
+          ref: 6bb33d4cdaa26abee6b6f9961b9f1ff5e546ba4e
           path: _e2e_fixture/host
           persist-credentials: false
       - name: Isolated disposable Python dependencies

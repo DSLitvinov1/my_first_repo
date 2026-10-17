@@ -20,7 +20,7 @@ import psycopg
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 CORE_SHA="05ab48bf5b04818df2b632906886610587cad642"
-HOST_SHA="0c33d8181e102e2ca3f47559ae6abeb2f4b72757"
+HOST_SHA="6bb33d4cdaa26abee6b6f9961b9f1ff5e546ba4e"
 TASK="NF-DEV-05-Q987"
 PROJECT="nf-sandbox"
 WORKER="fixture-worker-01"
