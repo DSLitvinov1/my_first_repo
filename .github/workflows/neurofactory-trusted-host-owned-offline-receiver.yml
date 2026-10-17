@@ -1,0 +1,45 @@
+name: Neurofactory HOST fenced disposable filesystem receiver
+on:
+  push:
+    branches:
+      - neurofactory-trusted-host-owned-20261015
+    paths:
+      - bridge/neurofactory/trusted_host/offline_fenced_file_receiver.py
+      - bridge/neurofactory/trusted_host/test_offline_fenced_file_receiver.py
+      - .github/workflows/neurofactory-trusted-host-owned-offline-receiver.yml
+permissions:
+  contents: read
+jobs:
+  final-effect-test-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_test
+          POSTGRES_PASSWORD: nf_test_ephemeral_only
+          POSTGRES_DB: nf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nf_test -d nf_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      NF_HOST_RECEIVER_FIXTURE_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated test dependencies
+        run: |
+          python3 -m venv .nf-receiver-test-venv
+          .nf-receiver-test-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" cryptography==46.0.3
+      - name: Record tested commit
+        run: git rev-parse HEAD
+      - name: Actual ephemeral Postgres and filesystem negative tests
+        run: .nf-receiver-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_fenced_file_receiver.py' -v
