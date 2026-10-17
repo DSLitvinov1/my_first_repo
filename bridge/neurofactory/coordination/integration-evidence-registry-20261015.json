@@ -244,6 +244,29 @@
         "host_issuer_authenticated": false,
         "handoff": "PAUSED_BY_USER",
         "evidence_doc": "bridge/neurofactory/coordination/ADVISORY_UI_PROJECTION_EVIDENCE_20261017_RU.md"
+      },
+      "two_node_signed_witness_diagnostic_20261017": {
+        "module": "bridge/neurofactory/coordination/two_node_witness_diagnostic.py",
+        "tests": "bridge/neurofactory/coordination/test_two_node_witness_diagnostic.py",
+        "review_doc": "bridge/neurofactory/coordination/TWO_NODE_SIGNED_EVIDENCE_DIAGNOSTIC_20261017_RU.md",
+        "exact_tested_coordinator_commit": "d97ed3e95a2f1db2ef41fc39338e8364967909b4",
+        "current_git_scope_core_head_at_creation": "4a068968d5a34d0f7998b7da4d22640160b90b23",
+        "current_git_scope_host_head_at_creation": "3101875b4f56ae83b0cc92300aca9544a5ad21ed",
+        "github_actions_run_id": 39065245308,
+        "github_actions_job_id": 117491422171,
+        "own_author_tests_passed": 17,
+        "own_author_tests_failed": 0,
+        "witnessed_report_signature_checks": 2,
+        "only_ephemeral_same_runner_keys_tested": true,
+        "real_two_different_physical_nodes_witnessed": false,
+        "independent_operator_public_key_pins_provisioned": false,
+        "independently_authorized_human_review": false,
+        "verify_method_writes_user_files": false,
+        "verify_method_can_approve_release": false,
+        "automatic_handoff": "PAUSED_BY_USER",
+        "live_execution_allowed": false,
+        "release_approved": false,
+        "verdict": "SIGNED_REPORT_FORMAT_ACCEPTED_NO_HARDWARE_OR_OPERATOR_AUTHORITY"
       }
     },
     "CORE": {
