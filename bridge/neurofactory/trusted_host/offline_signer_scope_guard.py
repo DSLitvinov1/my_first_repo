@@ -13,6 +13,9 @@ import json
 from pathlib import Path
 import re
 from signed_effect_permit import _validated_payload, SignedEffectPermitError
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.exceptions import InvalidSignature
+import binascii
 from offline_operator_anchor import (
     _guard, _file, verify_current, OperatorAnchorDenied, _canonical
 )
@@ -46,7 +49,7 @@ def check_signer_owned_scope(home, *, signed_permit, witness,
     except (OSError,ValueError,UnicodeError) as e:
         raise OfflineScopeDenied("protected policy unavailable or damaged") from e
     if (type(policy) is not dict or
-        set(policy)!={"schema","expected","pinned_public_sha256","allowed_claim_sha256"}
+        set(policy)!={"schema","expected","pinned_public_sha256","allowed_claim_sha256","effect_issuer_public_b64"}
         or policy["schema"]!="neurofactory.operator.scope_fixture.v1"
         or policy["pinned_public_sha256"]!=current_key_fingerprint
         or type(policy["expected"]) is not dict or set(policy["expected"])!=_ALLOWED_KEYS
@@ -58,6 +61,16 @@ def check_signer_owned_scope(home, *, signed_permit, witness,
         raw=_validated_payload(body)
     except (SignedEffectPermitError,ValueError,TypeError) as e:
         raise OfflineScopeDenied("invalid signed effect schema") from e
+    # Unlike the DB, the separately protected signer policy pins the
+    # independent effect-issuer public key. A caller cannot substitute it.
+    try:
+        effect_public=base64.b64decode(policy["effect_issuer_public_b64"],validate=True)
+        sig=base64.b64decode(signed_permit["signature_base64"],validate=True)
+        if len(effect_public)!=32 or len(sig)!=64:
+            _deny("invalid independent effect signer or signature")
+        Ed25519PublicKey.from_public_bytes(effect_public).verify(sig,raw)
+    except (binascii.Error,InvalidSignature,ValueError,TypeError,KeyError) as e:
+        raise OfflineScopeDenied("effect signature not verified by pinned issuer") from e
     if any(type(body[k])!=type(v) or body[k]!=v
            for k,v in policy["expected"].items()):
         _deny("owner/repo/project/worker/target/lease/operation not allowed")
