@@ -532,6 +532,18 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         print("NF_REAL_SIGNED_OWNER_GRANT_TO_PROTECTED_FINAL_EFFECT_ONCE",flush=True)
 
+    def test_owner_grant_null_and_malformed_denied_before_any_effect(self):
+        # Null was a demonstrated downgrade to signer-only legacy fixture.
+        # Reject it even if the signer service is available and the lease is valid.
+        for supplied in (None, {}, [], {"statement": {}, "signature_base64": ""}):
+            with self.subTest(grant=supplied):
+                self.write_request(extra={"signed_owner_grant": supplied})
+                self.assertEqual(self.send()["status"], "DENIED_OR_UNKNOWN_MANUAL_STOP")
+                self.assertEqual(self.protected_effect_state()["state"], "NEVER_SEEN")
+                self.assertEqual(self.fx.db.execute(
+                    "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0], 0)
+        print("NF_PROTECTED_ENDPOINT_OWNER_NULL_DOWNGRADE_BLOCKED", flush=True)
+
     def test_owner_grant_missing_blocks_before_protected_unknown(self):
         payload=json.loads(self.reqfile.read_text())
         del payload["signed_owner_grant"]
