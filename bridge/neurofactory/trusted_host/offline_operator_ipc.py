@@ -81,6 +81,28 @@ def serve_once(home, socket_path, *, allowed_peer_uid):
                              "current_signer_sequence":result["current_signer_sequence"],
                              "peer_uid_checked":True,"private_key_shared":False,
                              "owner_authenticated":False,"filesystem_write_allowed":False}
+                    elif (req["schema"]=="neurofactory.operator.scope_and_owner_check_fixture.v1"
+                          and set(req)=={"schema","signed_permit","witness",
+                                        "signed_owner_grant","public_sha","public_key"}):
+                        from offline_signer_scope_guard import check_signer_owned_scope
+                        from offline_owner_grant_admission import check_owner_grant_under_signer_uid
+                        scope=check_signer_owned_scope(
+                            root,signed_permit=req["signed_permit"],
+                            witness=req["witness"],current_key_fingerprint=req["public_sha"],
+                            current_public_b64=req["public_key"])
+                        owner=check_owner_grant_under_signer_uid(
+                            root,req["signed_permit"],req["signed_owner_grant"])
+                        if (scope["status"]!="OWNER_SCOPE_FIXTURE_MATCHED_NOT_AUTHORITY"
+                            or owner["status"]!="PINNED_OWNER_KEY_SIGNED_EXACT_SCOPE_TEST_ONLY"):
+                            _deny("owner/scope not both verified")
+                        ret={"status":"PINNED_OWNER_AND_SIGNER_SCOPE_MATCH_TEST_ONLY",
+                             "signed_permit_sha256":scope["signed_permit_sha256"],
+                             "operation_id":scope["operation_id"],
+                             "owner_grant_sha256":owner["grant_sha256"],
+                             "current_signer_sequence":scope["current_signer_sequence"],
+                             "peer_uid_checked":True,"private_key_shared":False,
+                             "real_owner_identity_authenticated":False,
+                             "filesystem_write_allowed":False}
                     else:
                         _deny("invalid request shape")
                 except (ValueError,UnicodeError,TypeError,OperatorAnchorDenied):
