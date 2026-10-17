@@ -27,3 +27,16 @@
 
 4. Строгий выпуск
 REJECT LIVE. Не объединять отдельную ветку исправления с HOST и COORD без одобрения. Владельцу HOST Issue 14 — интегрировать изменение в свою branch после собственной проверки и обеспечить независимый protected operator trust root. CORE Issue 9 — только защищённый receiver выполняет effect и получает protected owner permit; не использовать тестовый response как разрешение. REVIEW Issue 11 — отдельный реальный security actor рассматривает pinned SHA и evidence, затем истинный 2-physical-host authorization. После одобрения провести настоящую одной учебной операции с отрицательными аварийными и повторными доставками.
+
+5. Итоговые проверки последних MAIN веток после параллельных исправлений
+
+Новая текущая owned CORE версия `a2c2d9bcb5d20fffd4d5dc3d7d474e09f28cf3ff` (исходный `offline_receiver_client.py` по compare не изменён против 05ab48...), текущая owned HOST версия `e13c97db92e736d41262412632d2abc2197526ba` (HOST receiver Git blob `3e9949e733c67c99e55a7513b24c6093bc3e530e`, защищённый от отдельного PostgreSQL клиента двухфазный lock разработан параллельно непосредственно HOST owner).
+
+COORD отдельная ветка `neurofactory-coord-latest-core-host-20261017`, exact CI test commit `88908ec6e8f8ded1e6add59f24ca53f613f715e0`; LIVE production не выполнялся.
+
+- GitHub hosted Ubuntu/PostgreSQL16 https://github.com/DSLitvinov1/my_first_repo/actions/runs/39026760082, job `117379155615`, `Ran 8 tests`, `OK`; actual single inert HOST file and five negative denial categories + signed forgery + duplicate no second file. Exact SHAs verified at checkout for CORE/HOST.
+- REVIEW-owned exact source `bridge/neurofactory/development/review_owned/test_receiver_race_review.py` existing Git blob `ab79dc963585f7e50c30a35178a28679ffe58b22` and latest REVIEW workflow commit `59981903d8bd5880f14215d4c00dec3175e7252d`, repinned to latest owned CORE/HOST above; GitHub hosted https://github.com/DSLitvinov1/my_first_repo/actions/runs/39026811643, job `117379306173`, `Ran 13 tests`, `OK`.
+- Reviewer narrow result: `NF_REVIEW_REMEDIATED_CROSS_CONNECTION_REVOKE_LOCK=PASS_TEST_ONLY` — отдельное DB соединение не может снять lease между окончательной проверкой и fsync в одной защищённой транзакции.
+- Остаточный результат: `NF_REVIEW_GAP_REVOCATION_AFTER_DB_CHECK_BEFORE_FILE=OBSERVED_TEST_FIXTURE` при искусственном вмешательстве внутри ТОГО ЖЕ привилегированного соединения; конкретный враждебный owner/DB admin/same UID не изолирован отдельно, внешний trusted root отсутствует. Формальный `NF_REVIEW_RELEASE_VERDICT=REJECT_LIVE_NO_PROTECTED_RECEIVER`.
+
+ВЫВОД: пять отрицательных сценариев на точных кодах MAIN и одна успешная учебная транзакция подтверждены. Глобальную независимую приёмку НЕ ПОЛУЧАЛИ. Подписи сделаны только временными тестовыми ключами, защищённого independent signer-хоста и независимого owner registry нет. Ни одной практической проверки двух отдельно авторизованных физических компьютеров не было. RELEASE BLOCKED, HANDOFF PAUSED_BY_USER. Никого не авторизовать на основании зеленого CI.
