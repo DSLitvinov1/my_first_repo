@@ -25,7 +25,11 @@ class DeploymentPreflightTests(unittest.TestCase):
         self.assertIn("FINAL_RECEIVER_USES_DISPOSABLE_TEST_DATABASE", x["source_blockers"])
         self.assertIn("SIGNER_IS_EXPLICITLY_FIXTURE_ONLY", x["source_blockers"])
         self.assertIn("JOURNAL_IS_EXPLICITLY_FIXTURE_ONLY", x["source_blockers"])
-        self.assertEqual(len(x["source_sha256"]), len(HOST_FILES) + 1)
+        self.assertGreaterEqual(len(x["source_sha256"]), len(HOST_FILES))
+        # HOST owner branch may intentionally omit CORE's separate lane.
+        if str(CORE_CLIENT) not in x["source_sha256"]:
+            self.assertIn("REQUIRED_CORE_SIGNED_CLIENT_UNAVAILABLE",
+                          x["source_blockers"])
         self.assertEqual(len(x["git_head_observed"]), 40)
 
     def test_every_release_or_install_permission_stays_false(self):
