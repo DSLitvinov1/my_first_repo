@@ -45,9 +45,11 @@ jobs:
           test "$(id -u)" != "$(id -u nf_signer)"
       - name: Install isolated no-paid-API dependencies
         run: |
-          python3 -m venv .nf-operator-test-venv
-          .nf-operator-test-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" cryptography==46.0.3
+          python3 -m venv /tmp/nf-operator-test-venv
+          /tmp/nf-operator-test-venv/bin/python -m pip install --no-input --disable-pip-version-check "psycopg[binary]==3.2.6" cryptography==46.0.3
+          mkdir -p /tmp/nf-operator-source
+          cp bridge/neurofactory/trusted_host/offline_operator_anchor.py /tmp/nf-operator-source/operator.py
       - name: Run external signer key custody and PostgreSQL rollback negatives
         run: |
           git rev-parse HEAD
-          NF_OPERATOR_TEST_PYTHON="$(pwd)/.nf-operator-test-venv/bin/python" .nf-operator-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_operator_anchor.py' -v
+          NF_OPERATOR_TEST_SOURCE="/tmp/nf-operator-source/operator.py" NF_OPERATOR_TEST_PYTHON="/tmp/nf-operator-test-venv/bin/python" /tmp/nf-operator-test-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p 'test_offline_operator_anchor.py' -v
