@@ -23,7 +23,7 @@ class CoreProtectedUnixReceiverClient:
         self.core=core
         self.socket_path=socket_path
         self.receiver_uid=pinned_receiver_uid
-    def propose_once(self,*,task_id,worker_id,core_token,proposal,signed_packet,witness):
+    def propose_once(self,*,task_id,worker_id,core_token,proposal,signed_packet,witness,signed_owner_grant):
         if (type(task_id) is not str or type(worker_id) is not str or
             type(core_token) is not str or type(proposal) is not dict or
             set(proposal)!={"schema","target","content","content_sha256","mode"} or
@@ -34,7 +34,11 @@ class CoreProtectedUnixReceiverClient:
             type(proposal.get("content_sha256")) is not str or
             type(signed_packet) is not dict or
             set(signed_packet)!={"payload","signature_base64"} or
-            type(witness) is not dict):
+            type(witness) is not dict or
+            type(signed_owner_grant) is not dict or
+            set(signed_owner_grant)!={"statement","signature_base64"} or
+            type(signed_owner_grant.get("statement")) is not dict or
+            type(signed_owner_grant.get("signature_base64")) is not str):
             _deny()
         content=proposal["content"].encode("utf8")
         if not content or len(content)>65536:
@@ -70,9 +74,23 @@ class CoreProtectedUnixReceiverClient:
         if any(type(payload.get(k))!=type(v) or payload.get(k)!=v
                for k,v in expected.items()):
             _deny()
+        statement=signed_owner_grant["statement"]
+        required=("owner_id","repository","project_id","task_id",
+                  "worker_id","source_sha40","target","operation_id","lease_epoch")
+        if (any(type(statement.get(k))!=type(payload.get(k)) or
+                statement.get(k)!=payload.get(k) for k in required) or
+            type(statement.get("permit_sha256")) is not str or
+            statement["permit_sha256"]!=hashlib.sha256(json.dumps(
+                 payload,sort_keys=True,separators=(",",":"),ensure_ascii=True
+            ).encode("ascii")).hexdigest() or
+            type(statement.get("expires_unix")) is not int or
+            statement["expires_unix"]<=now or
+            statement["expires_unix"]>payload.get("expires_unix",0)):
+            _deny()
         packet={"schema":"neurofactory.recipient.request.fixture.v1",
            "signed_packet":signed_packet,
            "witness":witness,
+           "signed_owner_grant":signed_owner_grant,
            "content_base64":base64.b64encode(content).decode("ascii")}
         raw=json.dumps(packet,sort_keys=True,separators=(",",":")).encode("ascii")
         if len(raw)>110000:_deny()
