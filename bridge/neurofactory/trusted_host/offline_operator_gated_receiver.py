@@ -9,6 +9,7 @@ invoke the old test-only receiver directly. NEVER treat a success as release.
 from __future__ import annotations
 
 import hashlib
+from contextlib import nullcontext
 import json
 import os
 import re
@@ -45,7 +46,8 @@ class OperatorGatedOfflineReceiver:
 
     def apply_fixture_with_operator_witness_once(self,*,signed_packet,
                                                    witness,content,
-                                                   simulate_crash_after_fsync=False):
+                                                   simulate_crash_after_fsync=False,
+                                                   protected_journal=None):
         if (type(content) is not bytes or len(content)>65536 or
             type(signed_packet) is not dict or
             type(witness) is not dict or
@@ -80,17 +82,32 @@ class OperatorGatedOfflineReceiver:
             check["owner_authenticated"] is not False or
             check["filesystem_write_allowed"] is not False):
             _reject()
-        # The existing HOST receiver independently verifies the signed
-        # permit, live PG lease/worker/epoch/fence and durable UNKNOWN journal
-        # again immediately around the actual disposable filesystem effect.
-        result=self._receiver.write_fixture_once(
-            signed_packet=signed_packet,content=content,
-            simulate_crash_after_fsync=simulate_crash_after_fsync)
-        if (type(result) is not dict or
-            result.get("status")!="ONE_FILE_COMPLETED_OFFLINE_TEST_ONLY" or
-            result.get("content_sha256")!=hashlib.sha256(content).hexdigest() or
-            result.get("live_execution_allowed") is not False):
-            raise OfflineEffectUnknown("receiver receipt not confirmed: manual STOP")
+        # The signer has already verified all exact owner/source/worker
+        # claims. An *optional* independent OS-owned protected ledger must
+        # reserve UNKNOWN durably before the DB journal and file effect.
+        # Older test-only wrappers still run without an external ledger.
+        if protected_journal is not None:
+            from offline_recipient_protected_journal import RecipientProtectedJournal
+            if type(protected_journal) is not RecipientProtectedJournal:
+                _reject()
+            body=signed_packet["payload"]
+            barrier=protected_journal.intent_once(
+                task_id=body["task_id"],operation_id=body["operation_id"],
+                target=body["target"],
+                content_sha256=body["proposed_content_sha256"])
+        else:
+            barrier=nullcontext()
+        with barrier:
+            # HOST must still independently verify a CURRENT real PG lease
+            # under its row lock, and fail UNKNOWN on any uncertain write.
+            result=self._receiver.write_fixture_once(
+                signed_packet=signed_packet,content=content,
+                simulate_crash_after_fsync=simulate_crash_after_fsync)
+            if (type(result) is not dict or
+                result.get("status")!="ONE_FILE_COMPLETED_OFFLINE_TEST_ONLY" or
+                result.get("content_sha256")!=hashlib.sha256(content).hexdigest() or
+                result.get("live_execution_allowed") is not False):
+                raise OfflineEffectUnknown("receiver receipt not confirmed: manual STOP")
         return {
             "status":"ONE_SIGNER_SCOPE_GATED_FIXTURE_FILE_ONLY",
             "operation_id":check["operation_id"],
