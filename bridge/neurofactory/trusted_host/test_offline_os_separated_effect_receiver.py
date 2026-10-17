@@ -164,10 +164,10 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             self.signer_proc.wait(timeout=4)
         self.signer_proc=None;self.recipient_proc=None
         return data
-    def hash_file_from_recipient_uid(self):
+    def hash_file_from_recipient_uid(self,target=TARGET):
         code=("import sys,hashlib;from pathlib import Path;"
               "print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())")
-        out=run_uid("nf_effect","-c",code,self.fx.root/TARGET)
+        out=run_uid("nf_effect","-c",code,self.fx.root/target)
         self.assertEqual(out.returncode,0,out.stderr)
         return out.stdout.strip()
     def test_untrusted_worker_cannot_open_protected_writer_directory(self):
@@ -224,6 +224,54 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
         self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         self.assertEqual(self.fx.db.execute("SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],1)
         self.assertEqual(self.hash_file_from_recipient_uid(),hashlib.sha256(CONTENT).hexdigest())
+
+    def test_qwen_generated_python_bytes_through_protected_receiver_once(self):
+        # This is EXACT text observed in genuine model inference CI #39063107445,
+        # not a fresh model call here, and it is not an owner-approved project.
+        generated="def add_two(a, b):\n    \"\"\"\n    Add two numbers a and b.\n    Parameters:\n    a (int): The first number.\n    b (int): The second number.\n    Returns:\n    int: The sum of a and b.\n    \"\"\"\n    return a + b"
+        content=generated.encode("utf8")
+        digest=hashlib.sha256(content).hexdigest()
+        self.assertEqual(digest,"a271172a3cdc4f02374565dcd0e4f2d21a8b734c807dc784a2136d2d992ceefe")
+        target="bridge/neurofactory/development/core_owned/qwen_generated_leap_sandbox.py"
+        # The temporary operator, never the model/worker, provisions a new
+        # exact signer-owned scope for the previously checked model bytes.
+        self.fx.db.execute("UPDATE nf_effect_intent SET target=%s",(target,))
+        self.fx.db.execute("UPDATE nf_effect_scope_fixture SET target=%s",(target,))
+        self.fx.db.execute(
+            "UPDATE nf_receiver_scope_fixture SET proposed_content_sha256=%s",(digest,))
+        body=dict(self.fx.packet["payload"],target=target,
+                  proposed_content_sha256=digest)
+        self.fx.packet=self.fx._sign(body)
+        newclaim=hashlib.sha256(_canonical(body)).hexdigest()
+        second=run_uid("nf_signer",SIGNER,"advance",self.home,newclaim)
+        self.assertEqual(second.returncode,0,second.stderr)
+        self.witness=json.loads(second.stdout)
+        effect_pub=self.fx.private.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        keys=("issuer_id","key_id","owner_id","repository","project_id","task_id",
+              "worker_id","source_sha40","source_file_sha256","input_task_sha256",
+              "policy_sha256","target","proposed_content_sha256",
+              "fencing_token_sha256","lease_epoch","idempotency_key","operation_id")
+        policy={"schema":"neurofactory.operator.scope_fixture.v1",
+             "expected":{k:body[k] for k in keys},
+             "pinned_public_sha256":self.bootstrap["public_key_sha256"],
+             "allowed_claim_sha256":newclaim,
+             "effect_issuer_public_b64":base64.b64encode(effect_pub).decode("ascii")}
+        # Test operator OS principal does the fixture policy transition.
+        policyfile=self.home/"pinned-effect-scope.json"
+        deleted=run_uid("nf_signer","-c",
+            "from pathlib import Path;import sys;Path(sys.argv[1]).unlink()",policyfile)
+        self.assertEqual(deleted.returncode,0,deleted.stderr)
+        self.private_write("nf_signer",policyfile,policy)
+        self.write_request(packet=self.fx.packet,witness=self.witness,content=content)
+        first=self.send()
+        self.assertEqual(first["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.assertEqual(self.hash_file_from_recipient_uid(target),digest)
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],1)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.hash_file_from_recipient_uid(target),digest)
+        print("NF_QWEN_GENUINE_SHA_TO_PRIVILEGED_TEST_FILE_ONCE",flush=True)
 
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
