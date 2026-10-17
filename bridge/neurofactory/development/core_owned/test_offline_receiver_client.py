@@ -16,7 +16,7 @@ import psycopg
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT=Path(__file__).resolve().parents[4]
-HOST_SHA="0c33d8181e102e2ca3f47559ae6abeb2f4b72757"
+HOST_SHA="1575812f75040d9f53435c652fc053adc487f5b7"
 HOST=ROOT/".nf_pinned_host"
 if subprocess.check_output(["git","-C",str(HOST),"rev-parse","HEAD"],text=True).strip()!=HOST_SHA:
     raise RuntimeError("HOST checkout not pinned to independently tested source")
