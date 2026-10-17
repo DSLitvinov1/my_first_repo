@@ -523,6 +523,49 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
         print("NF_PROTECTED_RECEIPT_OS_FLOCK_ONE_OF_TWO_CONCURRENT",flush=True)
 
+    def test_owner_grant_valid_signer_pin_permits_only_one_scratch_effect(self):
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.assertEqual(self.hash_file_from_recipient_uid(),hashlib.sha256(CONTENT).hexdigest())
+        self.assertEqual(self.protected_effect_state()["state"],"COMPLETED_TEST_ONLY")
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        print("NF_REAL_SIGNED_OWNER_GRANT_TO_PROTECTED_FINAL_EFFECT_ONCE",flush=True)
+
+    def test_owner_grant_missing_blocks_before_protected_unknown(self):
+        payload=json.loads(self.reqfile.read_text())
+        del payload["signed_owner_grant"]
+        self.reqfile.write_text(json.dumps(payload),encoding="ascii")
+        self.assertEqual(self.send(start_signer=False)["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
+
+    def test_owner_grant_forged_signature_denied(self):
+        foreign=Ed25519PrivateKey.generate()
+        data=self.owner_grant()
+        data["signature_base64"]=base64.b64encode(
+            foreign.sign(_canonical(data["statement"]))).decode()
+        self.write_request(extra={"signed_owner_grant":data})
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+
+    def test_owner_grant_valid_signature_wrong_repository_denied(self):
+        data=self.owner_grant()
+        data["statement"]["repository"]="AnotherOrg/foreign"
+        data["signature_base64"]=base64.b64encode(
+            self.owner_private.sign(_canonical(data["statement"]))).decode()
+        self.write_request(extra={"signed_owner_grant":data})
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+
+    def test_owner_grant_expired_even_with_current_lease_denied(self):
+        data=self.owner_grant()
+        data["statement"]["expires_unix"]=int(time.time())-1
+        data["signature_base64"]=base64.b64encode(
+            self.owner_private.sign(_canonical(data["statement"]))).decode()
+        self.write_request(extra={"signed_owner_grant":data})
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
 if __name__=="__main__":unittest.main()
