@@ -137,14 +137,22 @@ class OperatorGatedOfflineReceiver:
                 "nonce":secrets.token_hex(32)}
             try:
                 if "mode" in cfg:
-                    if cfg["mode"]!="MTLS_LOOPBACK_TEST_ONLY":
+                    if cfg["mode"] not in (
+                        "MTLS_LOOPBACK_TEST_ONLY",
+                        "MTLS_LOOPBACK_DOUBLE_SIGNED_WITNESS_TEST_ONLY"):
                         _reject()
                     from offline_mtls_witness_transport import request_test_once
+                    scope_kwargs=(
+                        {"signed_packet":signed_packet,
+                         "signed_owner_grant":signed_owner_grant}
+                        if cfg["mode"]=="MTLS_LOOPBACK_DOUBLE_SIGNED_WITNESS_TEST_ONLY"
+                        else {})
                     ack=request_test_once(cfg["host"],cfg["port"],claim,
                         client_cert=cfg["client_cert"],client_key=cfg["client_key"],
                         ca_cert=cfg["ca_cert"],
                         pinned_server_cert_sha256=cfg["server_cert_sha256"],
-                        pinned_witness_public_b64=cfg["public"])
+                        pinned_witness_public_b64=cfg["public"],
+                        **scope_kwargs)
                     if ack["status"]!="MUTUAL_TLS_REMOTE_WITNESS_DURABLE_TEST_ONLY":
                         _reject()
                 else:
