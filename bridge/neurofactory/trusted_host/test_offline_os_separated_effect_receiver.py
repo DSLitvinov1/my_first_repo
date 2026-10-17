@@ -22,6 +22,7 @@ def run_uid(uid,*args,input=None,timeout=9):
     return subprocess.run(["sudo","-n","-u",uid,"env",
        "NF_OPERATOR_ANCHOR_FIXTURE_ONLY=1",
        "NF_HOST_RECEIVER_FIXTURE_ONLY=1","NF_RECEIVER_OS_FIXTURE_ONLY=1",
+       "NF_WITNESS_ISOLATED_TEST_ONLY=1",
        "PYTHONPATH="+str(STAGE),PY,*map(str,args)],capture_output=True,input=input,
        text=input is None,timeout=timeout)
 def uid(name):
@@ -621,6 +622,106 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
         print("NF_OWNER_SIGNED_PERMIT_OS_RECEIVER_RESTART_DB_ROLLBACK_REPLAY_DENIED",flush=True)
 
+
+    def _external_witness_fixture(self,*,forge_public=False):
+        from offline_external_effect_witness import sha
+        self.witness_store=self.root/"nf-witness-store"
+        self.witness_ipc=self.root/"nf-witness-ipc"
+        self.witness_socket=self.witness_ipc/"nf-witness.sock"
+        self.witness_source=STAGE/"offline_external_effect_witness.py"
+        for path,group,mode in (
+                (self.witness_store,"nf_witness","0700"),
+                (self.witness_ipc,"nf_witness_ipc","2750")):
+            subprocess.run(["sudo","-n","install","-d","-o","nf_witness",
+                "-g",group,"-m",mode,str(path)],check=True)
+        self.addCleanup(lambda:subprocess.run(
+            ["sudo","-n","rm","-rf","--",str(self.witness_store),
+             str(self.witness_ipc)],check=True))
+        keycli=("import base64,sys;from cryptography.hazmat.primitives "
+            "import serialization;from offline_external_effect_witness "
+            "import pin_private_dir,keypair;"
+            "key=keypair(pin_private_dir(sys.argv[1]));"
+            "print(base64.b64encode(key.public_key().public_bytes("
+            "serialization.Encoding.Raw,serialization.PublicFormat.Raw)).decode())")
+        pub=run_uid("nf_witness","-c",keycli,self.witness_store)
+        self.assertEqual(pub.returncode,0,pub.stderr)
+        private=self.receiver_config/"receiver.json"
+        removed=run_uid("nf_effect","-c",
+            "from pathlib import Path;import sys;Path(sys.argv[1]).unlink()",private)
+        self.assertEqual(removed.returncode,0,removed.stderr)
+        cfg=dict(self.config)
+        cfg["schema"]="neurofactory.os_separated_recipient.external_witness_fixture.v2"
+        cfg["witness_socket"]=str(self.witness_socket)
+        cfg["witness_uid"]=uid("nf_witness")
+        cfg["witness_public_base64"]=(
+           base64.b64encode(b"\x00"*32).decode() if forge_public else pub.stdout.strip())
+        self.private_write("nf_effect",private,cfg)
+        self.witness_process=None
+        self.addCleanup(self._stop_external_witness)
+    def _stop_external_witness(self):
+        proc=getattr(self,"witness_process",None)
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:proc.kill()
+    def _start_external_witness(self,*,drop=False):
+        args=["sudo","-n","-u","nf_witness","env",
+           "NF_WITNESS_ISOLATED_TEST_ONLY=1",
+           "NF_WITNESS_RECEIVER_UID="+str(uid("nf_effect")),
+           "NF_WITNESS_SIMULATE_CRASH_BEFORE_ACK="+("1" if drop else "0"),
+           "PYTHONPATH="+str(STAGE),PY,str(self.witness_source),
+           "serve",str(self.witness_store),str(self.witness_socket)]
+        self.witness_process=subprocess.Popen(args,
+                          stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        self.ready("nf_effect",self.witness_socket,self.witness_process)
+    def _witness_count(self):
+        cmd=("import sys,pathlib;"
+             "print(len(list(pathlib.Path(sys.argv[1]).glob('target-*.json'))))")
+        p=run_uid("nf_witness","-c",cmd,self.witness_store)
+        self.assertEqual(p.returncode,0,p.stderr)
+        return int(p.stdout.strip())
+    def test_external_witness_v2_denies_full_local_receipt_restore(self):
+        self._external_witness_fixture()
+        self._start_external_witness()
+        self.assertEqual(self.send()["status"],"ONE_OS_RECIPIENT_TEST_EFFECT_ONLY")
+        self.witness_process.wait(timeout=3)
+        self.assertEqual(self._witness_count(),1)
+        # Simulate complete rollback of LOCAL recipient and PostgreSQL
+        # (outside-UID witness retains one immutable target marker).
+        self.fx.db.execute("DELETE FROM nf_receiver_effect_journal")
+        erased=run_uid("nf_effect","-c",
+            "import shutil,sys;from pathlib import Path;"
+            "Path(sys.argv[1]).unlink();shutil.rmtree(sys.argv[2])",
+            self.fx.root/TARGET,
+            self.receiver_config/"nf-protected-effect-journal")
+        self.assertEqual(erased.returncode,0,erased.stderr)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+        self._start_external_witness()
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=3)
+        self.assertEqual(self._witness_count(),1)
+        self.assertEqual(self.fx.db.execute(
+            "SELECT count(*) FROM nf_receiver_effect_journal").fetchone()[0],0)
+        print("NF_V2_INDEPENDENT_WITNESS_REJECTED_LOCAL_FULL_ROLLBACK",flush=True)
+    def test_external_witness_v2_lost_ack_stops_before_any_file(self):
+        self._external_witness_fixture()
+        self._start_external_witness(drop=True)
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=3)
+        self.assertEqual(self._witness_count(),1)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+        self._start_external_witness()
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=3)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+        print("NF_V2_WITNESS_ACK_LOSS_FAILSTOP_NO_EFFECT",flush=True)
+    def test_external_witness_v2_wrong_pinned_key_blocks_effect(self):
+        self._external_witness_fixture(forge_public=True)
+        self._start_external_witness()
+        self.assertEqual(self.send()["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.witness_process.wait(timeout=3)
+        self.assertEqual(self.protected_effect_state()["state"],"NEVER_SEEN")
+        self.assertEqual(self._witness_count(),1)
 def load_tests(loader,tests,pattern):
     return loader.loadTestsFromTestCase(ProtectedReceiverThreePrincipalE2E)
 if __name__=="__main__":unittest.main()
