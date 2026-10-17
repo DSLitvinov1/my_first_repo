@@ -33,3 +33,19 @@
 ## Следующее действие
 
 После восстановления доступного резервного соединения или отдельного подключения второй разрешённой физической машины независимо удостоверить настоящий owner/repo key и machine identity, развернуть защищённый witness с отдельным защищённым root, проверить настоящий reboot HOST и rollback локальной базы при внешне живом journal, исключить auto replay, оформить независимый подписанный verdict. До этого **REJECT LIVE**, можно выполнять только изолированную разработку.
+
+## Дополнительная реальная интеграция и резервный Windows Runner
+
+После отдельных 15/15 единичных криптографических проверок, 12/12 TLS проверок, **4/4 новых сквозных файловых V4** и полного прогона **32/32** сохранён полный смысл trust boundary: TEST-ONLY конечный OS-owned файловый получатель теперь пересылает в отдельный `nf_witness` по mutually verified TLS не только контрольные суммы, но и подлинный подписанный issuer permit и отдельный owner grant, чтобы witness **самостоятельно** сверял оба Ed25519 ключа с собственными 0600 pins, а не доверял одному лишь сертификату подключившегося получателя. Подменённый целевой путь/файл, другая аренда, чужой работник, неверный repo или несоответствие signed digest → DENY до witness highwater fsync. Numeric GitHub owner ID `151650108` не подменяет собой logical signed owner ID.
+
+Проверено в Actions (продолжение этапа):
+- [15/15 witness signed scope №39074104015](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39074104015), job 117517577486, точный tested SHA `96c80ea9cf02ca1925291c9e45d2cce6ee7b6af1`;
+- [12/12 TLS old+new №39074332366](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39074332366), job 117518251511, exact tested SHA `d207e697875aef1eaa06b1a2cf678a39ff825c52`;
+- [4/4 НОВЫЕ V4 final-file №39074238180](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39074238180), job 117517981947, exact tested SHA `c42dd9926b6ef3cacb37c0f6c58e82caf383de23`, CORE checkout `beb08eff32923d8ca364aabfde0458f380acf8e7`;
+- [32/32 full changed receiver №39074323132](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39074323132), job 117518223790, exact tested SHA `b9514534973d5d5c4d34269adbc587e687c52932`.
+
+Попытка пользоваться **разрешённым резервным мостом** (подключённый Windows `WIN-LIDC05TBOQD`): `ping` успешно ответил, но `Remote Desktop Commander` отклонил диагностическую команду из-за исчерпания месячной квоты. Квота не обходилась, remote agent не перезапускали; НИКАКИХ файлов или служб Windows не трогали. Дополнительно в собственную DRAFT ветку HOST добавлен безопасный read-only GH Actions workflow `.github/workflows/neurofactory-host-windows-bridge-readonly.yml` (без checkout, записи файлов, установки пакетов, ключей или платных API), чтобы подтвердить статус существующего Windows self-hosted Runner без вмешательства. [Запуск №39074665194](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39074665194) на момент фиксации имеет статус **QUEUED**, НЕ подтверждён реальный Windows runner и никакая диагностика не выполнена. Не считать очередь выполненным испытанием.
+
+Параллельная независимая ветка `neurofactory-host-independent-production-scope-20261018` — отдельный DRAFT PR №18, HEAD `99f9d2d20ab994a84a316849ae5f8e824f407413`, разрабатывает независимый four-party scope и НЕ сливалась с HOST. Полученное через GitHub ревью на основной HOST PR №15: **0 отдельных формальных review submissions**. Комментарий в GitHub не равен физическому аудиту или подписанному эксплуатационному вердикту.
+
+Оставшиеся P0 блокировки прежние: настоящий отдельно удостоверенный владелец и долгосрочные ключи, второй физический авторизованный компьютер с независимым durable witness, полный HOST reboot/restore после отката базы, внешний monotonic anchor/защита от отката всего VM и отдельный подписанный authorized REVIEW. Глобальный RELEASE=BLOCKED, HANDOFF PAUSED, всё TEST ONLY.
