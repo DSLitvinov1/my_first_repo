@@ -75,9 +75,11 @@ class OSBoundCORETests(unittest.TestCase):
                     ready.set()
                     conn,_=s.accept()
                     with conn:
-                        conn.recv(111000)
+                        request=conn.recv(111000)
+                        if not request:return
                         body=self.receipt if receipt is None else receipt
-                        conn.sendall(json.dumps(body).encode())
+                        try:conn.sendall(json.dumps(body).encode())
+                        except BrokenPipeError:pass
             finally:
                 try:os.unlink(self.sock)
                 except FileNotFoundError:pass
@@ -97,6 +99,7 @@ class OSBoundCORETests(unittest.TestCase):
                                              pinned_receiver_uid=os.geteuid()+10000)
         t=self.serve_one()
         with self.assertRaises(CoreOSRouteDenied):self.call(client=other)
+        t.join(3)
     def test_wrong_core_token_denies_before_connect(self):
         self.core.row["token"]=sha("different")
         with self.assertRaises(CoreOSRouteDenied):self.call()
