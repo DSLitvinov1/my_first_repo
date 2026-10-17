@@ -240,7 +240,7 @@ class MTLSWitnessLinuxTests(unittest.TestCase):
         owner_pub=self.owner_private.public_key().public_bytes(
             serialization.Encoding.Raw,serialization.PublicFormat.Raw)
         policy={"schema":"nf.witness.pinned_scope.test.v1",
-            "owner_id":"151650108","repo_id":"723328237",
+            "owner_id":"151650108","github_owner_numeric_id":"151650108","repo_id":"723328237",
             "repository":"DSLitvinov1/my_first_repo",
             "project_id":"nf-sandbox","worker_id":"worker-sandbox-01",
             "issuer_public_base64":_b64(issuer_pub),
