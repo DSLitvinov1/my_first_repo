@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "SIGNED_INTAKE_35_GREEN_READ_ONLY_UI_PROJECTION_15_GREEN_NONLIVE",
+      "status": "READ_ONLY_INBOX_INTEGRATED_IN_UI_AND_CRYPTO_SCOPE_HOST_TESTED_RELEASE_STILL_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -493,15 +493,33 @@
     },
     "UI": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "d1d7404a2ffcb1d825438c110d0aac2bb2dc8d7b",
+      "head": "56a375a2f76bdaf56932f21b392a9d133f740913",
       "issue": 10,
       "owner": "UI_ISOLATED_READ_ONLY",
-      "status": "OFFLINE_KEYBOARD_BROWSER_CHROMIUM_WEBKIT_OWN_TESTS_NO_LIVE",
+      "status": "EXISTING_UI_ADVISORY_INBOX_LOCAL_IMPORT_CHROMIUM_WEBKIT_4_PASS_NONLIVE",
       "evidence": {
         "issue10_comment": 6192047894,
         "local_chromium_mobile_and_desktop_own_tests": "PASS",
         "independent_release_approval": false,
-        "author_chromium_webkit_a11y_run": 38779333998
+        "author_chromium_webkit_a11y_run": 38779333998,
+        "local_advisory_inbox_20261017": {
+          "exact_tested_sha": "56a375a2f76bdaf56932f21b392a9d133f740913",
+          "app_blob_sha": "c0915cf10db171d0faef1eb6e53726a0a41adef3",
+          "html_blob_sha": "93ca5e74eb9f8f46a0af9c74c97f965bc5a90fac",
+          "test_blob_sha": "352d9d4427b200d1036083cd568a7fbed4540edb",
+          "github_hosted_run": 38985933035,
+          "github_hosted_job": 117257277493,
+          "chromium_desktop": "PASS",
+          "chromium_mobile": "PASS",
+          "webkit_desktop": "PASS",
+          "webkit_mobile": "PASS",
+          "live_server_data_connected": false,
+          "local_manually_imported_snapshot": true,
+          "encrypted_owner_session_verification": false,
+          "real_models_executed": false,
+          "authorization_or_queue_action_allowed": false,
+          "independent_review_pending": true
+        }
       },
       "blockers": [
         "no trusted live issuer data source",
@@ -512,12 +530,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "5c0132d1c53d3d569dd66967915203069e2a25e8",
+      "head": "66dfbc6957c04cd9f8d19ba52ec783fa1dec129d",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "OFFLINE_EFFECT_INTENT_13_TESTS_PASS_NO_LIVE_API_OR_RECEIVER",
+      "status": "SIGNED_EFFECT_CRYPTO_SCOPE_17_GREEN_NO_REAL_RECIPIENT",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -639,6 +657,26 @@
           "output_kind": "TEST_ONLY_DURABLE_PRE_EFFECT_INTENT_NOT_AUTHORIZATION",
           "receiver_integration": "CORE_NOT_CONSUMING_EFFECT_FENCE",
           "external_release_approved": false
+        },
+        "signed_effect_scope_20261017": {
+          "source": "bridge/neurofactory/trusted_host/signed_effect_permit.py",
+          "source_blob_sha": "2f6cb04295536edd7d834f39d364af4786b22d23",
+          "test_blob_sha": "29e54efef422255211481d907805506229b54d1f",
+          "exact_executable_tested_sha": "2f5197b408b43d4aad375df3f190c54a47c8c1b7",
+          "docs_head_sha": "66dfbc6957c04cd9f8d19ba52ec783fa1dec129d",
+          "github_hosted_run": 38985744277,
+          "github_hosted_job": 117256680734,
+          "passed": 17,
+          "failed": 0,
+          "exact_scope_signature_verifier": true,
+          "external_key_custody_attested": false,
+          "real_owner_rights_verified": false,
+          "independent_monotonic_root_attested": false,
+          "recipient_side_idempotency": false,
+          "live_cas_fenced_effect": false,
+          "live_release_allowed": false,
+          "independent_review_pending": true,
+          "evidence_doc": "bridge/neurofactory/trusted_host/SIGNED_EFFECT_PERMIT_NARROW_EVIDENCE_20261017_RU.md"
         }
       },
       "blockers": [
@@ -725,12 +763,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "TRUSTED HOST #14: real independently protected signer/owner/project/source issuer, antirollback highwater separate DB principal and authenticated CAS/recipient fencing; HOST offline reservation no execution",
-    "CORE #9: maintain disabled legacy direct writing and introduce real per-effect approved signed HOST epoch/idempotency checks inside separately privileged destination",
-    "UI #10: consume COORD read-only advisory snapshot only through authenticated backend, project scope from protected owner session, 2 statuses shown without execution buttons",
-    "REVIEW #11: narrow independent audit of new COORD advisory snapshot exact code + operator-level separate release review for real CORE/HOST SHA",
-    "PROVIDERS: local Windows inventory not obtained due connected Desktop Commander monthly tool limit, do not retry; use authorized alternative/next limit reset; do not infer Qwen readiness",
-    "Two genuine authorized physical computers and real local model + restore/rollback tests, explicit release signoff; HANDOFF PAUSED_BY_USER"
+    "TRUSTED HOST #14: separately approved real operator key custody/pinned root and antirollback, authenticated HTTPS live CAS with receiver-side atomic consume/idempotency; 17 crypto author tests do not imply live permission",
+    "CORE #9: integrate true independently privileged effect receiver with signed owner/project/repo/source/target/policy/worker/epoch/operation and protected deadline, no local bypass; existing legacy writer stays disabled",
+    "REVIEW #11: independent new exact SHA negative audit of HOST signed effect verifier and UI local inbox import, separate external authorized production approval still missing",
+    "UI #10 and COORDINATOR: existing UI accepts local read-only signed intake cards now; secure viewer-authenticated backend/provenance and real ingress not built, no queue dispatch",
+    "Authorized two distinct physical host tests with crash after effect before receipt, independently verified backup restore, actual permitted free Qwen resources and zero paid APIs",
+    "HANDOFF remains PAUSED_BY_USER; no automatic merge or production queue before independent release approval"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
