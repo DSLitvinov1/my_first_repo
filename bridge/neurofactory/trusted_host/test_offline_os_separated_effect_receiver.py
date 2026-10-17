@@ -393,6 +393,7 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
             "task_id":task,"worker_id":"worker-sandbox-01",
             "core_token":state["token"],"proposal":proposal,
             "signed_packet":self.fx.packet,"witness":self.witness,
+            "signed_owner_grant":self.owner_grant(self.fx.packet),
             "recipient_socket":str(self.receiver_socket),
             "receiver_uid":uid("nf_effect")}
         core_file=self.root/"core-request.json"
@@ -408,7 +409,8 @@ class ProtectedReceiverThreePrincipalE2E(unittest.TestCase):
           "socket_path=r['recipient_socket'],pinned_receiver_uid=r['receiver_uid']);"
           "result=client.propose_once(task_id=r['task_id'],worker_id=r['worker_id'],"
           "core_token=r['core_token'],proposal=r['proposal'],"
-          "signed_packet=r['signed_packet'],witness=r['witness']);"
+          "signed_packet=r['signed_packet'],witness=r['witness'],"
+          "signed_owner_grant=r['signed_owner_grant']);"
           "print(json.dumps(result))")
         self.start()
         cmd=subprocess.run(["sudo","-n","-u","nf_db_actor","env",
