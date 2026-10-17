@@ -72,7 +72,10 @@ class OperatorSeparateUidTests(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(self.home.stat().st_mode),0o700)
         for name in ("issuer-private.raw","protected-anchor.json","operator.lock"):
             file=self.home/name
-            self.assertEqual(stat.S_IMODE(file.stat().st_mode),0o600)
+            observed=subprocess.check_output(
+                ["sudo","-n","-u","nf_signer","stat","-c","%a",str(file)],
+                text=True).strip()
+            self.assertEqual(observed,"600")
         attempt=subprocess.run(["sudo","-n","-u","nf_db_actor","cat",
              str(self.home/"issuer-private.raw")],capture_output=True,text=True)
         self.assertNotEqual(attempt.returncode,0)
