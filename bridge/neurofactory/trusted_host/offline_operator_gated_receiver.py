@@ -47,7 +47,8 @@ class OperatorGatedOfflineReceiver:
     def apply_fixture_with_operator_witness_once(self,*,signed_packet,
                                                    witness,content,
                                                    simulate_crash_after_fsync=False,
-                                                   protected_journal=None):
+                                                   protected_journal=None,
+                                                   signed_owner_grant=None):
         if (type(content) is not bytes or len(content)>65536 or
             type(signed_packet) is not dict or
             type(witness) is not dict or
@@ -60,27 +61,59 @@ class OperatorGatedOfflineReceiver:
             _reject()
         if hashlib.sha256(content).hexdigest()!=signed_packet["payload"]["proposed_content_sha256"]:
             _reject()
-        request={
-            "schema":"neurofactory.operator.scope_check_fixture.v1",
-            "signed_permit":signed_packet,"witness":witness,
-            "public_sha":self._public_sha,"public_key":self._public_b64}
+        if signed_owner_grant is not None:
+            if (type(signed_owner_grant) is not dict or
+                set(signed_owner_grant)!={"statement","signature_base64"} or
+                type(signed_owner_grant["statement"]) is not dict):
+                _reject()
+            request={
+                "schema":"neurofactory.operator.scope_and_owner_check_fixture.v1",
+                "signed_permit":signed_packet,"witness":witness,
+                "signed_owner_grant":signed_owner_grant,
+                "public_sha":self._public_sha,"public_key":self._public_b64}
+        else:
+            # Kept for unchanged offline unit compatibility; the isolated
+            # OS recipient now ALWAYS supplies signed_owner_grant.
+            request={
+                "schema":"neurofactory.operator.scope_check_fixture.v1",
+                "signed_permit":signed_packet,"witness":witness,
+                "public_sha":self._public_sha,"public_key":self._public_b64}
         try:
             check=client_send(self._socket,request,pinned_signer_uid=self._server_uid)
         except (ValueError,OSError,TimeoutError,UnicodeError,json.JSONDecodeError):
             _reject()
-        if (type(check) is not dict or
-            set(check)!={"status","signed_permit_sha256","operation_id",
+        if signed_owner_grant is not None:
+            from offline_operator_anchor import _canonical
+            claim=signed_owner_grant["statement"]
+            if (type(check) is not dict or
+                set(check)!={"status","signed_permit_sha256","operation_id",
+                              "owner_grant_sha256","current_signer_sequence",
+                              "peer_uid_checked","private_key_shared",
+                              "real_owner_identity_authenticated","filesystem_write_allowed"} or
+                check["status"]!="PINNED_OWNER_AND_SIGNER_SCOPE_MATCH_TEST_ONLY" or
+                check["signed_permit_sha256"]!=digest or
+                check["operation_id"]!=signed_packet["payload"]["operation_id"] or
+                check["owner_grant_sha256"]!=hashlib.sha256(_canonical(claim)).hexdigest() or
+                type(check["current_signer_sequence"]) is not int or
+                check["current_signer_sequence"]<1 or
+                check["peer_uid_checked"] is not True or
+                check["private_key_shared"] is not False or
+                check["real_owner_identity_authenticated"] is not False or
+                check["filesystem_write_allowed"] is not False):
+                _reject()
+        elif (type(check) is not dict or
+              set(check)!={"status","signed_permit_sha256","operation_id",
                         "current_signer_sequence","peer_uid_checked",
                         "private_key_shared","owner_authenticated","filesystem_write_allowed"}
-            or check["status"]!="OWNER_SCOPE_FIXTURE_MATCHED_NOT_AUTHORITY"
-            or check["signed_permit_sha256"]!=digest or
-            check["operation_id"]!=signed_packet["payload"]["operation_id"]
-            or type(check["current_signer_sequence"]) is not int or
-            check["current_signer_sequence"]<1 or
-            check["peer_uid_checked"] is not True or
-            check["private_key_shared"] is not False or
-            check["owner_authenticated"] is not False or
-            check["filesystem_write_allowed"] is not False):
+              or check["status"]!="OWNER_SCOPE_FIXTURE_MATCHED_NOT_AUTHORITY"
+              or check["signed_permit_sha256"]!=digest or
+              check["operation_id"]!=signed_packet["payload"]["operation_id"]
+              or type(check["current_signer_sequence"]) is not int or
+              check["current_signer_sequence"]<1 or
+              check["peer_uid_checked"] is not True or
+              check["private_key_shared"] is not False or
+              check["owner_authenticated"] is not False or
+              check["filesystem_write_allowed"] is not False):
             _reject()
         # The signer has already verified all exact owner/source/worker
         # claims. An *optional* independent OS-owned protected ledger must
