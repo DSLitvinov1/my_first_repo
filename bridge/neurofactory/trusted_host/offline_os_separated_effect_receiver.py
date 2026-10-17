@@ -24,6 +24,7 @@ from offline_recipient_protected_journal import RecipientProtectedJournal
 
 _MAX=110000
 _SCHEMA="neurofactory.os_separated_recipient.fixture.v1"
+_SCHEMA2="neurofactory.os_separated_recipient.external_witness_fixture.v2"
 _DSN="postgresql://nf_test:nf_test_ephemeral_only@127.0.0.1:5432/nf_test"
 
 class OSReceiverDenied(ValueError): pass
@@ -57,8 +58,20 @@ def _read_config(config_dir):
     fields={"schema","receiver_root","recipient_socket","peer_worker_uid",
             "signer_socket","signer_uid","signer_public_sha","signer_public_base64",
             "issuer_public_base64"}
-    if (type(cfg) is not dict or set(cfg)!=fields or
-        cfg["schema"]!=_SCHEMA or
+    extra={"witness_socket","witness_uid","witness_public_base64"}
+    if type(cfg) is not dict or cfg.get("schema") not in (_SCHEMA,_SCHEMA2):
+        _deny("unknown receiver schema")
+    if (cfg["schema"]==_SCHEMA2 and set(cfg)!=fields|extra) or (
+        cfg["schema"]==_SCHEMA and set(cfg)!=fields):
+        _deny("receiver config fields not exact")
+    if (cfg["schema"]==_SCHEMA2 and (
+        type(cfg["witness_uid"]) is not int or cfg["witness_uid"]<=0 or
+        cfg["witness_uid"] in (cfg["peer_worker_uid"],cfg["signer_uid"],os.geteuid()) or
+        type(cfg["witness_socket"]) is not str or
+        not cfg["witness_socket"].endswith("/nf-witness-ipc/nf-witness.sock") or
+        type(cfg["witness_public_base64"]) is not str)):
+        _deny("no pinned separately owned witness")
+    if (
         type(cfg["peer_worker_uid"]) is not int or cfg["peer_worker_uid"]<=0 or
         type(cfg["signer_uid"]) is not int or cfg["signer_uid"]<=0 or
         cfg["signer_uid"] in (cfg["peer_worker_uid"],os.geteuid()) or
@@ -132,6 +145,11 @@ def serve_once(config_dir):
                             signed_packet=req["signed_packet"],witness=req["witness"],
                             content=content,protected_journal=protected,
                             signed_owner_grant=req["signed_owner_grant"],
+                            external_witness_config=(
+                               {"socket":cfg["witness_socket"],
+                                "uid":cfg["witness_uid"],
+                                "public":cfg["witness_public_base64"]}
+                               if cfg["schema"]==_SCHEMA2 else None),
                             simulate_crash_after_fsync=(
                                 os.environ.get("NF_RECEIVER_TEST_SIMULATE_POST_FSYNC_CRASH")
                                 =="1"))
