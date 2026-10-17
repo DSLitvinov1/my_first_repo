@@ -8,7 +8,7 @@
   "source_of_truth": "Only specific GitHub SHA and exact action/issue evidence; status changes do not authorize releases",
   "lanes": {
     "COORDINATOR": {
-      "status": "MTLS_TWO_PEER_CERT_PIN_6_GREEN_REMOTE_WITNESS_PROTOCOL_TEST_ONLY_PRODUCTION_BLOCKED",
+      "status": "HOST_V4_DOUBLE_SIGNED_WITNESS_SCOPE_15_PASS_TLS12_PASS_FILE4_PASS_FULL32_PASS_NO_REAL_BRIDGE_EXECUTION_RELEASE_BLOCKED",
       "branch": "neurofactory-coordinator-mvp-status-20261015",
       "pr": 12,
       "latest_start_sha": "240b53ad26916c2ce989f63931ac68850fa37aa6",
@@ -650,12 +650,12 @@
     },
     "TRUSTED_HOST": {
       "repo": "DSLitvinov1/my_first_repo",
-      "head": "c2d9ac07038feaee74a9715173e60c9ac129cb0a",
+      "head": "65b49716785cef2b6601521affcdd8a1eab25fba",
       "issue": 14,
       "owner": "COORDINATOR_TEMP_OFFLINE_CODE_ONLY_SECURITY_OWNER_UNASSIGNED",
       "reserved_branch": "neurofactory-trusted-host-owned-20261015",
       "branch_created": true,
-      "status": "TLS13_MUTUAL_CERT_CHAIN_AND_EXACT_PIN_SIGNED_REMOTE_WITNESS_6_PASS_ONE_HOST_NO_REAL_TWO_NODE_RELEASE",
+      "status": "WITNESS_NOW_VERIFIES_OWNER_AND_ISSUER_SIGNED_SCOPE_BEFORE_TLS_RESERVATION_V4_PASSED_4_AND_FULL_32_LIVE_BLOCKED",
       "evidence": {
         "postgres_claim": {
           "run_id": 38724948294,
@@ -1089,6 +1089,46 @@
           "signed_independent_review": false,
           "release_permission": false,
           "operational_acceptance_procedure": "bridge/neurofactory/trusted_host/TWO_PHYSICAL_NODES_MTLS_WITNESS_ACCEPTANCE_20261018_RU.md"
+        },
+        "witness_double_signed_scope_and_bridge_limit_20261018": {
+          "witness_scope_module": "bridge/neurofactory/trusted_host/offline_witness_signed_scope_gate.py",
+          "witness_scope_blob": "7cb0e1e1a12081070149836a783c585f9c013a1d",
+          "witness_scope_tests_run": 39074104015,
+          "witness_scope_tests_job": 117517577486,
+          "witness_scope_exact_sha": "96c80ea9cf02ca1925291c9e45d2cce6ee7b6af1",
+          "witness_scope_unit_pass": 15,
+          "witness_tls_transport_blob": "685ae5f9f3402462d612fbd717657e210a1e13df",
+          "witness_tls_suite_run": 39074332366,
+          "witness_tls_suite_job": 117518251511,
+          "witness_tls_exact_sha": "d207e697875aef1eaa06b1a2cf678a39ff825c52",
+          "witness_tls_suite_pass": 12,
+          "os_final_receiver_v4_blob": "8368ab395229389e50c773363feeaaab20f34a63",
+          "guarded_receiver_v4_blob": "f040a69e63a405d9a75a87d621c0f9e3f2c5ee9c",
+          "v4_new_e2e_test_run": 39074238180,
+          "v4_new_e2e_test_job": 117517981947,
+          "v4_exact_tested_sha": "c42dd9926b6ef3cacb37c0f6c58e82caf383de23",
+          "v4_new_tests_pass": 4,
+          "changed_receiver_regression_run": 39074323132,
+          "changed_receiver_regression_job": 117518223790,
+          "changed_receiver_exact_sha": "b9514534973d5d5c4d34269adbc587e687c52932",
+          "changed_receiver_tests_pass": 32,
+          "tested_core_pinned_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+          "independently_pinned_witness_owner_and_issuer_keys_fixture_only": true,
+          "enforces_signed_owner_and_issuer_at_witness_before_fs_sync": true,
+          "owner_logical_id_and_real_github_numeric_id_differentiated": true,
+          "full_local_pg_and_recipient_rollback_replay_denied_fixture": true,
+          "real_live_central_lease_at_witness_verified": false,
+          "longterm_owner_private_key_registered": false,
+          "independent_physical_second_node_verified": false,
+          "real_reboot_with_full_vm_snapshot_restoration": false,
+          "authorized_human_signed_review": false,
+          "user_pc_changes": false,
+          "bridge_connection_ping_success": true,
+          "bridge_desktop_commander_monthly_quota_exhausted": true,
+          "bridge_remote_execution_performed": false,
+          "any_production_worker_started": false,
+          "release_allowed": false,
+          "evidence": "bridge/neurofactory/trusted_host/DUAL_SIGNED_INDEPENDENT_WITNESS_AND_BRIDGE_EVIDENCE_20261018_RU.md"
         }
       },
       "blockers": [
@@ -1175,13 +1215,12 @@
   "live_model_forbidden": true,
   "handoff": "PAUSED_BY_USER",
   "next_action_order": [
-    "P0: independent authorized operator must enroll real GitHub numeric owner/repo proof-of-possession Ed25519 key and key revocation/nonces outside database; currently synthetic proofs only",
-    "P0: authorize 2 truly distinct physical machines; implement and review a bounded remote witness listener (today loopback-only!) with mutual TLS device credentials and independent trust root, not merely Unix SO_PEERCRED across users",
-    "P0: wire verified network transport as mandatory recipient pre-effect barrier, then prove full live PostgreSQL + file + witness on two authorized hosts with witnessed power reboot/restore and anti-replay",
-    "P0: witness whole-machine snapshot rollback/root compromise requires external WORM/hardware monotonic third trust domain; physical two hosts alone insufficient for simultaneous rollback",
-    "P0: independent authorized REVIEW #11 sign exact tested commits; GitHub issue comments/CI are not release signoff; HANDOFF and real queue remain prohibited",
-    "P1: actual fresh Qwen run inside same centrally authorized lease after real owner/host permits; previous genuine real model code was reused historically in separate runs",
-    "No paid API, merge, user computer changes or server publication without explicit approval."
+    "P0: recover authorized Windows reserve bridge usage quota OR connect another authorized terminal; DesktopCommander available ping but commands blocked by monthly service quota; do not circumvent quota",
+    "P0: independent physical second witness machine + separately authorized operator and actual owner key binding to numeric GitHub repo user via external signed challenge; genuine keys not in GitHub/ChatGPT",
+    "P0: TLS v4 local fixture already double-verifies issuer and owner at independent UID; real cross-physical-node secure listener and external monotonic storage not deployed; physical HOST reboot and restore PostgreSQL/full old snapshot must be evidenced",
+    "P0: independent authorized REVIEW #11 separate signed verdict on exact HOST code/test blobs, root/VM rollback risk, owner-key custody and alternate direct paths; 0 submitted PR15 reviews",
+    "P1: real fresh local Qwen generated result within same authorized current central lease instead of historical model source reuse",
+    "Maintain production OFF, HANDOFF PAUSED, no paid API, no auto merges or changes to user PCs"
   ],
   "coordination_signed_effect_contract": {
     "owner": "COORDINATOR",
