@@ -71,7 +71,8 @@ def _ack_from_claim(claim):
         "target_sha256":sha(claim["target"].encode()),
         "task_sha256":sha((claim["repo_id"]+"|"+claim["task_id"]).encode()),
         "nonce":claim["nonce"],"live_allowed":False}
-def serve_test_once(root,port,server_cert,server_key,ca_cert,*,client_cert_sha256):
+def serve_test_once(root,port,server_cert,server_key,ca_cert,*,
+                    client_cert_sha256,require_signed_scope=False):
     _gate()
     if os.geteuid()==0 or type(port) is not int or not 1024<=port<=65535:_deny()
     _require_fp(client_cert_sha256)
@@ -89,9 +90,17 @@ def serve_test_once(root,port,server_cert,server_key,ca_cert,*,client_cert_sha25
                 with ctx.wrap_socket(raw,server_side=True) as tls:
                     if _fingerprint(tls.getpeercert(binary_form=True))!=client_cert_sha256:
                         _deny()
-                    claim=_recv(tls)
-                    validate_claim(claim)
-                    reserve(root,claim) # fsync UNKNOWN before ACK
+                    request=_recv(tls)
+                    if require_signed_scope:
+                        from offline_witness_signed_scope_gate import verify_under_witness_uid
+                        verified=verify_under_witness_uid(root,request)
+                        if verified["status"]!="TWO_INDEPENDENT_SIGNED_SCOPES_MATCH_WITNESS_PIN_TEST_ONLY":
+                            _deny()
+                        claim=request["claim"]
+                    else:
+                        claim=request
+                        validate_claim(claim)
+                    reserve(root,claim) # fsync UNKNOWN only AFTER both signatures in scoped mode
                     ack=_ack_from_claim(claim)
                     if os.getenv("NF_WITNESS_SIMULATE_CRASH_BEFORE_ACK")=="1":
                         return
@@ -100,10 +109,16 @@ def serve_test_once(root,port,server_cert,server_key,ca_cert,*,client_cert_sha25
     except (ssl.SSLError,socket.timeout,OSError,ValueError,UnicodeError) as e:
         raise WitnessDenied("fail closed on TLS or witness transport") from e
 def request_test_once(host,port,claim,*,client_cert,client_key,ca_cert,
-                      pinned_server_cert_sha256,pinned_witness_public_b64):
+                      pinned_server_cert_sha256,pinned_witness_public_b64,
+                      signed_packet=None,signed_owner_grant=None):
     _gate()
     if host!=_HOST or type(port) is not int or not 1024<=port<=65535:_deny()
     validate_claim(claim)
+    if (signed_packet is None) != (signed_owner_grant is None):
+        _deny()
+    wire=(claim if signed_packet is None else {
+        "claim":claim,"signed_packet":signed_packet,
+        "signed_owner_grant":signed_owner_grant})
     _require_fp(pinned_server_cert_sha256)
     try:
         public=base64.b64decode(pinned_witness_public_b64,validate=True)
@@ -114,7 +129,7 @@ def request_test_once(host,port,claim,*,client_cert,client_key,ca_cert,
             with ctx.wrap_socket(conn,server_hostname=_NAME) as tls:
                 if _fingerprint(tls.getpeercert(binary_form=True))!=pinned_server_cert_sha256:
                     _deny()
-                _send(tls,claim)
+                _send(tls,wire)
                 response=_recv(tls)
         if type(response) is not dict or set(response)!={"ack","signature_base64"}:_deny()
         ack=response["ack"]
@@ -130,8 +145,10 @@ def request_test_once(host,port,claim,*,client_cert,client_key,ca_cert,
 
 if __name__=="__main__":
     # No interactive/listening production daemon: at most ONE loopback request.
-    if len(sys.argv)!=8 or sys.argv[1]!="test-serve-once":sys.exit(3)
+    if len(sys.argv)!=8 or sys.argv[1] not in (
+        "test-serve-once","test-serve-scoped-once"):sys.exit(3)
     try:
         serve_test_once(sys.argv[2],int(sys.argv[3]),sys.argv[4],
-                        sys.argv[5],sys.argv[6],client_cert_sha256=sys.argv[7])
+                        sys.argv[5],sys.argv[6],client_cert_sha256=sys.argv[7],
+                        require_signed_scope=(sys.argv[1]=="test-serve-scoped-once"))
     except Exception:sys.exit(3)
