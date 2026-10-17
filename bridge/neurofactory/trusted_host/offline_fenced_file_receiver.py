@@ -213,16 +213,41 @@ class OfflineFencedFileReceiver:
                     _deny("duplicate/unknown receiver effect; manual reconciliation only")
         except (SignedEffectPermitError,ValueError) as exc:
             raise OfflineReceiverDenied("signed scope or central lease rejected") from exc
-        # The UNKNOWN journal has now COMMITTED. Even a FS or DB failure never
-        # authorizes automatic retry; manually reconcile outside this method.
-        try:
-            _create_fenced_new_file(str(self.root),expected["target"],content)
-        except (OSError,OfflineReceiverDenied) as exc:
-            raise OfflineEffectUnknown("filesystem result UNKNOWN: stop; no automatic retry") from exc
-        if simulate_crash_after_fsync:
-            raise OfflineEffectUnknown("crash AFTER fsync BEFORE receipt; manual reconciliation")
+        # UNKNOWN is already durably COMMITTED. Acquire the central task lock
+        # AGAIN and hold it through the actual effect and receipt transition.
+        # Otherwise a second HOST connection can revoke a lease after the
+        # first transaction but before filesystem creation (TOCTOU).
+        # This protects a single disposable PostgreSQL instance ONLY, not
+        # a DB-admin rollback or privileged production OS receiver.
         try:
             with self.conn.transaction():
+                locked=self.conn.execute(
+                    """SELECT phase,fixture_authorized,lease_epoch,holder_id,
+                              lease_token_sha256,lease_deadline,clock_timestamp()
+                       FROM nf_task WHERE task_id=%s FOR UPDATE""",
+                    (task_id,)
+                ).fetchone()
+                journal=self.conn.execute(
+                    """SELECT status,idempotency_key,signed_permit_sha256,file_sha256
+                       FROM nf_receiver_effect_journal WHERE task_id=%s FOR UPDATE""",
+                    (task_id,)
+                ).fetchone()
+                if (locked is None or locked[0]!="LEASED" or locked[1] is not True or
+                    locked[2]!=expected["lease_epoch"] or
+                    locked[3]!=expected["worker_id"] or
+                    locked[4]!=expected["fencing_token_sha256"] or
+                    locked[5] is None or locked[5]<=locked[6] or
+                    journal != ("UNKNOWN",expected["idempotency_key"],
+                                report["signed_permit_sha256"],digest)):
+                    raise OfflineEffectUnknown("lease revoked after durable intent; manual STOP")
+                try:
+                    _create_fenced_new_file(str(self.root),expected["target"],content)
+                except (OSError,OfflineReceiverDenied) as exc:
+                    raise OfflineEffectUnknown(
+                        "filesystem UNKNOWN: manual reconciliation, no retry") from exc
+                if simulate_crash_after_fsync:
+                    raise OfflineEffectUnknown(
+                        "crash AFTER fsync BEFORE receipt: manual reconciliation")
                 updated=self.conn.execute(
                     """UPDATE nf_receiver_effect_journal
                        SET status='COMPLETED_TEST'
@@ -231,8 +256,10 @@ class OfflineFencedFileReceiver:
                 ).fetchone()
                 if not updated:
                     raise OfflineEffectUnknown("receipt update not confirmed")
+        except OfflineEffectUnknown:
+            raise
         except Exception as exc:
-            raise OfflineEffectUnknown("receipt unknown; manual reconciliation") from exc
+            raise OfflineEffectUnknown("receipt uncertain: manual STOP, no retry") from exc
         return {
             "status":"ONE_FILE_COMPLETED_OFFLINE_TEST_ONLY",
             "task_id":task_id,"operation_id":expected["operation_id"],
