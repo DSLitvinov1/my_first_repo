@@ -8,6 +8,8 @@ on:
       - bridge/neurofactory/coordination/test_offline_autointake.py
       - bridge/neurofactory/coordination/offline_intake_gateway.py
       - bridge/neurofactory/coordination/test_offline_intake_gateway.py
+      - bridge/neurofactory/coordination/advisory_snapshot.py
+      - bridge/neurofactory/coordination/test_advisory_snapshot.py
       - .github/workflows/neurofactory-coordination-signed-intake.yml
 permissions:
   contents: read
@@ -28,3 +30,5 @@ jobs:
         run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_offline_autointake.py' -v
       - name: Verify loopback HTTP listener never dispatches any task
         run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_offline_intake_gateway.py' -v
+      - name: Verify UI advisory preview repo-scoped readonly and no authority
+        run: python3 -B -m unittest discover -s bridge/neurofactory/coordination -p 'test_advisory_snapshot.py' -v
