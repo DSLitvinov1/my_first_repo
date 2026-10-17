@@ -45,6 +45,31 @@ class ReceiverBoundaryReview(baseline.PinnedCoreHostReceiver):
         print("NF_REVIEW_GAP_REVOCATION_AFTER_DB_CHECK_BEFORE_FILE=OBSERVED_TEST_FIXTURE")
         print("NF_REVIEW_RELEASE_VERDICT=REJECT_LIVE_NO_PROTECTED_RECEIVER")
 
+    def test_external_db_revoke_cannot_cross_locked_effect(self):
+        """Separate connection cannot alter leased task while fsync lock held.
+
+        Same privileged process can still alter its own DB state; this is
+        only PostgreSQL row-lock containment, not OS identity isolation.
+        """
+        import psycopg
+        original=self.hreceiver._create_fenced_new_file
+        observed={"blocked":False}
+        def contender(root,target,content):
+            with baseline.db() as other:
+                other.execute("SET statement_timeout='350ms'")
+                with self.assertRaises(psycopg.errors.QueryCanceled):
+                    other.execute(
+                        "UPDATE nf_task SET phase='UNKNOWN' WHERE task_id=%s",
+                        (baseline.TASK,))
+                observed["blocked"]=True
+            return original(root,target,content)
+        with patch.object(self.hreceiver,"_create_fenced_new_file",side_effect=contender):
+            result=self.ask()
+        self.assertTrue(observed["blocked"])
+        self.assertEqual(self.output().read_bytes(),baseline.CONTENT)
+        self.assertFalse(result["live_execution_allowed"])
+        print("NF_REVIEW_REMEDIATED_CROSS_CONNECTION_REVOKE_LOCK=PASS_TEST_ONLY")
+
     def test_signed_scope_does_not_grant_execution_without_independent_root(self):
         result=self.ask()
         self.assertFalse(result["live_execution_allowed"])
