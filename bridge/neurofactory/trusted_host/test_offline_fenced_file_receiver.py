@@ -51,6 +51,10 @@ class TestSignedLiveLeaseOfflineEffect(unittest.TestCase):
         cls.source_sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
         assert len(cls.source_sha)==40
     def setUp(self):
+        # Each case owns its own DB connection; outage test must not close
+        # the class-level setup connection used by later independent cases.
+        self.db=connect()
+        self.addCleanup(self.db.close)
         self.db.execute("""TRUNCATE nf_receiver_effect_journal,
             nf_receiver_scope_fixture,nf_effect_intent,nf_effect_scope_fixture,
             nf_claim_request,nf_task""")
