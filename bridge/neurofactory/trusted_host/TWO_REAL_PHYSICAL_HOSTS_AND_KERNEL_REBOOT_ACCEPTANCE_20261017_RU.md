@@ -46,3 +46,13 @@
 Только назначенный отдельно уполномоченный ревизор со своей независимой проверкой может решить RELEASE APPROVE либо REJECT. Его заключение должно ссылаться на точные неподвижные коммиты CORE, HOST и COORD, собранные подписи операторов, два настоящих устройства, фактические загрузки системы, post-reboot protected journal readback и 5 отрицательных + 1 успешную учебную операцию. Отчёт авторского GitHub Actions, комментарий в Issue №11 или тест «сам себя проверил» не равен независимому одобрению.
 
 До выполнения всех условий: `REJECT LIVE`, `HANDOFF PAUSED_BY_USER`, никаких paid API, автоматической публикации, моделей в live очереди, слияний веток или реальных файлов клиента.
+
+## 6. Обновление по последним испытаниям основной ветки (17.10.2026, 21:02 UTC)
+
+На ТОЧНОМ коммите HOST `3a4e4f869f7f3f7822a96614fc1535bde5e16deb` (CORE строго `beb08eff32923d8ca364aabfde0458f380acf8e7`) полный GitHub Actions run [39069220676](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39069220676), job `117503140684`, прошёл **25/25 тестов**. Фактически прочитанный log: `Ran 25 tests in 20.142s`, `OK`, `NF_PROTECTED_ENDPOINT_OWNER_NULL_DOWNGRADE_BLOCKED`, `NF_KERNEL_REBOOT_WITNESS_REJECTS_PROCESS_ONLY_RESTART`, `NF_REAL_QWEN_ACTUAL_CORE_CLAIM_OS_HOST_ONCE_PASSED`.
+
+Параллельный владелец TRUSTED HOST добавил отдельный защищённый тестовый witness `nf_witness` с собственным Unix UID и неперезаписываемыми подтверждениями результата. Переход от трёх к четырём UID в ephemeral Linux-runner не равен переходу на две физические машины. В прежнем запуске `39069048198` три новых теста упали из-за отсутствия `nf_witness` в настройке CI; следующий избирательный запуск `39069156061` был успешным, а затем полный пакет `39069220676` исправлен и успешен. Историю первоначального падения не удалять.
+
+ВАЖНО: `offline_kernel_reboot_evidence.py` НЕ был выполнен после настоящей смены boot-id в живом Linux HOST. Проверено только то, что два процесса на одной загрузке не выдают ложный сертификат kernel reboot. Поэтому глобальные критерии `ACTUAL_KERNEL_REBOOT_PASSED=false`, `TWO_DISTINCT_PHYSICAL_HOSTS_PASSED=false`, `INDEPENDENT_APPROVED_REVIEW=false`, `LIVE_RELEASE_APPROVED=false` остаются неизменными.
+
+По проверке GitHub PR №15 остаётся без независимых approve review. В списке Desktop Commander только один online Windows-PC, а удалённое выполнение команд дополнительно заблокировано исчерпанием текущего месячного лимита Desktop Commander; повторно подключаться/обходить лимит запрещено.
