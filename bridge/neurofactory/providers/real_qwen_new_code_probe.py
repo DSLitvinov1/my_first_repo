@@ -2,43 +2,57 @@
 import ast,hashlib,json,os,shutil,sys
 from pathlib import Path
 MODEL="Qwen/Qwen2.5-0.5B-Instruct"
-PROMPT=("Write ONLY Python source code without markdown or explanation. "
-        "Define exactly one function is_leap_year(year) that returns a boolean. "
-        "Leap year: divisible by 4 except centuries not divisible by 400. "
-        "Use only arithmetic, comparisons, and boolean and/or. No imports.")
-CASES=((2000,True),(1900,False),(2024,True),(2023,False),
-       (2100,False),(2400,True),(1600,True),(1999,False))
+PROMPT=("Write exactly one Python function named add_two(a, b). "
+        "It must return the sum of two input numbers. "
+        "Output only Python function definition and body. No examples or prose.")
+CASES=(((0,0),0),((2,3),5),((-4,7),3),((10,-8),2),
+       ((-10,-20),-30),((1000000,3),1000003),((1.5,2.5),4.0),((99,1),100))
 ALLOWED=(ast.Module,ast.FunctionDef,ast.arguments,ast.arg,ast.Return,
          ast.If,ast.Compare,ast.BoolOp,ast.BinOp,ast.UnaryOp,ast.Name,
          ast.Load,ast.Constant,ast.Mod,ast.Eq,ast.NotEq,ast.And,ast.Or,
-         ast.Not,ast.UAdd,ast.USub,ast.Pass)
+         ast.Not,ast.UAdd,ast.USub,ast.Add,ast.Pass)
 def mem():
     for line in Path("/proc/meminfo").read_text().splitlines():
         if line.startswith("MemAvailable:"):return int(line.split()[1])*1024
     raise RuntimeError("RAM_UNKNOWN")
 def verify(answer):
     fence=chr(96)*3
-    raw=answer.split(fence)[1].removeprefix("python").strip() if fence in answer else answer.strip()
+    if fence in answer:
+        snippet=answer.split(fence)[1].removeprefix("python").strip()
+    else:
+        start=answer.find("def add_two(")
+        if start<0:raise ValueError("missing newly generated function")
+        snippet=answer[start:].strip()
+    # Keep the first model-generated function and its indented body, never
+    # replace an invalid reply with any pre-written solution.
+    lines=snippet.splitlines()
+    selected=[lines[0]]
+    for line in lines[1:]:
+        if not line.strip():continue
+        if not line[0].isspace():break
+        selected.append(line)
+    raw="\n".join(selected)
     if len(raw.encode())>2000:raise ValueError("too long")
     tree=ast.parse(raw)
     if len(tree.body)!=1 or not isinstance(tree.body[0],ast.FunctionDef):
         raise ValueError("not exactly one function")
     fn=tree.body[0]
-    if (fn.name!="is_leap_year" or fn.decorator_list or len(fn.args.args)!=1
-        or fn.args.args[0].arg!="year" or fn.args.defaults or fn.args.kwonlyargs
+    if (fn.name!="add_two" or fn.decorator_list or len(fn.args.args)!=2
+        or [a.arg for a in fn.args.args]!=["a","b"] or fn.args.defaults or fn.args.kwonlyargs
         or fn.args.posonlyargs or fn.args.vararg or fn.args.kwarg):
         raise ValueError("wrong function")
-    fn.returns=None;fn.args.args[0].annotation=None
+    fn.returns=None
+    for a in fn.args.args:a.annotation=None
     for node in ast.walk(tree):
         if not isinstance(node,ALLOWED):raise ValueError("unsafe syntax "+type(node).__name__)
-        if isinstance(node,ast.Name) and node.id!="year":raise ValueError("external name")
+        if isinstance(node,ast.Name) and node.id not in ("a","b"):raise ValueError("external name")
     scope={}
     exec(compile(ast.fix_missing_locations(tree),"<pure_candidate>","exec"),
          {"__builtins__":{}},scope)
-    for year,expected in CASES:
-        actual=scope["is_leap_year"](year)
-        if type(actual) is not bool or actual!=expected:
-            raise ValueError("candidate failed at "+str(year))
+    for arguments,expected in CASES:
+        actual=scope["add_two"](*arguments)
+        if type(actual) not in (int,float) or actual!=expected:
+            raise ValueError("candidate failed at "+str(arguments))
     return raw
 def main():
     if (sys.platform!="linux" or os.getenv("NF_REAL_QWEN_NEW_CODE_TEST_ONLY")!="1"
