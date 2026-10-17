@@ -62,3 +62,6 @@ Write-Output 'NF_WINDOWS_NO_LINUX_ARCHITECTURE=PASS'
 Write-Output 'NF_WINDOWS_PREINSTALL_EFFECT_AND_QUEUE=BLOCKED'
 Write-Output 'NF_WINDOWS_PRODUCTION_APPROVAL=REJECT'
 Write-Output 'Ran 17 Windows policy assertions; ALL PASS'
+
+# Child preflight exit 2 was EXPECTED and checked above; test wrapper success.
+exit 0
