@@ -31,7 +31,7 @@ def serve_once(home, socket_path, *, allowed_peer_uid):
         or not parent.is_dir()):
         _deny("only disposable expected socket directory allowed")
     st=parent.stat()
-    if (st.st_uid!=os.geteuid() or st.st_mode & 0o007 or
+    if (st.st_uid!=os.geteuid() or st.st_mode & 0o027 or
         not stat.S_ISDIR(st.st_mode)):
         _deny("socket directory owner/group restrictions invalid")
     if sock_path.exists() or sock_path.is_symlink():
@@ -89,15 +89,34 @@ def serve_once(home, socket_path, *, allowed_peer_uid):
         finally:
             sock_path.unlink(missing_ok=True)
 
-def client_send(socket_path,request):
+def client_send(socket_path,request,*,pinned_signer_uid=None):
+    """Authenticate server UID from out-of-band operator configuration.
+
+    Legacy read-only debug clients may omit pin, but the new scoped consumer
+    MUST provide it and reject server impersonation or an absent signer.
+    """
+    if pinned_signer_uid is not None and (
+        type(pinned_signer_uid) is not int or pinned_signer_uid<=0
+        or not socket_path.endswith("/nf-readonly-operator.sock")):
+        _deny("invalid externally pinned signer UID")
     raw=json.dumps(request,sort_keys=True,separators=(",",":")).encode("ascii")
     if len(raw)>8192:_deny("request too large")
     with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as conn:
         conn.settimeout(4)
         conn.connect(str(socket_path))
+        if pinned_signer_uid is not None:
+            creds=conn.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,struct.calcsize("3i"))
+            pid,uid,gid=struct.unpack("3i",creds)
+            if pid<=0 or uid!=pinned_signer_uid:
+                _deny("UNTRUSTED_SIGNER_SERVER_UID")
         conn.sendall(raw)
         response=conn.recv(8192)
-    return json.loads(response.decode("ascii"))
+    if not response or len(response)>8191:
+        _deny("signer unavailable or truncated reply")
+    parsed=json.loads(response.decode("ascii"))
+    if type(parsed) is not dict:
+        _deny("invalid read-only signer response")
+    return parsed
 
 def cli(args):
     if len(args)!=6 or args[1]!="serve" or os.environ.get("NF_OPERATOR_ANCHOR_FIXTURE_ONLY")!="1":
