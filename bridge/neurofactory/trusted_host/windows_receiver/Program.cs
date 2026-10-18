@@ -322,6 +322,11 @@ internal static class Program
             file.Write(content);
             file.Flush(true);
         }
+        // CI-only, simulate loss of ACK after an irreversible file effect.
+        // The durable UNKNOWN marker prevents the caller from doing it twice.
+        if (FixtureEnabled &&
+            Environment.GetEnvironmentVariable("NF_WIN_CI_CRASH_AFTER_FSYNC") == "1")
+            throw new IOException("CI_INJECTED_CRASH_AFTER_FILE_FSYNC");
         return new {
             status = "WIN_CORE_TO_PROTECTED_SCRATCH_ONE_FILE_TEST_ONLY",
             file_sha256 = Field(body, "content_sha256"),
