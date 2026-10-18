@@ -71,7 +71,7 @@ def inspect_disposable_ci_service(root, worker_sid, policy_path):
         if worker_sid != worker_sid_canonical or worker_sid == CI_SERVICE_SID:
             _deny("invalid/potentially shared worker SID")
 
-        mgr = win32service.OpenSCManager(None, None, win32con.SC_MANAGER_CONNECT)
+        mgr = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_CONNECT)
         try:
             svc = win32service.OpenService(
                 mgr, CI_SERVICE_NAME,
