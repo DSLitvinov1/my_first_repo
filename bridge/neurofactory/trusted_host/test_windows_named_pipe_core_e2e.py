@@ -92,6 +92,7 @@ class WindowsNamedPipeCoreE2E(unittest.TestCase):
                     self.sid))
             except Exception as e:
                 self.errors.append(repr(e))
+                print('NF_TEMP_WINDOWS_SERVER_EXCEPTION='+repr(e),flush=True)
         th=threading.Thread(target=run,daemon=True)
         th.start()
         return th
