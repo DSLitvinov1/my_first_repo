@@ -122,20 +122,30 @@ def _named_pipe_sid(peer_user_sid):
 
 
 def _peer_matches(pipe_handle, pinned_peer_sid_text):
-    import win32pipe
+    # pywin32's win32pipe does not expose ImpersonateNamedPipeClient on
+    # supported builds. Call the documented Windows Advapi32 entrypoint.
+    import ctypes
     import win32security
     import win32con
     import win32api
+    kernel=ctypes.WinDLL("advapi32",use_last_error=True)
+    impersonate=kernel.ImpersonateNamedPipeClient
+    impersonate.argtypes=[ctypes.c_void_p]
+    impersonate.restype=ctypes.c_int
+    revert=kernel.RevertToSelf
+    revert.argtypes=[]
+    revert.restype=ctypes.c_int
+    if not impersonate(ctypes.c_void_p(int(pipe_handle))):
+        _deny()
     try:
-        win32pipe.ImpersonateNamedPipeClient(pipe_handle)
         thread=win32security.OpenThreadToken(
             win32api.GetCurrentThread(),win32con.TOKEN_QUERY,True)
         found=win32security.GetTokenInformation(
             thread,win32security.TokenUser)[0]
         return win32security.ConvertSidToStringSid(found)==pinned_peer_sid_text
     finally:
-        win32security.RevertToSelf()
-
+        if not revert():
+            _deny()
 
 def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
     """One request. Never a production daemon, no queue activation.
