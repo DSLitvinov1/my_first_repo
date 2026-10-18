@@ -41,8 +41,10 @@ jobs:
           set -euo pipefail
           CORE_SHA=441e6c9790ba9c3a776904ac530915871a598ad1
           CORE_BLOB=5fea9af13ea8bd45463f06d9cbfc832218450728
-          git fetch --no-tags --depth=1 origin neurofactory-core-four-party-sandbox-adapter-20261018
-          test "$(git rev-parse FETCH_HEAD)" = "$CORE_SHA"
+          # The CORE branch may advance independently. Fetch enough history,
+          # but import ONLY the immutable candidate commit below.
+          git fetch --no-tags --depth=30 origin neurofactory-core-four-party-sandbox-adapter-20261018
+          git cat-file -e "${CORE_SHA}^{commit}"
           mkdir -m 700 .nf-core-pinned
           git show "$CORE_SHA:bridge/neurofactory/development/core_owned/four_party_sandbox_client.py" > .nf-core-pinned/four_party_sandbox_client.py
           test "$(git hash-object .nf-core-pinned/four_party_sandbox_client.py)" = "$CORE_BLOB"
