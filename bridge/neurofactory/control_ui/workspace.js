@@ -101,7 +101,7 @@
       summary.append(metrics);
       const packed=health.packaged_components||{state:"UNKNOWN",files_verified:0};
       const packedMessage=packed.state==="SOURCE_HASHES_VERIFIED_NOT_ACTIVATED"
-        ?"Подлинность содержимого проверена по комплектному манифесту: "+packed.files_verified+" файлов. Служба и очередь НЕ запущены."
+        ?"Контрольные суммы файлов совпадают с комплектным манифестом: "+packed.files_verified+" файлов. Служба и очередь НЕ запущены."
         :packed.state==="BUNDLED_SOURCES_FAILED_INTEGRITY"
         ?"Ошибка проверки компонентов. Запуск реальных задач запрещён."
         :"Компоненты не обнаружены в рабочей папке или проверка недоступна.";
