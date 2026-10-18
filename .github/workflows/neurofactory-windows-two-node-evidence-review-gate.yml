@@ -1,0 +1,33 @@
+name: Neurofactory Windows two-node EVIDENCE ONLY no release
+on:
+  push:
+    branches: [neurofactory-windows-two-node-evidence-gate-20261018]
+    paths:
+      - 'bridge/neurofactory/trusted_host/windows_two_node_evidence_validator.py'
+      - 'bridge/neurofactory/trusted_host/test_windows_two_node_evidence_validator.py'
+      - '.github/workflows/neurofactory-windows-two-node-evidence-review-gate.yml'
+permissions:
+  contents: read
+jobs:
+  signed_claims_offline_consistency_only:
+    runs-on: windows-2025
+    timeout-minutes: 7
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install bounded offline signature validator dependencies
+        shell: pwsh
+        run: |
+          python -m venv .nf-evidence-venv
+          .nf-evidence-venv/Scripts/python.exe -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Test fail-closed six-trial dual-signature documentary gate
+        shell: pwsh
+        run: |
+          .nf-evidence-venv/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_two_node_evidence_validator.py -v
+      - name: No tracked file changed
+        shell: pwsh
+        run: git diff --exit-code
