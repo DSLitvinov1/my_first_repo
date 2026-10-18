@@ -27,6 +27,7 @@ jobs:
         env:
           PYTHONNOUSERSITE: "1"
           PYTHONDONTWRITEBYTECODE: "1"
-        run: |\n          "$RUNNER_TEMP/nf_browser/bin/python" -B bridge/neurofactory/one_pc_candidate/test_local_workspace_browser.py
+        run: |
+          "$RUNNER_TEMP/nf_browser/bin/python" -B bridge/neurofactory/one_pc_candidate/test_local_workspace_browser.py
       - name: Verify unchanged repository
         run: git diff --exit-code
