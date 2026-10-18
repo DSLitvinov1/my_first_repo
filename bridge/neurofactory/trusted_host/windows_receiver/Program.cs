@@ -149,6 +149,7 @@ internal static class Program
         object answer;
         if (clientSid != cfg.WorkerSid)
         {
+            Console.Error.WriteLine("NF_CI_REJECT_CLIENT_SID_MISMATCH");
             answer = Denied();
         }
         else
@@ -158,7 +159,11 @@ internal static class Program
                 using var request = ReadFramed(pipe);
                 answer = ProcessFixtureRequest(cfg, request.RootElement);
             }
-            catch { answer = Denied(); }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("NF_CI_RECEIVER_REJECT_" + ex.GetType().Name);
+                answer = Denied();
+            }
         }
         SendFramed(pipe, answer);
         pipe.WaitForPipeDrain();
@@ -249,6 +254,7 @@ internal static class Program
         if (expires <= now || expires > now + 120)
             return Denied();
 
+        Console.Error.WriteLine("NF_CI_SIGNED_SCOPE_VALIDATED");
         // No control of path from request: fixed file name, pinned to CI
         // config, scratch directory checked for reparse points.
         var root = Path.GetFullPath(cfg.ScratchRoot);
