@@ -1,7 +1,7 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
@@ -42,8 +42,8 @@ jobs:
         run: |
           choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
           if ($LASTEXITCODE -ne 0) {throw 'INNO_INSTALL_FAILED'}
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /?
-          if ($LASTEXITCODE -ne 0) {throw 'INNO_COMPILER_UNAVAILABLE'}
+          if (!(Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" -PathType Leaf)) {throw 'INNO_COMPILER_UNAVAILABLE'}
+          Write-Output 'NF_INNO_COMPILER_PRESENT=YES'
       - name: Compile per-user installer with no Windows services or Qwen downloads
         run: |
           $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
