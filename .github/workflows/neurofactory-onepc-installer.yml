@@ -6,6 +6,7 @@ on:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
+      - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/control_ui/**
       - .github/workflows/neurofactory-onepc-installer.yml
 permissions:
@@ -54,6 +55,7 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
@@ -95,9 +97,31 @@ jobs:
             if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
           }
           Write-Output 'NF_INSTALLER_REAL_CORE_HOST_PROVIDER_SOURCE_SHA256_IN_PACKAGE=PASS_NOT_ACTIVE'
+          $env:NF_INTEGRITY_APP="$install\app"
+          $env:NF_INTEGRITY_COMPONENTS="$install\components"
+          @'
+import os, sys, shutil
+from pathlib import Path
+sys.path.insert(0,os.environ["NF_INTEGRITY_APP"])
+from installed_integrity import verify,IntegrityDenied
+good=Path(os.environ["NF_INTEGRITY_COMPONENTS"])
+assert verify(good)["files_verified"]==15
+bad=good.parent/"integrity-negative"
+shutil.copytree(good,bad)
+with (bad/"core"/"one_task_core.py").open("ab") as f:
+    f.write(b"tampered")
+try:
+    verify(bad)
+except IntegrityDenied:
+    print("NF_INSTALLER_MODIFIED_CORE_SOURCE_FAIL_CLOSED=PASS")
+else:
+    raise AssertionError("Modified installed CORE accepted")
+'@ | Set-Content -LiteralPath "$env:RUNNER_TEMP\nf-integrity-check.py" -Encoding UTF8
+          & "$install\runtime\python.exe" -B "$env:RUNNER_TEMP\nf-integrity-check.py"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_RUNTIME_TAMPER_NOT_DENIED'}
           $port=18766
           $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
-            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--components-dir',"$install\components",'--port',"$port")
           try {
             $url="http://127.0.0.1:$port"
             $ready=$false
