@@ -142,6 +142,9 @@ class WindowsExternalWitnessPilotTests(unittest.TestCase):
                     self.proc.terminate()
                     try:self.proc.wait(timeout=2)
                     except subprocess.TimeoutExpired:self.proc.kill()
+            for stream in (self.proc.stdout,self.proc.stderr):
+                if stream is not None:
+                    stream.close()
             self.proc=None
 
     def call(self,*,claim=None,serverpin=None,witnesspub=None,clientcert=None,clientkey=None):
