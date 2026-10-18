@@ -73,7 +73,23 @@ def _json_unique(pairs):
 
 def installed_component_status():
     """Read-only status of bundled source; never asserts the service is active."""
-    from verify_installed_components import verify
+    # Embedded Windows python312._pth excludes the script sibling directory.
+    # Load this specific bundled module by absolute file path, not sys.path/CWD.
+    import importlib.util
+    verification_path=Path(__file__).resolve().with_name("verify_installed_components.py")
+    if verification_path.is_symlink() or not verification_path.is_file():
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+    spec=importlib.util.spec_from_file_location(
+        "_neurofactory_installed_source_verifier",verification_path)
+    if spec is None or spec.loader is None:
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    verify=module.verify
     directory=Path(__file__).resolve().parent.parent/"components"
     if not directory.exists():
         return {"state":"NOT_PACKAGED","files_verified":0,
