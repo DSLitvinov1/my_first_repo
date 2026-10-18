@@ -143,7 +143,7 @@ internal static class Program
         {
             pipe.RunAsClient(() =>
             {
-                clientSid = WindowsIdentity.GetCurrent(true).User?.Value ?? "";
+                clientSid = WindowsIdentity.GetCurrent(true)?.User?.Value ?? "";
             });
         }
         catch { clientSid = ""; }
