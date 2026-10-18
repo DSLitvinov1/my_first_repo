@@ -1,0 +1,45 @@
+name: Neurofactory true Windows 2 SID NTFS isolated protected receiver
+on:
+  push:
+    branches: [neurofactory-windows-two-sid-acl-recovery-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_receiver_sid_acl_guard.py
+      - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
+      - bridge/neurofactory/trusted_host/windows_two_sid_pilot_actor.py
+      - bridge/neurofactory/trusted_host/test_windows_two_sid_signed_effect_ci.ps1
+      - .github/workflows/neurofactory-windows-two-sid-acl-recovery.yml
+permissions:
+  contents: read
+jobs:
+  two-distinct-low-privilege-windows-users:
+    # Hosted runner has disposable OS admin rights only in the temporary VM.
+    runs-on: windows-2025
+    timeout-minutes: 12
+    env:
+      NF_WINDOWS_TWO_SID_CI_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - name: Confirm actual pinned immutable CORE
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE SHA changed' }
+          if ((git -C .nf_pinned_core hash-object bridge/neurofactory/development/core_owned/one_task_core.py).Trim() -cne 'ab1471813c6da29407c913b974a2209467a4b961') {throw 'CORE blob changed'}
+      - name: Install ephemeral local Python dependencies
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Isolate TWO distinct Windows local users and test signed pipe, replay and forced fsync crash
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/bridge/neurofactory/trusted_host/test_windows_two_sid_signed_effect_ci.ps1"
+      - name: Verify repository sources unmodified
+        shell: pwsh
+        run: git diff --exit-code
