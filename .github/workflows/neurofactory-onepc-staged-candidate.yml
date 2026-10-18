@@ -52,5 +52,23 @@ jobs:
           persist-credentials: false
       - name: Compile and test one-PC safe bundle
         run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_assembly.py -v
+      - name: Build usable read-only ONE-PC candidate from pinned sources
+        run: >-
+          python -B bridge/neurofactory/one_pc_candidate/assemble.py
+          --core .nf_pin_core
+          --host .nf_pin_host
+          --ui .nf_pin_ui
+          --providers .nf_pin_providers
+          --coordinator .nf_pin_coordinator
+          --output "${{ runner.temp }}/neurofactory-onepc-candidate"
+      - name: Publish candidate artifact (Windows only, NO LIVE)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-ONE-Windows-PC-READONLY-CANDIDATE
+          path: ${{ runner.temp }}/neurofactory-onepc-candidate
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
       - name: No tracked modifications
         run: git diff --exit-code
