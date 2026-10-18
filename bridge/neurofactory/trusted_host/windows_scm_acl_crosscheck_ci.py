@@ -1,8 +1,8 @@
 """Read-only, disposable GitHub CI cross-check for pinned Windows SCM + ACL.
 
 This measures ONE current service/token/DACL snapshot and never grants LIVE
-execution. It is deliberately NOT a production service-SID attestation: the
-shared NT AUTHORITY\\LocalService identity is NOT exclusive to this receiver.
+execution. CI checks an enabled and restricting per-service SID, but this is
+NOT production attestation, owner permission, or evidence from physical PCs.
 The policy engine comes from an immutable, independently pinned HOST PR #29.
 """
 from __future__ import annotations
@@ -11,7 +11,8 @@ import os
 from pathlib import Path
 
 CI_SERVICE_NAME = "NeurofactorySandboxReceiverCI"
-CI_SERVICE_SID = "S-1-5-19"
+CI_SERVICE_SID = "S-1-5-19"  # Logon identity; not a per-service principal.
+CI_RESTRICTED_SERVICE_NAME = r"NT SERVICE\NeurofactorySandboxReceiverCI"
 EXPECTED_ACL_POLICY_BLOB = "d135a4f9f763cb4b454bdce4c0121dd91422e76c"
 
 
@@ -80,6 +81,8 @@ def inspect_disposable_ci_service(root, worker_sid, policy_path):
             try:
                 config = win32service.QueryServiceConfig(svc)
                 status = win32service.QueryServiceStatusEx(svc)
+                sid_type = win32service.QueryServiceConfig2(
+                    svc, win32service.SERVICE_CONFIG_SERVICE_SID_INFO)
             finally:
                 win32service.CloseServiceHandle(svc)
         finally:
@@ -89,6 +92,12 @@ def inspect_disposable_ci_service(root, worker_sid, policy_path):
             "nt authority\\localservice", "localservice"
         ):
             _deny("unexpected configured Windows service logon identity")
+        if sid_type != 3:  # SERVICE_SID_TYPE_RESTRICTED
+            _deny("SCM service SID is not configured restricted")
+        expected_service_sid = win32security.ConvertSidToStringSid(
+            win32security.LookupAccountName(None, CI_RESTRICTED_SERVICE_NAME)[0])
+        if not expected_service_sid.startswith("S-1-5-80-"):
+            _deny("untrusted per-service SID")
         if status.get("CurrentState") != win32service.SERVICE_RUNNING:
             _deny("SCM receiver is not running")
         pid = status.get("ProcessId")
@@ -105,6 +114,22 @@ def inspect_disposable_ci_service(root, worker_sid, policy_path):
                 sid = win32security.GetTokenInformation(
                     token, win32security.TokenUser)[0]
                 running_service_sid = win32security.ConvertSidToStringSid(sid)
+                groups = win32security.GetTokenInformation(
+                    token, win32security.TokenGroups)
+                restricted = win32security.GetTokenInformation(
+                    token, win32security.TokenRestrictedSids)
+                group_sids = {
+                    win32security.ConvertSidToStringSid(s): attrs
+                    for s, attrs in groups
+                }
+                restricted_sids = {
+                    win32security.ConvertSidToStringSid(s)
+                    for s, _ in restricted
+                }
+                if not (group_sids.get(expected_service_sid, 0) & 0x4):
+                    _deny("service SID not enabled in running process token")
+                if expected_service_sid not in restricted_sids:
+                    _deny("per-service SID absent from token restricted list")
             finally:
                 token.Close()
         finally:
@@ -131,16 +156,21 @@ def inspect_disposable_ci_service(root, worker_sid, policy_path):
                 ace[1],
             ))
         privileged = policy._verify_acl_entries(
-            entries, running_service_sid, worker_sid, owner,
+            entries, expected_service_sid, worker_sid, owner,
             bool(control & win32security.SE_DACL_PROTECTED))
         return {
-            "status": "EPHEMERAL_CI_LOCAL_SERVICE_SID_AND_NTFS_SNAPSHOT_ONLY",
+            "status": "EPHEMERAL_CI_RESTRICTED_SERVICE_SID_TOKEN_AND_NTFS_SNAPSHOT_ONLY",
+            "restricted_service_sid": expected_service_sid,
+            "service_sid_enabled_in_token": True,
+            "service_sid_restricted_in_token": True,
+            "actual_scm_service_sid_type": sid_type,
             "actual_running_service_sid": running_service_sid,
             "worker_sid_expected_not_attested_by_this_function": worker_sid,
             "filesystem_owner_sid": owner,
             "privileged_os_writer_sids": list(privileged),
             "pinned_acl_policy_blob": EXPECTED_ACL_POLICY_BLOB,
             "service_account_exclusive": False,
+            "restricted_service_sid_acl_scoped": True,
             "worker_token_attested_here": False,
             "physical_device_acceptance": False,
             "independent_reviewer_approval": False,
