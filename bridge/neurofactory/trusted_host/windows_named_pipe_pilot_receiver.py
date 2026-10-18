@@ -147,7 +147,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,remote_witness=None):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -204,6 +204,33 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
                     "state":"UNKNOWN_NO_AUTO_RETRY"}
             with open(receipt,"xb") as f:
                 f.write(canon(intent));f.flush();os.fsync(f.fileno())
+            if remote_witness is not None:
+                # Pilot-only protected receiver -> separate mTLS witness
+                # interface. No arbitrary caller callback or live effect.
+                from windows_external_witness_pilot import (
+                    PinnedWindowsWitnessSandboxAdapter,
+                )
+                if (os.environ.get("NF_WINDOWS_WITNESS_TEST_ONLY")!="1" or
+                    type(remote_witness) is not PinnedWindowsWitnessSandboxAdapter or
+                    remote_witness.task_id!=body["task_id"] or
+                    remote_witness.target_sha256!=hashlib.sha256(
+                        body["target"].encode("utf8")).hexdigest()):
+                    _deny()
+                ack=remote_witness.reserve_precommit(
+                    scope_sha256=hashlib.sha256(canon(body)).hexdigest(),
+                    operation_id=body["operation_id"],
+                    commit_sequence=1,  # one inert file, test only
+                    journal_root_sha256="0"*64,
+                )
+                if (type(ack) is not dict or
+                    ack.get("status")!="DURABLY_RESERVED_TEST_ONLY" or
+                    ack.get("operation_id")!=body["operation_id"] or
+                    ack.get("scope_sha256")!=hashlib.sha256(canon(body)).hexdigest()
+                    or ack.get("commit_sequence")!=1 or
+                    ack.get("journal_root_sha256")!="0"*64):
+                    _deny()
+            elif os.environ.get("NF_WINDOWS_WITNESS_REQUIRED_TEST_ONLY")=="1":
+                _deny()
             with open(destination,"xb") as f:
                 f.write(payload);f.flush();os.fsync(f.fileno())
             response={"status":"ONE_INERT_WINDOWS_FILE_TEST_ONLY",

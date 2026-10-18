@@ -1,0 +1,34 @@
+name: Neurofactory Windows isolated external witness mTLS and restart (NO LIVE)
+on:
+  push:
+    branches: [neurofactory-windows-external-witness-pilot-20261018]
+    paths:
+      - 'bridge/neurofactory/trusted_host/windows_external_witness_pilot.py'
+      - 'bridge/neurofactory/trusted_host/test_windows_external_witness_pilot.py'
+      - '.github/workflows/neurofactory-windows-external-witness-durable-pilot.yml'
+permissions:
+  contents: read
+jobs:
+  disposable_windows_witness_tests:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    env:
+      NF_WINDOWS_WITNESS_TEST_ONLY: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use temporary Python and test-only crypto dependency
+        shell: pwsh
+        run: |
+          python -m venv .nf-witness-venv
+          .nf-witness-venv/Scripts/python.exe -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Exercise separate child witness process + TLS + durable SQLite across process restarts
+        shell: pwsh
+        run: |
+          .nf-witness-venv/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_external_witness_pilot.py -v
+      - name: Ensure no tracked source changed
+        shell: pwsh
+        run: git diff --exit-code
