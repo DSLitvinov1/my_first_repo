@@ -249,6 +249,23 @@ def main():
         call(["sc.exe","create",SERVICE_NAME,"binPath=",cmdline,
               "obj=","NT AUTHORITY\\LocalService","start=","demand"])
         service_created=True
+        # CI-ONLY; SCM injects a per-service SID into the actual LocalService
+        # process token. A restricted SID additionally limits write authority.
+        # Never configure or install any service on a user's machine.
+        if os.getenv("NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID") != "1":
+            raise RuntimeError("restricted per-service SID gate is mandatory in this branch")
+        call(["sc.exe","sidtype",SERVICE_NAME,"restricted"])
+        explicit_service_sid=win32security.ConvertSidToStringSid(
+            win32security.LookupAccountName(
+                None,"NT SERVICE\\"+SERVICE_NAME)[0])
+        if not explicit_service_sid.startswith("S-1-5-80-"):
+            raise AssertionError("SCM did not allocate expected per-service SID")
+        # A shared LocalService logon SID MUST NOT be granted write access
+        # to this receiver-owned directory; grant only its distinct service
+        # SID (+ original SYSTEM/Administrators). Inspect this actual ACL.
+        call(["icacls",str(output),"/grant:r",
+              "*"+explicit_service_sid+":(OI)(CI)M"])
+        call(["icacls",str(output),"/remove:g","*S-1-5-19"])
         call(["sc.exe","start",SERVICE_NAME],timeout=22)
         wait_service(SERVICE_RUNNING)
         # Actual least-privilege service account is NT AUTHORITY\LocalService.
@@ -281,9 +298,27 @@ def main():
             # provisioned NTFS DACL, unlike synthetic pure-policy fixtures.
             observed=inspect_disposable_ci_service(output,worker_sid,policy)
             assert observed["actual_running_service_sid"]=="S-1-5-19"
+            assert observed["restricted_service_sid"]==explicit_service_sid
+            assert observed["service_sid_enabled_in_token"] is True
+            assert observed["service_sid_restricted_in_token"] is True
+            assert observed["restricted_service_sid_acl_scoped"] is True
+            print("NF_WINDOWS_PER_SERVICE_RESTRICTED_TOKEN_AND_ACL=PASS_TEST_ONLY")
             assert observed["production_release_allowed"] is False
             assert observed["service_account_exclusive"] is False
             print("NF_WINDOWS_CI_LOCAL_SERVICE_ACTUAL_TOKEN_AND_ACL_OBSERVED")
+            # Negative: if a different service shares LocalService, a
+            # direct grant to that shared logon SID must be disallowed.
+            try:
+                call(["icacls",str(output),"/grant",
+                      "*S-1-5-19:(OI)(CI)M"])
+                try:
+                    inspect_disposable_ci_service(output,worker_sid,policy)
+                except CIBoundaryDenied:
+                    print("NF_WINDOWS_SHARED_LOCAL_SERVICE_WRITER=DENIED")
+                else:
+                    raise AssertionError("LocalService shared writer accepted")
+            finally:
+                call(["icacls",str(output),"/remove:g","*S-1-5-19"])
             # Negative: grant the REAL worker directory write access and prove
             # the inspector immediately denies it; restore BEFORE workers run.
             try:
