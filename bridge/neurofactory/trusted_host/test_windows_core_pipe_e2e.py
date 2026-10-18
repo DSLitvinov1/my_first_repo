@@ -139,10 +139,12 @@ class ActualCoreWindowsPipeE2E(unittest.TestCase):
         sig=r.to_bytes(32,"big")+s.to_bytes(32,"big")
         return data,base64.b64encode(sig).decode("ascii")
 
-    def start(self,*,crash_after_intent=False):
+    def start(self,*,crash_after_intent=False,crash_after_fsync=False):
         e=os.environ.copy()
         if crash_after_intent:e["NF_WIN_CI_CRASH_AFTER_INTENT"]="1"
         else:e.pop("NF_WIN_CI_CRASH_AFTER_INTENT",None)
+        if crash_after_fsync:e["NF_WIN_CI_CRASH_AFTER_FSYNC"]="1"
+        else:e.pop("NF_WIN_CI_CRASH_AFTER_FSYNC",None)
         p=subprocess.Popen(["dotnet",str(DLL),"--ci-one-shot",str(self.config)],
                            cwd=str(self.root),
                            stdout=subprocess.PIPE,stderr=subprocess.PIPE,
@@ -284,6 +286,25 @@ class ActualCoreWindowsPipeE2E(unittest.TestCase):
         self.finish(again)
         self.assertFalse((self.outdir/"core-e2e-proof.txt").exists())
         print("NF_WINDOWS_CRASH_AFTER_UNKNOWN_RESTART_MANUAL_STOP=PASS")
+
+    def test_file_fsynced_but_ack_lost_causes_unknown_no_retry(self):
+        signed,sig=self.signing()
+        first=self.start(crash_after_fsync=True)
+        response=self.send_direct(signed)
+        self.finish(first)
+        self.assertEqual(response["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assertEqual((self.outdir/"core-e2e-proof.txt").read_bytes(),
+                         CONTENT.encode("utf-8"))
+        self.assertTrue((self.outdir/"nf-effect-unknown.receipt").exists())
+        second=self.start()
+        with self.assertRaises(WindowsCoreRouteDenied):
+            self.client.propose_once(
+                task_id=TASK,worker_id=WORKER,core_token=self.claim["token"],
+                proposal=self.proposal,signed_body_bytes=signed,
+                owner_signature_base64=sig)
+        self.finish(second)
+        self.assertEqual(len(list(self.outdir.glob("core-e2e-proof.txt"))),1)
+        print("NF_WINDOWS_POST_FSYNC_LOST_ACK_NO_DOUBLE_FILE=PASS")
 
     def test_core_stale_local_claim_rejected_before_pipe(self):
         signed,sig=self.signing()
