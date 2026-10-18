@@ -1,0 +1,32 @@
+name: Neurofactory one-PC localhost real projects/tasks SQLite backup and UI
+on:
+  push:
+    branches: [neurofactory-onepc-final-integration-20261018]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/test_local_workspace.py
+      - bridge/neurofactory/control_ui/**
+      - .github/workflows/neurofactory-onepc-local-workspace.yml
+permissions:
+  contents: read
+jobs:
+  localhost-persistent-draft-only:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    env:
+      PYTHONNOUSERSITE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test real SQLite and loopback HTTP only, no model/effects
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_local_workspace.py -v
+      - name: Validate Python syntax of integration workspace and UI assets
+        run: python -B -m py_compile bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - name: Source remains unmodified
+        run: git diff --exit-code

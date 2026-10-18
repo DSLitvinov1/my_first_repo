@@ -1,0 +1,111 @@
+name: Neurofactory one-PC per-user Windows local draft installer verification
+on:
+  push:
+    branches: [neurofactory-onepc-final-integration-20261018]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/**
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/control_ui/**
+      - .github/workflows/neurofactory-onepc-installer.yml
+permissions:
+  contents: read
+jobs:
+  package-and-install-isolated:
+    runs-on: windows-2025
+    timeout-minutes: 22
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Stage exact existing app and official offline Python runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          New-Item -ItemType Directory -Force "$stage\runtime","$stage\app","$stage\ui" | Out-Null
+          $url='https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip'
+          $archive=Join-Path $env:RUNNER_TEMP 'python-3.12.10-embed-amd64.zip'
+          Invoke-WebRequest -Uri $url -OutFile $archive -MaximumRedirection 2
+          if ((Get-Item $archive).Length -ne 11133606) {throw 'VENDOR_RUNTIME_UNEXPECTED_LENGTH'}
+          Get-FileHash $archive -Algorithm SHA256 | Format-List | Out-String | Write-Output
+          Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
+          if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
+          & "$stage\runtime\python.exe" -B -c "import sqlite3,http.server,json,uuid;print('NF_VENDOR_RUNTIME_EMBEDDED_READY')"
+          if ($LASTEXITCODE -ne 0) {throw 'EMBEDDED_RUNTIME_UNUSABLE'}
+      - name: Install Inno Setup compiler on disposable GitHub Windows only
+        run: |
+          choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {throw 'INNO_INSTALL_FAILED'}
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /?
+          if ($LASTEXITCODE -ne 0) {throw 'INNO_COMPILER_UNAVAILABLE'}
+      - name: Compile per-user installer with no Windows services or Qwen downloads
+        run: |
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          $source=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').Path
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DSourceRoot=$stage" $source
+          if ($LASTEXITCODE -ne 0) {throw 'INNO_COMPILE_FAILURE'}
+          $file='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe'
+          if (!(Test-Path $file)) {throw 'INSTALLER_ABSENT'}
+          $digest=Get-FileHash $file -Algorithm SHA256
+          Write-Output ('NF_INSTALLER_SHA256='+$digest.Hash)
+      - name: Actual isolated install, embedded Python SQLite HTTP and uninstall without deleting user data
+        run: |
+          $ErrorActionPreference='Stop'
+          $installer=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe').Path
+          $install=Join-Path $env:RUNNER_TEMP 'NFInstalled'
+          $data=Join-Path $env:RUNNER_TEMP 'NFUserData'
+          $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
+          if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
+          $port=18766
+          $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+          try {
+            $url="http://127.0.0.1:$port"
+            $ready=$false
+            for ($i=0;$i -lt 50;$i++) {
+              Start-Sleep -Milliseconds 200
+              try {
+                $bootstrap=Invoke-RestMethod "$url/api/bootstrap" -TimeoutSec 2
+                $ready=$true
+                break
+              } catch {}
+            }
+            if (!$ready -or $bootstrap.mode -ne 'LOCAL_DRAFT_ONLY') {throw 'INSTALLED_APP_NOT_RUNNING'}
+            $headers=@{'X-NF-Local-Token'=$bootstrap.csrf_token}
+            $body=@{name='Windows persisted project';description='single local PC verified'}|ConvertTo-Json -Compress
+            $created=Invoke-RestMethod "$url/api/projects" -Method Post -Headers $headers -ContentType 'application/json' -Body $body
+            if (!$created.id) {throw 'PROJECT_NOT_WRITTEN'}
+            $task=@{project_id=$created.id;objective='Create one text draft with no system actions';model_preference='auto'}|ConvertTo-Json -Compress
+            $createdTask=Invoke-RestMethod "$url/api/tasks" -Method Post -Headers $headers -ContentType 'application/json' -Body $task
+            if ($createdTask.state -ne 'DRAFT_PENDING_OWNER_AUTH') {throw 'TASK_NOT_DRAFT'}
+            $backup=Invoke-RestMethod "$url/api/backup" -Method Post -Headers $headers -ContentType 'application/json' -Body '{}'
+            if (!(Test-Path (Join-Path "$data\backups" $backup.filename))) {throw 'NO_BACKUP'}
+            $diag=Invoke-RestMethod "$url/api/status"
+            if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+          $uninstall="$install\unins000.exe"
+          if (!(Test-Path $uninstall)) {throw 'UNINSTALLER_MISSING'}
+          $u=Start-Process -Wait -PassThru -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($u.ExitCode -ne 0) {throw 'UNINSTALL_FAILED'}
+          if (Test-Path "$install\app\local_workspace.py") {throw 'APP_NOT_REMOVED'}
+          if (!(Test-Path "$data\workspace.sqlite3")) {throw 'USER_DATABASE_DELETED_ON_UNINSTALL'}
+          Write-Output 'NF_INSTALLER_UNINSTALL_DATA_PRESERVED=PASS'
+          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=NOT_INCLUDED_AND_NOT_RELEASED'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          path: bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify repository unchanged
+        run: git diff --exit-code

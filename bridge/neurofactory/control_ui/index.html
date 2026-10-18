@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="НЕЙРОЗАВОД — безопасная локальная панель наблюдения">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; object-src 'none'">
+  <title>НЕЙРОЗАВОД — центр наблюдения</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="demo-data.js"></script>
+  <script defer src="app.js"></script>
+  <script defer src="workspace.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="brand"><span class="brand-mark">N<span>◆</span></span><div><strong>НЕЙРОЗАВОД</strong><small>CONTROL CENTER</small></div></div>
+      <div class="side-label">НАВИГАЦИЯ</div>
+      <nav id="navigation" aria-label="Разделы"></nav>
+      <div class="side-bottom"><div class="safety-light"></div><div><strong>Безопасный режим</strong><small>Учебные данные и локальная база</small></div></div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Рабочее пространство</span><b>/</b><strong id="crumb">Обзор</strong></div>
+        <div class="top-actions"><span class="offline-dot">ОФЛАЙН</span><button id="import-inbox-btn" class="import-label" type="button" aria-label="Импорт заданий">✉ <span>Импорт заданий</span></button><input type="file" id="inbox-input" accept=".json,application/json" hidden><button id="import-btn" class="import-label" type="button" aria-label="Импорт JSON">↥ <span>Импорт JSON</span></button><input type="file" id="file-input" accept=".json,application/json" hidden><button id="reset-btn" class="minimal-btn" type="button">Сброс</button></div>
+      </header>
+      <main id="main-content" tabindex="-1"></main>
+      <footer>НЕЙРОЗАВОД • Изолированный интерфейс наблюдения • Настоящая локальная база, выполнение задач до разрешения заблокировано</footer>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite" class="toast" hidden></div>
+</body>
+</html>

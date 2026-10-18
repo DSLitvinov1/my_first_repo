@@ -220,14 +220,26 @@ def main():
         owner=Ed25519PrivateKey.generate()
         pub=owner.public_key().public_bytes(
             serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        host_receipt_signer=Ed25519PrivateKey.generate()
+        host_public_raw=host_receipt_signer.public_key().public_bytes(
+            serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+        host_private_raw=host_receipt_signer.private_bytes(
+            serialization.Encoding.Raw,serialization.PrivateFormat.Raw,
+            serialization.NoEncryption())
         CI_CONFIG.write_text(json.dumps({
             "schema":"neurofactory.windows.ci_service.v1",
             "worker_sid":worker_sid,
             "owner_public_raw_base64":base64.b64encode(pub).decode("ascii"),
+            "host_receipt_private_raw_base64":
+                base64.b64encode(host_private_raw).decode("ascii"),
         }),encoding="ascii")
+        # Discard the operator-side test signer handle: actual signing only
+        # occurs within restricted SCM process, never within worker/CORE.
+        host_receipt_signer=None
+        host_private_raw=None
         # root ACL should cascade, but explicitly protect config.
         call(["icacls",str(CI_CONFIG),"/inheritance:r",
-              "/grant:r","*S-1-5-19:R","*S-1-5-18:F","*S-1-5-32-544:F"])
+              "/grant:r","*S-1-5-18:F","*S-1-5-32-544:F"])
         source_dir=Path(__file__).parent
         for name in ("windows_scm_sandbox_receiver.py",
                      "windows_named_pipe_pilot_receiver.py"):
@@ -260,6 +272,11 @@ def main():
                 None,"NT SERVICE\\"+SERVICE_NAME)[0])
         if not explicit_service_sid.startswith("S-1-5-80-"):
             raise AssertionError("SCM did not allocate expected per-service SID")
+        # Private HOST signer is readable only by this specific restricted
+        # service SID, SYSTEM and Administrators. Shared LocalService DENIED.
+        call(["icacls",str(CI_CONFIG),"/grant:r",
+              "*"+explicit_service_sid+":R",
+              "*S-1-5-18:F","*S-1-5-32-544:F"])
         # A shared LocalService logon SID MUST NOT be granted write access
         # to this receiver-owned directory; grant only its distinct service
         # SID (+ original SYSTEM/Administrators). Inspect this actual ACL.
@@ -404,6 +421,40 @@ def main():
         target=output/"windows_pilot.txt"
         assert target.read_text(encoding="utf8")==expected
         assert core.snapshot()["state"]=="CLAIMED"
+        if os.getenv("NF_ONEPC_FINAL_SIGNED_CI") == "1":
+            # Staged integration uses real CORE SQLite from the trusted source,
+            # but loads new completion logic ONLY from this integration branch.
+            import importlib.util
+            integrated=REPO/"bridge"/"neurofactory"/"development"/"core_owned"/"one_task_core.py"
+            loader=importlib.util.spec_from_file_location(
+                "nf_onepc_integrated_core",integrated)
+            if loader is None or loader.loader is None:
+                raise AssertionError("integration-owned finalizer unavailable")
+            module=importlib.util.module_from_spec(loader)
+            loader.loader.exec_module(module)
+            operator_pinned_core=module.OneTaskCore(
+                core.root,core.repo,host_output_dir=output,
+                host_receipt_public_raw=host_public_raw)
+            receipt=accepted.get("host_signed_receipt")
+            if not isinstance(receipt,dict):
+                raise AssertionError("SCM did not sign actual protected effect")
+            status=operator_pinned_core.finalize_signed_host_test(
+                spec["task_id"],claim["token"],receipt)
+            assert status["state"]=="HOST_CHECKPOINTED_TEST"
+            assert status["result_sha256"]==packet["content_sha256"]
+            restarted=module.OneTaskCore(
+                core.root,core.repo,host_output_dir=output,
+                host_receipt_public_raw=host_public_raw)
+            assert restarted.snapshot()["state"]=="HOST_CHECKPOINTED_TEST"
+            try:
+                restarted.finalize_signed_host_test(spec["task_id"],claim["token"],receipt)
+            except module.CoreSafetyError:
+                pass
+            else:
+                raise AssertionError("HOST receipt was replayed")
+            print("NF_ONEPC_REAL_SCM_SIGNED_HOST_RECEIPT=VERIFIED_TEST_ONLY")
+            print("NF_ONEPC_CORE_SQLITE_HOST_COMPLETION=HOST_CHECKPOINTED_TEST")
+            print("NF_ONEPC_CORE_RESTART_AND_RECEIPT_REPLAY=PASS_TEST_ONLY")
         assert not (core.sandbox/_ALLOWED_TARGET).exists()
         print("NF_WINDOWS_REAL_SCM_DIFFERENT_ACCOUNT_ONE_FILE=PASS_TEST_ONLY")
         # Ordinary replay must not overwrite/duplicate protected result.

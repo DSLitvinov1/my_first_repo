@@ -1,0 +1,58 @@
+name: Neurofactory ONE-PC true restricted SCM host signed receipt closes CORE (FAKE MODEL)
+on:
+  push:
+    branches: [neurofactory-onepc-final-integration-20261018]
+    paths:
+      - bridge/neurofactory/development/core_owned/one_task_core.py
+      - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
+      - bridge/neurofactory/trusted_host/windows_scm_sandbox_receiver.py
+      - bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py
+      - bridge/neurofactory/one_pc_candidate/test_provider_core_host_integration_ci.py
+      - .github/workflows/neurofactory-onepc-final-scm-close.yml
+permissions:
+  contents: read
+jobs:
+  restricted-service-signed-result:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    env:
+      NF_WINDOWS_SCM_DISPOSABLE_ONLY: "1"
+      NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY: "1"
+      NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID: "1"
+      NF_ONEPC_PROVIDER_CORE_HOST_CI: "1"
+      NF_ONEPC_FINAL_SIGNED_CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 681375ce0b959812fc836bf4d14abc107b58e9ca
+          path: .nf_pinned_acl
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pinned_providers
+          persist-credentials: false
+      - name: Assert existing immutable CORE PROVIDERS and Windows ACL parents
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE_SOURCE_MISMATCH' }
+          if ((git -C .nf_pinned_providers rev-parse HEAD).Trim() -cne '827b654d9f7c6a10a9b90a9c97802e63116711b9') { throw 'PROVIDER_SOURCE_MISMATCH' }
+          if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'ACL_SOURCE_MISMATCH' }
+      - name: Install disposable Windows-only isolated runtime dependencies
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Run real Windows SCM restricted service + provider fake HTTP and signed HOST to CORE finalization
+        shell: pwsh
+        run: python -B bridge/neurofactory/one_pc_candidate/test_provider_core_host_integration_ci.py
+      - name: Check no tracked source modified
+        run: git diff --exit-code

@@ -147,7 +147,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None,host_receipt_signer=None):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -214,6 +214,32 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown
                       "content_sha256":body["content_sha256"],
                       "live_execution_allowed":False,
                       "auto_retry_allowed":False}
+            if host_receipt_signer is not None:
+                # Real SCM-side signing operation on this disposable runner.
+                # This private key never arrives in the worker's request.
+                # Key provisioning is TEST ONLY: not Windows CNG/TPM custody.
+                from cryptography.hazmat.primitives import serialization
+                from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+                if not isinstance(host_receipt_signer,Ed25519PrivateKey):
+                    _deny()
+                signed={
+                    "schema":"neurofactory.windows.host_signed_test_receipt.v1",
+                    "task_id":body["task_id"],"project_id":body["project_id"],
+                    "source_sha40":body["source_sha40"],
+                    "target":body["target"],"operation_id":body["operation_id"],
+                    "content_sha256":body["content_sha256"],
+                    "status":"HOST_FILE_WRITTEN_TEST_ONLY",
+                }
+                pub=host_receipt_signer.public_key().public_bytes(
+                    serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+                sig=host_receipt_signer.sign(
+                    b"NF_WINDOWS_HOST_RECEIPT_TEST_V1\x00"+canon(signed))
+                response["host_signed_receipt"]={
+                    "schema":"neurofactory.core.host_checkpoint_test.v1",
+                    "signed":signed,
+                    "signature_base64":base64.b64encode(sig).decode("ascii"),
+                    "host_key_sha256":hashlib.sha256(pub).hexdigest(),
+                }
         except Exception:
             response={"status":"DENIED_OR_UNKNOWN_MANUAL_STOP",
                       "live_execution_allowed":False,
