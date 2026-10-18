@@ -1,0 +1,59 @@
+name: Neurofactory Windows SID pipe real CORE inert E2E
+on:
+  push:
+    branches:
+      - neurofactory-windows-protected-receiver-ci-20261018
+    paths:
+      - bridge/neurofactory/trusted_host/windows_receiver/**
+      - bridge/neurofactory/trusted_host/windows_core_pipe_client.py
+      - bridge/neurofactory/trusted_host/test_windows_core_pipe_e2e.py
+      - .github/workflows/neurofactory-windows-core-pipe-e2e.yml
+permissions:
+  contents: read
+jobs:
+  real-core-one-scratch-file:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    env:
+      NF_WINDOWS_RECEIVER_CI_ONLY: "1"
+      RUNNER_ENVIRONMENT: github-hosted
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Independent exact CORE owner source checkout
+        uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_core_pinned
+          persist-credentials: false
+      - name: Confirm exact pinned CORE SHA and critical source
+        shell: pwsh
+        run: |
+          $sha = git -C .nf_core_pinned rev-parse HEAD
+          if ($sha -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE_HEAD_CHANGED' }
+          $blob = git -C .nf_core_pinned hash-object bridge/neurofactory/development/core_owned/one_task_core.py
+          if ($blob -cne 'ab1471813c6da29407c913b974a2209467a4b961') { throw 'CORE_SOURCE_CHANGED' }
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Compile ServiceBase Windows protected receiver with pipe ACL
+        shell: pwsh
+        run: |
+          dotnet build bridge/neurofactory/trusted_host/windows_receiver/Neurofactory.WindowsReceiver.csproj --configuration Release --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'Build rejected' }
+      - name: Install TEST-only ECDSA signing dependency on disposable Windows
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input cryptography==46.0.3
+      - name: Run pinned real CORE claim and deny/restart one-file Windows pipe E2E
+        shell: pwsh
+        run: |
+          $env:NF_PINNED_CORE_DIR = Join-Path $env:GITHUB_WORKSPACE '.nf_core_pinned\bridge\neurofactory\development\core_owned'
+          $env:NF_WIN_RECEIVER_DLL = Join-Path $env:GITHUB_WORKSPACE 'bridge\neurofactory\trusted_host\windows_receiver\bin\Release\net8.0-windows\Neurofactory.WindowsReceiver.dll'
+          python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_core_pipe_e2e.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Windows CORE E2E failed' }
+      - name: Ensure no changes in tracked source
+        shell: pwsh
+        run: git diff --exit-code
