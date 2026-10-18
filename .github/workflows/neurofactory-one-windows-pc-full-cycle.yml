@@ -1,0 +1,52 @@
+name: Neurofactory ONE Windows PC scoped local pilot full cycle (NO LIVE)
+on:
+  push:
+    branches: [neurofactory-host-one-windows-pc-local-pilot-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/test_windows_one_pc_full_cycle_ci.py
+      - bridge/neurofactory/trusted_host/ONE_WINDOWS_PC_LOCAL_PILOT_20261018_RU.md
+      - .github/workflows/neurofactory-one-windows-pc-full-cycle.yml
+  pull_request:
+    branches: [neurofactory-host-restricted-service-sid-ci-20261018]
+permissions:
+  contents: read
+jobs:
+  one-disposable-windows-pc-both-scenarios:
+    runs-on: windows-2025
+    timeout-minutes: 14
+    env:
+      NF_WINDOWS_SCM_DISPOSABLE_ONLY: "1"
+      NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY: "1"
+      NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 681375ce0b959812fc836bf4d14abc107b58e9ca
+          path: .nf_pinned_acl
+          persist-credentials: false
+      - name: Pin exact real CORE and strict independent ACL source
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE_SHA_MISMATCH' }
+          if ((git -C .nf_pinned_core hash-object bridge/neurofactory/development/core_owned/one_task_core.py).Trim() -cne 'ab1471813c6da29407c913b974a2209467a4b961') { throw 'CORE_BLOB_MISMATCH' }
+          if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'ACL_SHA_MISMATCH' }
+          if ((git -C .nf_pinned_acl hash-object bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py).Trim() -cne 'd135a4f9f763cb4b454bdce4c0121dd91422e76c') { throw 'ACL_BLOB_MISMATCH' }
+      - name: Dependencies only on disposable Windows test runner
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Two sequential normal/crash scenarios on ONE Windows runner
+        shell: pwsh
+        run: python -B bridge/neurofactory/trusted_host/test_windows_one_pc_full_cycle_ci.py
+      - name: No source changes
+        shell: pwsh
+        run: git diff --exit-code
