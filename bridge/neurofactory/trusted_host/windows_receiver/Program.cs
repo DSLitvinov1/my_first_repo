@@ -6,6 +6,8 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Principal;
@@ -137,15 +139,10 @@ internal static class Program
         Console.Out.Flush();
         pipe.WaitForConnection();
 
-        string clientSid = "";
-        try
-        {
-            pipe.RunAsClient(() =>
-            {
-                clientSid = WindowsIdentity.GetCurrent(true)?.User?.Value ?? "";
-            });
-        }
-        catch { clientSid = ""; }
+        // Do not fall back to the receiver's own process identity if
+        // client impersonation is not granted. Query the actual kernel-pinned
+        // client process and inspect its primary Windows token instead.
+        string clientSid = ClientProcessSid(pipe);
         object answer;
         if (clientSid != cfg.WorkerSid)
         {
@@ -171,6 +168,42 @@ internal static class Program
 
     // Windows Python multiprocessing AF_PIPE is message-oriented: send_bytes
     // sends ONE complete message, not a 4-byte prefix framing protocol.
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool GetNamedPipeClientProcessId(
+        SafePipeHandle pipe, out uint clientPid);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr OpenProcess(
+        uint access, bool inheritHandle, uint processId);
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool OpenProcessToken(
+        IntPtr processHandle, uint access, out IntPtr tokenHandle);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr handle);
+
+    private static string ClientProcessSid(NamedPipeServerStream pipe)
+    {
+        if (!GetNamedPipeClientProcessId(pipe.SafePipeHandle, out uint pid)
+            || pid == 0) return "";
+        IntPtr process = OpenProcess(0x1000, false, pid); // QUERY_LIMITED_INFORMATION
+        if (process == IntPtr.Zero) return "";
+        try
+        {
+            if (!OpenProcessToken(process, 0x0008, out IntPtr token)
+                || token == IntPtr.Zero) return "";
+            try
+            {
+                using var identity = new WindowsIdentity(token);
+                return identity.User?.Value ?? "";
+            }
+            catch { return ""; }
+            finally { CloseHandle(token); }
+        }
+        finally { CloseHandle(process); }
+    }
+
     private static JsonDocument ReadFramed(NamedPipeServerStream pipe)
     {
         byte[] data = new byte[MaxJson + 1];
