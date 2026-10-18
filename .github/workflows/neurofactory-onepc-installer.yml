@@ -1,10 +1,11 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/control_ui/**
       - .github/workflows/neurofactory-onepc-installer.yml
 permissions:
@@ -19,6 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c92e102efed49e62eac1bc0e434b3d412d62e40
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
           persist-credentials: false
       - name: Stage exact existing app and official offline Python runtime
         run: |
@@ -38,13 +59,18 @@ jobs:
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
           & "$stage\runtime\python.exe" -B -c "import sqlite3,http.server,json,uuid;print('NF_VENDOR_RUNTIME_EMBEDDED_READY')"
           if ($LASTEXITCODE -ne 0) {throw 'EMBEDDED_RUNTIME_UNUSABLE'}
+          python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
+          if ($LASTEXITCODE -ne 0) {throw 'COMPONENT_SOURCE_PROVENANCE_FAILED'}
+          $manifest=Get-Content "$stage\components\manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.entries.Count -ne 15 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
+          Write-Output 'NF_INSTALLER_IMMUTABLE_CORE_HOST_PROVIDERS_COORDINATOR_STAGED=PASS_NOT_ACTIVE'
       - name: Install Inno Setup compiler on disposable GitHub Windows only
         run: |
           choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
           if ($LASTEXITCODE -ne 0) {throw 'INNO_INSTALL_FAILED'}
           if (!(Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" -PathType Leaf)) {throw 'INNO_COMPILER_UNAVAILABLE'}
           Write-Output 'NF_INNO_COMPILER_PRESENT=YES'
-      - name: Compile per-user installer with no Windows services or Qwen downloads
+      - name: Compile per-user installer including pinned inert CORE/HOST/PROVIDERS/COORDINATOR source
         run: |
           $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
           $source=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').Path
@@ -62,6 +88,13 @@ jobs:
           $data=Join-Path $env:RUNNER_TEMP 'NFUserData'
           $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
           if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
+          $manifest=Get-Content "$install\components\manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.entries.Count -ne 15 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
+          foreach($entry in $manifest.entries) {
+            $file=Join-Path (Join-Path "$install\components" $entry.role) $entry.file
+            if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
+          }
+          Write-Output 'NF_INSTALLER_REAL_CORE_HOST_PROVIDER_SOURCE_SHA256_IN_PACKAGE=PASS_NOT_ACTIVE'
           $port=18766
           $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
             '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
@@ -100,7 +133,7 @@ jobs:
           if (Test-Path "$install\app\local_workspace.py") {throw 'APP_NOT_REMOVED'}
           if (!(Test-Path "$data\workspace.sqlite3")) {throw 'USER_DATABASE_DELETED_ON_UNINSTALL'}
           Write-Output 'NF_INSTALLER_UNINSTALL_DATA_PRESERVED=PASS'
-          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=NOT_INCLUDED_AND_NOT_RELEASED'
+          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=SOURCE_INCLUDED_NOT_WIRED_NOT_RELEASED'
       - uses: actions/upload-artifact@v4
         with:
           name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
