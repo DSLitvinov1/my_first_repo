@@ -1,0 +1,40 @@
+name: Neurofactory Windows Named Pipe real CORE one inert effect
+on:
+  push:
+    branches: [neurofactory-windows-local-trusted-runtime-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
+      - bridge/neurofactory/trusted_host/test_windows_named_pipe_core_e2e.py
+      - .github/workflows/neurofactory-windows-core-pipe-one-file.yml
+permissions:
+  contents: read
+jobs:
+  one-disposable-windows-recipient:
+    runs-on: windows-2025
+    timeout-minutes: 9
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - name: Pin exact CORE source and never use mutable checkout
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE SHA mismatch' }
+          if ((git -C .nf_pinned_core hash-object bridge/neurofactory/development/core_owned/one_task_core.py).Trim() -cne 'ab1471813c6da29407c913b974a2209467a4b961') { throw 'CORE source mismatch' }
+      - name: Install disposable Python Windows pipe/Ed25519 libraries
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Real CORE claim through ACL protected Windows named pipe to exactly one inert file
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_named_pipe_core_e2e.py -v
+      - name: Ensure no tracked source modifications
+        shell: pwsh
+        run: git diff --exit-code

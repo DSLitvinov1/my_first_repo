@@ -1,0 +1,56 @@
+{
+  "schema": "neurofactory.windows_local_trusted_host_plan.v1",
+  "date": "2026-10-18",
+  "decision": "NO_DEDICATED_LINUX_HOST_REQUIRED_FOR_WINDOWS_LOCAL_PILOT",
+  "owner_request": "Use existing authorized Windows computer and backup GitHub runner; do not procure or require a separate Linux HOST.",
+  "linux_server_required": false,
+  "selected_primary_os": "Windows",
+  "known_connected_windows_device_count": 1,
+  "remote_desktop_bridge": {
+    "device": "WIN-LIDC05TBOQD",
+    "last_known_online": true,
+    "command_execution": "PAUSED_BY_PROVIDER_USAGE_QUOTA",
+    "machine_modified": false
+  },
+  "local_pilot": {
+    "scope": "single machine manual-confirmed sandbox-only",
+    "windows_receiver_service_required_for_protected_files": true,
+    "separate_service_sid_or_service_account_required": true,
+    "explicit_named_pipe_acl_and_client_sid_required": true,
+    "windows_cng_tpm_or_equivalent_key_protection_preferred": true,
+    "ed25519_to_cng_ecdsa_p256_change_requires_versioned_verified_protocol": true,
+    "unprivileged_core_worker_and_separate_receiver_required": true,
+    "signer_keys_never_in_runner_or_git": true,
+    "real_project_write_authorized": false,
+    "can_run_autonomous_real_file_writes": false
+  },
+  "higher_assurance_production": {
+    "dedicated_linux_required": false,
+    "external_independent_witness_or_other_strong_rollback_root_required": true,
+    "second_physical_machine_is_one_possible_implementation": true,
+    "one_local_pc_cannot_prove_offhost_rollback_resistance": true,
+    "independent_signed_review_required": true,
+    "live_approved": false
+  },
+  "test_evidence": {
+    "github_actions_run_id": 39077379590,
+    "github_actions_url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/39077379590",
+    "exact_tested_sha": "76b2b9e3aa5077ddd2d210fd87346d05945940a5",
+    "runner": "github-hosted windows-2025 NOT USER PC",
+    "assertions": "17 PASS",
+    "conclusion": "success",
+    "reason_runtime_denied": "NO INSTALLED PROTECTED WINDOWS RECEIVER, PINNED KEYS, EXTERNAL WITNESS, REVIEW"
+  },
+  "governance": {
+    "linux_requirement_for_local_pilot_removed": true,
+    "shared_core_host_review_code_changed": false,
+    "core_real_queues_started": false,
+    "host_runtime_installed": false,
+    "user_pc_rebooted": false,
+    "private_key_generated": false,
+    "automatic_merging": false,
+    "release_approved": false,
+    "handoff": "PAUSED_BY_USER"
+  },
+  "next": "Implement real Windows named-pipe receive-only service in isolated project sandbox, ACL/SID protection, signed owner + leased SQL + independent witness adapter, CI on Windows GH Actions, then authorized local install and separate review."
+}
