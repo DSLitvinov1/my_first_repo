@@ -1,0 +1,58 @@
+name: Neurofactory pinned CORE to HOST E2E sandbox, no production
+on:
+  push:
+    branches: [neurofactory-host-core-e2e-sandbox-20261018]
+    paths:
+      - 'bridge/neurofactory/trusted_host/test_core_four_party_held_sql_e2e.py'
+      - '.github/workflows/neurofactory-host-pinned-core-e2e-sandbox.yml'
+permissions:
+  contents: read
+jobs:
+  pinned_core_host_sandbox_e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_schema_ci
+          POSTGRES_PASSWORD: nf_schema_ephemeral_password
+          POSTGRES_DB: nf_schema_verify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_schema_ci -d nf_schema_verify"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      NF_DB_SCHEMA_CI_ONLY: '1'
+      NF_ATOMIC_TEST_ONLY: '1'
+      NF_CORE_OFFLINE_RECEIVER_TEST_ONLY: '1'
+      NF_CORE_PINNED_ADAPTER_DIR: .nf-core-pinned
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch exact separately owned CORE adapter commit read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE_SHA=441e6c9790ba9c3a776904ac530915871a598ad1
+          CORE_BLOB=5fea9af13ea8bd45463f06d9cbfc832218450728
+          git fetch --no-tags --depth=1 origin neurofactory-core-four-party-sandbox-adapter-20261018
+          test "$(git rev-parse FETCH_HEAD)" = "$CORE_SHA"
+          mkdir -m 700 .nf-core-pinned
+          git show "$CORE_SHA:bridge/neurofactory/development/core_owned/four_party_sandbox_client.py" > .nf-core-pinned/four_party_sandbox_client.py
+          test "$(git hash-object .nf-core-pinned/four_party_sandbox_client.py)" = "$CORE_BLOB"
+          echo "CORE_ADAPTER_EXACT_SOURCE_PIN_VERIFIED=PASS"
+      - name: Set up one disposable PostgreSQL16 + test-only cryptographic packages
+        run: |
+          python3 -m venv .nf-e2e-venv
+          .nf-e2e-venv/bin/python -m pip install --no-input --disable-pip-version-check 'psycopg[binary]==3.2.6' 'cryptography==46.0.3'
+      - name: One inert CORE-host sandbox write and failure scenarios
+        run: |
+          .nf-e2e-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_core_four_party_held_sql_e2e.py -v
+      - name: Assert original tracked files unchanged
+        run: git diff --exit-code
