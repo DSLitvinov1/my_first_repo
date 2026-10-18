@@ -78,7 +78,16 @@ try {
     Write-Output 'NF_WINDOWS_REAL_SCM_SERVICE_REGISTERED_UNDER_SEPARATE_NONADMIN_SID=PASS'
 
     $wCred=New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\$wk",$pw2)
-    Start-Service -Name $svcName -ErrorAction Stop
+    try { Start-Service -Name $svcName -ErrorAction Stop } catch {
+        $events=Get-WinEvent -FilterHashtable @{LogName='System'; StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue
+        $recent=@($events | Where-Object { $_.Message -match 'NeurofactorySandboxReceiver|nf_rc_|pythonservice' } | Select-Object -First 8)
+        foreach($evt in $recent) {Write-Output ('NF_DISPOSABLE_SCM_DIAG: '+$evt.Id+' '+$evt.Message)}
+        $app=Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue
+        foreach($evt in @($app | Where-Object {$_.Message -match 'Neurofactory|pythonservice'} | Select-Object -First 8)){
+            Write-Output ('NF_DISPOSABLE_APP_DIAG: '+$evt.Id+' '+$evt.Message)
+        }
+        throw
+    }
     LaunchWorker $wCred positive
     WaitFile (Join-Path $sandbox 'windows_pilot.txt')
     $one=(Get-FileHash (Join-Path $sandbox 'windows_pilot.txt') -Algorithm SHA256).Hash
