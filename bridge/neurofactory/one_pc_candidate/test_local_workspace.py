@@ -1,6 +1,7 @@
 """One-PC persistent local workspace integration tests, no release/queue or model execution."""
 from __future__ import annotations
 import http.client
+from contextlib import closing
 from http.server import HTTPServer
 import json
 from pathlib import Path
@@ -135,7 +136,7 @@ class RealLocalWorkspace(unittest.TestCase):
         # Restore test in another untouched location. Never overwrite a live DB.
         recovered=self.dir/"recovered.sqlite3"
         recovered.write_bytes(backup.read_bytes())
-        with sqlite3.connect(recovered) as con:
+        with closing(sqlite3.connect(recovered)) as con:
             name=con.execute("SELECT name FROM projects WHERE id=?",
                              (original["id"],)).fetchone()
         self.assertEqual(name,("Локальный проект",))
