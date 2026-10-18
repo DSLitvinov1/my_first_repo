@@ -24,6 +24,7 @@ from cryptography.x509.oid import NameOID, ExtendedKeyUsageOID
 
 from windows_external_witness_pilot import (
     WitnessPilotDenied, check_claim, request_test_once,
+    PinnedWindowsWitnessSandboxAdapter,
 )
 
 def hashbytes(b):
@@ -242,6 +243,53 @@ class WindowsExternalWitnessPilotTests(unittest.TestCase):
         with self.assertRaises(WitnessPilotDenied):
             self.call(claim=c)
         self.assertEqual(self.database_count(),1)
+
+    def adapter(self):
+        return PinnedWindowsWitnessSandboxAdapter(
+            task_id=self.claim["task_id"],
+            target_sha256=self.claim["target_sha256"],
+            port=self.port,
+            client_cert=self.cli_cert, client_key=self.cli_key,
+            ca_cert=self.ca,
+            pinned_server_cert_sha256=self.srv_fp,
+            pinned_witness_public_b64=self.witness_pub,
+        )
+
+    def test_host_reserve_precommit_adapter_reaches_signed_witness(self):
+        self.start()
+        a=self.adapter()
+        ack=a.reserve_precommit(
+            scope_sha256=self.claim["scope_sha256"],
+            operation_id=self.claim["operation_id"],
+            commit_sequence=self.claim["commit_sequence"],
+            journal_root_sha256=self.claim["journal_root_sha256"])
+        self.assertEqual(ack["status"],"DURABLY_RESERVED_TEST_ONLY")
+        self.assertEqual(self.database_count(),1)
+        self.stop();self.start()
+        with self.assertRaises(WitnessPilotDenied):
+            self.adapter().reserve_precommit(
+                scope_sha256=self.claim["scope_sha256"],
+                operation_id=self.claim["operation_id"],
+                commit_sequence=self.claim["commit_sequence"],
+                journal_root_sha256=self.claim["journal_root_sha256"])
+        self.assertEqual(self.database_count(),1)
+
+    def test_host_adapter_ack_loss_is_unknown_never_a_permission(self):
+        self.start(drop=True)
+        with self.assertRaises(WitnessPilotDenied):
+            self.adapter().reserve_precommit(
+                scope_sha256=self.claim["scope_sha256"],
+                operation_id=self.claim["operation_id"],
+                commit_sequence=self.claim["commit_sequence"],
+                journal_root_sha256=self.claim["journal_root_sha256"])
+        self.assertEqual(self.database_count(),1)
+        self.stop();self.start()
+        with self.assertRaises(WitnessPilotDenied):
+            self.adapter().reserve_precommit(
+                scope_sha256=self.claim["scope_sha256"],
+                operation_id=self.claim["operation_id"],
+                commit_sequence=self.claim["commit_sequence"],
+                journal_root_sha256=self.claim["journal_root_sha256"])
 
     def test_explicit_ci_gate_required(self):
         with patch.dict(os.environ,{"NF_WINDOWS_WITNESS_TEST_ONLY":"0"}):
