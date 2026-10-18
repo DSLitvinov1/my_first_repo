@@ -1,7 +1,7 @@
 name: Neurofactory one-PC existing Russian UI real browser to SQLite
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-local-qwen-probe-20261018]
     paths:
       - bridge/neurofactory/control_ui/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
