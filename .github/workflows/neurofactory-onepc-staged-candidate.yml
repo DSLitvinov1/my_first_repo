@@ -1,0 +1,56 @@
+name: Neurofactory one-PC immutable component bundle and localhost preview
+on:
+  push:
+    branches: [neurofactory-onepc-staged-bundle-20261018]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/**
+      - .github/workflows/neurofactory-onepc-staged-candidate.yml
+  pull_request:
+    branches: [neurofactory-host-one-windows-pc-local-pilot-20261018]
+permissions:
+  contents: read
+jobs:
+  exact-source-stage-and-local-preview:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    env:
+      NF_ONE_PC_ASSEMBLY_CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 546d566ecfe7cbf317f4b49042a9473d862d1f9b
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 56a375a2f76bdaf56932f21b392a9d133f740913
+          path: .nf_pin_ui
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
+      - name: Compile and test one-PC safe bundle
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_assembly.py -v
+      - name: No tracked modifications
+        run: git diff --exit-code
