@@ -167,11 +167,27 @@ class WorkspaceStore:
 
     def record_model_check(self, result):
         """Store only hashes and declared Ollama model, never trust them as proof."""
-        if (type(result) is not dict or
+        required={"status","reported_model","reported_digest","prompt_sha256",
+                  "response_sha256","response_excerpt",
+                  "model_provenance_attested","real_weights_independently_verified",
+                  "core_dispatch_allowed","host_write_allowed",
+                  "automatic_retry_allowed","publication_allowed"}
+        if (type(result) is not dict or set(result)!=required or
                 result.get("status")!="OLLAMA_LOCAL_RESPONSE_UNATTESTED" or
-                result.get("model_provenance_attested") is not False or
-                type(result.get("response_sha256")) is not str or
-                not re.fullmatch(r"[a-f0-9]{64}",result["response_sha256"])):
+                result.get("reported_model") not in SUPPORTED_QWEN or
+                type(result.get("reported_digest")) is not str or
+                not (result["reported_digest"]=="UNVERIFIED" or
+                     re.fullmatch(r"[a-fA-F0-9]{64}",result["reported_digest"])) or
+                type(result.get("response_excerpt")) is not str or
+                len(result["response_excerpt"])>240 or
+                any(result[k] is not False for k in (
+                    "model_provenance_attested",
+                    "real_weights_independently_verified",
+                    "core_dispatch_allowed","host_write_allowed",
+                    "automatic_retry_allowed","publication_allowed")) or
+                any(type(result.get(k)) is not str or not re.fullmatch(
+                    r"[a-f0-9]{64}",result[k]) for k in (
+                    "prompt_sha256","response_sha256"))):
             raise WorkspaceDenied("Untrusted local model evidence")
         row=(uuid.uuid4().hex,_utc(),result["reported_model"],
              result["reported_digest"],result["prompt_sha256"],
