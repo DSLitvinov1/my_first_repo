@@ -103,27 +103,63 @@ def prepare_core_fixture(tmp, owner_key):
     return core,spec,claim,packet,text
 
 def worker_as_local_account(username,password,script,payload,response):
-    # The admin runner starts a standard unprivileged worker, with a fresh
-    # environment. It never passes an owner private signing key.
-    ps=r"""
-$ErrorActionPreference='Stop'
-$sec=ConvertTo-SecureString $env:NF_CI_WORKER_PASS -AsPlainText -Force
-$cred=New-Object System.Management.Automation.PSCredential($env:NF_CI_WORKER_NAME,$sec)
-$argv='"{script}" "{payload}" "{response}" "{pipe}"'
-$p=Start-Process -FilePath "{python}" -ArgumentList $argv -Credential $cred -UseNewEnvironment -Wait -PassThru
-Write-Output ('NF_CI_WORKER_EXIT='+$p.ExitCode)
-""".replace("{script}",str(script)).replace("{payload}",str(payload)).replace(
-    "{response}",str(response)).replace("{pipe}",CI_PIPE).replace(
-    "{python}",sys.executable)
-    newenv={"SYSTEMROOT":os.environ["SYSTEMROOT"],"WINDIR":os.environ["WINDIR"],
-            "PATH":os.environ.get("PATH",""),"NF_CI_WORKER_PASS":password,
-            "NF_CI_WORKER_NAME":username}
-    p=call(["powershell.exe","-NoProfile","-NonInteractive","-Command",ps],
-           required=False,env=newenv,timeout=20)
-    if p.returncode:
-        raise RuntimeError("worker launcher failed "+p.stderr[-450:])
+    """Launch with a real different local Windows token, not runas/net-only.
+
+    CreateProcessWithLogonW creates the new locally authenticated token;
+    its NULL environment chooses the user's own clean environment, never
+    inherits runner credentials or test signing key.
+    """
+    import ctypes
+    import ctypes.wintypes as w
+    from ctypes import byref
+
+    class STARTUPINFOW(ctypes.Structure):
+        _fields_=[("cb",w.DWORD),("lpReserved",w.LPWSTR),
+                  ("lpDesktop",w.LPWSTR),("lpTitle",w.LPWSTR),
+                  ("dwX",w.DWORD),("dwY",w.DWORD),
+                  ("dwXSize",w.DWORD),("dwYSize",w.DWORD),
+                  ("dwXCountChars",w.DWORD),("dwYCountChars",w.DWORD),
+                  ("dwFillAttribute",w.DWORD),("dwFlags",w.DWORD),
+                  ("wShowWindow",w.WORD),("cbReserved2",w.WORD),
+                  ("lpReserved2",ctypes.c_void_p),
+                  ("hStdInput",w.HANDLE),("hStdOutput",w.HANDLE),
+                  ("hStdError",w.HANDLE)]
+
+    class PROCESS_INFORMATION(ctypes.Structure):
+        _fields_=[("hProcess",w.HANDLE),("hThread",w.HANDLE),
+                  ("dwProcessId",w.DWORD),("dwThreadId",w.DWORD)]
+
+    api=ctypes.WinDLL("advapi32",use_last_error=True)
+    fn=api.CreateProcessWithLogonW
+    fn.argtypes=(w.LPCWSTR,w.LPCWSTR,w.LPCWSTR,w.DWORD,
+                 w.LPCWSTR,w.LPWSTR,w.DWORD,ctypes.c_void_p,
+                 w.LPCWSTR,ctypes.POINTER(STARTUPINFOW),
+                 ctypes.POINTER(PROCESS_INFORMATION))
+    fn.restype=w.BOOL
+    si=STARTUPINFOW()
+    si.cb=ctypes.sizeof(si)
+    pi=PROCESS_INFORMATION()
+    cmd=' "'+str(script)+'" "'+str(payload)+'" "'+str(response)+'" "'+CI_PIPE+'"'
+    command=ctypes.create_unicode_buffer('"'+sys.executable+'"'+cmd)
+    ok=fn(username,".",password,0,sys.executable,command,
+          0x08000000,None,str(script.parent),byref(si),byref(pi))
+    if not ok:
+        raise RuntimeError("CreateProcessWithLogonW refused distinct worker error "+
+                           str(ctypes.get_last_error()))
+    kernel=ctypes.WinDLL("kernel32",use_last_error=True)
+    kernel.WaitForSingleObject.argtypes=(w.HANDLE,w.DWORD)
+    kernel.WaitForSingleObject.restype=w.DWORD
+    kernel.CloseHandle.argtypes=(w.HANDLE,)
+    kernel.CloseHandle.restype=w.BOOL
+    try:
+        waited=kernel.WaitForSingleObject(pi.hProcess,10000)
+        if waited != 0:
+            raise RuntimeError("different-SID worker did not finish: "+str(waited))
+    finally:
+        kernel.CloseHandle(pi.hThread)
+        kernel.CloseHandle(pi.hProcess)
     if not response.is_file():
-        raise RuntimeError("worker did not write result")
+        raise RuntimeError("worker created no report")
     return json.loads(response.read_text(encoding="ascii"))
 
 def wait_service(expected,timeout=20):
