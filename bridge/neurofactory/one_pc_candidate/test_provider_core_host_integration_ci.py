@@ -159,6 +159,41 @@ def run():
                              max_reserved_units=50000).snapshot()
         if snap["attempts"] != 1 or len(snap["tasks"]) != 1:
             _deny("no real model attempt was durably reserved")
+        # Negative A: the same genuinely persisted provider task cannot
+        # generate twice: durable task-id reservation is consumed before HTTP.
+        repeated = execute_one(task, model=MODEL, ledger_dir=ledger)
+        if (repeated.get("status") != "BLOCKED" or
+                repeated.get("error_code") != "BLOCKED_DUPLICATE_OR_LEDGER" or
+                repeated.get("attempt_consumed") is not True):
+            _deny("duplicate provider attempt was not durably blocked")
+        # Negative B: a separate untrusted fake-model reply proposing a
+        # DIFFERENT path must be rejected BEFORE owner-signing or HOST effects.
+        invalid_ledger = directory / "provider_invalid_ledger"
+        invalid_ledger.mkdir()
+        FakeLocalModel.reply = json.dumps({
+            "path": "src/foreign_target.py",
+            "content": "test-only non-approved file",
+        }, sort_keys=True)
+        invalid_task = ProviderTask(
+            task_id="NF-DEV-05-Q902", project_id=spec["project_id"],
+            input_sha256=spec["source_sha256"], target_path=TARGET,
+            instruction="Produce exactly one harmless sandbox file for invalid-test CI.",
+        )
+        invalid = execute_one(
+            invalid_task, model=MODEL, ledger_dir=invalid_ledger)
+        FakeLocalModel.reply = json.dumps({
+            "path": TARGET, "content": CONTENT,
+        }, sort_keys=True)
+        if (invalid.get("status") != "INVALID_MODEL_OUTPUT" or
+                invalid.get("attempt_consumed") is not True or
+                invalid.get("proposed_files") != [] or
+                invalid.get("review_approved") is not False or
+                invalid.get("published") is not False):
+            _deny("untrusted foreign-path model proposal was accepted")
+        if not isinstance(invalid.get("response_sha256"), str):
+            _deny("unsafe answer was not accounted for in evidence")
+        provider_state["replayed_denied"] = True
+        provider_state["wrong_path_denied"] = True
         provider_state["approved"] = True
         provider_state["digest"] = digest
         return core, spec, claim, signed, CONTENT
@@ -170,9 +205,14 @@ def run():
         host_fixture.main()
         if not provider_state["approved"]:
             _deny("test signer did not approve a concrete provider proposal")
-        if FakeLocalModel.counts["tags"] != 1 or \
-           FakeLocalModel.counts["generate"] != 1:
+        if FakeLocalModel.counts["tags"] != 3 or \
+           FakeLocalModel.counts["generate"] != 2:
             _deny("unexpected number of model endpoint calls")
+        if not provider_state["replayed_denied"] or \
+                not provider_state["wrong_path_denied"]:
+            _deny("provider negatives not observed")
+        print("NF_ONEPC_PROVIDER_DUPLICATE_NO_SECOND_HTTP=DENIED")
+        print("NF_ONEPC_PROVIDER_FOREIGN_TARGET_OUTPUT=DENIED")
         print("NF_ONEPC_REAL_CORE_SQLITE_CLAIM=PASS_TEST_ONLY")
         print("NF_ONEPC_REAL_PROVIDER_HTTP_AND_DURABLE_LEDGER=PASS_FAKE_MODEL_ONLY")
         print("NF_ONEPC_MODEL_PROPOSAL_INERT_AND_UNTRUSTED=PASS_TEST_ONLY")
