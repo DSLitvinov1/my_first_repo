@@ -46,7 +46,16 @@ def identity_and_acl_probe():
         denied=True
     else:
         denied=False
-    return name,denied
+    # The low-privilege worker must be unable to create ANY file in the
+    # LocalService-only directory. Distinguish absence from FileExists.
+    try:
+        with open(protected/"worker_must_never_write.txt","xb") as stream:
+            stream.write(b"INVALID")
+    except PermissionError:
+        no_write=True
+    else:
+        no_write=False
+    return name,denied,no_write
 
 
 if __name__=="__main__":
@@ -55,13 +64,14 @@ if __name__=="__main__":
     msg_path=Path(sys.argv[1])
     result_path=Path(sys.argv[2])
     pipe=sys.argv[3]
-    sid,denied=identity_and_acl_probe()
+    sid,denied,no_write=identity_and_acl_probe()
     try:
         packet=json.loads(msg_path.read_text(encoding="ascii"))
         response=send_signed(packet,pipe)
         response["worker_wrote_no_files"]=True
         response["worker_sid_observed"]=sid
         response["protected_directory_read_denied"]=denied
+        response["protected_directory_write_denied"]=no_write
         result_path.write_text(json.dumps(response,sort_keys=True),encoding="ascii")
     except Exception as exc:
         result_path.write_text(json.dumps({
@@ -70,6 +80,7 @@ if __name__=="__main__":
           "worker_wrote_no_files":True,
           "worker_sid_observed":sid,
           "protected_directory_read_denied":denied,
+          "protected_directory_write_denied":no_write,
           "live_execution_allowed":False
         }),encoding="ascii")
         raise SystemExit(2)
