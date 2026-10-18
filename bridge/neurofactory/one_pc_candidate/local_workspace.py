@@ -71,6 +71,24 @@ def _json_unique(pairs):
         data[key]=val
     return data
 
+def installed_component_status():
+    """Read-only status of bundled source; never asserts the service is active."""
+    from verify_installed_components import verify
+    directory=Path(__file__).resolve().parent.parent/"components"
+    if not directory.exists():
+        return {"state":"NOT_PACKAGED","files_verified":0,
+                "execution_enabled":False,"release_approved":False}
+    try:
+        verified=verify(directory)
+        return {"state":"SOURCE_HASHES_VERIFIED_NOT_ACTIVATED",
+                "files_verified":verified["component_files"],
+                "execution_enabled":False,"release_approved":False}
+    except (ValueError,OSError,TypeError,KeyError):
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+
+
 class WorkspaceStore:
     def __init__(self, directory: Path):
         self.directory=_safe_dir(directory,create=True)
@@ -227,24 +245,6 @@ class WorkspaceStore:
                 "bytes":target.stat().st_size,
                 "sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
                 "created_utc":_utc()}
-
-def installed_component_status():
-    """Read-only status of bundled source; never asserts the service is active."""
-    from verify_installed_components import verify
-    directory=Path(__file__).resolve().parent.parent/"components"
-    if not directory.exists():
-        return {"state":"NOT_PACKAGED","files_verified":0,
-                "execution_enabled":False,"release_approved":False}
-    try:
-        verified=verify(directory)
-        return {"state":"SOURCE_HASHES_VERIFIED_NOT_ACTIVATED",
-                "files_verified":verified["component_files"],
-                "execution_enabled":False,"release_approved":False}
-    except (ValueError,OSError,TypeError,KeyError):
-        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
-                "files_verified":0,"execution_enabled":False,
-                "release_approved":False}
-
 
     def diag(self):
         with self.connect() as db:
