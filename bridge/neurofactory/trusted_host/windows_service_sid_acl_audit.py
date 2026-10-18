@@ -117,7 +117,7 @@ def inspect_windows_two_sid_boundary(service_name, root, worker_sid):
         if worker_sid != canonical:
             _deny()
         p = _check_local_root(root)
-        manager = win32service.OpenSCManager(None, None, win32con.SC_MANAGER_CONNECT)
+        manager = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_CONNECT)
         try:
             service = win32service.OpenService(
                 manager, service_name, win32service.SERVICE_QUERY_CONFIG)
