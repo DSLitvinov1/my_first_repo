@@ -60,6 +60,7 @@ def prepare(args):
     git(repo,"add","README.md")
     git(repo,"commit","-qm","fixture pinned source")
     sha=git(repo,"rev-parse","HEAD")
+    (root/"core_state").mkdir()
     core=OneTaskCore(root/"core_state",repo)
     spec=dict(schema="neurofactory.core.task.v1",
               task_id="NF-DEV-05-Q908",project_id="core-test",
