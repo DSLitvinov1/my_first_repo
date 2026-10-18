@@ -1,0 +1,27 @@
+name: Neurofactory Windows SCM service candidate no-install CI
+on:
+  push:
+    branches: [neurofactory-windows-service-isolation-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_sandbox_service_candidate.py
+      - bridge/neurofactory/trusted_host/test_windows_sandbox_service_candidate.py
+      - .github/workflows/neurofactory-windows-scm-candidate.yml
+permissions:
+  contents: read
+jobs:
+  disposable-windows-only:
+    runs-on: windows-2025
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Dependency for isolated Windows SCM inspection only
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Six sandbox service gate and UNKNOWN reboot-denial tests
+        shell: pwsh
+        run: python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_sandbox_service_candidate.py -v
+      - name: Verify no tracked sources changed
+        shell: pwsh
+        run: git diff --exit-code
