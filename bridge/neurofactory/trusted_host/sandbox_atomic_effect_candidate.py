@@ -111,6 +111,10 @@ def apply_sandbox_once(
                 if (observed["production_effect_authorized"] is not False or
                         observed["receiver_effect_lock_still_held"] is not False):
                     _deny()
+                # The remote witness may have persisted UNKNOWN even if its
+                # response is lost. Mark uncertainty BEFORE the RPC, not after
+                # trusting an acknowledgement.
+                reserved = True
                 ack = witness.reserve_precommit(
                     scope_sha256=observed["scope_sha256"],
                     operation_id=expected_effect["operation_id"],
@@ -130,7 +134,6 @@ def apply_sandbox_once(
                             signed_external_witness["body"][
                                 "protected_journal_root_sha256"]):
                     _deny()
-                reserved = True
                 # No symlinks and no overwrite: inode creation is exclusive.
                 flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
                 file_fd = os.open(name, flags, 0o600, dir_fd=root_fd)
@@ -177,7 +180,11 @@ def apply_sandbox_once(
                 "automatic_retry_allowed": False,
                 "real_external_witness_attested": False,
             }
-        except (SandboxDenied, SandboxEffectUnknown):
+        except SandboxDenied as exc:
+            if reserved or created:
+                raise SandboxEffectUnknown("witness reservation may exist: manual STOP") from exc
+            raise
+        except SandboxEffectUnknown:
             raise
         except Exception as exc:
             if reserved or created:
