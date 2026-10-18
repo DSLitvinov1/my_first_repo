@@ -11,10 +11,9 @@ from pathlib import Path
 # write/all and MAXIMUM_ALLOWED bits.  Avoid equating "no FILE_WRITE_DATA" with
 # no way to change a directory or its entries.
 _MODIFY_MASK = (
-    0x00000002 | 0x00000004 | 0x00000010 | 0x00000020 |
-    0x00000040 | 0x00000100 | 0x00010000 | 0x00040000 |
-    0x00080000 | 0x00120116 | 0x02000000 | 0x10000000 |
-    0x40000000
+    0x00000002 | 0x00000004 | 0x00000010 | 0x00000040 |
+    0x00000100 | 0x00010000 | 0x00040000 | 0x00080000 |
+    0x02000000 | 0x10000000 | 0x40000000
 )
 _SYSTEM = "S-1-5-18"
 _ADMINISTRATORS = "S-1-5-32-544"
