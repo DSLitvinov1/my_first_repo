@@ -250,6 +250,16 @@ def main():
         svc=call(["sc.exe","qc",SERVICE_NAME]).stdout
         if "LocalService" not in svc:
             raise AssertionError("SCM service not LocalService")
+        # Verify the ACTUAL running SCM process token via Windows WMI,
+        # not just the configured service StartName string.
+        process_owner=call(["powershell.exe","-NoProfile","-NonInteractive",
+            "-Command",
+            "$svc=Get-CimInstance Win32_Service -Filter \"Name='"+SERVICE_NAME+"'\";
+             $proc=Get-CimInstance Win32_Process -Filter (\"ProcessId=\"+$svc.ProcessId);
+             ($proc | Invoke-CimMethod -MethodName GetOwner).User".replace("\n"," ")
+        ]).stdout.strip()
+        if "LOCAL SERVICE" not in process_owner.upper():
+            raise AssertionError("actual SCM process token is not LocalService")
         # A synthetic FORGED signature must be rejected even though the
         # worker SID and pipe ACL are valid; no file has been created.
         forged=dict(packet)
@@ -263,6 +273,7 @@ def main():
             "WORKER_STOPPED_OR_SERVER_DENIED","DENIED_OR_UNKNOWN_MANUAL_STOP")
         assert denied["worker_sid_observed"]==worker_sid
         assert denied["protected_directory_read_denied"] is True
+        assert denied["protected_directory_write_denied"] is True
         assert ensure_no_unauthorised_client(output)==(False,False)
         print("NF_WINDOWS_REAL_DIFFERENT_SIDS_FORGED_SIGNATURE=DENIED")
         # For crash-window test, create a root-owned operator-controlled
@@ -280,6 +291,7 @@ def main():
                 worker_root/"crash_before_file.json")
             assert crashed["worker_sid_observed"]==worker_sid
             assert crashed["protected_directory_read_denied"] is True
+            assert crashed["protected_directory_write_denied"] is True
             assert crashed["status"]=="WORKER_STOPPED_OR_SERVER_DENIED",crashed
             wait_service(SERVICE_STOPPED)
             assert ensure_no_unauthorised_client(output)==(True,False)
@@ -310,6 +322,7 @@ def main():
         assert accepted["status"]=="ONE_INERT_WINDOWS_FILE_TEST_ONLY",accepted
         assert accepted["worker_sid_observed"]==worker_sid
         assert accepted["protected_directory_read_denied"] is True
+        assert accepted["protected_directory_write_denied"] is True
         assert accepted["content_sha256"]==packet["content_sha256"]
         assert accepted["live_execution_allowed"] is False
         assert ensure_no_unauthorised_client(output)==(True,True)
