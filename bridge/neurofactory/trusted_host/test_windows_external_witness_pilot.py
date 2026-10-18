@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
+from contextlib import closing
 from unittest.mock import patch
 
 from cryptography import x509
@@ -102,11 +103,11 @@ class WindowsExternalWitnessPilotTests(unittest.TestCase):
     def database_count(self):
         db=self.root/"reservations.sqlite3"
         if not db.exists():return 0
-        with sqlite3.connect(str(db)) as con:
+        with closing(sqlite3.connect(str(db))) as con:
             return con.execute("SELECT COUNT(*) FROM reservations").fetchone()[0]
 
     def head(self):
-        with sqlite3.connect(str(self.root/"reservations.sqlite3")) as con:
+        with closing(sqlite3.connect(str(self.root/"reservations.sqlite3"))) as con:
             return con.execute(
                 "SELECT sequence,root FROM witness_head WHERE id=1").fetchone()
 
@@ -245,7 +246,7 @@ class WindowsExternalWitnessPilotTests(unittest.TestCase):
     def test_explicit_ci_gate_required(self):
         with patch.dict(os.environ,{"NF_WINDOWS_WITNESS_TEST_ONLY":"0"}):
             with self.assertRaises(WitnessPilotDenied):
-                check_claim(self.claim) if False else request_test_once(
+                request_test_once(
                     port=9999,claim=self.claim,client_cert=self.cli_cert,
                     client_key=self.cli_key,ca_cert=self.ca,
                     pinned_server_cert_sha256=self.srv_fp,
