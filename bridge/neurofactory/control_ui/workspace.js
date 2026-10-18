@@ -84,9 +84,9 @@
     append(warning,el("strong","Безопасный локальный режим: задания сохраняются, но НЕ отправляются в исполнительную очередь."));
     main.append(warning);
     try{
-      const [projects,tasks,history,health,models]=await Promise.all([
+      const [projects,tasks,history,health,models,checks]=await Promise.all([
         request("/api/projects"),request("/api/tasks"),
-        request("/api/history"),request("/api/status"),request("/api/models")
+        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks")
       ]);
       const summary=box("Реальное состояние","Данные непосредственно из локального сервера");
       const metrics=el("div",undefined,"metric-grid");
@@ -101,6 +101,25 @@
       summary.append(metrics);
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
+      const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");
+      row(probeBox,"Происхождение модели","Ответ Ollama не доказывает подлинность весов Qwen. Подтверждение защищённого HOST не выдаётся.");
+      const probe=el("button","Проверить реальный ответ локальной модели","outline-btn");
+      probe.type="button";probe.disabled=!models.installed_qwen.length;
+      probe.addEventListener("click",async()=>{
+        probe.disabled=true;
+        try{
+          const result=await request("/api/model-probe",{model_preference:"auto"});
+          status("Ollama ответил: "+result.reported_model+" · SHA-256: "+result.response_sha256.slice(0,16)+"… · "+result.response_excerpt);
+          const all=await request("/api/model-checks");
+          row(probeBox,"Проверок сохранено",String(all.checks.length)+" (показываются последние 20)");
+        }catch(error){status(error.message||"Локальная модель недоступна",true);}
+        finally{probe.disabled=false;}
+      });
+      probeBox.append(probe);
+      for(const item of checks.checks.slice(0,5)){
+        row(probeBox,item.reported_model,item.checked_utc+" · SHA-256: "+item.response_sha256.slice(0,16)+"… · происхождение не аттестовано");
+      }
+
       const projectBox=box("Мои проекты","Постоянные записи");
       for(const p of projects.projects)row(projectBox,p.name,p.description||p.id);
       if(!projects.projects.length)row(projectBox,"Проектов нет","Создайте первый проект.");

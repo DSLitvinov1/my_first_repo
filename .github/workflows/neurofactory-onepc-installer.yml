@@ -1,7 +1,7 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py

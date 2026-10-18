@@ -10,6 +10,7 @@ from contextlib import contextmanager,closing
 from datetime import datetime, timezone
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import http.client
 import json
 import os
 from pathlib import Path
@@ -17,13 +18,14 @@ import re
 import secrets
 import sqlite3
 import stat
-import urllib.request
 from urllib.parse import urlsplit
 import uuid
 
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
 TASK_LIMIT = 1200
+SUPPORTED_QWEN = ("qwen3:0.6b", "qwen2.5-coder:1.5b")
+QWEN_PROBE_PROMPT = "Ответь одним коротким предложением: чему равно два плюс два?"
 FILES = {
     "/": "index.html",
     "/index.html": "index.html",
@@ -77,6 +79,9 @@ class WorkspaceStore:
             raise WorkspaceDenied("Linked database refused")
         with self.connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
+            version=conn.execute("PRAGMA user_version").fetchone()[0]
+            if version not in (0,1,2):
+                raise WorkspaceDenied("Unknown newer database version")
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS projects(
               id TEXT PRIMARY KEY, name TEXT NOT NULL,
@@ -89,12 +94,14 @@ class WorkspaceStore:
             CREATE TABLE IF NOT EXISTS history(
               id INTEGER PRIMARY KEY AUTOINCREMENT, event_utc TEXT NOT NULL,
               event TEXT NOT NULL, record_id TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS model_checks(
+              id TEXT PRIMARY KEY, checked_utc TEXT NOT NULL,
+              reported_model TEXT NOT NULL, reported_digest TEXT NOT NULL,
+              prompt_sha256 TEXT NOT NULL, response_sha256 TEXT NOT NULL,
+              provenance_attested INTEGER NOT NULL DEFAULT 0 CHECK(provenance_attested=0));
             """)
-            version=conn.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0,1):
-                raise WorkspaceDenied("Unknown newer database version")
-            if version==0:
-                conn.execute("PRAGMA user_version=1")
+            if version in (0,1):
+                conn.execute("PRAGMA user_version=2")
             conn.commit()
 
     @contextmanager
@@ -158,6 +165,48 @@ class WorkspaceStore:
             db.commit()
         return dict(zip(("id","project_id","objective","model_preference","state","created_utc"),row))
 
+    def record_model_check(self, result):
+        """Store only hashes and declared Ollama model, never trust them as proof."""
+        required={"status","reported_model","reported_digest","prompt_sha256",
+                  "response_sha256","response_excerpt",
+                  "model_provenance_attested","real_weights_independently_verified",
+                  "core_dispatch_allowed","host_write_allowed",
+                  "automatic_retry_allowed","publication_allowed"}
+        if (type(result) is not dict or set(result)!=required or
+                result.get("status")!="OLLAMA_LOCAL_RESPONSE_UNATTESTED" or
+                result.get("reported_model") not in SUPPORTED_QWEN or
+                type(result.get("reported_digest")) is not str or
+                not (result["reported_digest"]=="UNVERIFIED" or
+                     re.fullmatch(r"[a-fA-F0-9]{64}",result["reported_digest"])) or
+                type(result.get("response_excerpt")) is not str or
+                len(result["response_excerpt"])>240 or
+                any(result[k] is not False for k in (
+                    "model_provenance_attested",
+                    "real_weights_independently_verified",
+                    "core_dispatch_allowed","host_write_allowed",
+                    "automatic_retry_allowed","publication_allowed")) or
+                any(type(result.get(k)) is not str or not re.fullmatch(
+                    r"[a-f0-9]{64}",result[k]) for k in (
+                    "prompt_sha256","response_sha256"))):
+            raise WorkspaceDenied("Untrusted local model evidence")
+        row=(uuid.uuid4().hex,_utc(),result["reported_model"],
+             result["reported_digest"],result["prompt_sha256"],
+             result["response_sha256"],0)
+        with self.connect() as db:
+            db.execute("INSERT INTO model_checks VALUES(?,?,?,?,?,?,?)",row)
+            db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                       (_utc(),"OLLAMA_LOCAL_RESPONSE_NOT_ATTESTED",row[0]))
+            db.commit()
+        return row[0]
+
+    def model_checks(self):
+        with self.connect() as db:
+            return [dict(zip(("id","checked_utc","reported_model",
+                "reported_digest","prompt_sha256","response_sha256","provenance_attested"),r))
+                for r in db.execute("SELECT id,checked_utc,reported_model,"
+                "reported_digest,prompt_sha256,response_sha256,provenance_attested "
+                "FROM model_checks ORDER BY checked_utc DESC,id DESC LIMIT 20").fetchall()]
+
     def history(self):
         with self.connect() as db:
             return [dict(zip(("event_utc","event","record_id"),r))
@@ -187,23 +236,90 @@ class WorkspaceStore:
                 "model_inference_enabled":False,"external_publish_enabled":False,
                 "handoff":"PAUSED_BY_USER"}
 
+def _ollama_json(method, path, *, payload=None, port=11434, timeout=2, cap=32768):
+    """Fixed loopback-only HTTP, no environment proxy, redirect or remote URL."""
+    if type(port) is not int or not 1<=port<=65535:
+        raise WorkspaceDenied("Invalid loopback port")
+    request=json.dumps(payload,ensure_ascii=False,separators=(",",":")).encode("utf-8") if payload is not None else None
+    connection=http.client.HTTPConnection("127.0.0.1",port,timeout=timeout)
+    try:
+        connection.request(method,path,body=request,headers={
+            "Accept":"application/json",
+            "Content-Type":"application/json",
+            "Connection":"close",
+        })
+        response=connection.getresponse()
+        if response.status!=200:
+            raise WorkspaceDenied("Local Ollama returned an error")
+        if response.getheader("Content-Type","").split(";")[0].strip()!="application/json":
+            raise WorkspaceDenied("Not a JSON Ollama response")
+        raw=response.read(cap+1)
+        if len(raw)>cap:
+            raise WorkspaceDenied("Oversized Ollama response")
+        obj=json.loads(raw.decode("utf-8"),object_pairs_hook=_json_unique)
+        if type(obj) is not dict:
+            raise WorkspaceDenied("Invalid Ollama response")
+        return obj
+    except (OSError,TimeoutError,ValueError,UnicodeError,http.client.HTTPException) as exc:
+        raise WorkspaceDenied("Local Ollama unavailable or invalid") from exc
+    finally:
+        connection.close()
+
+
+def _installed_qwen(*, port=11434):
+    obj=_ollama_json("GET","/api/tags",port=port)
+    models=obj.get("models")
+    if type(models) is not list or len(models)>200:
+        raise WorkspaceDenied("Invalid Ollama model list")
+    found={}
+    for item in models:
+        if type(item) is not dict:
+            raise WorkspaceDenied("Malformed Ollama model inventory")
+        name=item.get("name")
+        if type(name) is str and name in SUPPORTED_QWEN:
+            digest=item.get("digest")
+            if type(digest) is not str or not re.fullmatch(r"[a-fA-F0-9]{64}",digest):
+                digest="UNVERIFIED"
+            found[name]=digest
+    return found
+
+
 def local_models():
     try:
-        req=urllib.request.Request("http://127.0.0.1:11434/api/tags",
-                                   headers={"Accept":"application/json"})
-        with urllib.request.urlopen(req,timeout=1) as response:
-            raw=response.read(32769)
-        if len(raw)>32768:
-            raise ValueError("oversize model inventory")
-        items=json.loads(raw.decode("utf-8"))["models"]
-        if type(items) is not list:
-            raise ValueError("bad model inventory")
-        installed=[x["name"] for x in items if type(x) is dict and
-                   type(x.get("name")) is str and x["name"].startswith("qwen")]
-        return {"ollama_reachable":True,"installed_qwen":installed[:20],
-                "inference_tested":False}
-    except (OSError,ValueError,KeyError,TypeError,TimeoutError):
-        return {"ollama_reachable":False,"installed_qwen":[],"inference_tested":False}
+        installed=_installed_qwen()
+        return {"ollama_reachable":True,"installed_qwen":list(installed),
+                "inference_tested":False,"actual_weights_attested":False}
+    except WorkspaceDenied:
+        return {"ollama_reachable":False,"installed_qwen":[],
+                "inference_tested":False,"actual_weights_attested":False}
+
+
+def probe_local_qwen(model_preference, *, port=11434):
+    """Explicit user-triggered, inert model question. Not an execution privilege."""
+    if type(model_preference) is not str or model_preference not in ("auto",)+SUPPORTED_QWEN:
+        raise WorkspaceDenied("Unsupported model preference")
+    installed=_installed_qwen(port=port)
+    selected=next((x for x in SUPPORTED_QWEN if x in installed),None) if model_preference=="auto" else model_preference
+    if selected not in installed:
+        raise WorkspaceDenied("Requested Qwen not installed")
+    body={"model":selected,"prompt":QWEN_PROBE_PROMPT,"stream":False,
+          "options":{"num_predict":48,"temperature":0},"keep_alive":"0"}
+    result=_ollama_json("POST","/api/generate",payload=body,
+                        port=port,timeout=35,cap=16384)
+    response=result.get("response")
+    if (result.get("done") is not True or result.get("model")!=selected
+            or type(response) is not str or not 1<=len(response.encode("utf-8"))<=4096):
+        raise WorkspaceDenied("Local model response incomplete or invalid")
+    return {"status":"OLLAMA_LOCAL_RESPONSE_UNATTESTED",
+            "reported_model":selected,"reported_digest":installed[selected],
+            "prompt_sha256":hashlib.sha256(QWEN_PROBE_PROMPT.encode("utf-8")).hexdigest(),
+            "response_sha256":hashlib.sha256(response.encode("utf-8")).hexdigest(),
+            "response_excerpt":response[:240],
+            "model_provenance_attested":False,
+            "real_weights_independently_verified":False,
+            "core_dispatch_allowed":False,"host_write_allowed":False,
+            "automatic_retry_allowed":False,"publication_allowed":False}
+
 
 def handler(store,ui,token,port):
     origin="http://127.0.0.1:"+str(port)
@@ -254,6 +370,8 @@ def handler(store,ui,token,port):
                 self._json(200,store.diag());return
             if p.path=="/api/models":
                 self._json(200,local_models());return
+            if p.path=="/api/model-checks":
+                self._json(200,{"checks":store.model_checks()});return
             fn=FILES.get(p.path)
             if not fn:
                 self._json(404,{"error":"NOT_FOUND"});return
@@ -271,7 +389,7 @@ def handler(store,ui,token,port):
             if self.headers.get("Content-Type")!="application/json":
                 self._json(415,{"error":"JSON_REQUIRED"});return
             p=urlsplit(self.path)
-            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup"):
+            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup","/api/model-probe"):
                 self._json(404,{"error":"WRITE_NOT_ALLOWED"});return
             try:
                 size=int(self.headers.get("Content-Length","0"))
@@ -283,6 +401,11 @@ def handler(store,ui,token,port):
                     result=store.create_project(body)
                 elif p.path=="/api/tasks":
                     result=store.create_task(body)
+                elif p.path=="/api/model-probe":
+                    if type(body) is not dict or set(body)!={"model_preference"}:
+                        raise WorkspaceDenied("Explicit model only")
+                    result=probe_local_qwen(body["model_preference"])
+                    result["check_id"]=store.record_model_check(result)
                 else:
                     if body!={}:
                         raise WorkspaceDenied("No backup arguments allowed")
