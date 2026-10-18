@@ -1,7 +1,7 @@
-name: Neurofactory Windows SCM pinned CORE and ACL cross-branch test only
+name: Neurofactory Windows restricted per-service SID and pinned ACL CI only
 on:
   push:
-    branches: [neurofactory-windows-scm-acl-crosscheck-20261018]
+    branches: [neurofactory-host-restricted-service-sid-ci-20261018]
     paths:
       - bridge/neurofactory/trusted_host/windows_scm_acl_crosscheck_ci.py
       - bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py
@@ -21,6 +21,7 @@ jobs:
     env:
       NF_WINDOWS_SCM_DISPOSABLE_ONLY: "1"
       NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY: "1"
+      NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID: "1"
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONNOUSERSITE: "1"
     steps:
