@@ -252,11 +252,15 @@ def main():
             raise AssertionError("SCM service not LocalService")
         # Verify the ACTUAL running SCM process token via Windows WMI,
         # not just the configured service StartName string.
-        process_owner=call(["powershell.exe","-NoProfile","-NonInteractive",
-            "-Command",
-            "$svc=Get-CimInstance Win32_Service -Filter \"Name='"+SERVICE_NAME+"'\";
-             $proc=Get-CimInstance Win32_Process -Filter (\"ProcessId=\"+$svc.ProcessId);
-             ($proc | Invoke-CimMethod -MethodName GetOwner).User".replace("\n"," ")
+        process_owner=call([
+            "powershell.exe","-NoProfile","-NonInteractive","-Command",
+            (
+                "$svc=Get-CimInstance Win32_Service -Filter "
+                "\"Name='"+SERVICE_NAME+"'\"; "
+                "$proc=Get-CimInstance Win32_Process -Filter "
+                "(\"ProcessId=\"+$svc.ProcessId); "
+                "($proc | Invoke-CimMethod -MethodName GetOwner).User"
+            )
         ]).stdout.strip()
         if "LOCAL SERVICE" not in process_owner.upper():
             raise AssertionError("actual SCM process token is not LocalService")
