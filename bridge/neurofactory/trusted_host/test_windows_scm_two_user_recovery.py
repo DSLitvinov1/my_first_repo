@@ -190,6 +190,8 @@ def main():
             shutil.copy2(source_dir/name,binfolder/name)
         shutil.copy2(source_dir/"windows_scm_ci_worker.py",
                      worker_root/"windows_scm_ci_worker.py")
+        shutil.copy2(source_dir/"windows_named_pipe_pilot_receiver.py",
+                     worker_root/"windows_named_pipe_pilot_receiver.py")
         temp=tempfile.TemporaryDirectory()
         core,spec,claim,packet,expected=prepare_core_fixture(Path(temp.name),owner)
         owner=None # Never hand private signer handle to worker/service.
