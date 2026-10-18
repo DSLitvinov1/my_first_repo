@@ -6,6 +6,7 @@ calls external services or authorizes CORE/HOST effects. Import existing UI.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager,closing
 from datetime import datetime, timezone
 import hashlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -96,12 +97,17 @@ class WorkspaceStore:
                 conn.execute("PRAGMA user_version=1")
             conn.commit()
 
+    @contextmanager
     def connect(self):
         conn=sqlite3.connect(str(self.database),timeout=8)
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.execute("PRAGMA busy_timeout=8000")
-        conn.execute("PRAGMA synchronous=FULL")
-        return conn
+        try:
+            conn.execute("PRAGMA foreign_keys=ON")
+            conn.execute("PRAGMA busy_timeout=8000")
+            conn.execute("PRAGMA synchronous=FULL")
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def list_projects(self):
         with self.connect() as db:
@@ -165,7 +171,7 @@ class WorkspaceStore:
         _safe_dir(backups)
         target=backups/("workspace-"+datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")+
                        "-"+secrets.token_hex(4)+".sqlite3")
-        with self.connect() as src, sqlite3.connect(target) as dst:
+        with self.connect() as src, closing(sqlite3.connect(target)) as dst:
             src.backup(dst)
             assert dst.execute("PRAGMA integrity_check").fetchone()[0]=="ok"
         return {"filename":target.name,
