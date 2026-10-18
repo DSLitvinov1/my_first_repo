@@ -182,11 +182,13 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
         except pywintypes.error as exc:
             if exc.winerror != 535:  # ERROR_PIPE_CONNECTED
                 raise
-        if not _peer_matches(pipe,peer_user_sid):
-            _deny()
         try:
+            # Win32 needs ReadFile first to cache the client's token for
+            # ImpersonateNamedPipeClient. Check SID before parsing or effects.
             status,data=win32file.ReadFile(pipe,MAX_BYTES)
             if status!=0 or not data or len(data)>MAX_BYTES:
+                _deny()
+            if not _peer_matches(pipe,peer_user_sid):
                 _deny()
             req=json.loads(data.decode("ascii"))
             body,payload=validate_owner_signature(req,owner_public)
