@@ -71,6 +71,40 @@ def _json_unique(pairs):
         data[key]=val
     return data
 
+def installed_component_status():
+    """Read-only status of bundled source; never asserts the service is active."""
+    # Embedded Windows python312._pth excludes the script sibling directory.
+    # Load this specific bundled module by absolute file path, not sys.path/CWD.
+    import importlib.util
+    verification_path=Path(__file__).resolve().with_name("verify_installed_components.py")
+    if verification_path.is_symlink() or not verification_path.is_file():
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+    spec=importlib.util.spec_from_file_location(
+        "_neurofactory_installed_source_verifier",verification_path)
+    if spec is None or spec.loader is None:
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    verify=module.verify
+    directory=Path(__file__).resolve().parent.parent/"components"
+    if not directory.exists():
+        return {"state":"NOT_PACKAGED","files_verified":0,
+                "execution_enabled":False,"release_approved":False}
+    try:
+        verified=verify(directory)
+        return {"state":"SOURCE_HASHES_VERIFIED_NOT_ACTIVATED",
+                "files_verified":verified["component_files"],
+                "execution_enabled":False,"release_approved":False}
+    except (ValueError,OSError,TypeError,KeyError):
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+
+
 class WorkspaceStore:
     def __init__(self, directory: Path):
         self.directory=_safe_dir(directory,create=True)
@@ -232,6 +266,7 @@ class WorkspaceStore:
         with self.connect() as db:
             good=db.execute("PRAGMA quick_check").fetchone()[0]=="ok"
         return {"database_connected":good,"projects":len(self.list_projects()),
+                "packaged_components":installed_component_status(),
                 "tasks":len(self.list_tasks()),"real_core_dispatch_enabled":False,
                 "model_inference_enabled":False,"external_publish_enabled":False,
                 "handoff":"PAUSED_BY_USER"}

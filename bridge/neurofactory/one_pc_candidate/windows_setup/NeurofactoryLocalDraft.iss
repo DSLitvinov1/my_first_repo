@@ -5,7 +5,7 @@
 [Setup]
 AppId={{2C664E61-DB8F-49B8-BA00-9DAB9E7B2675}
 AppName=НЕЙРОЗАВОД — Локальная база (предрелиз)
-AppVersion=0.1.0
+AppVersion=0.1.1
 AppPublisher=Neurofactory Local Candidate
 DefaultDirName={localappdata}\Programs\NeurofactoryLocal
 DefaultGroupName=НЕЙРОЗАВОД
@@ -27,6 +27,8 @@ UninstallDisplayIcon={app}\runtime\python.exe
 [Files]
 Source: "{#SourceRoot}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#SourceRoot}\app\local_workspace.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\app\verify_installed_components.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\components\*"; DestDir: "{app}\components"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#SourceRoot}\ui\*"; DestDir: "{app}\ui"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#SourceRoot}\start_neurofactory.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\README.txt"; DestDir: "{app}"; Flags: ignoreversion

@@ -1,0 +1,50 @@
+name: Neurofactory one-PC genuine pinned Qwen weights on disposable Windows CPU (NOT integrated)
+on:
+  push:
+    branches: [neurofactory-onepc-bundled-core-host-qwen-20261019]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/test_real_qwen_cpu_windows.py
+      - .github/workflows/neurofactory-onepc-real-qwen-windows.yml
+permissions:
+  contents: read
+jobs:
+  genuine-windows-qwen-isolated:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    env:
+      NF_REAL_QWEN_WINDOWS_TEST_ONLY: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_XET: '1'
+      HF_HUB_DOWNLOAD_TIMEOUT: '50'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      CUDA_VISIBLE_DEVICES: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned open source CPU only runtime, no paid APIs
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-input 'torch==2.6.0' --index-url https://download.pytorch.org/whl/cpu
+          if ($LASTEXITCODE -ne 0) {throw 'TORCH_CPU_INSTALL_FAILED'}
+          python -m pip install --disable-pip-version-check --no-input 'transformers==4.51.3' 'huggingface-hub==0.30.2' 'safetensors==0.5.3'
+          if ($LASTEXITCODE -ne 0) {throw 'MODEL_RUNTIME_INSTALL_FAILED'}
+      - name: Load real pinned public Qwen 0.5B CPU weights, generate exactly one inert answer
+        shell: pwsh
+        run: |
+          python -B bridge/neurofactory/one_pc_candidate/test_real_qwen_cpu_windows.py
+          if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_WINDOWS_NOT_VERIFIED'}
+      - name: Store hash-only evidence for independent reviewer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-REAL-Qwen-Windows-Hosted-Only-NO-RELEASE
+          path: ${{ runner.temp }}/nf-real-qwen-windows-result.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Verify no tracked source changes
+        shell: pwsh
+        run: git diff --exit-code

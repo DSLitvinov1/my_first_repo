@@ -99,6 +99,13 @@
         metrics.append(metric);
       }
       summary.append(metrics);
+      const packed=health.packaged_components||{state:"UNKNOWN",files_verified:0};
+      const packedMessage=packed.state==="SOURCE_HASHES_VERIFIED_NOT_ACTIVATED"
+        ?"Контрольные суммы файлов совпадают с комплектным манифестом: "+packed.files_verified+" файлов. Служба и очередь НЕ запущены."
+        :packed.state==="BUNDLED_SOURCES_FAILED_INTEGRITY"
+        ?"Ошибка проверки компонентов. Запуск реальных задач запрещён."
+        :"Компоненты не обнаружены в рабочей папке или проверка недоступна.";
+      row(summary,"CORE и HOST",packedMessage);
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
       const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");

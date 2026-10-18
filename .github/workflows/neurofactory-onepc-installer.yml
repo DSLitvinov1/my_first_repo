@@ -1,10 +1,12 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-bundled-core-host-qwen-20261019]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/stage_installed_components.py
+      - bridge/neurofactory/one_pc_candidate/verify_installed_components.py
       - bridge/neurofactory/control_ui/**
       - .github/workflows/neurofactory-onepc-installer.yml
 permissions:
@@ -20,6 +22,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
       - name: Stage exact existing app and official offline Python runtime
         run: |
           $ErrorActionPreference = 'Stop'
@@ -33,11 +45,20 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/verify_installed_components.py' "$stage\app\verify_installed_components.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
           & "$stage\runtime\python.exe" -B -c "import sqlite3,http.server,json,uuid;print('NF_VENDOR_RUNTIME_EMBEDDED_READY')"
           if ($LASTEXITCODE -ne 0) {throw 'EMBEDDED_RUNTIME_UNUSABLE'}
+      - name: Package checked CORE/HOST CI/PROVIDERS/COORDINATOR original sources (inactive)
+        run: |
+          $ErrorActionPreference='Stop'
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          python -B bridge/neurofactory/one_pc_candidate/stage_installed_components.py --repo . --providers .nf_pin_providers --coordinator .nf_pin_coordinator --target "$stage\components" --source-sha $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) {throw 'PINNED_SOURCE_STAGING_FAILED'}
+          & "$stage\runtime\python.exe" -B "$stage\app\verify_installed_components.py" --components "$stage\components"
+          if ($LASTEXITCODE -ne 0) {throw 'STAGED_SOURCE_HASH_CHECK_FAILED'}
       - name: Install Inno Setup compiler on disposable GitHub Windows only
         run: |
           choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
@@ -62,6 +83,9 @@ jobs:
           $data=Join-Path $env:RUNNER_TEMP 'NFUserData'
           $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
           if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
+          & "$install\runtime\python.exe" -B "$install\app\verify_installed_components.py" --components "$install\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_COMPONENT_HASH_CHECK_FAILED'}
+          Write-Output 'NF_INSTALLED_CORE_HOST_PROVIDER_COORD_SOURCE_HASHES=PASS_INACTIVE'
           $port=18766
           $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
             '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
@@ -88,6 +112,29 @@ jobs:
             if (!(Test-Path (Join-Path "$data\backups" $backup.filename))) {throw 'NO_BACKUP'}
             $diag=Invoke-RestMethod "$url/api/status"
             if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            # Restart the actual installed localhost app process (not the OS).
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+            $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
+              '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+            $ready=$false
+            for ($i=0;$i -lt 50;$i++) {
+              Start-Sleep -Milliseconds 200
+              try {
+                $again=Invoke-RestMethod "$url/api/projects" -TimeoutSec 2
+                $againTasks=Invoke-RestMethod "$url/api/tasks" -TimeoutSec 2
+                if ($again.projects.id -contains $created.id -and $againTasks.tasks.id -contains $createdTask.id) {
+                  $ready=$true
+                  break
+                }
+              } catch {}
+            }
+            if (!$ready) {throw 'INSTALLED_APP_RESTART_LOST_PROJECT_OR_TASK'}
+            Write-Output 'NF_INSTALLED_LOCAL_PROCESS_RESTART_DB_PERSISTENCE=PASS_DRAFT_ONLY'
+            $recovered=Join-Path $env:RUNNER_TEMP 'NFRecovered.sqlite3'
+            Copy-Item (Join-Path "$data\backups" $backup.filename) $recovered
+            & "$install\runtime\python.exe" -B -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);assert c.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert c.execute('SELECT COUNT(*) FROM projects').fetchone()[0]>=1;assert c.execute('SELECT COUNT(*) FROM tasks').fetchone()[0]>=1" $recovered
+            if ($LASTEXITCODE -ne 0) {throw 'RESTORED_BACKUP_INTEGRITY_FAILED'}
+            Write-Output 'NF_INSTALLED_SQLITE_BACKUP_READBACK=PASS_DRAFT_ONLY'
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
           }
           finally {
@@ -100,12 +147,22 @@ jobs:
           if (Test-Path "$install\app\local_workspace.py") {throw 'APP_NOT_REMOVED'}
           if (!(Test-Path "$data\workspace.sqlite3")) {throw 'USER_DATABASE_DELETED_ON_UNINSTALL'}
           Write-Output 'NF_INSTALLER_UNINSTALL_DATA_PRESERVED=PASS'
-          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=NOT_INCLUDED_AND_NOT_RELEASED'
+          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=SOURCE_PRESENT_BUT_NOT_FUNCTIONALLY_INTEGRATED'
       - uses: actions/upload-artifact@v4
         with:
           name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
           path: bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe
           retention-days: 7
           if-no-files-found: error
+      - name: Reject tampered copied components before packaging is trusted
+        run: |
+          $ErrorActionPreference='Stop'
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          $damaged=Join-Path $env:RUNNER_TEMP 'nf-damaged-components'
+          Copy-Item "$stage\components" "$damaged" -Recurse
+          Add-Content -LiteralPath "$damaged\core\one_task_core.py" -Value "TAMPERED"
+          $p=Start-Process -Wait -PassThru -FilePath "$stage\runtime\python.exe" -ArgumentList @('-B',"$stage\app\verify_installed_components.py",'--components',"$damaged") -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'nf-expected-denial.txt')
+          if ($p.ExitCode -eq 0) {throw 'COMPONENT_CHECKSUM_TAMPER_UNDETECTED'}
+          Write-Output 'NF_INSTALLED_COMPONENT_TAMPER=DENIED'
       - name: Verify repository unchanged
         run: git diff --exit-code
