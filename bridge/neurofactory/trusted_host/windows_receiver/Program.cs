@@ -169,7 +169,7 @@ internal static class Program
     {
         Span<byte> header = stackalloc byte[4];
         stream.ReadExactly(header);
-        int len = BinaryPrimitives.ReadInt32LittleEndian(header);
+        int len = BinaryPrimitives.ReadInt32BigEndian(header);
         if (len < 1 || len > MaxJson)
             throw new InvalidDataException("Oversize or negative request");
         byte[] data = new byte[len];
@@ -183,7 +183,7 @@ internal static class Program
         byte[] data = JsonSerializer.SerializeToUtf8Bytes(message);
         if (data.Length > 4096) throw new InvalidDataException();
         byte[] header = new byte[4];
-        BinaryPrimitives.WriteInt32LittleEndian(header, data.Length);
+        BinaryPrimitives.WriteInt32BigEndian(header, data.Length);
         stream.Write(header);
         stream.Write(data);
         stream.Flush();
@@ -274,6 +274,9 @@ internal static class Program
             marker.Write(receipt);
             marker.Flush(true);
         }
+        if (FixtureEnabled &&
+            Environment.GetEnvironmentVariable("NF_WIN_CI_CRASH_AFTER_INTENT") == "1")
+            throw new IOException("CI_INJECTED_CRASH_AFTER_UNKNOWN");
         using (var file = new FileStream(
             target, FileMode.CreateNew, FileAccess.Write, FileShare.None,
             4096, FileOptions.WriteThrough))
