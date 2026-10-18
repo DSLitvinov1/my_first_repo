@@ -1,0 +1,28 @@
+name: Neurofactory CORE four-party HOST adapter isolated smoke (NO LIVE)
+on:
+  push:
+    branches: [neurofactory-core-four-party-sandbox-adapter-20261018]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/four_party_sandbox_client.py'
+      - 'bridge/neurofactory/development/core_owned/test_four_party_sandbox_client.py'
+      - '.github/workflows/neurofactory-core-four-party-adapter-sandbox.yml'
+permissions:
+  contents: read
+jobs:
+  core_v2_proposal_only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      NF_CORE_OFFLINE_RECEIVER_TEST_ONLY: '1'
+      NF_ATOMIC_TEST_ONLY: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test exact CORE fixture claim and host handoff without writing any files
+        run: |
+          python3 -B -m unittest discover -s bridge/neurofactory/development/core_owned -p test_four_party_sandbox_client.py -v
+      - name: Confirm no tracked files modified
+        run: git diff --exit-code
