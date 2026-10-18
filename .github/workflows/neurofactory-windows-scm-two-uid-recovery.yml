@@ -13,6 +13,10 @@ jobs:
   ci-temporary-scm-two-user-effect:
     runs-on: windows-2025
     timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [normal, crash-window]
     env:
       NF_WINDOWS_SCM_DISPOSABLE_ONLY: "1"
       PYTHONDONTWRITEBYTECODE: "1"
@@ -38,7 +42,7 @@ jobs:
       - name: Real Windows SCM LocalService and non-admin SID signed CORE file, replay and crash
         shell: pwsh
         run: |
-          python -B bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py
+          python -B bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py ${{ matrix.scenario }}
       - name: Ensure repository files unchanged
         shell: pwsh
         run: git diff --exit-code
