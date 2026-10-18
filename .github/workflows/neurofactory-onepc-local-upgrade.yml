@@ -1,0 +1,101 @@
+name: Neurofactory installed local 0.1.0 to 0.1.1 SQLite preservation update (DRAFT ONLY)
+on:
+  push:
+    branches: [neurofactory-onepc-bundled-core-host-qwen-20261019]
+    paths:
+      - .github/workflows/neurofactory-onepc-local-upgrade.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-upgrade-old-to-new:
+    runs-on: windows-2025
+    timeout-minutes: 16
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download two exact pinned previously checked GitHub Windows installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $old=Join-Path $env:RUNNER_TEMP 'nf-old'
+          $new=Join-Path $env:RUNNER_TEMP 'nf-new'
+          New-Item -ItemType Directory -Force $old,$new | Out-Null
+          gh run download 39164478544 -R DSLitvinov1/my_first_repo -n Neurofactory-Local-Draft-Windows-Installer-UNRELEASED -D $old
+          if ($LASTEXITCODE -ne 0) {throw 'OLD_ARTIFACT_UNAVAILABLE'}
+          gh run download 39176698081 -R DSLitvinov1/my_first_repo -n Neurofactory-Local-Draft-Windows-Installer-UNRELEASED -D $new
+          if ($LASTEXITCODE -ne 0) {throw 'NEW_ARTIFACT_UNAVAILABLE'}
+          $a=Join-Path $old 'Neurofactory-Local-Draft-Setup.exe'
+          $b=Join-Path $new 'Neurofactory-Local-Draft-Setup.exe'
+          if ((Get-FileHash $a -Algorithm SHA256).Hash -cne 'C3E59895BA2E66A507641A3D266880991BA9281653BA53A4AD1B6B18245153F7') {throw 'OLD_BINARY_SHA_MISMATCH'}
+          if ((Get-FileHash $b -Algorithm SHA256).Hash -cne 'D965A3E5A28749B741C57B3D3B7BEC75A77683CF4E5F8A64BA6452ECC3804C71') {throw 'NEW_BINARY_SHA_MISMATCH'}
+          Write-Output 'NF_UPGRADE_OLD_AND_NEW_INSTALLER_SHA=PINNED'
+      - name: Real old install, data creation, in-place new install, restart and readback
+        run: |
+          $ErrorActionPreference='Stop'
+          $install=Join-Path $env:RUNNER_TEMP 'NFUpgradeInstalled'
+          $data=Join-Path $env:RUNNER_TEMP 'NFUpgradeData'
+          $old=Join-Path $env:RUNNER_TEMP 'nf-old/Neurofactory-Local-Draft-Setup.exe'
+          $new=Join-Path $env:RUNNER_TEMP 'nf-new/Neurofactory-Local-Draft-Setup.exe'
+          $p=Start-Process -PassThru -Wait -FilePath $old -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
+          if ($p.ExitCode -ne 0) {throw 'OLD_INSTALL_FAILURE'}
+          $port=18781
+          $url="http://127.0.0.1:$port"
+          $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @('-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+          try {
+            $ready=$false
+            for($i=0;$i -lt 50;$i++){
+              Start-Sleep -Milliseconds 200
+              try{$boot=Invoke-RestMethod "$url/api/bootstrap" -TimeoutSec 2;$ready=$true;break}catch{}
+            }
+            if (!$ready -or $boot.mode -ne 'LOCAL_DRAFT_ONLY'){throw 'OLD_APP_MISSING'}
+            $headers=@{'X-NF-Local-Token'=$boot.csrf_token}
+            $project=Invoke-RestMethod "$url/api/projects" -Method Post -Headers $headers -ContentType 'application/json' -Body '{"name":"Before in-place update","description":"Old version project"}'
+            $taskInput=@{project_id=$project.id;objective='Retain this harmless project after upgrade test';model_preference='auto'} | ConvertTo-Json -Compress
+            $task=Invoke-RestMethod "$url/api/tasks" -Method Post -Headers $headers -ContentType 'application/json' -Body $taskInput
+            if ($task.state -ne 'DRAFT_PENDING_OWNER_AUTH'){throw 'OLD_TASK_BAD_STATE'}
+          }
+          finally {
+            if (!$server.HasExited){Stop-Process -Id $server.Id -Force}
+          }
+          Start-Sleep -Milliseconds 600
+          $oldManifest=Join-Path $install 'components/manifest.json'
+          if (Test-Path $oldManifest) {throw 'OLD_VERSION_ALREADY_NEW'}
+          $u=Start-Process -PassThru -Wait -FilePath $new -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
+          if ($u.ExitCode -ne 0){throw 'INPLACE_UPDATE_FAILURE'}
+          if (!(Test-Path $oldManifest)){throw 'UPDATED_INSTALLER_COMPONENTS_MISSING'}
+          & "$install\runtime\python.exe" -B "$install\app\verify_installed_components.py" --components "$install\components"
+          if ($LASTEXITCODE -ne 0) {throw 'UPDATED_PACKAGE_HASH_INVALID'}
+          $restarted=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @('-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+          try {
+            $ready=$false
+            for($i=0;$i -lt 50;$i++){
+              Start-Sleep -Milliseconds 200
+              try{
+                $projects=Invoke-RestMethod "$url/api/projects" -TimeoutSec 2
+                $tasks=Invoke-RestMethod "$url/api/tasks" -TimeoutSec 2
+                $status=Invoke-RestMethod "$url/api/status" -TimeoutSec 2
+                if($projects.projects.id -contains $project.id -and $tasks.tasks.id -contains $task.id){$ready=$true;break}
+              }catch{}
+            }
+            if (!$ready){throw 'UPGRADE_LOST_OLD_RECORDS'}
+            if ($status.packaged_components.state -ne 'SOURCE_HASHES_VERIFIED_NOT_ACTIVATED' -or $status.packaged_components.files_verified -ne 14) {throw 'UPGRADED_COMPONENTS_NOT_VISIBLE'}
+            if ($status.real_core_dispatch_enabled -or $status.model_inference_enabled){throw 'UPDATE_UNEXPECTED_LIVE_EXECUTION'}
+            Write-Output 'NF_ONEPC_INPLACE_UPGRADE_0_1_0_TO_0_1_1=PASS_DRAFT_ONLY'
+            Write-Output 'NF_ONEPC_SQLITE_PROJECT_AND_TASK_PERSISTED_AFTER_UPGRADE=PASS'
+          } finally {
+            if (!$restarted.HasExited){Stop-Process -Id $restarted.Id -Force}
+          }
+          $uninstall=Join-Path $install 'unins000.exe'
+          $removed=Start-Process -Wait -PassThru -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($removed.ExitCode -ne 0){throw 'UPGRADED_UNINSTALL_FAILED'}
+          if (!(Test-Path "$data\workspace.sqlite3")){throw 'UPGRADE_DELETED_USER_DATA'}
+          Write-Output 'NF_ONEPC_UPGRADED_UNINSTALL_USER_DB_RETAINED=PASS'
+          Write-Output 'NF_ONEPC_UPGRADE_REAL_CORE_HOST_QWEN=NOT_ENABLED'
+      - name: Keep tracked source unchanged
+        run: git diff --exit-code
