@@ -67,6 +67,10 @@ try {
     $site=(& $python -c "import site;print(site.getsitepackages()[0])").Trim()
     $moduleFiles=@('windows_scm_one_shot_receiver.py','windows_named_pipe_pilot_receiver.py','windows_receiver_sid_acl_guard.py')
     foreach($file in $moduleFiles){Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $site $file) -Force}
+    # Explicit Windows LSA right is required to run a service under a
+    # disposable non-admin account; never grant this on the owner's PC.
+    & $python -B (Join-Path $PSScriptRoot 'windows_ci_allow_service_logon.py') $rs
+    if($LASTEXITCODE -ne 0){throw 'isolated SCM logon right missing'}
     $env:NF_EPHEMERAL_SCM_USER="$env:COMPUTERNAME\$rc"
     $env:NF_EPHEMERAL_SCM_PASSWORD=([System.Management.Automation.PSCredential]::new('ephemeral',$pw1)).GetNetworkCredential().Password
     & $python -c "import os,win32serviceutil,win32service;win32serviceutil.InstallService('windows_scm_one_shot_receiver.NeurofactorySandboxReceiverService','NeurofactorySandboxReceiver','Neurofactory isolated sandbox recipient',startType=win32service.SERVICE_DEMAND_START,userName=os.environ['NF_EPHEMERAL_SCM_USER'],password=os.environ['NF_EPHEMERAL_SCM_PASSWORD'])"
