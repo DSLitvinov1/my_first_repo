@@ -46,7 +46,9 @@ jobs:
           mkdir -m 700 .nf-core-pinned
           git show "$CORE_SHA:bridge/neurofactory/development/core_owned/four_party_sandbox_client.py" > .nf-core-pinned/four_party_sandbox_client.py
           test "$(git hash-object .nf-core-pinned/four_party_sandbox_client.py)" = "$CORE_BLOB"
-          echo "CORE_ADAPTER_EXACT_SOURCE_PIN_VERIFIED=PASS"
+          git show "$CORE_SHA:bridge/neurofactory/development/core_owned/one_task_core.py" > .nf-core-pinned/one_task_core.py
+          test "$(git hash-object .nf-core-pinned/one_task_core.py)" = "ab1471813c6da29407c913b974a2209467a4b961"
+          echo "CORE_ADAPTER_AND_ONETASKCORE_EXACT_SOURCE_PINS_VERIFIED=PASS"
       - name: Set up one disposable PostgreSQL16 + test-only cryptographic packages
         run: |
           python3 -m venv .nf-e2e-venv
