@@ -1,0 +1,56 @@
+{
+  "schema": "neurofactory.windows_scm_separate_sid_crash_recovery_evidence.v1",
+  "date": "2026-10-18",
+  "repository": "DSLitvinov1/my_first_repo",
+  "tested_candidate_sha": "8d484a54bafc2851772f7b2ffed84ecdc2a08062",
+  "core_pinned_sha": "beb08eff32923d8ca364aabfde0458f380acf8e7",
+  "core_blob": "ab1471813c6da29407c913b974a2209467a4b961",
+  "tested_source_blobs": {
+    "bridge/neurofactory/trusted_host/windows_scm_sandbox_receiver.py": "5d091b35527ad0a35fd25ebb14ccc62307fe2b3f",
+    "bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py": "fd44ae7ea809e42cccfc6dd4f35ebc34b98a335a",
+    "bridge/neurofactory/trusted_host/windows_scm_ci_worker.py": "e5444b9485950cec360058b10c84331b2d60700c",
+    "bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py": "5ba6a993cfa337792435a1eb07d03a216df23d87",
+    ".github/workflows/neurofactory-windows-scm-two-uid-recovery.yml": "eb642565bf60a6ac2e6bc503e18bce1a4dc79816"
+  },
+  "verified_actions": {
+    "url": "https://github.com/DSLitvinov1/my_first_repo/actions/runs/39112981848",
+    "run_id": 39112981848,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "job_id": 117632844408,
+        "status": "success",
+        "case": "distinct Windows account + SCM LocalService one inert file; duplicate denied; crash after effect restart no replay"
+      },
+      {
+        "job_id": 117632844251,
+        "status": "success",
+        "case": "real SCM crash immediately after UNKNOWN fsync, before file, restart denies replay"
+      }
+    ],
+    "exact_separate_account_evidence": true,
+    "real_windows_scm_registered_in_ephemeral_runner": true,
+    "worker_nonadmin_sid_verified": true,
+    "worker_read_protected_dir_denied": true,
+    "worker_write_protected_dir_denied": true,
+    "owner_public_key_pinned_by_ephemeral_operator": true,
+    "owner_private_key_shared_with_worker": false,
+    "github_hosted_ephemeral_windows_machine": true,
+    "users_physical_windows_computer_modified": false
+  },
+  "release_gates": {
+    "actual_permanent_receiver_installed": false,
+    "external_operator_authorized_signer": false,
+    "windows_hardware_nonexportable_private_key": false,
+    "final_receiver_live_pg_lease_and_fencing_lock": false,
+    "remote_monotonic_highwater": false,
+    "real_windows_kernel_reboot_test": false,
+    "full_disk_rollback_test": false,
+    "independent_review_signed": false,
+    "production_live_queue_on": false,
+    "physical_two_machine_high_assurance_proven": false,
+    "release_approved": false,
+    "handoff": "PAUSED_BY_USER"
+  },
+  "limitations": "2 separate Windows SIDs verified under one ephemeral GH Windows node per job, NOT 2 separately authorized physical machines. CI admin remains all-powerful; process crash is not whole-machine reboot. Owner Ed25519 keys are synthetic test fixtures, not independent operator grant. No real user machine/service installation or production write."
+}
