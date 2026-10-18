@@ -16,7 +16,7 @@ from local_workspace import (
 )
 
 class FakeOllama(BaseHTTPRequestHandler):
-    responses=0
+    generate_calls=0
     request_model=None
     mode="valid"
 
@@ -43,7 +43,7 @@ class FakeOllama(BaseHTTPRequestHandler):
             self.json_reply({"error":"bad size"},400)
             return
         value=json.loads(self.rfile.read(size))
-        type(self).responses+=1
+        type(self).generate_calls+=1
         type(self).request_model=value.get("model")
         assert value["prompt"]==QWEN_PROBE_PROMPT
         assert value["stream"] is False
@@ -65,7 +65,7 @@ class IsolatedQwenProbe(unittest.TestCase):
         self.temp=TemporaryDirectory(prefix="nf-model-probe-test-")
         self.directory=Path(self.temp.name)/"data"
         self.store=WorkspaceStore(self.directory)
-        FakeOllama.responses=0
+        FakeOllama.generate_calls=0
         FakeOllama.request_model=None
         FakeOllama.mode="valid"
         self.http=HTTPServer(("127.0.0.1",0),FakeOllama)
@@ -89,7 +89,7 @@ class IsolatedQwenProbe(unittest.TestCase):
                   "core_dispatch_allowed","host_write_allowed",
                   "automatic_retry_allowed","publication_allowed"):
             self.assertIs(result[k],False)
-        self.assertEqual(FakeOllama.responses,1)
+        self.assertEqual(FakeOllama.generate_calls,1)
         self.assertEqual(FakeOllama.request_model,"qwen3:0.6b")
         self.store.record_model_check(result)
         reopened=WorkspaceStore(self.directory)
@@ -106,7 +106,7 @@ class IsolatedQwenProbe(unittest.TestCase):
         for value in ("qwen2.5-coder:1.5b","remote-llama",None,True):
             with self.subTest(value=value),self.assertRaises(WorkspaceDenied):
                 probe_local_qwen(value,port=self.port)
-        self.assertEqual(FakeOllama.responses,0)
+        self.assertEqual(FakeOllama.generate_calls,0)
         self.assertEqual(self.store.model_checks(),[])
 
     def test_invalid_model_reply_never_persisted(self):
