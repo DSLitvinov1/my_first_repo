@@ -1,0 +1,48 @@
+name: Neurofactory HOST held lease external witness sandbox effect (NO LIVE)
+on:
+  push:
+    branches: [neurofactory-host-atomic-sandbox-20261018]
+    paths:
+      - 'bridge/neurofactory/trusted_host/sandbox_atomic_effect_candidate.py'
+      - 'bridge/neurofactory/trusted_host/test_sandbox_atomic_effect_candidate.py'
+      - '.github/workflows/neurofactory-trusted-host-owned-atomic-sandbox.yml'
+permissions:
+  contents: read
+concurrency:
+  group: nf-atomic-sandbox-20261018
+  cancel-in-progress: false
+jobs:
+  single_ephemeral_host_test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nf_schema_ci
+          POSTGRES_PASSWORD: nf_schema_ephemeral_password
+          POSTGRES_DB: nf_schema_verify
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nf_schema_ci -d nf_schema_verify"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      NF_DB_SCHEMA_CI_ONLY: "1"
+      NF_ATOMIC_TEST_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create isolated disposable test environment
+        run: |
+          python3 -m venv .nf-atomic-venv
+          .nf-atomic-venv/bin/python -m pip install --no-input --disable-pip-version-check 'psycopg[binary]==3.2.6' 'cryptography==46.0.3'
+      - name: Exercise signed current lease, witness UNKNOWN and real exclusive fsync only in /tmp
+        run: |
+          .nf-atomic-venv/bin/python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_sandbox_atomic_effect_candidate.py -v
+      - name: Reject tracked file modification
+        run: git diff --exit-code
