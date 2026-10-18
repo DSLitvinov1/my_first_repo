@@ -209,6 +209,11 @@ def main():
         worker_root.mkdir()
         icacls(root,service_sid,"RX")
         icacls(output,service_sid,"M")
+        # Windows CI fixture only: make the directory owner a known OS
+        # administrator, not an untrusted worker or ambiguous personal SID.
+        # This does NOT authorize real service deployment or change user's PC.
+        if os.getenv("NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY") == "1":
+            call(["icacls",str(output),"/setowner","*S-1-5-32-544"])
         icacls(binfolder,service_sid,"RX")
         icacls(worker_root,worker_sid,"M")
         # Admin provisions pin and never exposes owner PRIVATE to receiver.
@@ -264,6 +269,37 @@ def main():
         ]).stdout.strip()
         if "LOCAL SERVICE" not in process_owner.upper():
             raise AssertionError("actual SCM process token is not LocalService")
+        if os.getenv("NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY") == "1":
+            from windows_scm_acl_crosscheck_ci import (
+                inspect_disposable_ci_service, CIBoundaryDenied,
+            )
+            policy = (
+                REPO/".nf_pinned_acl"/"bridge"/"neurofactory"/"trusted_host"/
+                "windows_service_sid_acl_audit.py"
+            )
+            # Positive: this inspects a REAL SCM process token and actual
+            # provisioned NTFS DACL, unlike synthetic pure-policy fixtures.
+            observed=inspect_disposable_ci_service(output,worker_sid,policy)
+            assert observed["actual_running_service_sid"]=="S-1-5-19"
+            assert observed["production_release_allowed"] is False
+            assert observed["service_account_exclusive"] is False
+            print("NF_WINDOWS_CI_LOCAL_SERVICE_ACTUAL_TOKEN_AND_ACL_OBSERVED")
+            # Negative: grant the REAL worker directory write access and prove
+            # the inspector immediately denies it; restore BEFORE workers run.
+            try:
+                call(["icacls",str(output),"/grant",
+                      "*"+worker_sid+":(OI)(CI)M"])
+                try:
+                    inspect_disposable_ci_service(output,worker_sid,policy)
+                except CIBoundaryDenied:
+                    print("NF_WINDOWS_FOREIGN_WORKER_WRITE_ACE=DENIED")
+                else:
+                    raise AssertionError("untrusted worker ACL grant accepted")
+            finally:
+                call(["icacls",str(output),"/remove:g","*"+worker_sid])
+            restored=inspect_disposable_ci_service(output,worker_sid,policy)
+            assert restored["production_release_allowed"] is False
+            print("NF_WINDOWS_LOCAL_SERVICE_BUT_NOT_EXCLUSIVE=RELEASE_BLOCKED")
         # A synthetic FORGED signature must be rejected even though the
         # worker SID and pipe ACL are valid; no file has been created.
         forged=dict(packet)
