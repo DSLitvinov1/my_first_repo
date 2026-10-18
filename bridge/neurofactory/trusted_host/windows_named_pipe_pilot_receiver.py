@@ -104,7 +104,9 @@ def _named_pipe_sid(peer_user_sid):
     import pywintypes
     import win32api
     import win32security
-    if not isinstance(peer_user_sid,pywintypes.SIDType):
+    try:
+        win32security.ConvertSidToStringSid(peer_user_sid)
+    except Exception:
         _deny()
     sd=win32security.SECURITY_DESCRIPTOR()
     acl=win32security.ACL()
@@ -123,6 +125,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
     import win32pipe
     import win32security
     import win32con
+    import win32api
     try:
         win32pipe.ImpersonateNamedPipeClient(pipe_handle)
         thread=win32security.OpenThreadToken(
@@ -148,7 +151,7 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
     import pywintypes
     if os.name!="nt" or type(pipe_path) is not str or \
             not pipe_path.startswith(PIPE_PREFIX) or \
-            not _SAFE_PIPE.fullmatch(pipe_path.removeprefix(r"\\.\pipe\\")):
+            not _SAFE_PIPE.fullmatch(pipe_path.rsplit("\\",1)[-1]):
         _deny()
     safe=_private_root(root)
     try:
@@ -209,7 +212,7 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
             win32file.CloseHandle(pipe)
 
 
-def core_pilot_send(pipe_path,proposal,task_claim,owner_private):
+def core_pilot_send(pipe_path,proposal,task_claim,owner_private,*,core,worker_id,core_token):
     """CORE worker adapter, cannot write local file. TEST-ONLY signer injection.
 
     Real CORE must not hold owner_private; here it belongs solely to the CI
@@ -217,6 +220,7 @@ def core_pilot_send(pipe_path,proposal,task_claim,owner_private):
     pre-signed from separately authorized owner.
     """
     import time
+    import hmac
     import win32file
     import win32con
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -226,6 +230,22 @@ def core_pilot_send(pipe_path,proposal,task_claim,owner_private):
             or proposal.get("target")!=_ALLOWED_TARGET
             or task_claim.get("task_id") is None
             or task_claim.get("source_sha") is None):
+        _deny()
+    # Validate a REAL current CORE SQLite claimant. This token only
+    # identifies a worker; it is never sufficient for receiver authorization.
+    if (core is None or type(worker_id) is not str or
+            type(core_token) is not str):
+        _deny()
+    try:
+        with core._connect() as db:
+            row=core._row(db)
+            if (row is None or row["state"]!="CLAIMED" or
+                    row["spec"]!=task_claim or row["owner"]!=worker_id or
+                    row["lease_until"]<=int(time.time()) or
+                    not hmac.compare_digest(row["token"],
+                         hashlib.sha256(core_token.encode("utf8")).hexdigest())):
+                _deny()
+    except (ValueError,KeyError,TypeError,OSError):
         _deny()
     raw=proposal["content"].encode("utf8")
     body={"schema":"neurofactory.windows.single_file_pilot.v1",
