@@ -82,10 +82,18 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         # Graceful stop never waits on a pending adversarial pipe client.
         win32event.WaitForSingleObject(self.stop,win32event.INFINITE)
 
+    def _ci_crash_after_unknown(self):
+        # Operator-only disposable CI failpoint. Worker SID cannot write the
+        # protected parent directory; no remote/client-controlled flag.
+        marker=CI_ROOT / "operator_ci_crash_after_unknown"
+        if marker.is_file():
+            os._exit(87)
+
     def _serve_forever(self,sid,owner_public,root):
         while not self.is_stopping.is_set():
             try:
-                serve_one_pilot(CI_PIPE,root,owner_public,sid)
+                serve_one_pilot(CI_PIPE,root,owner_public,sid,
+                                ci_after_unknown_hook=self._ci_crash_after_unknown)
             except Exception:
                 # Fail closed; no exception must promote to a new write mode.
                 if self.is_stopping.is_set():
