@@ -47,6 +47,10 @@ try {
     if($rSid -eq $wSid){throw 'same SID'}
     $admins=@(Get-LocalGroupMember -Group Administrators | ForEach-Object {$_.SID.Value})
     if(($admins -contains $rSid) -or ($admins -contains $wSid)){throw 'nonadmin invariant failed'}
+    # GitHub-hosted checkout is read-only for BOTH temporary users; they
+    # cannot alter signed receiver source, owner pin or CORE implementation.
+    & icacls.exe $env:GITHUB_WORKSPACE /grant ('*'+$rSid+':(OI)(CI)RX') ('*'+$wSid+':(OI)(CI)RX') /T /C | Out-Null
+    if($LASTEXITCODE -ne 0){throw 'fixture code read-only ACL unavailable'}
     $rCred=New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\$rc",$pw1)
     $wCred=New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\$wk",$pw2)
     & $python -B $actor prepare --stage $stage
