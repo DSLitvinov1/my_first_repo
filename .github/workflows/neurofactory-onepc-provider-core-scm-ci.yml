@@ -1,0 +1,57 @@
+name: Neurofactory one-PC real CORE plus provider protocol and restricted SCM (FAKE MODEL)
+on:
+  push:
+    branches: [neurofactory-onepc-provider-core-host-ci-20261018]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/test_provider_core_host_integration_ci.py
+      - .github/workflows/neurofactory-onepc-provider-core-scm-ci.yml
+  pull_request:
+    branches: [neurofactory-onepc-staged-bundle-20261018]
+permissions:
+  contents: read
+jobs:
+  one-host-provider-core-service-protocol:
+    runs-on: windows-2025
+    timeout-minutes: 13
+    env:
+      NF_WINDOWS_SCM_DISPOSABLE_ONLY: "1"
+      NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY: "1"
+      NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID: "1"
+      NF_ONEPC_PROVIDER_CORE_HOST_CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 681375ce0b959812fc836bf4d14abc107b58e9ca
+          path: .nf_pinned_acl
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pinned_providers
+          persist-credentials: false
+      - name: Verify exact immutable source commits and blobs
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE_SHA' }
+          if ((git -C .nf_pinned_core hash-object bridge/neurofactory/development/core_owned/one_task_core.py).Trim() -cne 'ab1471813c6da29407c913b974a2209467a4b961') { throw 'CORE_BLOB' }
+          if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'ACL_SHA' }
+          if ((git -C .nf_pinned_acl hash-object bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py).Trim() -cne 'd135a4f9f763cb4b454bdce4c0121dd91422e76c') { throw 'ACL_BLOB' }
+          if ((git -C .nf_pinned_providers rev-parse HEAD).Trim() -cne '827b654d9f7c6a10a9b90a9c97802e63116711b9') { throw 'PROVIDERS_SHA' }
+      - name: Windows-only runtime dependencies for disposable service
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+      - name: Real SQLite CORE and provider adapter with FAKE Ollama model output into genuine SCM receiver
+        shell: pwsh
+        run: python -B bridge/neurofactory/one_pc_candidate/test_provider_core_host_integration_ci.py
+      - name: Ensure no repository changes
+        run: git diff --exit-code
