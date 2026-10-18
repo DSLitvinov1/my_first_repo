@@ -231,6 +231,21 @@ class ActualCoreWindowsPipeE2E(unittest.TestCase):
         self.assertEqual(response["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
         self.assert_no_file()
 
+    def test_different_windows_client_sid_denied_before_intent(self):
+        # The pipe DACL also admits the protected receiver service SID,
+        # so a caller with the receiver's CI user still cannot impersonate
+        # the separately pinned worker SID in the OS kernel token check.
+        config=json.loads(self.config.read_text(encoding="ascii"))
+        config["WorkerSid"]="S-1-5-18"  # LocalSystem, not GH runner SID
+        self.assertNotEqual(config["WorkerSid"],self.worker_sid)
+        self.config.write_text(json.dumps(config),encoding="ascii")
+        host=self.start()
+        resp=self.send_direct()
+        self.finish(host)
+        self.assertEqual(resp["status"],"DENIED_OR_UNKNOWN_MANUAL_STOP")
+        self.assert_no_file()
+        print("NF_WINDOWS_KERNEL_CLIENT_SID_MISMATCH_DENIED=PASS")
+
     def test_source_commit_substitution_denied(self):
         host=self.start()
         response=self.send_direct(self.body(source_sha40="f"*40))
