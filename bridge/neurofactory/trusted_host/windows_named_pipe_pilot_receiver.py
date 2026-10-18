@@ -258,7 +258,8 @@ def core_pilot_send(pipe_path,proposal,task_claim,owner_private,*,core,worker_id
           "content_sha256":hashlib.sha256(raw).hexdigest()}
     signature=owner_private.sign(b"NF_WINDOWS_PILOT_V1\x00"+canon(body))
     req={**body,"approved_owner_signature":base64.b64encode(signature).decode()}
-    win32file.WaitNamedPipe(pipe_path,5000)
+    import win32pipe
+    win32pipe.WaitNamedPipe(pipe_path,5000)
     pipe=win32file.CreateFile(pipe_path,win32con.GENERIC_READ|win32con.GENERIC_WRITE,
                              0,None,win32con.OPEN_EXISTING,0,None)
     try:
