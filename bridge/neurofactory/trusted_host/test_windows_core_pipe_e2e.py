@@ -158,7 +158,10 @@ class ActualCoreWindowsPipeE2E(unittest.TestCase):
     def stop_if_running(p):
         if p.poll() is None:
             p.kill()
-            p.communicate(timeout=5)
+        _out,err=p.communicate(timeout=5)
+        if err:
+            print("NF_WIN_TEST_ONLY_SERVER_DIAGNOSTICS",
+                  err[-800:].replace("\\r"," ").replace("\\n"," "))
 
     def finish(self,p):
         p.wait(timeout=12)
