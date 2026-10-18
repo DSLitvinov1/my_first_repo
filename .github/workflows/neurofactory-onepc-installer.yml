@@ -112,6 +112,29 @@ jobs:
             if (!(Test-Path (Join-Path "$data\backups" $backup.filename))) {throw 'NO_BACKUP'}
             $diag=Invoke-RestMethod "$url/api/status"
             if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            # Restart the actual installed localhost app process (not the OS).
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+            $server=Start-Process -PassThru -WindowStyle Hidden -FilePath "$install\runtime\python.exe" -ArgumentList @(
+              '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--port',"$port")
+            $ready=$false
+            for ($i=0;$i -lt 50;$i++) {
+              Start-Sleep -Milliseconds 200
+              try {
+                $again=Invoke-RestMethod "$url/api/projects" -TimeoutSec 2
+                $againTasks=Invoke-RestMethod "$url/api/tasks" -TimeoutSec 2
+                if ($again.projects.id -contains $created.id -and $againTasks.tasks.id -contains $createdTask.id) {
+                  $ready=$true
+                  break
+                }
+              } catch {}
+            }
+            if (!$ready) {throw 'INSTALLED_APP_RESTART_LOST_PROJECT_OR_TASK'}
+            Write-Output 'NF_INSTALLED_LOCAL_PROCESS_RESTART_DB_PERSISTENCE=PASS_DRAFT_ONLY'
+            $recovered=Join-Path $env:RUNNER_TEMP 'NFRecovered.sqlite3'
+            Copy-Item (Join-Path "$data\backups" $backup.filename) $recovered
+            & "$install\runtime\python.exe" -B -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);assert c.execute('PRAGMA integrity_check').fetchone()[0]=='ok';assert c.execute('SELECT COUNT(*) FROM projects').fetchone()[0]>=1;assert c.execute('SELECT COUNT(*) FROM tasks').fetchone()[0]>=1" $recovered
+            if ($LASTEXITCODE -ne 0) {throw 'RESTORED_BACKUP_INTEGRITY_FAILED'}
+            Write-Output 'NF_INSTALLED_SQLITE_BACKUP_READBACK=PASS_DRAFT_ONLY'
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
           }
           finally {
