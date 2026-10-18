@@ -147,7 +147,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -204,6 +204,10 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
                     "state":"UNKNOWN_NO_AUTO_RETRY"}
             with open(receipt,"xb") as f:
                 f.write(canon(intent));f.flush();os.fsync(f.fileno())
+            # Hook is only provided by the operator-controlled disposable
+            # SCM test. Never allow a worker request to name a failure mode.
+            if ci_after_unknown_hook is not None:
+                ci_after_unknown_hook()
             with open(destination,"xb") as f:
                 f.write(payload);f.flush();os.fsync(f.fileno())
             response={"status":"ONE_INERT_WINDOWS_FILE_TEST_ONLY",
