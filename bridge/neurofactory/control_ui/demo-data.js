@@ -1,0 +1,31 @@
+"use strict";
+window.NF_DEMO = {
+  "schema": 1,
+  "kind": "neurofactory_ops_ui_readonly_bundle",
+  "board": {"kind": "read_only_coordination_board", "source_verified": false, "lanes": [
+    {"lane":"CORE","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"PROVIDERS","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"COORDINATOR","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"REVIEW","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"OPS","reported_phase":"waiting_review","evidence_status":"not_verified","release_allowed":false,"commit":"e32acaba8a3c6b5dc724cc08c84ad033190b9efe","issue_url":"https://github.com/DSLitvinov1/my_first_repo/issues/6","source":{"repository":"DSLitvinov1/my_first_repo","branch":"neurofactory-ops-completion-20261015"}},
+    {"lane":"SKILLS","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"UI","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"HANDOFF","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null},
+    {"lane":"GODMODE","reported_phase":"unknown","evidence_status":"not_verified","release_allowed":false,"commit":null,"issue_url":null,"source":null}
+  ]},
+  "project_detail": {
+    "project":{"id":"NF-OPS-SANDBOX","repository":"DSLitvinov1/my_first_repo","branch":"neurofactory-ops-completion-20261015","head_sha":"e32acaba8a3c6b5dc724cc08c84ad033190b9efe"},
+    "source_verified":false,"observed_at":"2026-10-15T01:00:00Z",
+    "bridge":{"reported_state":"UNKNOWN","display_state":"UNKNOWN","seconds_since_reported_heartbeat":null},
+    "workers":[],
+    "queue":[{"task_id":"NF-DEV-05-Q091","reported_state":"BLOCKED","display_state":"BLOCKED","possibly_stalled":false,"checkpoint":{"reported_state":"PARTIAL","externally_verified":false}}],
+    "checkpoint_counts":{"PARTIAL":1},
+    "problems":[{"code":"CHECKPOINT_PARTIAL","task_id":"NF-DEV-05-Q091","severity":"BLOCKED","source_verified":false}],
+    "stopped_tasks":["NF-DEV-05-Q091"],"possibly_stalled_tasks":[],
+    "last_reported_success":null,"last_reported_failure":null,"last_reported_run":null,"last_run_sort":"HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED"
+  },
+  "coordinator_task_card":{"source":"COORDINATOR_TASK_CARD_UNATTESTED","task_id":"NF-DEV-05-Q091","reported_phase":"waiting_review","display_phase":"UNKNOWN","task_input_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","input_sha_vs_ops_sha":"NOT_COMPARABLE","source_verified":false,"actions_allowed":false},
+  "consistency":{"board_project_match":true,"status":"MATCHES_UNVERIFIED_DECLARATIONS","does_not_attest_provenance":true},
+  "trust":{"live_source_verified":false,"independent_review":false,"release_authorized":false,"all_sources_untrusted":true},
+  "actions_allowed":{"recover":false,"retry":false,"publish":false,"merge":false,"restart":false,"send_chatgpt":false}
+};
