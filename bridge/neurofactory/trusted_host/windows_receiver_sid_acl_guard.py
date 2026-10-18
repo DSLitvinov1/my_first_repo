@@ -109,3 +109,38 @@ def verify_receiver_isolation(root, *, receiver_sid, worker_sid):
                 signed_owner_and_external_highwater_checked=False,
                 live_execution_allowed=False,
                 production_queue_allowed=False)
+
+
+def verify_operator_public_config(config_file, *, receiver_sid, worker_sid):
+    """Fail closed unless the installed public-pin file AND its directory
+    have explicitly protected Windows NTFS DACLs. Do not trust filename alone.
+    This is not proof of real owner's GitHub ACL or independent signing.
+    """
+    if os.name!="nt" or type(receiver_sid) is not str or \
+            type(worker_sid) is not str or receiver_sid==worker_sid:
+        raise PrincipalIsolationDenied("invalid service identity pins")
+    p=Path(config_file)
+    if (not p.is_file() or p.is_symlink() or
+            not p.parent.is_dir() or p.parent.is_symlink() or
+            p.stat().st_file_attributes & REPARSE_ATTR or
+            p.parent.stat().st_file_attributes & REPARSE_ATTR):
+        raise PrincipalIsolationDenied("operator public config is reparse/missing")
+    for protected_path in (p.parent,p):
+        acl=_get_acl_sids(protected_path)
+        has_receiver_read=False
+        for ace_type,mask,name in acl:
+            if ace_type==0:
+                if name not in {receiver_sid,SYSTEM_SID,ADMIN_SID}:
+                    raise PrincipalIsolationDenied("untrusted public pin ACL")
+                if name==worker_sid or name in UNTRUSTED_BROAD_SIDS:
+                    raise PrincipalIsolationDenied("worker/broad access to operator pins")
+                if name==receiver_sid and mask & FILE_WRITE_MASK:
+                    raise PrincipalIsolationDenied("receiver could replace own owner pin")
+                if name==receiver_sid and mask & 0x0001:
+                    has_receiver_read=True
+        if not has_receiver_read:
+            raise PrincipalIsolationDenied("service account cannot read pinned config")
+    return {"status":"OPERATOR_PUBLIC_PIN_CONFIG_READ_ONLY_FOR_RECEIVER",
+            "worker_can_modify_config":False,
+            "owner_authority_independently_authenticated":False,
+            "live_execution_allowed":False}
