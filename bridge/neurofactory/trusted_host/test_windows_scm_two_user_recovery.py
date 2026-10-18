@@ -186,6 +186,9 @@ def main():
     from win32service import SERVICE_RUNNING,SERVICE_STOPPED
     if CI_ROOT.exists():
         raise RuntimeError("existing test service root; refuse reuse")
+    mode=sys.argv[1] if len(sys.argv)==2 else "normal"
+    if mode not in ("normal","crash-window"):
+        raise RuntimeError("only two isolated CI modes accepted")
     username="nfci"+secrets.token_hex(3)
     password="T7-"+secrets.token_urlsafe(18)+"-Q!"
     user_created=False
@@ -258,14 +261,55 @@ def main():
             worker_root/"windows_scm_ci_worker.py",handoff,response)
         assert denied["status"] in (
             "WORKER_STOPPED_OR_SERVER_DENIED","DENIED_OR_UNKNOWN_MANUAL_STOP")
+        assert denied["worker_sid_observed"]==worker_sid
+        assert denied["protected_directory_read_denied"] is True
         assert ensure_no_unauthorised_client(output)==(False,False)
         print("NF_WINDOWS_REAL_DIFFERENT_SIDS_FORGED_SIGNATURE=DENIED")
+        # For crash-window test, create a root-owned operator-controlled
+        # failpoint. The receiver will os._exit right AFTER fsync UNKNOWN
+        # and BEFORE CREATE_NEW. No worker can select this condition.
+        if mode=="crash-window":
+            flag=root/"operator_ci_crash_after_unknown"
+            flag.write_text("CI_ONLY_CRASH_AFTER_DURABLE_UNKNOWN",encoding="ascii")
+            call(["icacls",str(flag),"/inheritance:r",
+                  "/grant:r","*S-1-5-19:R","*S-1-5-18:F",
+                  "*S-1-5-32-544:F"])
+            handoff.write_text(json.dumps(packet,sort_keys=True),encoding="ascii")
+            crashed=worker_as_local_account(username,password,
+                worker_root/"windows_scm_ci_worker.py",handoff,
+                worker_root/"crash_before_file.json")
+            assert crashed["worker_sid_observed"]==worker_sid
+            assert crashed["protected_directory_read_denied"] is True
+            assert crashed["status"]=="WORKER_STOPPED_OR_SERVER_DENIED",crashed
+            wait_service(SERVICE_STOPPED)
+            assert ensure_no_unauthorised_client(output)==(True,False)
+            # The root-owned crash flag was not included in either owner
+            # signed packet nor CORE lease, and can only be removed by
+            # fixture administrator before a new SCM process starts.
+            flag.unlink()
+            call(["sc.exe","start",SERVICE_NAME],timeout=22)
+            wait_service(SERVICE_RUNNING)
+            again=worker_as_local_account(username,password,
+                worker_root/"windows_scm_ci_worker.py",handoff,
+                worker_root/"after_unknown_restart.json")
+            assert again["worker_sid_observed"]==worker_sid
+            assert again["status"] in ("DENIED_OR_UNKNOWN_MANUAL_STOP",
+                                       "WORKER_STOPPED_OR_SERVER_DENIED"),again
+            assert ensure_no_unauthorised_client(output)==(True,False)
+            assert not (core.sandbox/_ALLOWED_TARGET).exists()
+            print("NF_WINDOWS_SCM_KILLED_AFTER_FSYNC_UNKNOWN_NO_FILE=PASS_TEST_ONLY")
+            print("NF_WINDOWS_SCM_RESTART_NO_RETRY_UNKNOWN=PASS_TEST_ONLY")
+            print("NF_WINDOWS_WORKER_SID_AND_PROTECTED_FOLDER_DENIAL=PASS")
+            print("NF_WINDOWS_LIVE_QUEUE=OFF")
+            return
         # Send properly owner-signed exact immutable CORE task.
         handoff.write_text(json.dumps(packet,sort_keys=True),encoding="ascii")
         response=worker_root/"accepted.json"
         accepted=worker_as_local_account(username,password,
             worker_root/"windows_scm_ci_worker.py",handoff,response)
         assert accepted["status"]=="ONE_INERT_WINDOWS_FILE_TEST_ONLY",accepted
+        assert accepted["worker_sid_observed"]==worker_sid
+        assert accepted["protected_directory_read_denied"] is True
         assert accepted["content_sha256"]==packet["content_sha256"]
         assert accepted["live_execution_allowed"] is False
         assert ensure_no_unauthorised_client(output)==(True,True)
@@ -305,6 +349,7 @@ def main():
         assert target.read_text(encoding="utf8")==expected
         print("NF_WINDOWS_SCM_CRASH_RESTART_NO_REPLAY=PASS_TEST_ONLY")
         print("NF_WINDOWS_TWO_DIFFERENT_ACCOUNTS_AND_CLAIM=PASS_TEST_ONLY")
+        print("NF_WINDOWS_WORKER_SID_AND_PROTECTED_FOLDER_DENIAL=PASS")
         print("NF_WINDOWS_LIVE_QUEUE=OFF")
     finally:
         if service_created:
