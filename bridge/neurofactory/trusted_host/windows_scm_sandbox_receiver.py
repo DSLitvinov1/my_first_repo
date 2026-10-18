@@ -22,14 +22,15 @@ import threading
 import win32event
 import win32service
 import win32serviceutil
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey,Ed25519PrivateKey
 from windows_named_pipe_pilot_receiver import serve_one_pilot
 
 SERVICE_NAME = "NeurofactorySandboxReceiverCI"
 CI_ROOT = Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "NeurofactoryCIReceiver"
 CI_CONFIG = CI_ROOT / "receiver-config.json"
 CI_PIPE = r"\\.\pipe\neurofactory-pilot-101010101010101010101010"
-CONFIG_FIELDS = {"schema", "worker_sid", "owner_public_raw_base64"}
+CONFIG_FIELDS = {"schema", "worker_sid", "owner_public_raw_base64",
+                 "host_receipt_private_raw_base64"}
 SID_PATTERN = re.compile(r"S-1-(?:\d+-){2,14}\d+\Z")
 SERVICE_MODE_ONLY_CI = True  # Not a production daemon.
 
@@ -44,13 +45,20 @@ def load_ci_config():
             type(config["worker_sid"]) is not str or \
             not SID_PATTERN.fullmatch(config["worker_sid"]) or \
             type(config["owner_public_raw_base64"]) is not str or \
-            len(config["owner_public_raw_base64"]) != 44:
+            len(config["owner_public_raw_base64"]) != 44 or \
+            type(config["host_receipt_private_raw_base64"]) is not str or \
+            len(config["host_receipt_private_raw_base64"]) != 44:
         raise ValueError("invalid externally pinned CI owner or worker")
     raw=base64.b64decode(config["owner_public_raw_base64"],validate=True)
     if len(raw)!=32:
         raise ValueError("invalid pinned Ed25519 public bytes")
-    # No owner private key or worker authorization is stored in service config.
-    return config["worker_sid"],Ed25519PublicKey.from_public_bytes(raw)
+    # CI ONLY: installer provisions a short-lived HOST signing key in an
+    # NT SERVICE\\restricted SID-only protected config. This is NOT TPM custody.
+    host_raw=base64.b64decode(config["host_receipt_private_raw_base64"],validate=True)
+    if len(host_raw)!=32:
+        raise ValueError("Invalid ephemeral HOST signing key")
+    return (config["worker_sid"],Ed25519PublicKey.from_public_bytes(raw),
+            Ed25519PrivateKey.from_private_bytes(host_raw))
 
 
 class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
@@ -70,14 +78,14 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop)
 
     def SvcDoRun(self):
-        sid,owner_public=load_ci_config()
+        sid,owner_public,host_signer=load_ci_config()
         root=CI_ROOT / "protected_output"
         if not root.is_dir() or root.is_symlink():
             raise RuntimeError("operator-provisioned protected output missing")
         # Worker runs with a different OS account. Service's LocalService
         # identity and ACLs are imposed via SCM + operator install script.
         self.handler=threading.Thread(
-            target=self._serve_forever,args=(sid,owner_public,root),daemon=True)
+            target=self._serve_forever,args=(sid,owner_public,root,host_signer),daemon=True)
         self.handler.start()
         # Graceful stop never waits on a pending adversarial pipe client.
         win32event.WaitForSingleObject(self.stop,win32event.INFINITE)
@@ -89,11 +97,12 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         if marker.is_file():
             os._exit(87)
 
-    def _serve_forever(self,sid,owner_public,root):
+    def _serve_forever(self,sid,owner_public,root,host_signer):
         while not self.is_stopping.is_set():
             try:
                 serve_one_pilot(CI_PIPE,root,owner_public,sid,
-                                ci_after_unknown_hook=self._ci_crash_after_unknown)
+                                ci_after_unknown_hook=self._ci_crash_after_unknown,
+                                host_receipt_signer=host_signer)
             except Exception:
                 # Fail closed; no exception must promote to a new write mode.
                 if self.is_stopping.is_set():
