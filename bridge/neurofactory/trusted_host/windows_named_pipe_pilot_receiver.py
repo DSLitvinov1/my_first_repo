@@ -271,7 +271,18 @@ def core_pilot_send(pipe_path,proposal,task_claim,owner_private,*,core,worker_id
     signature=owner_private.sign(b"NF_WINDOWS_PILOT_V1\x00"+canon(body))
     req={**body,"approved_owner_signature":base64.b64encode(signature).decode()}
     import win32pipe
-    win32pipe.WaitNamedPipe(pipe_path,5000)
+    import pywintypes
+    # Server is created by another thread/process; WaitNamedPipe may report
+    # FILE_NOT_FOUND if called before CreateNamedPipe. Retry only for 3 s.
+    deadline=time.monotonic()+3
+    while True:
+        try:
+            win32pipe.WaitNamedPipe(pipe_path,1000)
+            break
+        except pywintypes.error as exc:
+            if exc.winerror not in (2,231) or time.monotonic()>=deadline:
+                _deny()
+            time.sleep(0.04)
     pipe=win32file.CreateFile(pipe_path,win32con.GENERIC_READ|win32con.GENERIC_WRITE,
                              0,None,win32con.OPEN_EXISTING,0,None)
     try:
