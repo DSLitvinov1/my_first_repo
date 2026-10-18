@@ -255,6 +255,50 @@ def request_test_once(*, port, claim, client_cert, client_key, ca_cert,
     except (OSError, ssl.SSLError, ValueError, InvalidSignature, UnicodeError) as e:
         raise WitnessPilotDenied("mTLS witness failed; outcome unknown, NO RETRY") from e
 
+class PinnedWindowsWitnessSandboxAdapter:
+    """TEST-ONLY implementation of HOST's five-field reserve_precommit API.
+
+    The adapter has a pre-pinned task/target and does not import worker tokens,
+    operator secret keys or the user's actual files. No startup or deployment.
+    """
+
+    def __init__(self, *, task_id, target_sha256, port,
+                 client_cert, client_key, ca_cert,
+                 pinned_server_cert_sha256, pinned_witness_public_b64):
+        test_gate()
+        if (type(task_id) is not str or not TASK.fullmatch(task_id) or
+                type(target_sha256) is not str or
+                not HEX.fullmatch(target_sha256)):
+            deny()
+        expected_fp(pinned_server_cert_sha256)
+        self.task_id=task_id
+        self.target_sha256=target_sha256
+        self.port=port
+        self.client_cert=client_cert
+        self.client_key=client_key
+        self.ca_cert=ca_cert
+        self.server_pin=pinned_server_cert_sha256
+        self.witness_key_pin=pinned_witness_public_b64
+
+    def reserve_precommit(self, *, scope_sha256, operation_id,
+                          commit_sequence, journal_root_sha256):
+        test_gate()
+        claim=dict(schema="nf.windows.witness.reserve.test.v1",
+                   scope_sha256=scope_sha256,
+                   task_id=self.task_id,
+                   target_sha256=self.target_sha256,
+                   operation_id=operation_id,
+                   commit_sequence=commit_sequence,
+                   journal_root_sha256=journal_root_sha256)
+        check_claim(claim)
+        return request_test_once(
+            port=self.port, claim=claim,
+            client_cert=self.client_cert, client_key=self.client_key,
+            ca_cert=self.ca_cert,
+            pinned_server_cert_sha256=self.server_pin,
+            pinned_witness_public_b64=self.witness_key_pin,
+        )
+
 def main():
     # Deliberately one-shot: no auto-start/installer or continuous service.
     if len(sys.argv) != 10 or sys.argv[1] != "serve-one-ci":
