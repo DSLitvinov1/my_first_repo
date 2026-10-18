@@ -111,12 +111,23 @@ def run():
         from ollama_worker import ProviderTask, execute_one
         ledger = directory / "provider_ledger"
         ledger.mkdir()
-        task = ProviderTask(
-            task_id=spec["task_id"], project_id=spec["project_id"],
-            input_sha256=spec["source_sha256"],
-            target_path=spec["target"],
-            instruction="Produce exactly one harmless sandbox file for isolated CI.",
-        )
+        # REAL CORE bridge, not a caller-invented provider packet.
+        preview = core.provider_preview(spec["task_id"])
+        if (preview.get("schema") != "neurofactory.coordination.provider_bridge.v1"
+                or preview.get("permissions") != {
+                    "execution": False, "retry": False,
+                    "publication": False, "paid_api": False,
+                } or preview.get("binding", {}).get("core_target") != TARGET
+                or preview["binding"]["source_sha"] != spec["source_sha"]
+                or preview["binding"]["model"] != MODEL
+                or preview["binding"]["input_sha256"] !=
+                    preview["request"]["input_sha256"]):
+            _deny("real CORE read-only provider contract rejected")
+        approved_provider_path = preview["binding"]["provider_target"]
+        FakeLocalModel.reply = json.dumps({
+            "path": approved_provider_path, "content": CONTENT,
+        }, sort_keys=True)
+        task = ProviderTask.from_json(preview["request"])
         result = execute_one(task, model=MODEL, ledger_dir=ledger)
         if (result.get("status") != "PROPOSED_UNVERIFIED" or
                 result.get("offline_mock") is not False or
@@ -126,11 +137,11 @@ def run():
                 result.get("attempt_consumed") is not True or
                 result.get("model") != MODEL or
                 result.get("task_id") != spec["task_id"] or
-                result.get("input_sha256") != spec["source_sha256"] or
+                result.get("input_sha256") != preview["request"]["input_sha256"] or
                 len(result.get("proposed_files", [])) != 1):
             _deny("real PROVIDERS adapter did not produce one unverified proposal")
         proposal = result["proposed_files"][0]
-        if (proposal.get("relative_path") != TARGET or
+        if (proposal.get("relative_path") != approved_provider_path or
                 proposal.get("content") != CONTENT or
                 proposal.get("applied") is not False or
                 proposal.get("verified_by_core") is not False):
@@ -176,13 +187,14 @@ def run():
         }, sort_keys=True)
         invalid_task = ProviderTask(
             task_id="NF-DEV-05-Q902", project_id=spec["project_id"],
-            input_sha256=spec["source_sha256"], target_path=TARGET,
+            input_sha256=preview["request"]["input_sha256"],
+            target_path=approved_provider_path,
             instruction="Produce exactly one harmless sandbox file for invalid-test CI.",
         )
         invalid = execute_one(
             invalid_task, model=MODEL, ledger_dir=invalid_ledger)
         FakeLocalModel.reply = json.dumps({
-            "path": TARGET, "content": CONTENT,
+            "path": approved_provider_path, "content": CONTENT,
         }, sort_keys=True)
         if (invalid.get("status") != "INVALID_MODEL_OUTPUT" or
                 invalid.get("attempt_consumed") is not True or
@@ -213,6 +225,7 @@ def run():
             _deny("provider negatives not observed")
         print("NF_ONEPC_PROVIDER_DUPLICATE_NO_SECOND_HTTP=DENIED")
         print("NF_ONEPC_PROVIDER_FOREIGN_TARGET_OUTPUT=DENIED")
+        print("NF_ONEPC_REAL_CORE_PROVIDER_PREVIEW_BINDING=PASS_TEST_ONLY")
         print("NF_ONEPC_REAL_CORE_SQLITE_CLAIM=PASS_TEST_ONLY")
         print("NF_ONEPC_REAL_PROVIDER_HTTP_AND_DURABLE_LEDGER=PASS_FAKE_MODEL_ONLY")
         print("NF_ONEPC_MODEL_PROPOSAL_INERT_AND_UNTRUSTED=PASS_TEST_ONLY")
