@@ -179,8 +179,8 @@ class AtomicSandboxCases(unittest.TestCase):
     def test_database_receipt_failure_after_fsync_remains_unknown(self):
         self.db.execute("""
             CREATE FUNCTION nf_trusted_host.deny_completion_ci()
-            RETURNS trigger LANGUAGE plpgsql AS $
-            BEGIN RAISE EXCEPTION 'simulated receipt failure'; END; $""")
+            RETURNS trigger LANGUAGE plpgsql AS $nf_ci$
+            BEGIN RAISE EXCEPTION 'simulated receipt failure'; END; $nf_ci$;""")
         self.db.execute("""
             CREATE TRIGGER nf_ci_deny_receipt BEFORE UPDATE
             ON nf_trusted_host.effect_receipt FOR EACH ROW
@@ -209,7 +209,8 @@ class AtomicSandboxCases(unittest.TestCase):
         self.db.execute("UPDATE nf_trusted_host.lease_register SET state='CLAIMED'")
         self._insert_only_receipt()
         self.file.unlink()
-        with self.assertRaises(SandboxDenied):
+        # Already durably reserved: replay is UNKNOWN, never retryable.
+        with self.assertRaises(SandboxEffectUnknown):
             self.run_effect()
         self.assertFalse(self.file.exists())
         self.assertEqual(self.record()[0], "UNKNOWN")
