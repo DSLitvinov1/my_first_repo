@@ -78,6 +78,9 @@ try {
     Write-Output 'NF_WINDOWS_REAL_SCM_SERVICE_REGISTERED_UNDER_SEPARATE_NONADMIN_SID=PASS'
 
     $wCred=New-Object System.Management.Automation.PSCredential("$env:COMPUTERNAME\$wk",$pw2)
+    & sc.exe qc $svcName | Out-Host
+    & sc.exe start $svcName | Out-Host
+    if($LASTEXITCODE -ne 0) {throw ('SCM_START_EXIT_CODE='+$LASTEXITCODE)}
     try { Start-Service -Name $svcName -ErrorAction Stop } catch {
         $events=Get-WinEvent -FilterHashtable @{LogName='System'; StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue
         $recent=@($events | Where-Object { $_.Message -match 'NeurofactorySandboxReceiver|nf_rc_|pythonservice' } | Select-Object -First 8)
