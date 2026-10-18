@@ -132,7 +132,7 @@ internal static class Program
     private static void ServeOnce(ReceiverConfig cfg)
     {
         using var pipe = NamedPipeServerStreamAcl.Create(
-            cfg.PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
+            cfg.PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message,
             PipeOptions.None, 16384, 4096, PipeAcl(cfg.WorkerSid));
         Console.WriteLine("NF_WIN_RECEIVER_LISTENING_TEST_ONLY");
         Console.Out.Flush();
