@@ -43,6 +43,7 @@ def main():
                             page.get_by_role("heading",name="Рабочая база проектов").wait_for()
                             assert "Настоящее сохранение SQLite" in page.locator("#main-content").inner_text()
                             forms=page.locator("#main-content form")
+                            forms.nth(0).locator("input").wait_for(timeout=8000)
                             assert forms.count()==1, "project creation form missing"
                             form=forms.nth(0)
                             form.locator("input").fill("Реальный проект "+name)
