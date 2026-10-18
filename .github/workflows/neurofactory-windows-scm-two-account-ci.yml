@@ -1,0 +1,42 @@
+name: Neurofactory Windows real SCM sandbox service separate account
+on:
+  push:
+    branches: [neurofactory-windows-two-sid-acl-recovery-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_scm_one_shot_receiver.py
+      - bridge/neurofactory/trusted_host/test_windows_real_scm_service_ci.ps1
+      - .github/workflows/neurofactory-windows-scm-two-account-ci.yml
+permissions:
+  contents: read
+jobs:
+  disposable-real-windows-scm:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    env:
+      NF_WINDOWS_TWO_SID_CI_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pinned_core
+          persist-credentials: false
+      - name: Pin CORE exact commit and source blob
+        shell: pwsh
+        run: |
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') {throw 'wrong CORE'}
+          if ((git -C .nf_pinned_core hash-object bridge/neurofactory/development/core_owned/one_task_core.py).Trim() -cne 'ab1471813c6da29407c913b974a2209467a4b961') {throw 'wrong blob'}
+      - name: Install isolated runtime on GitHub hosted VM only
+        shell: pwsh
+        run: python -m pip install --no-input --disable-pip-version-check "pywin32==311" "cryptography==46.0.3"
+      - name: SCM service under receiver local user, signed CORE file and service restart denial
+        shell: pwsh
+        run: |
+          & "$env:GITHUB_WORKSPACE/bridge/neurofactory/trusted_host/test_windows_real_scm_service_ci.ps1"
+      - name: No changed repository state
+        shell: pwsh
+        run: git diff --exit-code
