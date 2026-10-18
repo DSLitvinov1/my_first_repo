@@ -99,10 +99,14 @@ internal static class Program
             || !Regex.IsMatch(cfg.SourceSha40, @"\A[a-f0-9]{40}\z")
             || cfg.AllowedTarget != "core-e2e-proof.txt")
             throw new InvalidOperationException("CI scope must be fixed and bounded");
-        if (!Directory.Exists(cfg.ScratchRoot) || IsReparse(cfg.ScratchRoot)
-            || !Path.GetFullPath(cfg.ScratchRoot)
-               .StartsWith(Path.GetFullPath(Path.GetTempPath()),
-                            StringComparison.OrdinalIgnoreCase))
+        var scratch = Path.GetFullPath(cfg.ScratchRoot);
+        var relative = Path.GetRelativePath(
+            Path.GetFullPath(Path.GetTempPath()), scratch);
+        if (!Directory.Exists(scratch) || IsReparse(scratch)
+            || Path.IsPathRooted(relative) || relative == "."
+            || relative == ".."
+            || relative.StartsWith(".." + Path.DirectorySeparatorChar,
+                                   StringComparison.Ordinal))
             throw new InvalidOperationException("Only disposable temp sandbox accepted");
         _ = new SecurityIdentifier(cfg.WorkerSid);
         var pub = Convert.FromBase64String(cfg.OwnerPublicSpkiBase64);
