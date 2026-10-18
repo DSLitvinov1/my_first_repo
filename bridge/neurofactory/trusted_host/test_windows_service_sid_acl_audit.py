@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from windows_service_sid_acl_audit import (
     inspect_windows_two_sid_boundary, IsolationDenied, _verify_acl_entries,
