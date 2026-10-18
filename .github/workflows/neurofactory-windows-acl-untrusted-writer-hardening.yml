@@ -1,0 +1,30 @@
+name: Neurofactory HOST untrusted ACL writer hardening (sandbox only)
+on:
+  push:
+    branches:
+      - neurofactory-windows-acl-untrusted-writer-hardening-20261018
+    paths:
+      - bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py
+      - bridge/neurofactory/trusted_host/test_windows_service_sid_acl_audit.py
+      - .github/workflows/neurofactory-windows-acl-untrusted-writer-hardening.yml
+  pull_request:
+    branches:
+      - neurofactory-windows-service-acl-recovery-20261018
+permissions:
+  contents: read
+jobs:
+  bounded-acl-policy:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run fail-closed read-only policy regression
+        run: python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_service_sid_acl_audit.py -v
+      - name: No tracked modification
+        run: git diff --exit-code
