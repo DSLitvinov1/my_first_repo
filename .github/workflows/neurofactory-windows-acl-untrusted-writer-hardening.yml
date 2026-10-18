@@ -7,6 +7,9 @@ on:
       - bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py
       - bridge/neurofactory/trusted_host/test_windows_service_sid_acl_audit.py
       - .github/workflows/neurofactory-windows-acl-untrusted-writer-hardening.yml
+  pull_request:
+    branches:
+      - neurofactory-windows-service-acl-recovery-20261018
 permissions:
   contents: read
 jobs:
