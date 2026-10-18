@@ -468,7 +468,7 @@ class OneTaskCore:
             if len(signature) != 64:
                 raise CoreSafetyError("Wrong HOST signature length")
             Ed25519PublicKey.from_public_bytes(self.host_receipt_public_raw).verify(
-                signature, b"NF_WINDOWS_HOST_RECEIPT_TEST_V1\\x00" + _canonical(body))
+                signature, b"NF_WINDOWS_HOST_RECEIPT_TEST_V1\x00" + _canonical(body))
         except (InvalidSignature, ValueError, binascii.Error) as exc:
             raise CoreSafetyError("HOST receipt not signed by pinned service") from exc
         self._host_file_readback(result)
