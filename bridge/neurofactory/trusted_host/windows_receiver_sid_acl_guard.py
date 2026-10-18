@@ -82,7 +82,7 @@ def verify_receiver_isolation(root, *, receiver_sid, worker_sid):
                                              win32security.TokenGroups)
     for sid,attrs in groups:
         groupname=win32security.ConvertSidToStringSid(sid)
-        if groupname==ADMIN_SID and attrs & win32con.SE_GROUP_ENABLED:
+        if groupname==ADMIN_SID and attrs & 0x00000004:
             raise PrincipalIsolationDenied("receiver has administrator privileges")
     p=Path(root)
     if not p.is_dir() or p.is_symlink() or \
