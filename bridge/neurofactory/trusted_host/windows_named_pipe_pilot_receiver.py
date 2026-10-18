@@ -99,7 +99,7 @@ def _private_root(root):
     return p
 
 
-def _named_pipe_sid(peer_user_sid):
+def _named_pipe_sid(peer_user_sid, receiver_user_sid=None):
     import ntsecuritycon
     import pywintypes
     import win32api
@@ -115,6 +115,15 @@ def _named_pipe_sid(peer_user_sid):
                             ntsecuritycon.FILE_GENERIC_READ |
                             ntsecuritycon.FILE_GENERIC_WRITE,
                             peer_user_sid)
+    if receiver_user_sid is not None:
+        # Dedicated service user also needs access to create/read this pipe.
+        if win32security.ConvertSidToStringSid(peer_user_sid) == receiver_user_sid:
+            _deny()
+        receiver=win32security.ConvertStringSidToSid(receiver_user_sid)
+        acl.AddAccessAllowedAce(win32security.ACL_REVISION,
+                                ntsecuritycon.FILE_GENERIC_READ |
+                                ntsecuritycon.FILE_GENERIC_WRITE,
+                                receiver)
     sd.SetSecurityDescriptorDacl(1,acl,0)
     sa=pywintypes.SECURITY_ATTRIBUTES()
     sa.SECURITY_DESCRIPTOR=sd
@@ -147,7 +156,8 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,
+                    receiver_user_sid=None):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -164,6 +174,10 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
             not _SAFE_PIPE.fullmatch(pipe_path.rsplit("\\",1)[-1]):
         _deny()
     safe=_private_root(root)
+    if receiver_user_sid is not None:
+        from windows_receiver_sid_acl_guard import verify_receiver_isolation
+        verify_receiver_isolation(safe,receiver_sid=receiver_user_sid,
+                                  worker_sid=peer_user_sid)
     try:
         sid=win32security.ConvertStringSidToSid(peer_user_sid)
     except (TypeError,ValueError,pywintypes.error):
@@ -176,7 +190,7 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
             win32pipe.PIPE_TYPE_MESSAGE|win32pipe.PIPE_READMODE_MESSAGE|
                 win32pipe.PIPE_WAIT,
             1,MAX_BYTES,MAX_BYTES,3000,
-            _named_pipe_sid(sid))
+            _named_pipe_sid(sid,receiver_user_sid))
         try:
             win32pipe.ConnectNamedPipe(pipe,None)
         except pywintypes.error as exc:
@@ -206,6 +220,13 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid):
                 f.write(canon(intent));f.flush();os.fsync(f.fileno())
             with open(destination,"xb") as f:
                 f.write(payload);f.flush();os.fsync(f.fileno())
+            # Only on isolated disposable GitHub Windows CI: allow the test
+            # supervisor to terminate THIS child process after durable fsync.
+            # Never reachable in normal Windows service / user's machine.
+            if (os.environ.get("GITHUB_ACTIONS")=="true" and
+                os.environ.get("NF_WINDOWS_CI_POST_FSYNC_PAUSE")=="1"):
+                import time
+                time.sleep(20)
             response={"status":"ONE_INERT_WINDOWS_FILE_TEST_ONLY",
                       "content_sha256":body["content_sha256"],
                       "live_execution_allowed":False,
