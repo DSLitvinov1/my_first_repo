@@ -1,0 +1,24 @@
+name: Neurofactory Windows two SID protected ACL read-only gate
+on:
+  push:
+    branches: [neurofactory-windows-service-acl-recovery-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py
+      - bridge/neurofactory/trusted_host/test_windows_service_sid_acl_audit.py
+      - .github/workflows/neurofactory-windows-two-sid-acl.yml
+permissions:
+  contents: read
+jobs:
+  reject-unprovisioned-sid:
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Windows API bindings in disposable runner
+        run: python -m pip install --disable-pip-version-check --no-input pywin32==311
+      - name: Verify no two-SID acceptance on unprovisioned runner
+        run: python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_service_sid_acl_audit.py -v
+      - name: No tracked changes
+        run: git diff --exit-code
