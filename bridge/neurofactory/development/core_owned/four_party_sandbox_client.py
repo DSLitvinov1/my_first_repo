@@ -125,23 +125,21 @@ class CoreFourPartySandboxClient:
                         type(row.get("spec")) is not dict):
                     _deny()
                 spec = row["spec"]
+                # OneTaskCore's existing immutable task.v1 specification has
+                # project/source/target, NOT host owner, lease epoch, fence or
+                # policy fields. Do not invent these inside CORE or treat an
+                # untrusted sender's copy as operator authorization. HOST
+                # independently authenticates all external signed claims and
+                # the current PostgreSQL lease/fence.
                 pinned = {
                     "task_id": task_id,
                     "project_id": expected_effect.get("project_id"),
-                    "repository": expected_effect.get("repository"),
-                    "owner_id": expected_effect.get("owner_id"),
                     "source_sha": expected_effect["source_sha40"],
                     "source_sha256": expected_effect["source_file_sha256"],
-                    "policy_sha256": expected_effect["policy_sha256"],
                     "target": proposal["target"],
                 }
                 if any(type(spec.get(k)) is not str or spec[k] != v
                        for k, v in pinned.items()):
-                    _deny()
-                if (type(spec.get("lease_epoch")) is not int or
-                        spec["lease_epoch"] != expected_effect["lease_epoch"] or
-                        spec.get("fencing_token_sha256") !=
-                        expected_effect["fencing_token_sha256"]):
                     _deny()
         except CoreFourPartyDenied:
             raise
