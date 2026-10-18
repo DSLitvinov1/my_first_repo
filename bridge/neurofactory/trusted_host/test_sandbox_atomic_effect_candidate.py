@@ -156,18 +156,49 @@ class AtomicSandboxCases(unittest.TestCase):
         self.assertEqual(self.record()[0], "UNKNOWN")
         self.assertEqual(self.file.read_bytes(), b"content")
 
-    def test_witness_unavailable_and_malformed_ack_denied(self):
+    def test_witness_unavailable_or_ack_lost_is_unknown_no_retry(self):
+        # A remote timeout does NOT prove reservation failed.
         self.witness.reject = True
-        with self.assertRaises(SandboxDenied):
+        with self.assertRaises(SandboxEffectUnknown):
             self.run_effect()
         self.assertFalse(self.file.exists())
         self.assertEqual(self.record()[0], "UNKNOWN")
         self.witness.reject = False
         self.witness.bad_ack = True
-        with self.assertRaises(SandboxDenied):
+        with self.assertRaises(SandboxEffectUnknown):
             self.run_effect()
         self.assertFalse(self.file.exists())
         self.assertEqual(self.record()[0], "UNKNOWN")
+        self.assertEqual(len(self.witness.reservations), 1)
+        self.witness.bad_ack = False
+        with self.assertRaises(SandboxEffectUnknown):
+            self.run_effect()
+        self.assertFalse(self.file.exists())
+        self.assertEqual(len(self.witness.reservations), 1)
+
+    def test_database_receipt_failure_after_fsync_remains_unknown(self):
+        self.db.execute("""
+            CREATE FUNCTION nf_trusted_host.deny_completion_ci()
+            RETURNS trigger LANGUAGE plpgsql AS $
+            BEGIN RAISE EXCEPTION 'simulated receipt failure'; END; $""")
+        self.db.execute("""
+            CREATE TRIGGER nf_ci_deny_receipt BEFORE UPDATE
+            ON nf_trusted_host.effect_receipt FOR EACH ROW
+            EXECUTE FUNCTION nf_trusted_host.deny_completion_ci()""")
+        try:
+            with self.assertRaises(SandboxEffectUnknown):
+                self.run_effect()
+        finally:
+            self.db.execute("DROP TRIGGER nf_ci_deny_receipt "
+                            "ON nf_trusted_host.effect_receipt")
+            self.db.execute("DROP FUNCTION nf_trusted_host.deny_completion_ci()")
+        self.assertEqual(self.record()[0], "UNKNOWN")
+        self.assertEqual(self.file.read_bytes(), b"content")
+        self.assertEqual(len(self.witness.reservations), 1)
+        with self.assertRaises(SandboxEffectUnknown):
+            self.run_effect()
+        self.assertEqual(self.record()[0], "UNKNOWN")
+        self.assertEqual(self.file.read_bytes(), b"content")
 
     def test_old_database_snapshot_with_witness_highwater_blocks_replay(self):
         self.run_effect()
