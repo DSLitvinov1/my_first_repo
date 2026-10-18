@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -48,6 +49,8 @@ class WindowsReceiverWitnessIntegration(unittest.TestCase):
         return PinnedWindowsWitnessSandboxAdapter(**args)
 
     def pipe(self, remote):
+        self.errors=[]
+        self.responses=[]
         def run():
             try:
                 self.responses.append(serve_one_pilot(
@@ -57,6 +60,20 @@ class WindowsReceiverWitnessIntegration(unittest.TestCase):
             except Exception as e:self.errors.append(str(e))
         t=threading.Thread(target=run,daemon=True)
         t.start()
+        # On Windows WaitNamedPipe can fail with FILE_NOT_FOUND if the
+        # receiving thread has not called CreateNamedPipe yet.
+        import win32pipe
+        import pywintypes
+        for _ in range(80):
+            try:
+                win32pipe.WaitNamedPipe(self.c.pipe,100)
+                break
+            except pywintypes.error as exc:
+                if exc.winerror not in (2, 231):
+                    raise
+                time.sleep(0.025)
+        else:
+            self.fail("Named Pipe receiver did not reach listening state")
         return t
 
     def finish(self,t):
