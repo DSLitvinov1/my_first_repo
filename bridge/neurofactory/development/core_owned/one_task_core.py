@@ -7,6 +7,8 @@ this is NOT a distributed lease across separate Windows hosts.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -139,8 +141,17 @@ def _validate_spec(spec):
 class OneTaskCore:
     """Trusted single-host coordinator; NEVER give its DB, source repo or API to a model."""
 
-    def __init__(self, root, source_repo):
+    def __init__(self, root, source_repo, *, host_output_dir=None, host_receipt_public_raw=None):
         self.root = _safe_directory(root)
+        if (host_output_dir is None) != (host_receipt_public_raw is None):
+            raise CoreSafetyError("External HOST output directory and key must both be pinned")
+        self.host_output_dir = None
+        self.host_receipt_public_raw = None
+        if host_output_dir is not None:
+            if type(host_receipt_public_raw) is not bytes or len(host_receipt_public_raw) != 32:
+                raise CoreSafetyError("Invalid pinned HOST public key")
+            self.host_output_dir = _safe_directory(host_output_dir)
+            self.host_receipt_public_raw = host_receipt_public_raw
         self.repo = pathlib.Path(source_repo)
         if self.repo.is_symlink() or not self.repo.is_dir():
             raise CoreSafetyError("Trusted Git checkout missing")
@@ -205,7 +216,8 @@ class OneTaskCore:
         if _sha(_canonical(spec)) != digest or task != spec["task_id"]:
             raise CoreSafetyError("Checkpoint identity or task fingerprint corrupted")
         allowed_states = {"QUEUED", "CLAIMED", "APPLYING",
-                          "CHECKPOINTED_TEST", "NEEDS_MANUAL_REVIEW"}
+                          "CHECKPOINTED_TEST", "HOST_CHECKPOINTED_TEST",
+                          "NEEDS_MANUAL_REVIEW"}
         if state not in allowed_states or type(attempts) is not int or attempts not in (0, 1):
             raise CoreSafetyError("Unknown or corrupted durable queue state")
         if state == "QUEUED":
@@ -222,7 +234,9 @@ class OneTaskCore:
             parsed_receipt = json.loads(receipt) if receipt is not None else None
         except (TypeError, ValueError) as exc:
             raise CoreSafetyError("Unparseable offline checkpoint receipt") from exc
-        if result is not None or parsed_receipt is not None:
+        if state == "HOST_CHECKPOINTED_TEST":
+            self._validate_signed_host_receipt(spec, result, parsed_receipt)
+        elif result is not None or parsed_receipt is not None:
             expected_fields = {"schema", "task_id", "source_sha", "source_sha256",
                                "target", "result_sha256", "mode", "model_invoked",
                                "review_approved", "published", "api_cost_usd"}
@@ -244,8 +258,8 @@ class OneTaskCore:
                 raise CoreSafetyError("Receipt metadata or result digest corrupted")
             if state not in ("CHECKPOINTED_TEST", "NEEDS_MANUAL_REVIEW"):
                 raise CoreSafetyError("Receipt present before verified local checkpoint")
-        elif state == "CHECKPOINTED_TEST":
-            raise CoreSafetyError("Completed checkpoint has no offline receipt")
+        elif state in ("CHECKPOINTED_TEST", "HOST_CHECKPOINTED_TEST"):
+            raise CoreSafetyError("Completed checkpoint has no verified receipt")
         return {"spec": spec, "state": state, "owner": owner, "token": token,
                 "attempts": attempts, "lease_until": lease,
                 "result_sha256": result, "receipt": parsed_receipt}
@@ -399,6 +413,100 @@ class OneTaskCore:
                     "source_sha": row["spec"]["source_sha"],
                     "result_sha256": row["result_sha256"],
                     "receipt": row["receipt"]}
+
+
+    def _host_file_readback(self, result_sha256):
+        """Read only from operator-pinned protected directory, never model path."""
+        if self.host_output_dir is None:
+            raise CoreSafetyError("No externally pinned protected HOST directory")
+        _safe_directory(self.host_output_dir)
+        path = self.host_output_dir / "windows_pilot.txt"
+        if path.is_symlink() or not path.is_file():
+            raise CoreSafetyError("HOST result absent or linked")
+        entry = path.lstat()
+        if (not stat.S_ISREG(entry.st_mode) or entry.st_size < 1 or
+                entry.st_size > 2048 or
+                (os.name == "nt" and
+                 entry.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)):
+            raise CoreSafetyError("HOST result is not a bounded regular file")
+        with open(path,"rb") as stream:
+            data = stream.read(2049)
+        if len(data) > 2048 or not secrets.compare_digest(
+                _sha(data), result_sha256):
+            raise CoreSafetyError("HOST result readback differs from receipt")
+        return data
+
+    def _validate_signed_host_receipt(self, spec, result, receipt):
+        """Exact cryptographic HOST test proof; NEVER permit live execution."""
+        if (self.host_receipt_public_raw is None or
+                type(result) is not str or not SHA64.fullmatch(result) or
+                type(receipt) is not dict or
+                set(receipt) != {"schema","signed","signature_base64","host_key_sha256"} or
+                receipt["schema"] != "neurofactory.core.host_checkpoint_test.v1" or
+                receipt["host_key_sha256"] != _sha(self.host_receipt_public_raw)):
+            raise CoreSafetyError("Untrusted HOST receipt envelope")
+        body = receipt["signed"]
+        fields = {"schema","task_id","project_id","source_sha40",
+                  "target","operation_id","content_sha256","status"}
+        if (type(body) is not dict or set(body) != fields or
+                body["schema"] != "neurofactory.windows.host_signed_test_receipt.v1" or
+                body["task_id"] != spec["task_id"] or
+                body["project_id"] != spec["project_id"] or
+                body["source_sha40"] != spec["source_sha"] or
+                body["target"] != spec["target"] or
+                body["operation_id"] != "pilot-" + spec["task_id"] or
+                body["content_sha256"] != result or
+                body["status"] != "HOST_FILE_WRITTEN_TEST_ONLY"):
+            raise CoreSafetyError("Wrong signed HOST task/effect binding")
+        encoded = receipt["signature_base64"]
+        if type(encoded) is not str or len(encoded) != 88:
+            raise CoreSafetyError("Invalid HOST signature form")
+        try:
+            from cryptography.exceptions import InvalidSignature
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+            signature = base64.b64decode(encoded,validate=True)
+            if len(signature) != 64:
+                raise CoreSafetyError("Wrong HOST signature length")
+            Ed25519PublicKey.from_public_bytes(self.host_receipt_public_raw).verify(
+                signature, b"NF_WINDOWS_HOST_RECEIPT_TEST_V1\\x00" + _canonical(body))
+        except (InvalidSignature, ValueError, binascii.Error) as exc:
+            raise CoreSafetyError("HOST receipt not signed by pinned service") from exc
+        self._host_file_readback(result)
+
+    def finalize_signed_host_test(self, task_id, token, receipt, *, now=None):
+        """Durable final state only after matching signed HOST readback.
+
+        No owner authorization is created; it must exist independently.
+        Crash before this transaction leaves CLAIMED and recovery blocks replay.
+        """
+        now = int(time.time()) if now is None else now
+        if (type(now) is not int or now < 0 or
+                type(task_id) is not str or not TASK.fullmatch(task_id) or
+                type(token) is not str or len(token) != 64 or
+                type(receipt) is not dict):
+            raise CoreSafetyError("Invalid HOST completion request")
+        try:
+            raw = _canonical(receipt)
+        except (TypeError, ValueError) as exc:
+            raise CoreSafetyError("Malformed HOST proof") from exc
+        if len(raw) > 1500:
+            raise CoreSafetyError("Oversized HOST proof")
+        with self._connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            row = self._row(con)
+            if (row is None or row["state"] != "CLAIMED" or
+                    row["spec"]["task_id"] != task_id or
+                    row["lease_until"] <= now or
+                    not secrets.compare_digest(row["token"],_sha(token.encode()))):
+                raise CoreSafetyError("Unclaimed, expired, or repeated HOST completion")
+            signed = receipt.get("signed")
+            digest = signed.get("content_sha256") if type(signed) is dict else None
+            self._validate_signed_host_receipt(row["spec"],digest,receipt)
+            con.execute("UPDATE single_job SET state='HOST_CHECKPOINTED_TEST',"
+                        "result_sha256=?,receipt=? WHERE singleton=1 AND state='CLAIMED'",
+                        (digest,raw.decode("utf-8")))
+            con.execute("COMMIT")
+        return self.snapshot()
 
     def _verified_local_checkpoint(self):
         """Read local metadata and file under ONE SQLite metadata snapshot.
