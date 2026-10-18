@@ -228,10 +228,29 @@ class WorkspaceStore:
                 "sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
                 "created_utc":_utc()}
 
+def installed_component_status():
+    """Read-only status of bundled source; never asserts the service is active."""
+    from verify_installed_components import verify
+    directory=Path(__file__).resolve().parent.parent/"components"
+    if not directory.exists():
+        return {"state":"NOT_PACKAGED","files_verified":0,
+                "execution_enabled":False,"release_approved":False}
+    try:
+        verified=verify(directory)
+        return {"state":"SOURCE_HASHES_VERIFIED_NOT_ACTIVATED",
+                "files_verified":verified["component_files"],
+                "execution_enabled":False,"release_approved":False}
+    except (ValueError,OSError,TypeError,KeyError):
+        return {"state":"BUNDLED_SOURCES_FAILED_INTEGRITY",
+                "files_verified":0,"execution_enabled":False,
+                "release_approved":False}
+
+
     def diag(self):
         with self.connect() as db:
             good=db.execute("PRAGMA quick_check").fetchone()[0]=="ok"
         return {"database_connected":good,"projects":len(self.list_projects()),
+                "packaged_components":installed_component_status(),
                 "tasks":len(self.list_tasks()),"real_core_dispatch_enabled":False,
                 "model_inference_enabled":False,"external_publish_enabled":False,
                 "handoff":"PAUSED_BY_USER"}
