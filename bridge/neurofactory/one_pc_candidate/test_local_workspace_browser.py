@@ -43,15 +43,15 @@ def main():
                             page.get_by_role("heading",name="Рабочая база проектов").wait_for()
                             assert "Настоящее сохранение SQLite" in page.locator("#main-content").inner_text()
                             forms=page.locator("#main-content form")
-                            forms.nth(0).locator("input").wait_for(timeout=8000)
-                            assert forms.count()==1, "project creation form missing"
-                            form=forms.nth(0)
+                            form=forms.filter(has=page.get_by_role("button",name="Создать проект"))
+                            form.locator("input").wait_for(timeout=8000)
+                            assert form.count()==1, "project creation form missing"
                             form.locator("input").fill("Реальный проект "+name)
                             form.locator("textarea").fill("Изолированная тестовая задача")
                             form.get_by_role("button",name="Создать проект").click()
                             page.get_by_text("Реальный проект "+name,exact=True).first.wait_for()
                             page.get_by_role("heading",name="Новые задания").wait_for()
-                            task_form=page.locator("#main-content form").nth(1)
+                            task_form=page.locator("#main-content form").filter(has=page.get_by_role("button",name="Сохранить задание"))
                             task_form.locator("textarea").fill(
                                 "Подготовить безопасный текст без исполнения и публикации, "+name)
                             task_form.get_by_role("button",name="Сохранить задание").click()
