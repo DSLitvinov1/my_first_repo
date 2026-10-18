@@ -16,7 +16,7 @@
 Одна одноразовая тестовая Windows-2025 машина, один запуск:
 
 1. Настоящий `OneTaskCore` создаёт Git-исходник, фиксирует одно задание в SQLite и выделяет аренду обычному worker.
-2. Настоящий `PROVIDERS` `ollama_worker.execute_one` делает локальные HTTP GET /tags и POST /generate на **тестовый** Ollama-compatible HTTP-сервер `127.0.0.1:11434`; резервирует попытку в настоящем отдельном `DurableBudget` с fsync.
+2. Перед вызовом модели используется **настоящий** `core.provider_preview(task_id)`, который создаёт неизменяемый пакет `neurofactory.coordination.provider_bridge.v1` с корреляцией SHA-256 входной задачи, отдельными путями CORE и PROVIDERS, точной моделью и всеми флагами разрешений `false`. Фикстура проверяет эти ограничения; подписывается только проверенное соответствие пути HOST, а не непроверенная инструкция модели. Настоящий `PROVIDERS` `ollama_worker.execute_one` делает локальные HTTP GET /tags и POST /generate на **тестовый** Ollama-compatible HTTP-сервер `127.0.0.1:11434`; резервирует попытку в настоящем отдельном `DurableBudget` с fsync.
 3. **Ответ модели создан тестовой заглушкой, а не моделью Qwen.** Поэтому `offline_mock=false` внутри старого адаптера описывает видимый HTTP-transport, а НЕ достоверность происхождения модели. Сам интеграционный тест недвусмысленно сообщает `FAKE_MODEL_ONLY`.
 4. Контроллер подтверждает, что предложение соответствует строго заданному безвредному тексту и единственному разрешённому пути. До такого одобрения оно остаётся `PROPOSED_UNVERIFIED`.
 5. Эфемерный приватный Ed25519 ключ оператора CI подписывает **ровно проверенный байтовый пакет**; ключ не передаётся отдельной SCM-службе и worker.
@@ -28,6 +28,8 @@
 
 - Исполненная ревизия до усиленных отрицательных тестов: `f4144f327ddc90b01f0feae701088b23203393e4`, [Actions №39135457909](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39135457909), Windows job №117698949449 **SUCCESS**, лог проверен.
 - Усиленная ревизия: `368ff8be3e3aab8c5a9c3ea24a34ac87ccc685b9`, [Actions №39135675005](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39135675005), Windows job №117699572510 **SUCCESS**, лог проверен. Присутствуют маркеры `NF_ONEPC_PROVIDER_DUPLICATE_NO_SECOND_HTTP=DENIED`, `NF_ONEPC_PROVIDER_FOREIGN_TARGET_OUTPUT=DENIED`, `NF_ONEPC_RESTRICTED_SCM_RECEIVER_SIGNED_FILE=PASS_TEST_ONLY`, `NF_WINDOWS_SCM_CRASH_RESTART_NO_REPLAY=PASS_TEST_ONLY`, `NF_ONEPC_REAL_QWEN_WEIGHTS_EXECUTED=FALSE`, `NF_ONEPC_INDEPENDENT_REVIEW=FALSE`, `NF_ONEPC_PRODUCTION_QUEUE=OFF`.
+
+- **Последняя проверенная интеграционная ревизия исходника**: `132bf2d5467dc5c7c75b10e1730375e015ed1ed5`. [GitHub Actions push №39135970936](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39135970936), Windows job №117700434035 **SUCCESS**; [GitHub Actions PR №39135973939](https://github.com/DSLitvinov1/my_first_repo/actions/runs/39135973939), Windows job №117700442580 **SUCCESS**. Оба журнала просмотрены, есть `NF_ONEPC_REAL_CORE_PROVIDER_PREVIEW_BINDING=PASS_TEST_ONLY`, запреты повторной генерации и чужого пути, и подтверждение настоящего SCM приёма безвредного подписанного файла.
 
 ## Обязательные ограничения
 
