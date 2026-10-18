@@ -426,11 +426,15 @@ def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--data-dir",type=Path,required=True)
     p.add_argument("--ui-dir",type=Path,required=True)
+    p.add_argument("--components-dir",type=Path,default=None)
     p.add_argument("--port",type=int,default=8766)
     args=p.parse_args(argv)
     if not 1024<=args.port<=65535:
         raise WorkspaceDenied("Port denied")
     ui=_safe_dir(args.ui_dir)
+    if args.components_dir is not None:
+        from installed_integrity import verify
+        verify(args.components_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
