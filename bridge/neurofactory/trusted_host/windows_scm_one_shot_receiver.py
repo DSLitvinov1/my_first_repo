@@ -20,7 +20,8 @@ import win32serviceutil
 import servicemanager
 
 from windows_named_pipe_pilot_receiver import serve_one_pilot
-from windows_receiver_sid_acl_guard import own_sid,verify_receiver_isolation
+from windows_receiver_sid_acl_guard import (own_sid,verify_receiver_isolation,
+                                            verify_operator_public_config)
 
 SERVICE_NAME="NeurofactorySandboxReceiver"
 CONFIG_PATH=Path(os.environ.get("PROGRAMDATA","C:/ProgramData"))/"NeurofactorySandboxReceiver"/"service_config.json"
@@ -50,6 +51,8 @@ def _read_config():
     verify_receiver_isolation(body["protected_root"],
                               receiver_sid=body["receiver_sid"],
                               worker_sid=body["worker_sid"])
+    verify_operator_public_config(CONFIG_PATH,receiver_sid=body["receiver_sid"],
+                                  worker_sid=body["worker_sid"])
     # The service config is an operator-installed public pin, not a private
     # key. Its NTFS ACL is checked for worker-write by independent installer.
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
