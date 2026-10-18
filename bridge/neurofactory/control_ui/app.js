@@ -1,0 +1,185 @@
+"use strict";
+/* Read-only local browser UI. Data never leaves this document. */
+(() => {
+  const NAMES = {dashboard:"Главная панель",inbox:"Входящие задания",projects:"Проекты",queue:"Очередь заданий",workers:"Исполнители",errors:"Ошибки и блокировки",checkpoints:"Контрольные точки",reviews:"Независимая проверка",task:"Карточка задания",new:"Новый проект"};
+  const ICONS = {dashboard:"▦",inbox:"✉",projects:"▱",queue:"☷",workers:"♙",errors:"△",checkpoints:"◷",reviews:"◇",task:"▤",new:"＋"};
+  const LANES = ["CORE","PROVIDERS","COORDINATOR","REVIEW","OPS","SKILLS","UI","HANDOFF","GODMODE"];
+  const PHASE = {unknown:"Неизвестно",candidate:"Кандидат",implementation:"Разработка",testing:"Тестирование",waiting_dependency:"Ожидает зависимость",waiting_review:"Ожидает проверку",blocked:"Заблокировано",paused:"На паузе"};
+  const state = {page:"dashboard",mode:"demo",bundle:structuredClone(window.NF_DEMO),candidates:[],inbox:null,query:"",taskId:null};
+  const $ = id => document.getElementById(id);
+  const root = $("main-content");
+  function node(tag, cls, content) { const n=document.createElement(tag); if(cls)n.className=cls;if(content!==undefined)n.textContent=String(content);return n; }
+  function add(parent, child) { parent.appendChild(child); return child; }
+  function lbl(value) { return value===null||value===undefined||value==="" ? "UNKNOWN" : String(value); }
+  function compact(s,n=38) { s=lbl(s);return s.length>n?s.slice(0,n-1)+"…":s; }
+  function safeInt(value) { return Number.isSafeInteger(value)&&value>=0; }
+  function exact(obj, fields) {return obj!==null&&!Array.isArray(obj)&&typeof obj==="object"&&Object.keys(obj).length===fields.length&&fields.every(k=>Object.prototype.hasOwnProperty.call(obj,k));}
+  function deny() {throw Error("Неверная или небезопасная структура. Данные не загружены.");}
+  function strictParse(src) {
+    let p=0,depth=0;const whitespace=()=>{while(/[\x20\t\r\n]/.test(src[p]||"#"))p++;};
+    const string=()=>{if(src[p]!=='"')deny();const start=p++;while(p<src.length){if(src[p]==="\\"){p+=2;continue;}if(src[p++]==='"')return JSON.parse(src.slice(start,p));}deny();};
+    const value=()=>{if(++depth>45)deny();whitespace();const char=src[p];if(char==="{"){p++;whitespace();const keys=new Set();if(src[p]==="}"){p++;depth--;return;}while(true){whitespace();const key=string();if(keys.has(key))deny();keys.add(key);whitespace();if(src[p++]!==":")deny();value();whitespace();const c=src[p++];if(c==="}")break;if(c!==",")deny();} }
+      else if(char==="["){p++;whitespace();if(src[p]==="]")p++;else while(true){value();whitespace();const c=src[p++];if(c==="]")break;if(c!==",")deny();}}
+      else if(char==='"')string();else{const m=src.slice(p).match(/^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)/);if(!m)deny();p+=m[0].length;}depth--;};
+    value();whitespace();if(p!==src.length)deny();return JSON.parse(src);
+  }
+  function validate(data) {
+    if(!exact(data,["schema","kind","board","project_detail","coordinator_task_card","consistency","trust","actions_allowed"])||data.schema!==1||typeof data.schema!=="number"||data.kind!=="neurofactory_ops_ui_readonly_bundle")deny();
+    if(!exact(data.trust,["live_source_verified","independent_review","release_authorized","all_sources_untrusted"])||data.trust.live_source_verified!==false||data.trust.independent_review!==false||data.trust.release_authorized!==false||data.trust.all_sources_untrusted!==true)deny();
+    if(!exact(data.actions_allowed,["recover","retry","publish","merge","restart","send_chatgpt"])||Object.values(data.actions_allowed).some(v=>v!==false))deny();
+    const board=data.board;
+    if(!exact(board,["kind","source_verified","lanes"])||board.kind!=="read_only_coordination_board"||board.source_verified!==false||!Array.isArray(board.lanes)||board.lanes.length!==9)deny();
+    const seen=new Set();
+    for(const item of board.lanes) {
+      if(!exact(item,["lane","reported_phase","evidence_status","release_allowed","commit","issue_url","source"])||!LANES.includes(item.lane)||seen.has(item.lane)||!Object.hasOwn(PHASE,item.reported_phase)||item.evidence_status!=="not_verified"||item.release_allowed!==false)deny();seen.add(item.lane);
+      if(item.lane==="HANDOFF"&&!(["unknown","paused"].includes(item.reported_phase)))deny();
+      if(item.reported_phase==="unknown"){if(item.commit!==null||item.issue_url!==null||item.source!==null)deny();}
+      else {if(typeof item.commit!=="string"||!(/^[a-f0-9]{40}$/.test(item.commit))||typeof item.issue_url!=="string"||!/^https:\/\/github\.com\/DSLitvinov1\/(my_first_repo|lesson3\.1)\/(issues|pull)\/[1-9][0-9]{0,8}$/.test(item.issue_url)||!exact(item.source,["repository","branch"])||!/^DSLitvinov1\/(my_first_repo|lesson3\.1)$/.test(item.source.repository)||!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,180}$/.test(item.source.branch)||item.source.branch.includes("..")||item.source.branch.includes("//")||item.issue_url.split("/")[4]!==item.source.repository.split("/")[1])deny();}
+    }
+    const project=data.project_detail;
+    if(!exact(project,["project","source_verified","observed_at","bridge","workers","queue","checkpoint_counts","problems","stopped_tasks","possibly_stalled_tasks","last_reported_success","last_reported_failure","last_reported_run","last_run_sort"])||project.source_verified!==false||!Array.isArray(project.workers)||!Array.isArray(project.queue)||!Array.isArray(project.problems)||project.workers.length>50||project.queue.length>100||project.problems.length>300||!Array.isArray(project.stopped_tasks)||!Array.isArray(project.possibly_stalled_tasks)||project.last_run_sort!=="HIGHEST_REPORTED_RUN_ID_NOT_GITHUB_ATTESTED")deny();
+    if(project.project!==null&&(!exact(project.project,["id","repository","branch","head_sha"])||!/^[-a-zA-Z0-9_.:]{1,64}$/.test(project.project.id)||!/^[-a-zA-Z0-9_.]+\/[-a-zA-Z0-9_.]+$/.test(project.project.repository)||!/^[-a-zA-Z0-9._/]{1,180}$/.test(project.project.branch)||!/^[a-f0-9]{40}$/.test(project.project.head_sha)))deny();
+    if(!exact(project.bridge,["reported_state","display_state","seconds_since_reported_heartbeat"])||project.bridge.display_state!=="UNKNOWN"||!(["UNKNOWN","RUNNING","IDLE","FAILED","OFFLINE"].includes(project.bridge.reported_state))||(project.bridge.seconds_since_reported_heartbeat!==null&&!safeInt(project.bridge.seconds_since_reported_heartbeat)))deny();
+    if(project.project===null){
+      // OPS emits a completely empty diagnostics projection when the source is missing.
+      if(project.observed_at!==null||project.bridge.reported_state!=="UNKNOWN"||project.bridge.seconds_since_reported_heartbeat!==null||project.queue.length||project.workers.length||project.problems.length||Object.keys(project.checkpoint_counts).length||project.stopped_tasks.length||project.possibly_stalled_tasks.length||project.last_reported_success!==null||project.last_reported_failure!==null||project.last_reported_run!==null)deny();
+    }else if(typeof project.observed_at!=="string"||project.observed_at.length>35||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(project.observed_at)||!Number.isFinite(Date.parse(project.observed_at)))deny();
+    const workerIds=new Set();
+    for(const w of project.workers){
+      if(!exact(w,["id","role","reported_state","display_state","seconds_since_reported_heartbeat"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.id)||workerIds.has(w.id)||!/^[-A-Za-z0-9_.:]{1,64}$/.test(w.role)||!["RUNNING","IDLE","FAILED","OFFLINE","UNKNOWN"].includes(w.reported_state)||w.display_state!=="UNKNOWN"||(w.seconds_since_reported_heartbeat!==null&&!safeInt(w.seconds_since_reported_heartbeat)))deny();
+      workerIds.add(w.id);
+    }
+    const taskIds=new Set(),cpCounts={},blockedTasks=[],stalledTasks=[];
+    for(const t of project.queue){
+      if(!exact(t,["task_id","reported_state","display_state","possibly_stalled","checkpoint"])||!/^[-A-Za-z0-9_.:]{1,64}$/.test(t.task_id)||taskIds.has(t.task_id)||!["QUEUED","CLAIMED","RUNNING","BLOCKED","CHECKED","UNKNOWN"].includes(t.reported_state)||!(["UNKNOWN","BLOCKED"].includes(t.display_state))||typeof t.possibly_stalled!=="boolean"||!exact(t.checkpoint,["reported_state","externally_verified"])||t.checkpoint.externally_verified!==false||!( ["PARTIAL","VERIFIED","MISSING","UNKNOWN"].includes(t.checkpoint.reported_state)))deny();
+      taskIds.add(t.task_id);
+      const blocked=t.reported_state==="BLOCKED"||t.checkpoint.reported_state==="PARTIAL";
+      if(t.display_state!==(blocked?"BLOCKED":"UNKNOWN")||(t.possibly_stalled&&!(["RUNNING","CLAIMED"].includes(t.reported_state))))deny();
+      cpCounts[t.checkpoint.reported_state]=(cpCounts[t.checkpoint.reported_state]||0)+1;
+      if(blocked)blockedTasks.push(t.task_id);
+      if(t.possibly_stalled)stalledTasks.push(t.task_id);
+    }
+    if(!exact(project.checkpoint_counts,Object.keys(cpCounts))||Object.entries(cpCounts).some(([key,n])=>project.checkpoint_counts[key]!==n))deny();
+    if(project.stopped_tasks.length!==blockedTasks.length||project.stopped_tasks.some((id,i)=>id!==blockedTasks[i]))deny();
+    if(project.possibly_stalled_tasks.length!==stalledTasks.length||project.possibly_stalled_tasks.some((id,i)=>id!==stalledTasks[i]))deny();
+    if(!exact(data.coordinator_task_card,["source","task_id","reported_phase","display_phase","task_input_sha","input_sha_vs_ops_sha","source_verified","actions_allowed"])||data.coordinator_task_card.source!=="COORDINATOR_TASK_CARD_UNATTESTED"||data.coordinator_task_card.source_verified!==false||data.coordinator_task_card.actions_allowed!==false||data.coordinator_task_card.display_phase!=="UNKNOWN"||data.coordinator_task_card.input_sha_vs_ops_sha!=="NOT_COMPARABLE")deny();
+    if(data.coordinator_task_card.task_id===null){if(data.coordinator_task_card.task_input_sha!==null||data.coordinator_task_card.reported_phase!=="unknown")deny();}
+    else if(!/^NF-DEV-05-Q\d{3}$/.test(data.coordinator_task_card.task_id)||!(/^[a-f0-9]{40}$/.test(data.coordinator_task_card.task_input_sha))||!["candidate","waiting_dependency","waiting_review"].includes(data.coordinator_task_card.reported_phase))deny();
+    if(!exact(data.consistency,["board_project_match","status","does_not_attest_provenance"])||data.consistency.does_not_attest_provenance!==true||![null,true,false].includes(data.consistency.board_project_match)||!["SOURCE_MISSING","DECLARATIONS_DIFFER","MATCHES_UNVERIFIED_DECLARATIONS"].includes(data.consistency.status))deny();
+    const opsRow=board.lanes.find(row=>row.lane==="OPS");
+    const comparable=opsRow.commit!==null&&project.project!==null;
+    const match=comparable&&(opsRow.commit===project.project.head_sha&&opsRow.source.repository===project.project.repository&&opsRow.source.branch===project.project.branch);
+    if(data.consistency.board_project_match!==(comparable?match:null)||data.consistency.status!==(comparable?(match?"MATCHES_UNVERIFIED_DECLARATIONS":"DECLARATIONS_DIFFER"):"SOURCE_MISSING"))deny();
+    for(const k of ["last_reported_success","last_reported_failure","last_reported_run"]){const r=project[k];if(r===null)continue;
+      if(!exact(r,["id","state","conclusion","head_sha","matches_project_head","url","source_verified"])||!safeInt(r.id)||r.id===0||r.source_verified!==false||r.matches_project_head!==true||!project.project||r.head_sha!==project.project.head_sha||r.url!==`https://github.com/${project.project.repository}/actions/runs/${r.id}`||!["QUEUED","IN_PROGRESS","COMPLETED","UNKNOWN"].includes(r.state)||!["SUCCESS","FAILURE","CANCELLED","TIMED_OUT","UNKNOWN"].includes(r.conclusion)||(r.state!=="COMPLETED"&&r.conclusion!=="UNKNOWN"))deny();
+      if(k==="last_reported_success"&&(r.state!=="COMPLETED"||r.conclusion!=="SUCCESS"))deny();
+      if(k==="last_reported_failure"&&(r.state!=="COMPLETED"||!["FAILURE","CANCELLED","TIMED_OUT"].includes(r.conclusion)))deny();}
+    const last=project.last_reported_run,success=project.last_reported_success,failure=project.last_reported_failure;
+    if((success!==null||failure!==null)&&last===null)deny();
+    if(success!==null&&failure!==null&&success.id===failure.id)deny();
+    const sameRun=(a,b)=>a.id===b.id&&a.state===b.state&&a.conclusion===b.conclusion&&a.head_sha===b.head_sha&&a.url===b.url;
+    for(const entry of [success,failure])if(entry!==null&&(entry.id>last.id||(entry.id===last.id&&!sameRun(entry,last))))deny();
+    if(last!==null&&last.state==="COMPLETED"&&last.conclusion==="SUCCESS"&&(success===null||!sameRun(last,success)))deny();
+    if(last!==null&&last.state==="COMPLETED"&&["FAILURE","CANCELLED","TIMED_OUT"].includes(last.conclusion)&&(failure===null||!sameRun(last,failure)))deny();
+    for(const p of project.problems)if(!exact(p,["code","task_id","severity","source_verified"])&&!exact(p,["code","task_id","severity","source_verified","run_ids","distinct_reported_runs","recurrent_in_snapshot"]))deny();
+    for(const p of project.problems){
+      if(p.source_verified!==false||!["MODEL_TIMEOUT","RUNNER_LOST","GITHUB_UNAVAILABLE","CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE","REVIEW_REJECTED","MODEL_REPLY_MALFORMED","LEASE_CONFLICT","OTHER_FAILURE","POSSIBLY_STALLED"].includes(p.code)||(p.task_id!==null&&(!/^[-A-Za-z0-9_.:]{1,64}$/.test(p.task_id)))||p.severity!==(["CHECKPOINT_PARTIAL","RECEIPT_UNKNOWN","DUPLICATE_PUBLICATION","FOREIGN_SCOPE"].includes(p.code)?"BLOCKED":"WARNING"))deny();
+      if(Object.hasOwn(p,"run_ids")){
+        if(!Array.isArray(p.run_ids)||p.run_ids.length>100||p.run_ids.some((id,i)=>!safeInt(id)||id===0||(i>0&&id<=p.run_ids[i-1]))||p.distinct_reported_runs!==p.run_ids.length||p.recurrent_in_snapshot!==(p.run_ids.length>=2))deny();
+      }
+    }
+    return data;
+  }
+  function pill(text,kind="unknown") {return node("span","pill "+kind,text);}
+  function headline(title,sub){const h=add(root,node("div","headline")),box=add(h,node("div"));add(box,node("p","eyebrow","НЕЙРОЗАВОД / ЦЕНТР НАБЛЮДЕНИЯ"));add(box,node("h1",null,title));add(box,node("p","subhead",sub));add(h,node("span","capsule",state.mode==="demo"?"● ДЕМОНСТРАЦИЯ":"● ЛОКАЛЬНЫЙ ИМПОРТ"));}
+  function warning(){const b=add(root,node("div","warning-strip"));add(b,node("span","warning-icon","⚠"));const x=add(b,node("div"));add(x,node("strong",null,state.mode==="demo"?"Демонстрационные данные — не состояние реальных исполнителей":"Неподтверждённый локальный снимок — не живая телеметрия"));add(x,node("p",null,"Все сведения получены из локального файла или учебного образца. Проверка подлинности отсутствует. Запуск, восстановление и публикация недоступны."));}
+  function card(parent,title,small){const c=add(parent,node("section","card")),h=add(c,node("div","card-head"));add(h,node("h2",null,title));if(small)add(h,node("small",null,small));return c;}
+  function empty(parent,title,desc){const e=add(parent,node("div","empty"));add(e,node("div","empty-icon","◎"));add(e,node("strong",null,title));add(e,node("p",null,desc));return e;}
+  function metric(parent,label,value,foot,icon){const c=add(parent,node("div","metric"));add(c,node("span","symbol",icon));add(c,node("small",null,label));add(c,node("strong",null,value));add(c,node("div","muted-small",foot));}
+  function kv(parent,key,val,mono=false){const r=add(parent,node("div","split-kv"));add(r,node("span",null,key));add(r,node("strong",mono?"mono":"",lbl(val)));}
+  function navButton(text,to,selectedTask=null){const b=node("button","tiny-link",text);b.type="button";b.addEventListener("click",()=>{if(to==="task"&&selectedTask!==null)state.taskId=selectedTask;navigate(to);});return b;}
+  function goButton(text,to){const b=node("button","outline-btn",text);b.type="button";b.addEventListener("click",()=>navigate(to));return b;}
+  function laneKind(phase){return phase==="paused"||phase==="blocked"?"block":phase==="waiting_review"||phase==="waiting_dependency"?"wait":"unknown";}
+  function laneRows(parent,items){const rows=add(parent,node("div","rows"));for(const item of items){const r=add(rows,node("div","item-row")),left=add(r,node("div","left-meta"));add(left,node("div","icon-tile",item.lane.slice(0,1)));const meta=add(left,node("div"));add(meta,node("div","item-title",item.lane));add(meta,node("div","item-meta",item.commit?compact(item.commit,18):"Источник не указан"));add(r,pill(PHASE[item.reported_phase]||"Неизвестно",laneKind(item.reported_phase)));}}
+  function validateInbox(x){
+    if(!exact(x,["schema","kind","cards","has_more","next_before_rowid","live_execution_allowed","approval_from_snapshot_allowed","queue_write_allowed","handoff"])
+      ||x.schema!=="neurofactory.coordination.advisory_cards.v1"
+      ||x.kind!=="READ_ONLY_UNVERIFIED_UI_DATA"
+      ||!Array.isArray(x.cards)||x.cards.length>50
+      ||typeof x.has_more!=="boolean"
+      ||(x.next_before_rowid!==null&&(!Number.isSafeInteger(x.next_before_rowid)||x.next_before_rowid<1))
+      ||(x.has_more&&x.next_before_rowid===null)||(!x.has_more&&x.next_before_rowid!==null)
+      ||x.live_execution_allowed!==false||x.approval_from_snapshot_allowed!==false
+      ||x.queue_write_allowed!==false||x.handoff!=="PAUSED_BY_USER")deny();
+    const keys=["event_key","repository","project_id","kind","mode","profile",
+      "advisory_status","description","created_at","authentic_owner_approval_verified",
+      "execution_allowed","queue_write_allowed","publication_allowed","paid_api_allowed"];
+    const ids=new Set();
+    for(const c of x.cards){
+      if(!exact(c,keys)||typeof c.event_key!=="string"
+        ||!/^[A-Za-z0-9_.:\/-]{3,300}$/.test(c.event_key)||ids.has(c.event_key)
+        ||typeof c.repository!=="string"||!/^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/.test(c.repository)
+        ||(c.project_id!==null&&(typeof c.project_id!=="string"||!/^[a-z][a-z0-9-]{2,39}$/.test(c.project_id)))
+        ||!["TASK_CREATED","PROJECT_CREATED"].includes(c.kind)
+        ||!["MANUAL","SEMI_AUTOMATIC","AUTOMATIC"].includes(c.mode)
+        ||!["web","telegram","crm","analysis","general"].includes(c.profile)
+        ||!["PENDING_OWNER_APPROVAL","ADVISORY_READY_NO_EXECUTION"].includes(c.advisory_status)
+        ||typeof c.description!=="string"||new TextEncoder().encode(c.description).length>240
+        ||c.description.length===0||/[\x00-\x1F\x7F]/.test(c.description)
+        ||typeof c.created_at!=="string"||c.created_at.length<10||c.created_at.length>40
+        ||c.authentic_owner_approval_verified!==false
+        ||c.execution_allowed!==false||c.queue_write_allowed!==false
+        ||c.publication_allowed!==false||c.paid_api_allowed!==false)deny();
+      ids.add(c.event_key);
+    }
+    return x;
+  }
+  function inbox(){
+    headline("Входящие задания","Только импорт подписанной локальной проекции координатора. Без исполнения.");
+    warning();
+    const c=card(root,"Карточки новых проектов и задач","НЕТ РАЗРЕШЕНИЯ НА ИСПОЛНЕНИЕ");
+    if(!state.inbox)return empty(c,"Снимок не загружен","Используйте «Импорт заданий» для файла проверенного координатором локального отчёта.");
+    kv(c,"Карточек в импортированном снимке",state.inbox.cards.length);
+    kv(c,"Дополнительные страницы",state.inbox.has_more?"Есть — загрузите другой снимок вручную":"Нет");
+    if(!state.inbox.cards.length)return empty(c,"Нет карточек в снимке","Пустой локальный файл не подтверждает отсутствие реальных новых задач.");
+    for(const entry of state.inbox.cards){
+      const row=add(c,node("div","item-row")),meta=add(row,node("div","left-meta"));
+      add(meta,node("div","icon-tile","✉"));
+      const txt=add(meta,node("div"));
+      add(txt,node("div","item-title",entry.description));
+      add(txt,node("div","item-meta",entry.repository+" · "+(entry.project_id||"Проект не подключён")));
+      add(txt,node("div","item-meta","Источник не аттестован · "+entry.kind));
+      add(row,pill(entry.advisory_status==="PENDING_OWNER_APPROVAL"?"Ожидает разрешение":"Кандидат — без запуска",
+        entry.advisory_status==="PENDING_OWNER_APPROVAL"?"wait":"unknown"));
+    }
+  }
+  function overview(){headline("Центр наблюдения","Единая точка обзора процессов и задач — без управления исполнением.");warning();const b=state.bundle,p=b.project_detail,m=add(root,node("div","metric-grid"));metric(m,"Направления",b.board.lanes.length,"Заявленные, не аттестованы","▦");metric(m,"Задания в снимке",p.queue.length,"Не реальная очередь","☷");metric(m,"Проверенные источники","0","Независимая аттестация отсутствует","◇");metric(m,"Доступные команды","0","Режим только для чтения","⊘");const cols=add(root,node("div","columns"));const left=add(cols,node("div")),right=add(cols,node("div"));let c=card(left,"Направления разработки","9 областей");laneRows(c,b.board.lanes.slice(0,6));add(c,navButton("Все направления →","projects"));c=card(right,"Состояние источников","Только заявленные данные");kv(c,"Windows-мост",p.bridge.display_state);kv(c,"Подтверждение очереди","NOT_VERIFIED");kv(c,"Независимая приёмка","Ожидается");kv(c,"Последний подтверждённый запуск в снимке","UNKNOWN");let inf=add(c,node("div","narrow-info"));add(inf,node("span",null,"ⓘ"));add(inf,node("span",null,"Даже совпавшие SHA не доказывают происхождение снимка."));c=card(right,"Контроль безопасности");kv(c,"Запуск моделей","Запрещён");kv(c,"Повтор / восстановление","Запрещены");kv(c,"Публикация / слияние","Запрещены");add(c,pill("HANDOFF PAUSED","block"));}
+  function projects(){headline("Проекты и направления","Все статусы — сообщения из снимка, а не подтверждённая работа." );warning();const tb=add(root,node("div","toolbar"));const search=add(tb,node("input","search"));search.id="projects-search";search.type="search";search.placeholder="Поиск по направлениям";search.value=state.query;search.setAttribute("aria-label","Поиск проекта");add(tb,goButton("＋ Демо-проект","new"));const c=card(root,"Реестр направлений","Источники NOT_VERIFIED");const wrap=add(c,node("div","table-scroll"));const table=add(wrap,node("table")),thead=add(table,node("thead")),hr=add(thead,node("tr"));for(const s of ["Направление","Заявленная фаза","Доказательства","SHA"])add(hr,node("th",null,s));const tbody=add(table,node("tbody"));function fill(){tbody.replaceChildren();const items=state.bundle.board.lanes.filter(x=>x.lane.toLowerCase().includes(state.query.toLowerCase()));for(const x of items){const tr=add(tbody,node("tr"));add(tr,node("td","cell-main",x.lane));const t=add(tr,node("td"));add(t,pill(PHASE[x.reported_phase]||"UNKNOWN",laneKind(x.reported_phase)));add(tr,node("td",null,"NOT_VERIFIED"));add(tr,node("td","mono",compact(x.commit,14)));}for(const x of state.candidates.filter(x=>x.name.toLowerCase().includes(state.query.toLowerCase()))){const tr=add(tbody,node("tr"));add(tr,node("td","cell-main",x.name+" (локально)"));add(tr,node("td",null,"Кандидат"));add(tr,node("td",null,"Только память браузера"));add(tr,node("td",null,"—"));}if(!tbody.children.length){const tr=add(tbody,node("tr")),td=add(tr,node("td",null,"По запросу ничего не найдено"));td.colSpan=4;}}search.addEventListener("input",()=>{state.query=search.value;fill();});fill();}
+  function queue(){headline("Очередь заданий","Отображается только содержимое локального снимка без исполнения.");warning();const c=card(root,"Задания","НЕ РЕАЛЬНАЯ ОЧЕРЕДЬ");const q=state.bundle.project_detail.queue;if(!q.length)return empty(c,"Нет подтверждённых записей","Пустой массив не подтверждает, что реальная очередь свободна.");for(const t of q){const r=add(c,node("div","item-row")),left=add(r,node("div","left-meta"));add(left,node("div","icon-tile","☷"));const meta=add(left,node("div"));add(meta,node("div","item-title",t.task_id));add(meta,node("div","item-meta","Заявлено: "+t.reported_state+" · checkpoint "+t.checkpoint.reported_state));const right=add(r,node("div","surface-buttons"));add(right,pill(t.display_state==="BLOCKED"?"BLOCKED":"UNKNOWN",t.display_state==="BLOCKED"?"block":"unknown"));add(right,navButton("Карточка →","task",t.task_id));}}
+  function workers(){headline("Исполнители","Только наблюдение. Нет подтверждённых подключений или состояния процесса.");warning();const c=card(root,"Windows-мост и исполнители");kv(c,"Мост: заявлено",state.bundle.project_detail.bridge.reported_state);kv(c,"Мост: отображается","UNKNOWN");if(!state.bundle.project_detail.workers.length)empty(c,"Исполнители не подтверждены","В локальном примере нет исполнителей. Это не означает, что они сейчас отключены или простаивают.");else for(const w of state.bundle.project_detail.workers){const r=add(c,node("div","item-row"));add(r,node("strong",null,w.id+" · "+w.role));add(r,pill("UNKNOWN"));}}
+  function errors(){headline("Ошибки и блокировки","Классификация заявленных инцидентов; устранение вручную вне этой панели.");warning();const c=card(root,"События и проблемы");const probs=state.bundle.project_detail.problems;if(!probs.length)return empty(c,"Нет данных об ошибках","Отсутствие записей не подтверждает безошибочную работу.");for(const p of probs){const r=add(c,node("div","item-row")),l=add(r,node("div","left-meta"));add(l,node("div","icon-tile","!"));const m=add(l,node("div"));add(m,node("div","item-title",p.code));add(m,node("div","item-meta","Задание: "+lbl(p.task_id)+" · источник: NOT_VERIFIED"));add(r,pill(p.severity,p.severity==="BLOCKED"?"block":"wait"));}}
+  function checkpoints(){headline("Контрольные точки","Снимок содержит только заявленные контрольные точки, не подтверждённую историю.");warning();const c=card(root,"Контрольные точки по заданиям");const q=state.bundle.project_detail.queue;if(!q.length)return empty(c,"История недоступна","Журнал контрольных точек не подключён.");for(const t of q){const r=add(c,node("div","item-row")),l=add(r,node("div","left-meta"));add(l,node("div","icon-tile","◷"));const m=add(l,node("div"));add(m,node("div","item-title",t.task_id));add(m,node("div","item-meta","Заявлено: "+t.checkpoint.reported_state+" · внешняя проверка отсутствует"));add(r,pill("NOT_VERIFIED",t.checkpoint.reported_state==="PARTIAL"?"block":"unknown"));}const note=add(c,node("div","narrow-info"));add(note,node("span",null,"Отдельная хронология checkpoint не предоставлена. Даты и историю событий панель не придумывает."));}
+  function reviews(){headline("Независимая проверка","Вердикт появляется только при внешнем подтверждении, которого в этом источнике нет.");warning();const c=card(root,"Приёмка направлений");kv(c,"OPS / Issue №6","PENDING — внешний аудитор не назначен");kv(c,"Источник вывода","NOT_VERIFIED");kv(c,"Независимый APPROVE","Нет подтверждения");kv(c,"Разрешение на release","Нет");const box=add(c,node("div","narrow-info"));add(box,node("span",null,"Демонстрация не содержит подлинных REVIEW-подписей или независимых заключений. Не используйте эту страницу для принятия решения о запуске."));}
+  function task(){headline("Карточка конкретного задания","Раздельные сведения OPS и координатора, без ложного связывания SHA.");warning();const t=state.bundle.project_detail.queue.find(x=>x.task_id===state.taskId)||state.bundle.project_detail.queue[0],c=card(root,"Сведения об учебном задании");if(!t){empty(c,"Нет данных OPS о задании","Нет данных в очереди OPS; отдельная карточка координатора отображается независимо.");}else{kv(c,"ID задачи",t.task_id,true);kv(c,"Заявленное состояние",t.reported_state);kv(c,"Отображаемое состояние",t.display_state==="BLOCKED"?"BLOCKED":"UNKNOWN");kv(c,"Контрольная точка",t.checkpoint.reported_state);kv(c,"Внешняя проверка","NOT_VERIFIED");kv(c,"Возможно зависло",t.possibly_stalled?"В заявленном снимке: да":"Не заявлено");}const cardData=state.bundle.coordinator_task_card;const d=card(root,"Отдельная карточка координатора");kv(d,"ID карточки",cardData.task_id,true);kv(d,"Заявленная фаза",cardData.reported_phase);kv(d,"Отображаемая фаза",cardData.display_phase);kv(d,"SHA задачи",cardData.task_input_sha,true);kv(d,"Связь с OPS SHA",cardData.input_sha_vs_ops_sha);const box=add(d,node("div","narrow-info"));add(box,node("span",null,"SHA карточки задачи и SHA кода OPS — разные сущности. Сравнивать их как признак подтверждения нельзя."));}
+  function fresh(){headline("Создание демо-проекта","Локальная карточка-кандидат только в памяти вкладки. Никуда не отправляется.");warning();const c=card(root,"Новый учебный кандидат");c.classList.add("form-card");const note=add(c,node("div","callout","Этот экран ничего не создаёт в реальном «Нейрозаводе», GitHub или очереди. После перезагрузки вкладки локальные кандидаты исчезнут."));const form=add(c,node("form"));form.id="candidate-form";const f1=add(form,node("div","field"));const l1=add(f1,node("label",null,"Название проекта"));l1.htmlFor="candidate-name";const inp=add(f1,node("input"));inp.id="candidate-name";inp.name="name";inp.required=true;inp.maxLength=64;inp.placeholder="Например, Тестовый каталог";const f2=add(form,node("div","field")),l2=add(f2,node("label",null,"Описание"));l2.htmlFor="candidate-note";const ta=add(f2,node("textarea"));ta.id="candidate-note";ta.maxLength=300;ta.placeholder="Что планируется проверить в демонстрации";const b=add(form,node("button","primary-btn","Сохранить локального кандидата"));b.type="submit";form.addEventListener("submit",event=>{event.preventDefault();const name=inp.value.trim(),description=ta.value.trim();if(name.length<3){notify("Название: минимум 3 символа",true);return;}state.candidates.push({name,description});notify("Демо-кандидат сохранён только в памяти вкладки");state.query="";navigate("projects");});}
+  function notify(message,bad=false){const t=$("toast");t.textContent=message;t.className="toast"+(bad?" bad":"");t.hidden=false;clearTimeout(notify.timeout);notify.timeout=setTimeout(()=>{t.hidden=true;},4200);}
+  function navigate(name){if(!Object.hasOwn(NAMES,name))return;state.page=name;window.location.hash=name;render();window.scrollTo({top:0,behavior:"instant"});}
+  function render(){root.replaceChildren();$("crumb").textContent=NAMES[state.page];$("navigation").querySelectorAll("button").forEach(b=>{const active=b.dataset.route===state.page;b.classList.toggle("active",active);if(active)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});const fn={dashboard:overview,inbox,projects,queue,workers,errors,checkpoints,reviews,task,new:fresh}[state.page];fn();}
+  function setup(){for(const [route,name] of Object.entries(NAMES)){const b=add($("navigation"),node("button","nav-link"));b.type="button";b.dataset.route=route;add(b,node("span","glyph",ICONS[route]));add(b,node("span",null,name));b.addEventListener("click",()=>navigate(route));}
+    $("import-btn").addEventListener("click",()=> $("file-input").click());
+    $("import-inbox-btn").addEventListener("click",()=> $("inbox-input").click());
+    $("inbox-input").addEventListener("change",async event=>{
+      const f=event.target.files?.[0];event.target.value="";if(!f)return;
+      if(f.size>128*1024){notify("Снимок заданий больше 128 КБ отклонён",true);return;}
+      try {
+        const parsed=validateInbox(strictParse(await f.text()));
+        state.inbox=parsed;navigate("inbox");
+        notify("Карточки импортированы только для чтения; запуск запрещён.");
+      } catch(error) {notify("Карточки отклонены: "+(error.message||"неверный JSON"),true);}
+    });
+    $("reset-btn").addEventListener("click",()=>{state.bundle=structuredClone(window.NF_DEMO);state.mode="demo";state.candidates=[];state.inbox=null;state.query="";navigate("dashboard");notify("Демонстрация восстановлена. Сохранённых данных нет.");});
+    $("file-input").addEventListener("change",async event=>{const f=event.target.files?.[0];event.target.value="";if(!f)return;if(f.size>512*1024){notify("Снимок больше 512 КБ отклонён",true);return;}try{const raw=await f.text();const parsed=validate(strictParse(raw));state.bundle=parsed;state.mode="import";state.candidates=[];state.query="";navigate("dashboard");notify("Локальный снимок принят. Источник остаётся NOT_VERIFIED.");}catch(error){notify("Файл отклонён: "+(error.message||"некорректный JSON"),true);}});
+    window.addEventListener("hashchange",()=>{const name=location.hash.slice(1);if(Object.hasOwn(NAMES,name)&&state.page!==name){state.page=name;render();}});
+    state.page=Object.hasOwn(NAMES,location.hash.slice(1))?location.hash.slice(1):"dashboard";try{validate(state.bundle);}catch(e){root.textContent="Ошибка встроенного снимка: интерфейс заблокирован";return;}render();}
+  setup();
+})();
