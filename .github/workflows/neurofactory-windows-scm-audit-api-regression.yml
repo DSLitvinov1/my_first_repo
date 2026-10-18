@@ -1,0 +1,31 @@
+name: Neurofactory HOST read-only Windows SCM API regression
+on:
+  push:
+    branches: [neurofactory-windows-scm-audit-api-fix-20261018]
+    paths:
+      - bridge/neurofactory/trusted_host/windows_service_sid_acl_audit.py
+      - bridge/neurofactory/trusted_host/test_windows_service_sid_acl_audit.py
+      - .github/workflows/neurofactory-windows-scm-audit-api-regression.yml
+  pull_request:
+    branches: [neurofactory-windows-acl-untrusted-writer-hardening-20261018]
+permissions:
+  contents: read
+jobs:
+  no-live-scm-audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Windows python bindings, temporary only
+        if: runner.os == 'Windows'
+        run: python -m pip install --disable-pip-version-check --no-input pywin32==311
+      - name: Run fail-closed ACL policy and SCM API regression
+        run: python -B -m unittest discover -s bridge/neurofactory/trusted_host -p test_windows_service_sid_acl_audit.py -v
+      - name: No source tree mutation
+        run: git diff --exit-code

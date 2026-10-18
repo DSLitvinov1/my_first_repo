@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from windows_service_sid_acl_audit import (
     inspect_windows_two_sid_boundary, IsolationDenied, _verify_acl_entries,
@@ -48,6 +49,23 @@ class WindowsServiceBoundaryTests(unittest.TestCase):
                 with self.assertRaises(IsolationDenied):
                     inspect_windows_two_sid_boundary(
                         "NeurofactorySandboxReceiver", root, WORKER)
+
+    def test_windows_scm_manager_access_uses_real_pywin32_constant(self):
+        # Live Windows API shape, but no service install. A mocked refusal at
+        # OpenSCManager proves that the proper Windows API is reached instead
+        # of masking an AttributeError with a blanket IsolationDenied.
+        if os.name != "nt":
+            self.skipTest("Win32 API regression only on hosted Windows")
+        import win32service
+        with tempfile.TemporaryDirectory() as root:
+            with patch.object(win32service, "OpenSCManager",
+                              side_effect=RuntimeError("intentional read-only refusal")) as opener:
+                with self.assertRaises(IsolationDenied):
+                    inspect_windows_two_sid_boundary(
+                        "NeurofactorySandboxReceiver", root,
+                        "S-1-5-21-123-456-789-1001")
+            opener.assert_called_once_with(
+                None, None, win32service.SC_MANAGER_CONNECT)
 
     def test_utility_does_not_mutate_scm_ntfs_or_launch_services(self):
         s = Path(__file__).with_name("windows_service_sid_acl_audit.py").read_text()
