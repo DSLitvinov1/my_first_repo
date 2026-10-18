@@ -4,7 +4,6 @@
 // --service implements real Windows ServiceBase lifecycle but currently
 // rejects all production effects. Never run this as an administrator/worker.
 using System;
-using System.Buffers.Binary;
 using System.IO;
 using System.IO.Pipes;
 using System.Security.AccessControl;
@@ -165,28 +164,24 @@ internal static class Program
         pipe.WaitForPipeDrain();
     }
 
-    private static JsonDocument ReadFramed(Stream stream)
+    // Windows Python multiprocessing AF_PIPE is message-oriented: send_bytes
+    // sends ONE complete message, not a 4-byte prefix framing protocol.
+    private static JsonDocument ReadFramed(NamedPipeServerStream pipe)
     {
-        Span<byte> header = stackalloc byte[4];
-        stream.ReadExactly(header);
-        int len = BinaryPrimitives.ReadInt32BigEndian(header);
-        if (len < 1 || len > MaxJson)
-            throw new InvalidDataException("Oversize or negative request");
-        byte[] data = new byte[len];
-        stream.ReadExactly(data);
-        return JsonDocument.Parse(data,
+        byte[] data = new byte[MaxJson + 1];
+        int count = pipe.Read(data, 0, data.Length);
+        if (count < 1 || count > MaxJson || !pipe.IsMessageComplete)
+            throw new InvalidDataException("Missing, split or oversized pipe message");
+        return JsonDocument.Parse(new ReadOnlyMemory<byte>(data, 0, count),
             new JsonDocumentOptions { MaxDepth = 5, AllowTrailingCommas = false });
     }
 
-    private static void SendFramed(Stream stream, object message)
+    private static void SendFramed(NamedPipeServerStream pipe, object message)
     {
         byte[] data = JsonSerializer.SerializeToUtf8Bytes(message);
         if (data.Length > 4096) throw new InvalidDataException();
-        byte[] header = new byte[4];
-        BinaryPrimitives.WriteInt32BigEndian(header, data.Length);
-        stream.Write(header);
-        stream.Write(data);
-        stream.Flush();
+        pipe.Write(data, 0, data.Length);
+        pipe.Flush();
     }
 
     private static object Denied() => new {
