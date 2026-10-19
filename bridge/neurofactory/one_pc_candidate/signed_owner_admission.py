@@ -61,6 +61,7 @@ def _one_draft(store, draft_id):
             (draft_id,),
         ).fetchone()
     if (row is None or len(row) != 7 or row[1] != row[6] or
+            type(row[1]) is not str or not _DRAFT_ID.fullmatch(row[1]) or
             row[4] != "DRAFT_PENDING_OWNER_AUTH" or
             type(row[2]) is not str or not 25 <= len(row[2]) <= 320 or
             any(ord(c) < 32 for c in row[2]) or
