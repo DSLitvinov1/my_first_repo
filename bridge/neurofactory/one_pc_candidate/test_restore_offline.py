@@ -98,6 +98,7 @@ class OfflineRestoreTests(unittest.TestCase):
         with closing(sqlite3.connect(tampered)) as con:
             con.execute("UPDATE task_proposals SET proposal_text='forged' WHERE task_id=?",
                         (self.task["id"],))
+            con.commit()
         with self.assertRaises(RestoreDenied):
             restore(tampered,self.root/"tampered-proposal-destination")
         self.assertFalse((self.root/"tampered-proposal-destination").exists())
