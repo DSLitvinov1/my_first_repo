@@ -20,6 +20,12 @@ import sqlite3
 import stat
 from urllib.parse import urlsplit
 import uuid
+import sys
+
+# Python's official Windows embeddable runtime uses an isolated ._pth file;
+# its application directory is not automatically part of the module search path.
+# Admit only the directory containing this launched app, not cwd or model input.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
 
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
