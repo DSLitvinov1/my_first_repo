@@ -1,11 +1,14 @@
 name: Neurofactory one-PC localhost real projects/tasks SQLite backup and UI
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-local-qwen-probe-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019]
     paths:
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_local_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_local_qwen_probe.py
+      - bridge/neurofactory/one_pc_candidate/restore_offline.py
+      - bridge/neurofactory/one_pc_candidate/test_restore_offline.py
+      - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/control_ui/**
       - .github/workflows/neurofactory-onepc-local-workspace.yml
 permissions:
@@ -29,6 +32,8 @@ jobs:
         run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_local_workspace.py -v
       - name: Test explicit fake HTTP Qwen probe with no weight attestation, writes or queue
         run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_local_qwen_probe.py -v
+      - name: Test verified offline backup restore, corrupted/future schema and no overwrite
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_restore_offline.py -v
       - name: Validate Python syntax of integration workspace and UI assets
         run: python -B -m py_compile bridge/neurofactory/one_pc_candidate/local_workspace.py
       - name: Source remains unmodified

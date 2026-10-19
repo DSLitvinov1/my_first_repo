@@ -1,0 +1,91 @@
+name: Neurofactory one-PC real Qwen 0.6B CPU inference on disposable Windows only
+on:
+  push:
+    branches: [neurofactory-onepc-complete-package-20261019]
+    paths:
+      - .github/workflows/neurofactory-onepc-real-qwen-windows.yml
+permissions:
+  contents: read
+jobs:
+  genuine-qwen-test-only:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Refuse any owner machine or low-RAM test
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') {throw 'DISPOSABLE_WINDOWS_ONLY'}
+          $ram=Get-CimInstance Win32_OperatingSystem
+          $free=[math]::Floor([double]$ram.FreePhysicalMemory/1024)
+          Write-Output ('NF_REAL_QWEN_HOSTED_RAM_FREE_MB='+$free)
+          if ($free -lt 3000) {throw 'QWEN_REAL_INFERENCE_RESOURCE_GUARD'}
+          $disk=Get-PSDrive -Name $env:SystemDrive.Substring(0,1)
+          if ($disk.Free -lt 4000000000) {throw 'QWEN_REAL_INFERENCE_DISK_GUARD'}
+          Write-Output 'NF_REAL_QWEN_ONLY_HOSTED_TEST=YES'
+      - name: Fetch pinned official CPU llama.cpp binary (no Ollama, no owner PC install)
+        run: |
+          $zip=Join-Path $env:RUNNER_TEMP 'llama-cpu.zip'
+          Invoke-WebRequest -Uri 'https://github.com/ggml-org/llama.cpp/releases/download/b11721/llama-b11721-bin-win-cpu-x64.zip' -OutFile $zip -MaximumRedirection 3 -TimeoutSec 180
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne '19f5a91cfbd906fadfb36975a65a0c165c7db1a533d5db129dfa0a533dfdeaa1') {throw 'OFFICIAL_LLAMA_CPU_ASSET_CHECKSUM_MISMATCH'}
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-disposable-llama'
+          Expand-Archive -LiteralPath $zip -DestinationPath $folder
+          $exe=Get-ChildItem $folder -Filter llama-server.exe -File -Recurse | Select-Object -First 1
+          if (!$exe) {throw 'OFFICIAL_LLAMA_SERVER_MISSING'}
+          Write-Output 'NF_REAL_QWEN_PINNED_CPU_ENGINE=VERIFIED'
+      - name: Download genuine official Qwen 0.6B GGUF weights only to hosted temp disk
+        run: |
+          $model=Join-Path $env:RUNNER_TEMP 'Qwen3-0.6B-Q8_0.gguf'
+          & curl.exe --fail --silent --show-error --location --retry 2 --connect-timeout 15 --max-time 480 --output "$model" 'https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q8_0.gguf'
+          if ($LASTEXITCODE -ne 0) {throw 'OFFICIAL_QWEN_DOWNLOAD_FAILED'}
+          $size=(Get-Item $model).Length
+          if ($size -lt 500000000 -or $size -gt 900000000) {throw 'OFFICIAL_QWEN_MODEL_SIZE_INVALID'}
+          $stream=[System.IO.File]::OpenRead($model)
+          try { $buf=New-Object byte[] 4; $count=$stream.Read($buf,0,4) } finally { $stream.Dispose() }
+          if ($count -ne 4 -or [System.Text.Encoding]::ASCII.GetString($buf) -ne 'GGUF') {throw 'OFFICIAL_QWEN_MODEL_HEADER_INVALID'}
+          Write-Output ('NF_REAL_QWEN_OFFICIAL_GGUF_SHA256='+(Get-FileHash $model -Algorithm SHA256).Hash.ToLowerInvariant())
+          Write-Output ('NF_REAL_QWEN_OFFICIAL_GGUF_BYTES='+$size)
+      - name: Real CPU inference against official downloaded weights (not a fake server)
+        run: |
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-disposable-llama'
+          $exe=Get-ChildItem $folder -Filter llama-server.exe -File -Recurse | Select-Object -First 1
+          $model=Join-Path $env:RUNNER_TEMP 'Qwen3-0.6B-Q8_0.gguf'
+          $stdout=Join-Path $env:RUNNER_TEMP 'nf-qwen-stdout.log'
+          $stderr=Join-Path $env:RUNNER_TEMP 'nf-qwen-stderr.log'
+          $proc=Start-Process -PassThru -WindowStyle Hidden -FilePath $exe.FullName -ArgumentList @('--model',"$model",'--host','127.0.0.1','--port','18780','--ctx-size','1024','--threads','4','--n-gpu-layers','0') -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          try {
+            $ready=$false
+            for ($i=0; $i -lt 100; $i++) {
+              Start-Sleep -Milliseconds 700
+              if ($proc.HasExited) {break}
+              try { $health=Invoke-RestMethod 'http://127.0.0.1:18780/health' -TimeoutSec 2; if ($health.status -eq 'ok') {$ready=$true;break} } catch {}
+            }
+            if (!$ready) {
+              if (Test-Path $stderr) {Get-Content $stderr | Select-Object -Last 14}
+              throw 'GENUINE_QWEN_SERVER_NOT_READY'
+            }
+            $prompt='/no_think Compute two plus two. Respond with the single digit only.'
+            $payload=@{model='local';messages=@(@{role='user';content=$prompt});temperature=0;max_tokens=128;stream=$false}|ConvertTo-Json -Depth 5 -Compress
+            $result=Invoke-RestMethod 'http://127.0.0.1:18780/v1/chat/completions' -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 100
+            $answer=[string]$result.choices[0].message.content
+            if ([string]::IsNullOrWhiteSpace($answer) -or $answer.Length -gt 4000) {throw 'QWEN_REAL_GENERATION_EMPTY_OR_OVERSIZED'}
+            if ($answer -notmatch '4') {throw 'QWEN_REAL_GENERATION_WRONG_SIMPLE_TEST'}
+            $digest=[System.Security.Cryptography.SHA256]::Create()
+            try {
+              $bytes=[System.Text.Encoding]::UTF8.GetBytes($answer)
+              $replySha=[BitConverter]::ToString($digest.ComputeHash($bytes)).Replace('-','').ToLowerInvariant()
+            } finally {$digest.Dispose()}
+            Write-Output ('NF_REAL_QWEN_RESPONSE_SHA256='+$replySha)
+            Write-Output 'NF_REAL_QWEN_0_6B_GGUF_CPU_GENERATION=PASS_TEST_ONLY'
+            Write-Output 'NF_REAL_QWEN_MODEL_WEIGHT_INDEPENDENT_ATTESTATION=FALSE'
+            Write-Output 'NF_REAL_QWEN_OLLAMA_PROVIDER_INTEGRATION=NOT_TESTED'
+            Write-Output 'NF_REAL_QWEN_CORE_HOST_UI_DISPATCH=OFF'
+          } finally {
+            if (!$proc.HasExited) {Stop-Process -Id $proc.Id -Force}
+          }
+      - name: Confirm GitHub checkout unmodified
+        run: git diff --exit-code

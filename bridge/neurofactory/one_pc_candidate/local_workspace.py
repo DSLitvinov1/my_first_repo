@@ -303,7 +303,8 @@ def probe_local_qwen(model_preference, *, port=11434):
     if selected not in installed:
         raise WorkspaceDenied("Requested Qwen not installed")
     body={"model":selected,"prompt":QWEN_PROBE_PROMPT,"stream":False,
-          "options":{"num_predict":48,"temperature":0},"keep_alive":"0"}
+          "think":False,
+          "options":{"num_predict":128,"temperature":0},"keep_alive":"0"}
     result=_ollama_json("POST","/api/generate",payload=body,
                         port=port,timeout=35,cap=16384)
     response=result.get("response")
@@ -426,11 +427,23 @@ def main(argv=None):
     p=argparse.ArgumentParser()
     p.add_argument("--data-dir",type=Path,required=True)
     p.add_argument("--ui-dir",type=Path,required=True)
+    p.add_argument("--components-dir",type=Path,default=None)
     p.add_argument("--port",type=int,default=8766)
     args=p.parse_args(argv)
     if not 1024<=args.port<=65535:
         raise WorkspaceDenied("Port denied")
     ui=_safe_dir(args.ui_dir)
+    if args.components_dir is not None:
+        import importlib.util
+        module_path=Path(__file__).with_name("installed_integrity.py")
+        if module_path.is_symlink() or not module_path.is_file():
+            raise WorkspaceDenied("Installed integrity verifier missing")
+        spec=importlib.util.spec_from_file_location("_neurofactory_installed_integrity",module_path)
+        if spec is None or spec.loader is None:
+            raise WorkspaceDenied("Installed integrity verifier cannot load")
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.verify(args.components_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),

@@ -27,7 +27,10 @@ UninstallDisplayIcon={app}\runtime\python.exe
 [Files]
 Source: "{#SourceRoot}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#SourceRoot}\app\local_workspace.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\app\installed_integrity.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\app\restore_offline.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\ui\*"; DestDir: "{app}\ui"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#SourceRoot}\components\*"; DestDir: "{app}\components"; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#SourceRoot}\start_neurofactory.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 
