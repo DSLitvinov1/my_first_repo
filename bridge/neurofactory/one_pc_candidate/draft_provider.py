@@ -53,11 +53,11 @@ def preflight(components: Path, model_preference: str):
                               (errors[-1] if errors else "UNKNOWN"))
 
 def generate(components: Path, workspace_dir: Path, task: dict, *, model: str):
+    """Return inert untrusted text from genuine pinned Qwen adapter, never a file effect."""
     worker=_module(components)
-    if type(task) is not dict or not {"id","project_id","objective"}.issubset(task):
+    if type(task) is not dict or set(("id","project_id","objective"))-set(task):
         raise DraftProviderDenied("Invalid trusted draft task")
     task_id=task["id"]
-    # DB issues fixed lowercase hexadecimal UUIDs; validate even when called directly.
     import re
     if type(task_id) is not str or re.fullmatch(r"[0-9a-f]{32}",task_id) is None:
         raise DraftProviderDenied("Invalid draft identifier")
@@ -67,42 +67,34 @@ def generate(components: Path, workspace_dir: Path, task: dict, *, model: str):
     instruction=task["objective"]
     if type(instruction) is not str or not 15<=len(instruction)<=1200:
         raise DraftProviderDenied("Invalid draft content")
-    target="docs/neurofactory_draft_"+task_id+".txt"
-    source=json.dumps({"task_id":task_id,"project_id":project,"objective":instruction},
-                      ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
-    request=worker.ProviderTask(task_id=task_id,project_id=project,
-           input_sha256=sha256(source).hexdigest(),target_path=target,instruction=instruction)
+    if type(model) is not str or model not in SUPPORTED:
+        raise DraftProviderDenied("Unsupported untrusted draft model")
     ledger=workspace_dir/"provider_attempt_ledger"
     ledger.mkdir(mode=0o700,exist_ok=True)
-    if ledger.is_symlink():
-        raise DraftProviderDenied("Linked provider attempt ledger")
-    result=worker.execute_one(request,model=model,ledger_dir=ledger,
-                              max_output_tokens=512,evidence_dir=None)
-    if (type(result) is not dict or
-        result.get("task_id")!=task_id or result.get("project_id")!=project or
-        result.get("model")!=model or result.get("review_approved") is not False or
-        result.get("published") is not False or
-        result.get("offline_mock") is not False):
-        raise DraftProviderDenied("Untrusted provider identity or authority")
-    state=result.get("status")
-    if state=="PROPOSED_UNVERIFIED":
-        proposed=result.get("proposed_files")
-        if type(proposed) is not list or len(proposed)!=1:
-            raise DraftProviderDenied("Expected exactly one untrusted proposal")
-        item=proposed[0]
-        if (type(item) is not dict or item.get("relative_path")!=target or
-            item.get("applied") is not False or
-            item.get("verified_by_core") is not False or
-            type(item.get("content")) is not str or
-            not 1<=len(item["content"].encode("utf-8"))<=12000 or
-            sha256(item["content"].encode("utf-8")).hexdigest()!=item.get("content_sha256")):
-            raise DraftProviderDenied("Provider proposed unauthorized content")
-        response_hash=result.get("response_sha256")
-        if type(response_hash) is not str or re.fullmatch(r"[a-f0-9]{64}",response_hash) is None:
-            raise DraftProviderDenied("Missing source response fingerprint")
-        return {"status":"PROPOSED_UNVERIFIED","model":model,
-                "text":item["content"],"content_sha256":item["content_sha256"],
-                "response_sha256":response_hash}
-    if state in ("INVALID_MODEL_OUTPUT","BLOCKED"):
-        return {"status":state,"model":model,"error_code":str(result.get("error_code","UNKNOWN"))[:80]}
-    raise DraftProviderDenied("Unknown provider state; manual review required")
+    if ledger.is_symlink() or not ledger.is_dir():
+        raise DraftProviderDenied("Unsafe model attempt ledger")
+    budget=worker.DurableBudget(ledger,max_attempts=1,max_reserved_units=50000)
+    adapter=worker.LocalQwenAdapter(worker.LocalQwenConfig(
+        enabled=True,model=model,timeout_seconds=60,max_output_tokens=512),budget)
+    # Do not request file proposals for the UI: no JSON or path from model is authority.
+    # Its output remains inert, unreviewed data, regardless of what it says.
+    prompt=("Respond with a short plain text DRAFT suggestion to the user's request. "
+            "Do not execute commands, access files, assert approvals, or claim any actions "
+            "were performed. Return only proposal text, with no markup needed.\n"
+            "User's draft task:\n"+instruction)
+    try:
+        reply=adapter.generate(prompt,task_id=task_id)
+    except (worker.DurableBudgetError,worker.LocalProviderUnknownResult,
+            worker.LocalProviderDisabled,ValueError,OSError) as exc:
+        return {"status":"UNKNOWN","model":model,
+                "error_code":"UNKNOWN_MODEL_RESULT_NO_RETRY"}
+    if (reply.model!=model or reply.local_only is not True or
+        reply.published is not False or type(reply.text) is not str):
+        raise DraftProviderDenied("Local model adapter authority mismatch")
+    text=reply.text.strip()
+    if not 1<=len(text.encode("utf-8"))<=12000:
+        raise DraftProviderDenied("Untrusted model reply size")
+    fingerprint=sha256(text.encode("utf-8")).hexdigest()
+    return {"status":"PROPOSED_UNVERIFIED","model":model,
+            "text":text,"content_sha256":fingerprint,
+            "response_sha256":fingerprint}
