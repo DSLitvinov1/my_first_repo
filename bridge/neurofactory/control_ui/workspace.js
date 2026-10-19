@@ -84,9 +84,9 @@
     append(warning,el("strong","Безопасный локальный режим: задания сохраняются, но НЕ отправляются в исполнительную очередь."));
     main.append(warning);
     try{
-      const [projects,tasks,history,health,models,checks]=await Promise.all([
+      const [projects,tasks,history,health,models,checks,proposals]=await Promise.all([
         request("/api/projects"),request("/api/tasks"),
-        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks")
+        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),request("/api/task-proposals")
       ]);
       const summary=box("Реальное состояние","Данные непосредственно из локального сервера");
       const metrics=el("div",undefined,"metric-grid");
@@ -134,8 +134,38 @@
       });
       projectBox.append(form);
       const taskBox=box("Новые задания","Сохраняются как черновики без запуска");
-      for(const t of tasks.tasks)row(taskBox,t.objective.slice(0,85),
-        "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения");
+      for(const t of tasks.tasks){
+        row(taskBox,t.objective.slice(0,85),
+          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения · Не в CORE");
+        const proposed=proposals.proposals.find(p=>p.task_id===t.id);
+        if(proposed){
+          row(taskBox,"ИИ: "+proposed.status,
+              proposed.error_code||"Ответ сохранён отдельно от CORE; запуск HOST не разрешён");
+          if(proposed.text){
+            const draft=el("div",proposed.text,"item-meta");
+            draft.style.whiteSpace="pre-wrap";
+            taskBox.append(draft);
+          }
+        }else if(health.manual_draft_proposal_available){
+          const run=el("button","Получить предложение Qwen (без запуска CORE/HOST)","outline-btn");
+          run.type="button";
+          run.disabled=!models.installed_qwen.length;
+          run.addEventListener("click",async()=>{
+            run.disabled=true;
+            try{
+              const proposal=await request("/api/draft-propose",{task_id:t.id});
+              status(proposal.status==="PROPOSED_UNVERIFIED"
+                ?"Непроверенное предложение Qwen сохранено; изменений файлов не выполнено."
+                :"Предложение не получено ("+proposal.status+"); попытка зафиксирована без права автоматического повтора.",
+                proposal.status!=="PROPOSED_UNVERIFIED");
+              await render();
+            }catch(e){
+              status("Не удалось получить предложение: "+(e.message||"нет ресурсов"),true);
+            }finally{run.disabled=false;}
+          });
+          taskBox.append(run);
+        }
+      }
       if(projects.projects.length){
         const taskForm=el("form");taskForm.className="form-card";
         const picker=el("select");picker.required=true;
