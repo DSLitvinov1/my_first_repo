@@ -1,0 +1,137 @@
+name: Neurofactory CI real signed CORE to genuine Ollama Qwen self-development
+on:
+  push:
+    branches: [neurofactory-onepc-signed-core-real-qwen-selfdev-20261019]
+    paths:
+      - .github/workflows/neurofactory-onepc-signed-real-qwen.yml
+      - bridge/neurofactory/one_pc_candidate/test_signed_core_real_qwen_windows.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+permissions:
+  contents: read
+jobs:
+  signed-core-to-real-ollama-on-disposable-windows:
+    runs-on: windows-2025
+    timeout-minutes: 23
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      NF_SIGNED_QWEN_CI_ONLY: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 40
+      - uses: actions/checkout@v4
+        with:
+          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c92e102efed49e62eac1bc0e434b3d412d62e40
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
+      - name: Validate disposable Windows scope, memory and exact integration source
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'DISPOSABLE_WINDOWS_ONLY'}
+          git merge-base --is-ancestor '23c9464548c137ba75dac3a1ba55af5c5f89b460' HEAD
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_ADMISSION_BASE_NOT_IN_ANCESTRY'}
+          $os=Get-CimInstance Win32_OperatingSystem
+          $free=[math]::Floor([double]$os.FreePhysicalMemory/1024)
+          if ($free -lt 6000) {throw 'REAL_QWEN_INSUFFICIENT_RAM'}
+          $disk=Get-PSDrive -Name $env:SystemDrive.Substring(0,1)
+          if ($disk.Free -lt 6500000000) {throw 'REAL_QWEN_INSUFFICIENT_DISK'}
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/test_signed_core_real_qwen_windows.py bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+          Write-Output ('NF_SELFDEV_DISPOSABLE_WINDOWS_FREE_RAM_MB='+$free)
+      - name: Stage and verify the already approved exact 16-provider component sources
+        run: |
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-signed-selfdev-src'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_QWEN_PINNED_SOURCE_STAGING_FAILED'}
+          $components=Join-Path $stage 'components'
+          python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;assert verify(Path(sys.argv[1]))['files_verified']==16;print('NF_SELFDEV_IMMUTABLE_CORE_AND_PROVIDER=PASS')" "$components"
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_QWEN_PINNED_SOURCE_INTEGRITY_FAILED'}
+          "NF_SIGNED_QWEN_STAGED_COMPONENTS=$components" | Out-File -Append -FilePath $env:GITHUB_ENV
+      - name: Install temporary Ed25519 verifier and pinned official Ollama binary
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) {throw 'DISPOSABLE_ED25519_DEPENDENCY_FAILED'}
+          $zip=Join-Path $env:RUNNER_TEMP 'nf-real-ollama-pinned-win.zip'
+          Invoke-WebRequest -Uri 'https://github.com/ollama/ollama/releases/download/v0.34.0/ollama-windows-amd64.zip' -OutFile $zip -MaximumRedirection 3 -TimeoutSec 480
+          if ((Get-Item $zip).Length -ne 1469375054) {throw 'OLLAMA_OFFICIAL_ASSET_LENGTH_MISMATCH'}
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne 'a7dd1b174f39d3d1b8a25d4cbc86045d0e190b17187bfdcbe2f2ee3b5a11470e') {throw 'OLLAMA_OFFICIAL_ASSET_HASH_MISMATCH'}
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-real-ollama-pinned'
+          Expand-Archive -LiteralPath $zip -DestinationPath $folder
+          $exe=(Get-ChildItem $folder -Filter ollama.exe -File -Recurse | Select-Object -First 1)
+          if (!$exe) {throw 'OFFICIAL_OLLAMA_EXE_MISSING'}
+          Write-Output 'NF_SELFDEV_OFFICIAL_OLLAMA_BINARY_SHA256=VERIFIED'
+      - name: Prepare private temporary model-evidence directory with no inherited foreign Windows ACL
+        run: |
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-signed-qwen-evidence'
+          $artifact=Join-Path $env:RUNNER_TEMP 'nf-signed-qwen-report'
+          New-Item -ItemType Directory -Force $folder,$artifact | Out-Null
+          $account=[System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+          & icacls.exe $folder /inheritance:r /grant:r "${account}:(OI)(CI)F" | Out-Null
+          if ($LASTEXITCODE -ne 0) {throw 'CI_PRIVATE_EVIDENCE_ACL_SETUP_FAILED'}
+          & icacls.exe $folder /setowner "$account" | Out-Null
+          if ($LASTEXITCODE -ne 0) {throw 'CI_PRIVATE_EVIDENCE_OWNER_SETUP_FAILED'}
+          if ((Get-Acl -LiteralPath $folder).Owner -ne $account) {throw 'CI_EVIDENCE_OWNER_NOT_CURRENT_USER'}
+          $app=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
+          python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;verify(Path(sys.argv[1]));sys.path.insert(0,str(Path(sys.argv[1])/'providers'));from evidence_receipt import check_evidence_directory;check_evidence_directory(Path(sys.argv[2]));print('NF_SELFDEV_REAL_PRIVATE_WINDOWS_EVIDENCE_DACL=PASS')" "$env:NF_SIGNED_QWEN_STAGED_COMPONENTS" "$folder"
+          if ($LASTEXITCODE -ne 0) {throw 'PROVIDER_REAL_WINDOWS_EVIDENCE_DACL_DENIED'}
+          "NF_SIGNED_QWEN_EVIDENCE_DIR=$folder" | Out-File -Append -FilePath $env:GITHUB_ENV
+          "NF_SIGNED_QWEN_ARTIFACT_DIR=$artifact" | Out-File -Append -FilePath $env:GITHUB_ENV
+      - name: Start genuine local Ollama, pull Qwen2.5 Coder 1.5B, execute ONE signed CORE-bound suggestion
+        run: |
+          $exe=(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-real-ollama-pinned') -Filter ollama.exe -File -Recurse | Select-Object -First 1).FullName
+          $env:OLLAMA_HOST='127.0.0.1:11434'
+          $env:OLLAMA_MODELS=Join-Path $env:RUNNER_TEMP 'nf-disposable-ollama-weights'
+          $out=Join-Path $env:RUNNER_TEMP 'nf-selfdev-ollama-out.log'
+          $err=Join-Path $env:RUNNER_TEMP 'nf-selfdev-ollama-err.log'
+          $server=Start-Process -PassThru -WindowStyle Hidden -FilePath $exe -ArgumentList @('serve') -RedirectStandardOutput $out -RedirectStandardError $err
+          try {
+            $ready=$false
+            for ($i=0;$i -lt 80;$i++) {
+              Start-Sleep -Milliseconds 500
+              if ($server.HasExited) {break}
+              try {Invoke-RestMethod 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2 | Out-Null;$ready=$true;break} catch {}
+            }
+            if (!$ready) {throw 'GENUINE_LOCAL_OLLAMA_DID_NOT_START'}
+            & $exe pull 'qwen2.5-coder:1.5b'
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_CODER_WEIGHTS_UNAVAILABLE'}
+            $inventory=Invoke-RestMethod 'http://127.0.0.1:11434/api/tags'
+            $found=@($inventory.models | Where-Object {$_.name -eq 'qwen2.5-coder:1.5b'})
+            if ($found.Count -ne 1 -or $found[0].digest -notmatch '^[0-9a-fA-F]{64}$') {throw 'LOCAL_MODEL_DIGEST_INVALID'}
+            Write-Output ('NF_SELFDEV_OLLAMA_REPORTED_QWEN_DIGEST='+$found[0].digest)
+            $env:PYTHONPATH=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
+            python -B bridge/neurofactory/one_pc_candidate/test_signed_core_real_qwen_windows.py
+            if ($LASTEXITCODE -ne 0) {throw 'REAL_SIGNED_CORE_QWEN_SELFDEV_TEST_FAILED_NO_RETRY'}
+          } finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+      - name: Verify no checked-out source files modified or production queues enabled
+        run: git diff --exit-code
+      - name: Upload only ephemeral unverified review proposal and integrity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-REAL-QWEN-SIGNED-CORE-UNREVIEWED-SELFDEV
+          path: |
+            ${{ runner.temp }}/nf-signed-qwen-report/*
+            ${{ runner.temp }}/nf-signed-qwen-evidence/*
+          if-no-files-found: warn
+          retention-days: 7
