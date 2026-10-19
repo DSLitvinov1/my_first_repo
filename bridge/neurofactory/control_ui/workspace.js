@@ -154,7 +154,10 @@
             run.disabled=true;
             try{
               const proposal=await request("/api/draft-propose",{task_id:t.id});
-              status("Ответ модели сохранён: "+proposal.status+"; изменений файлов не выполнено.");
+              status(proposal.status==="PROPOSED_UNVERIFIED"
+                ?"Непроверенное предложение Qwen сохранено; изменений файлов не выполнено."
+                :"Предложение не получено ("+proposal.status+"); попытка зафиксирована без права автоматического повтора.",
+                proposal.status!=="PROPOSED_UNVERIFIED");
               await render();
             }catch(e){
               status("Не удалось получить предложение: "+(e.message||"нет ресурсов"),true);
