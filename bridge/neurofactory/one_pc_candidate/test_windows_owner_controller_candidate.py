@@ -20,7 +20,7 @@ from signed_owner_admission import admit_signed_draft, AdmissionDenied
 from test_signed_owner_admission import SignedRealCoreAdmission
 from windows_owner_controller_candidate import (
     enroll, signed_enqueue_only, read_manifest, WindowsOwnerDenied,
-    operator_sid, PUBLIC_FILE, PRIVATE_FILE,
+    operator_sid, require_real_different_ui_account, PUBLIC_FILE, PRIVATE_FILE,
 )
 
 
@@ -86,6 +86,15 @@ class OwnerControllerWindowsCI(unittest.TestCase):
             if confirm is None else confirm,
             now=self.now,
             ci=True)
+
+    def test_nonexistent_or_same_sid_cannot_be_claimed_as_ui_account(self):
+        with self.assertRaises(WindowsOwnerDenied):
+            require_real_different_ui_account(self.signer_identity)
+        with self.assertRaises(WindowsOwnerDenied):
+            require_real_different_ui_account("S-1-5-21-1234-5678-9999-44444")
+        self.assertEqual(require_real_different_ui_account(self.ui_sid), self.ui_sid)
+        self.assertEqual(self.fi.core.snapshot()["state"], "EMPTY")
+        print("NF_WINDOWS_OWNER_UI_USER_SID_MUST_EXIST_AND_DIFFER=PASS")
 
     def test_real_dpapi_signing_and_real_core_queue_one_shot(self):
         permit = self.sign()
