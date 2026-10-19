@@ -44,7 +44,9 @@ class DurableDraftProposalTests(unittest.TestCase):
         again=WorkspaceStore(self.store.directory)
         with self.assertRaises(WorkspaceDenied):
             again.reserve_task_proposal(self.task["id"],MODEL)
-        self.assertEqual(again.list_task_proposals()[0]["status"],"REQUESTED")
+        self.assertEqual(again.recover_unknown_proposals(),1)
+        self.assertEqual(again.list_task_proposals()[0]["status"],"UNKNOWN")
+        self.assertEqual(again.recover_unknown_proposals(),0)
         # Lost result is UNKNOWN, not a successful completion and not retried.
         self.assertEqual(self.task["state"],"DRAFT_PENDING_OWNER_AUTH")
         self.assertFalse(again.diag()["real_core_dispatch_enabled"])
