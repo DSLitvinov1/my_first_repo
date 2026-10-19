@@ -57,6 +57,7 @@ jobs:
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
@@ -130,6 +131,10 @@ jobs:
             if ($createdTask.state -ne 'DRAFT_PENDING_OWNER_AUTH') {throw 'TASK_NOT_DRAFT'}
             $backup=Invoke-RestMethod "$url/api/backup" -Method Post -Headers $headers -ContentType 'application/json' -Body '{}'
             if (!(Test-Path (Join-Path "$data\backups" $backup.filename))) {throw 'NO_BACKUP'}
+            $recovered=Join-Path $env:RUNNER_TEMP 'NFRestoredData'
+            & "$install\runtime\python.exe" -B "$install\app\restore_offline.py" --backup (Join-Path "$data\backups" $backup.filename) --new-data-dir $recovered
+            if ($LASTEXITCODE -ne 0 -or !(Test-Path "$recovered\workspace.sqlite3")) {throw 'VERIFIED_OFFLINE_RESTORE_FAILED'}
+            Write-Output 'NF_INSTALLER_OFFLINE_VERIFIED_SQLITE_RESTORE=PASS_DRAFT_ONLY'
             $diag=Invoke-RestMethod "$url/api/status"
             if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
