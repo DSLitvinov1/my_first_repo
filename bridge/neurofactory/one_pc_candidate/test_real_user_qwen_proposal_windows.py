@@ -14,7 +14,20 @@ from pathlib import Path
 from threading import Thread
 import tempfile
 
-from local_workspace import WorkspaceStore, handler
+import importlib.util
+def installed_app_module():
+    app_dir=Path(os.environ["NF_REAL_QWEN_INSTALLED_APP"])
+    module_path=app_dir/"local_workspace.py"
+    if (not app_dir.is_absolute() or app_dir.is_symlink() or
+        module_path.is_symlink() or not module_path.is_file()):
+        raise RuntimeError("Genuine installed app module missing or unsafe")
+    spec=importlib.util.spec_from_file_location("_nf_real_installed_workspace",module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Cannot load installed application")
+    instance=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(instance)
+    return instance
+
 
 def request(port,method,path,payload=None,token=None):
     conn=http.client.HTTPConnection("127.0.0.1",port,timeout=100)
@@ -38,10 +51,15 @@ def main():
         os.environ.get("RUNNER_ENVIRONMENT")!="github-hosted" or
         os.environ.get("NF_REAL_QWEN_DISPOSABLE_TEST")!="1"):
         raise RuntimeError("Temporary Windows GitHub runner only")
-    root=Path(os.environ["NF_REAL_QWEN_COMPONENTS"])
-    ui=Path(__file__).resolve().parent.parent/"control_ui"
-    if not root.is_absolute():
-        raise RuntimeError("Explicit installed-source components required")
+    installed=installed_app_module()
+    WorkspaceStore,handler=installed.WorkspaceStore,installed.handler
+    app=Path(os.environ["NF_REAL_QWEN_INSTALLED_APP"])
+    root=app.parent/"components"
+    ui=app.parent/"ui"
+    if (not root.is_absolute() or root.is_symlink() or not ui.is_dir() or
+        not (app.parent/"runtime"/"python.exe").is_file()):
+        raise RuntimeError("Real installed app and pinned provider components required")
+    print("NF_REAL_QWEN_EXECUTING_FROM_INSTALLED_APP=PASS")
     with tempfile.TemporaryDirectory(prefix="nf-real-user-proposal-") as tmp:
         store=WorkspaceStore(Path(tmp)/"workspace")
         server=HTTPServer(("127.0.0.1",0),handler(
