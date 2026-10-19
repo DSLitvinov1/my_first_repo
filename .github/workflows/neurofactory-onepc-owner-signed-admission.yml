@@ -1,0 +1,33 @@
+name: Neurofactory one-PC owner signed CORE draft admission (CI only)
+on:
+  push:
+    branches: [neurofactory-onepc-signed-owner-admission-20261019]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/test_signed_owner_admission.py
+      - bridge/neurofactory/control_ui/workspace.js
+      - .github/workflows/neurofactory-onepc-owner-signed-admission.yml
+  pull_request:
+    branches: [neurofactory-onepc-core-readonly-ui-20261019]
+permissions:
+  contents: read
+jobs:
+  signed-draft-real-core-without-model:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install CI-only Ed25519 validation (no secrets)
+        run: python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+      - name: Real CORE SQLite admission signed by CI ephemeral owner; negatives
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_signed_owner_admission.py -v
+      - name: Compile changed Python interface and gate only
+        run: python -B -m py_compile bridge/neurofactory/one_pc_candidate/signed_owner_admission.py bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - name: Source unchanged by tests
+        run: git diff --exit-code
