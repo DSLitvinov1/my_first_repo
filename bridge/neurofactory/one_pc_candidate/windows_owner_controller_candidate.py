@@ -93,21 +93,17 @@ def acl_check(path, *, directory):
         sec.OWNER_SECURITY_INFORMATION | sec.DACL_SECURITY_INFORMATION)
     owner = sec.ConvertSidToStringSid(descriptor.GetSecurityDescriptorOwner())
     dacl = descriptor.GetSecurityDescriptorDacl()
-    if owner != operator_sid() or dacl is None or dacl.GetAceCount() != 1:
-        roles = [] if dacl is None else [
-            (dacl.GetAce(i)[0][0],
-             sec.ConvertSidToStringSid(dacl.GetAce(i)[2]) == operator_sid(),
-             dacl.GetAce(i)[0][1])
-            for i in range(dacl.GetAceCount())
-        ]
-        deny("Controller ACL not exclusive: owner_matches_signer=" +
-             str(owner == operator_sid()) + " ace_roles=" + str(roles))
-    ace = dacl.GetAce(0)
-    (atype, flags), mask, sid = ace
-    if (atype != sec.ACCESS_ALLOWED_ACE_TYPE or
-            sec.ConvertSidToStringSid(sid) != operator_sid() or
-            not mask):
-        deny("Controller ACL has unauthorized ACE")
+    # NTFS canonicalizes the owner-only container grant into two ACEs:
+    # one effective owner ACE and one owner-only inherit-to-child ACE.
+    # Count alone is NOT an access security boundary: verify every SID.
+    if owner != operator_sid() or dacl is None or not 1 <= dacl.GetAceCount() <= 2:
+        deny("Owner ACL missing or not in owner-only expected form")
+    for i in range(dacl.GetAceCount()):
+        (atype, flags), mask, sid = dacl.GetAce(i)
+        if (atype != sec.ACCESS_ALLOWED_ACE_TYPE or
+                sec.ConvertSidToStringSid(sid) != operator_sid() or
+                not mask):
+            deny("Controller ACL contains an unauthorized ACE")
     return True
 
 
