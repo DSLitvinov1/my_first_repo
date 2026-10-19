@@ -155,8 +155,31 @@
       });
       projectBox.append(form);
       const taskBox=box("Новые задания","Сохраняются как черновики без запуска");
-      for(const t of tasks.tasks)row(taskBox,t.objective.slice(0,85),
-        "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения");
+      for(const t of tasks.tasks){
+        row(taskBox,t.objective.slice(0,85),
+          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения");
+        const prep=el("button","Подготовить запрос на допуск CORE","outline-btn");
+        prep.type="button";
+        prep.addEventListener("click",async()=>{
+          prep.disabled=true;
+          try{
+            const requestData=await request("/api/tasks/"+t.id+"/admission-request");
+            if(requestData.schema!=="nf.onepc.draft_admission_request.v1" ||
+                requestData.owner_signed!==false ||
+                requestData.queue_mutation_allowed!==false ||
+                requestData.execution_allowed!==false ||
+                requestData.draft_id!==t.id){
+              throw Error("Недостоверный запрос на допуск");
+            }
+            status("Запрос подготовлен. ID: "+requestData.draft_id+
+                   " · SHA-256: "+requestData.draft_sha256+
+                   ". Задание остаётся черновиком. Только отдельный защищённый механизм владельца может подписать допуск.");
+          }catch(err){
+            status("Допуск не подготовлен: "+(err.message||"проверьте ограничения задания"),true);
+          }finally{prep.disabled=false;}
+        });
+        taskBox.append(prep);
+      }
       if(projects.projects.length){
         const taskForm=el("form");taskForm.className="form-card";
         const picker=el("select");picker.required=true;
