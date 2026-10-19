@@ -433,8 +433,16 @@ def main(argv=None):
         raise WorkspaceDenied("Port denied")
     ui=_safe_dir(args.ui_dir)
     if args.components_dir is not None:
-        from installed_integrity import verify
-        verify(args.components_dir)
+        import importlib.util
+        module_path=Path(__file__).with_name("installed_integrity.py")
+        if module_path.is_symlink() or not module_path.is_file():
+            raise WorkspaceDenied("Installed integrity verifier missing")
+        spec=importlib.util.spec_from_file_location("_neurofactory_installed_integrity",module_path)
+        if spec is None or spec.loader is None:
+            raise WorkspaceDenied("Installed integrity verifier cannot load")
+        module=importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.verify(args.components_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
