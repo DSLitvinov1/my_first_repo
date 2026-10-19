@@ -56,7 +56,7 @@ def _sha(data):
 
 
 def _dir(path):
-    if (type(path) is not Path or not path.is_absolute() or
+    if (not isinstance(path, Path) or not path.is_absolute() or
             not path.is_dir() or path.is_symlink()):
         _fail("Private explicit nonlinked absolute path required")
     if os.name == "nt" and path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
@@ -272,7 +272,7 @@ def prepare_isolated_worktree(base_repo, reviewed_repo, worktree_path,
     _dir(base_repo)
     _dir(reviewed_repo)
     out = _dir(report_out)
-    if (type(worktree_path) is not Path or not worktree_path.is_absolute() or
+    if (not isinstance(worktree_path, Path) or not worktree_path.is_absolute() or
             worktree_path.exists() or worktree_path.is_symlink() or
             worktree_path.parent != out.parent):
         _fail("Worktree must be new isolated sibling of CI-only report directory")
