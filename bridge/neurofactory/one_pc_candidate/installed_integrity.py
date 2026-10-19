@@ -23,6 +23,23 @@ PINNED={
     "coordinator":("ad82e853d9db2a0567c61e8d9a3f1e5f62905271",
             ("mvp_task_exchange.py","mvp_status_projection.py","release_readiness.py")),
 }
+ANCHORED_BLOBS={
+    "core/one_task_core.py": "ab1471813c6da29407c913b974a2209467a4b961",
+    "core/offline_os_receiver_client.py": "417f7c1713c8333ff10a79962aafecf87a863cff",
+    "host/windows_scm_sandbox_receiver.py": "8232aa365c9baed1b75f14fc8d47f2224e2b1487",
+    "host/windows_named_pipe_pilot_receiver.py": "a3b01ad2e281eca40d13869fed6fbed5ffbe88b1",
+    "host/windows_scm_ci_worker.py": "e5444b9485950cec360058b10c84331b2d60700c",
+    "host/signed_effect_permit.py": "2f6cb04295536edd7d834f39d364af4786b22d23",
+    "providers/ollama_worker.py": "8effd007628db0f144e7b5ddf9d835edd3476887",
+    "providers/local_qwen.py": "278ea77977ea5c43df7fe2d60fd69222660da7ca",
+    "providers/provider_interface.py": "04404e8cd992d858a77ea6f5f15124ec1e65a3c6",
+    "providers/evidence_receipt.py": "8a0c73cce57f39b3738e733af16c533d2fe6f3da",
+    "providers/durable_budget.py": "e7cbdc706ab1637ed0194c046bc10ec55d456552",
+    "providers/coordinator_adapter.py": "f45cc3c5fa56197d8e27b19da93c3d3f59566123",
+    "coordinator/mvp_task_exchange.py": "2c38b0f18f5dc6c0424748b736f448e1f4f09b2c",
+    "coordinator/mvp_status_projection.py": "5c982826d3c57782396ec6385358ab3e1870428f",
+    "coordinator/release_readiness.py": "1ead614c65898fc75074a41e55fd49817d639b5a",
+}
 MANIFEST_FIELDS={"schema","source","core_queue_wired","host_service_enrolled",
                  "model_weights_verified","release_approved","handoff_enabled",
                  "independent_review_complete","entries"}
@@ -78,7 +95,8 @@ def verify(root):
             raise IntegrityDenied("Duplicate component")
         seen.add((role,name))
         commit,names=PINNED[role]
-        if (item["source_commit"]!=commit or
+        if (item["git_blob"]!=ANCHORED_BLOBS[role+"/"+name] or
+            item["source_commit"]!=commit or
             type(item["git_blob"]) is not str or
             not re.fullmatch(r"[a-f0-9]{40}",item["git_blob"]) or
             type(item["sha256"]) is not str or
