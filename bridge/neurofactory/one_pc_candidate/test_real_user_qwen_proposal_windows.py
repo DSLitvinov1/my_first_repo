@@ -59,9 +59,12 @@ def main():
                 token="ephemeral-ci-only-token")
             if code!=201:
                 raise RuntimeError("Real local project creation failed")
-            objective=("Create a harmless plain text sample consisting of the one line "
-                "NEUROFACTORY_REAL_QWEN_DRAFT_PREVIEW. Return only the required JSON "
-                "with path and content; do not write files or execute commands.")
+            objective=("Create a harmless one-line text file containing exactly "
+                "NEUROFACTORY_REAL_QWEN_DRAFT_PREVIEW. Your entire reply MUST be one "
+                "strict JSON object with exactly two keys named path and content. "
+                "Copy the target path character for character from the instruction "
+                "above into the path key. Do not use markdown, backticks, code fences, "
+                "analysis, comments or explanations. Do not execute anything.")
             code,task=request(port,"POST","/api/tasks",
                 {"project_id":proj["id"],"objective":objective,
                  "model_preference":"qwen2.5-coder:1.5b"},
