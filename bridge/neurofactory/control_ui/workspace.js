@@ -136,7 +136,7 @@
       const taskBox=box("Новые задания","Сохраняются как черновики без запуска");
       for(const t of tasks.tasks){
         row(taskBox,t.objective.slice(0,85),
-          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Не в CORE");
+          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения · Не в CORE");
         const proposed=proposals.proposals.find(p=>p.task_id===t.id);
         if(proposed){
           row(taskBox,"ИИ: "+proposed.status,
