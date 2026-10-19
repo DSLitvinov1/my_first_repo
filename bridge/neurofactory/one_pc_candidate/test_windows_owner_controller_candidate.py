@@ -6,6 +6,7 @@ HOST write or unreviewed SKILLS. The CI signer is created and destroyed.
 from __future__ import annotations
 
 import base64
+import subprocess
 from pathlib import Path
 import os
 import secrets
@@ -86,6 +87,20 @@ class OwnerControllerWindowsCI(unittest.TestCase):
             if confirm is None else confirm,
             now=self.now,
             ci=True)
+
+    def test_operator_cli_refuses_headless_script_and_no_auto_enrollment(self):
+        cli = Path(__file__).resolve().with_name("windows_owner_offline_cli.py")
+        candidate = self.root.parent / "noninteractive-must-not-create-owner"
+        result = subprocess.run(
+            [sys.executable, "-B", str(cli), "enroll",
+             "--owner-root", str(candidate),
+             "--ui-windows-account", self.ci_user_name],
+            stdin=subprocess.DEVNULL,
+            capture_output=True, timeout=10, check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(candidate.exists())
+        self.assertNotIn(b"BEGIN PRIVATE", result.stdout + result.stderr)
+        print("NF_WINDOWS_OFFLINE_OWNER_CLI_HEADLESS_DENIED_NO_KEY_CREATED=PASS")
 
     def test_nonexistent_or_same_sid_cannot_be_claimed_as_ui_account(self):
         with self.assertRaises(WindowsOwnerDenied):
