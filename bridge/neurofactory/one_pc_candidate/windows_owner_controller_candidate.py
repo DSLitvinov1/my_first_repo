@@ -182,7 +182,7 @@ def enroll(root, *, ui_sid, confirm, ci=False):
     _, _, crypt, _ = windows()
     blob = crypt.CryptProtectData(
         private, "NF_OWNER_CI_CANDIDATE", entropy, None, None,
-        0x1  # Windows CryptProtectData CRYPTPROTECT_UI_FORBIDDEN)
+        0x1)  # Windows CryptProtectData CRYPTPROTECT_UI_FORBIDDEN
     write_once(root, PRIVATE_FILE, blob)
     manifest = {
         "schema": ROOT_SCHEMA,
