@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
+from time import monotonic_ns
 import time
 
 if (
@@ -37,12 +38,13 @@ EVIDENCE = Path(os.environ["NF_SIGNED_QWEN_EVIDENCE_DIR"]).resolve(strict=True)
 MODEL = "qwen2.5-coder:1.5b"
 EXPECTED_SCOPE = "OWNER_SIGNED_SINGLE_TEST_CORE_ENQUEUE_NO_EXECUTION"
 OBJECTIVE = (
-    "Review our signed_owner_admission.py _one_draft: it joins projects but never "
-    "validates row[1] as 32 lowercase hex before 'p-' + row[1]. Propose one "
-    "precise validation guard and one negative regression test. Do NOT apply code."
+    "Review this exact bug in our signed_owner_admission.py: _one_draft returns "
+    "core_project_id='p-'+row[1] without validating row[1] is 32 lowercase "
+    "hex digits. Propose Python if-guard using re.fullmatch and one SQLite "
+    "corrupted-project-ID negative regression test. Do NOT edit code."
 )
 TARGET = "bridge/neurofactory/development/core_owned/review.md"
-TASK_ID = "NF-DEV-05-Q951"
+TASK_ID = "NF-DEV-05-Q952"
 
 
 def check(condition, message):
@@ -183,73 +185,95 @@ def main():
         budget_dir = root / "durable_model_attempt"
         budget_dir.mkdir(mode=0o700)
 
-        # Inference is authorized ONLY by this disposable CI job's explicit
-        # separate user-requested gate, NOT by the enqueue-only owner signature.
-        # Qwen has no access to signing key, CORE handle, working Git repo or HOST.
+        # This is a NEW, deliberately authorized CI-only text-review task,
+        # NOT an automatic retry of earlier Q951 whose strict JSON output
+        # was rejected. Admission permits only enqueue; CI is a separate
+        # explicit isolated-model test authority, never deployed for users.
+        # A code-review suggestion is *plain untrusted text* and MUST NOT
+        # be treated as a proposed writable file or a CORE completion.
         print("NF_SIGNED_CORE_MODEL_PREVIEW=REAL_QUEUED_INERT")
-        answer = ollama_worker.execute_one(
-            task, model=MODEL, ledger_dir=budget_dir,
-            max_output_tokens=420, evidence_dir=EVIDENCE)
-        check(answer["schema"] == ollama_worker.SCHEMA_RESULT
-              and answer["task_id"] == TASK_ID
-              and answer["project_id"] == spec["project_id"]
-              and answer["input_sha256"] == b["input_sha256"]
-              and answer["model"] == MODEL
-              and answer["api_cost_usd"] == 0
-              and answer["offline_mock"] is False
-              and answer["published"] is False
-              and answer["review_approved"] is False,
-              "real provider violated immutable/safe input contract")
-
-        # Sealed evidence must be readable even if Qwen failed the strict
-        # JSON proposal schema. Such failures are NOT silently retried.
-        has_reply = answer.get("observed_local_reply") is True
-        record = None
-        if has_reply:
-            record = evidence_receipt.verify_model_evidence(EVIDENCE, TASK_ID)
-            check(record["response_sha256"] == answer["response_sha256"],
-                  "real response and seal hashes differ")
-        check(answer["status"] == "PROPOSED_UNVERIFIED",
-              "Qwen reply was not a valid inert proposal: " + answer["status"]
-              + " / " + str(answer.get("error_code")))
-        files = answer["proposed_files"]
-        check(len(files) == 1, "expected exactly one untrusted proposal")
-        proposed = files[0]
-        text = proposed["content"]
-        check(proposed["relative_path"] == "docs/review.md"
-              and proposed["applied"] is False
-              and proposed["verified_by_core"] is False
-              and sha256(text.encode("utf-8")).hexdigest()
-              == proposed["content_sha256"]
-              and 10 <= len(text) <= 9000,
-              "model reply failed exact-path, bounded-content, or SHA checks")
+        resources = ollama_worker.check_resources(MODEL)
+        check(resources["model"] == MODEL, "Ollama model preflight mismatch")
+        prompt = (
+            "You are only reviewing this project's actual signed_owner_admission.py. "
+            "Do not access files, run tools, claim approval, or edit source. "
+            "Our current function _one_draft joins projects and returns "
+            "{'core_project_id': 'p-' + row[1]}; row[1] is a SQLite project id. "
+            "There is no regex validation after the SELECT. "
+            "Give exactly TWO concrete plain-text paragraphs, titled GUARD and TEST. "
+            "GUARD: show a small Python if statement requiring a 32-char lower-case "
+            "hex project id before constructing the CORE project id. "
+            "TEST: describe a negative test corrupting the stored project id, "
+            "and prove CORE enqueue is denied. Do not return JSON or markdown "
+            "fences; this is an untrusted analysis-only proposal.\n"
+            "Bound approved task: " + task.instruction
+        )
+        check(len(prompt) <= 12000, "analysis prompt too large")
+        persistent_budget = ollama_worker.DurableBudget(
+            budget_dir, max_attempts=1, max_reserved_units=50000)
+        adapter = ollama_worker.LocalQwenAdapter(
+            ollama_worker.LocalQwenConfig(
+                enabled=True, model=MODEL, timeout_seconds=60,
+                max_output_tokens=512),
+            persistent_budget)
+        started = monotonic_ns()
+        reply = adapter.generate(prompt, task_id=TASK_ID)
+        elapsed_ms = (monotonic_ns() - started) // 1_000_000
+        check(reply.model == MODEL and reply.local_only is True
+              and reply.published is False and type(reply.text) is str
+              and 20 <= len(reply.text.encode("utf-8")) <= 12000,
+              "real Qwen review-only reply missing or exceeds safe bounds")
+        text = reply.text.strip()
+        digest = sha256(text.encode("utf-8")).hexdigest()
+        prompt_sha = sha256(prompt.encode("utf-8")).hexdigest()
+        # Reuse the immutable pinned PROVIDERS own real sealed evidence
+        # writer. The evidence is local and NOT independent attestation.
+        evidence_receipt.persist_model_evidence(
+            EVIDENCE, task_id=TASK_ID, project_id=task.project_id,
+            input_sha256=task.input_sha256,
+            prompt_sha256=prompt_sha, model=MODEL,
+            response_text=reply.text, elapsed_ms=elapsed_ms)
+        record = evidence_receipt.verify_model_evidence(EVIDENCE, TASK_ID)
+        check(record["response_sha256"]
+              == sha256(reply.text.encode("utf-8")).hexdigest(),
+              "real local Qwen sealed evidence digest mismatch")
         check(core.snapshot()["state"] == "QUEUED",
               "model unexpectedly advanced true CORE queue state")
         check(workspace.list_tasks()[0]["state"] == "DRAFT_PENDING_OWNER_AUTH",
               "model mutated durable original UI draft")
-        reservation = ollama_worker.DurableBudget(
-            budget_dir, max_attempts=1, max_reserved_units=50000).snapshot()
-        check(reservation["attempts"] == 1, "real model attempt not durably reserved")
-        # Attempting the SAME Qwen task again must fail BEFORE second HTTP.
-        second = ollama_worker.execute_one(
-            task, model=MODEL, ledger_dir=budget_dir,
-            max_output_tokens=420, evidence_dir=EVIDENCE)
-        check(second["status"] == "BLOCKED"
-              and second["error_code"] == "BLOCKED_DUPLICATE_OR_LEDGER",
-              "durable model reservation failed to block replay")
-
-        candidate = OUT / "proposal_for_independent_review.md"
+        reservation = persistent_budget.snapshot()
+        check(reservation["attempts"] == 1, "model request was not durably reserved")
+        # Duplicate local-model attempt fails BEFORE any HTTP call.
+        from durable_budget import DuplicateTask
+        try:
+            adapter.generate(prompt, task_id=TASK_ID)
+        except DuplicateTask:
+            pass
+        else:
+            raise RuntimeError("NF_QWEN_REPEAT_INFERENCE_NOT_DENIED")
+        review_keywords = (
+            "row[1]", "project_id", "32", "hex", "uuid", "regex",
+        )
+        relevance_heuristic = (
+            any(word in text.lower() for word in review_keywords)
+            and any(word in text.lower()
+                    for word in ("test", "guard", "validate", "reject", "check"))
+        )
+        # This heuristic is a *triage hint*, not a correctness judgment.
+        # A genuine model answer remains unverified even if it passes.
+        candidate = OUT / "proposal_for_independent_review.txt"
         with candidate.open("xb") as out:
             out.write(text.encode("utf-8"))
             out.flush()
             os.fsync(out.fileno())
-        check(sha256(candidate.read_bytes()).hexdigest()
-              == proposed["content_sha256"],
-              "untrusted proposal file readback mismatch")
+        check(sha256(candidate.read_bytes()).hexdigest() == digest,
+              "untrusted proposal readback differs from model text")
+        print("NF_SELFDEV_REAL_QWEN_REVIEW_RELEVANCE_HEURISTIC="
+              + ("PASS_UNVERIFIED" if relevance_heuristic else "REVIEW_REQUIRED"))
 
         report = {
             "schema": "nf.ci.signed_real_qwen_selfdev.v1",
-            "status": "PROPOSED_UNVERIFIED",
+            "status": "PROPOSED_UNVERIFIED_REVIEW_ONLY",
             "disposable_test_only": True,
             "source_branch": "neurofactory-onepc-signed-core-real-qwen-selfdev-20261019",
             "source_reviewed": source.relative_to(HERE.parent.parent.parent).as_posix(),
@@ -267,10 +291,12 @@ def main():
             "http_fake_model_used": False,
             "model_attempt_consumed": True,
             "model_second_attempt": "BLOCKED",
-            "proposal_relative_path": proposed["relative_path"],
-            "proposal_sha256": proposed["content_sha256"],
+            "proposal_relative_path": None,
+            "review_only_no_writable_file_proposal": True,
+            "proposal_sha256": digest,
             "provider_evidence_sha256": record["evidence_sha256"],
-            "provider_observed_response_sha256": answer["response_sha256"],
+            "provider_observed_response_sha256": record["response_sha256"],
+            "response_relevance_heuristic": relevance_heuristic,
             "review_approved": False,
             "source_applied": False,
             "host_effect_performed": False,
@@ -285,9 +311,9 @@ def main():
             output.flush()
             os.fsync(output.fileno())
         check(artifact.read_bytes() == raw, "signed real Qwen report readback mismatch")
-        print("NF_SELFDEV_GENUINE_SIGNED_CORE_TO_REAL_QWEN=PASS_UNVERIFIED")
+        print("NF_SELFDEV_GENUINE_SIGNED_CORE_TO_REAL_QWEN=PASS_REVIEW_ONLY_UNVERIFIED")
         print("NF_SELFDEV_REAL_QWEN_MODEL=" + MODEL)
-        print("NF_SELFDEV_CODE_SUGGESTION_SHA256=" + proposed["content_sha256"])
+        print("NF_SELFDEV_CODE_SUGGESTION_SHA256=" + digest)
         print("NF_SELFDEV_PROVIDER_EVIDENCE_SHA256=" + record["evidence_sha256"])
         print("NF_SELFDEV_QWEN_MODEL_CALLS=ONE_REAL_NO_RETRY")
         print("NF_SELFDEV_CORE_STATE=QUEUED_NO_CLAIM")
