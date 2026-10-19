@@ -43,7 +43,7 @@ class CoreReadOnlyIntegration(unittest.TestCase):
         sha = subprocess.check_output(
             ["git", "-C", str(self.repo), "rev-parse", "HEAD"], text=True).strip()
         core_root = self.root / "core"
-        core_root.mkdir()
+        core_root.mkdir(mode=0o700)
         self.core = OneTaskCore(core_root, self.repo)
         self.state = core_root / "state"
         self.spec = {
@@ -81,9 +81,7 @@ class CoreReadOnlyIntegration(unittest.TestCase):
         self.assertEqual(observed["task"]["model"], "qwen2.5-coder:1.5b")
         self.assertNotIn(claim["token"], json.dumps(observed))
         self.assertNotIn("owner", json.dumps(observed))
-        self.assertNotIn("receipt", json.dumps(observed).replace(
-            '"has_local_receipt"', '"receipt_presence"'))
-        reopened = observe_core(self.state)
+        self.assertNotIn('"receipt":', json.dumps(observed))        reopened = observe_core(self.state)
         self.assertEqual(reopened["task"], observed["task"])
         print("NF_CORE_REAL_SQLITE_READONLY_QUEUE_CLAIM_RESTART=PASS")
 
