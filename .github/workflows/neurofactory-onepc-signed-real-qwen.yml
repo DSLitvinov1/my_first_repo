@@ -89,6 +89,9 @@ jobs:
           $account=[System.Security.Principal.WindowsIdentity]::GetCurrent().Name
           & icacls.exe $folder /inheritance:r /grant:r "${account}:(OI)(CI)F" | Out-Null
           if ($LASTEXITCODE -ne 0) {throw 'CI_PRIVATE_EVIDENCE_ACL_SETUP_FAILED'}
+          & icacls.exe $folder /setowner "$account" | Out-Null
+          if ($LASTEXITCODE -ne 0) {throw 'CI_PRIVATE_EVIDENCE_OWNER_SETUP_FAILED'}
+          if ((Get-Acl -LiteralPath $folder).Owner -ne $account) {throw 'CI_EVIDENCE_OWNER_NOT_CURRENT_USER'}
           $app=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
           python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;verify(Path(sys.argv[1]));sys.path.insert(0,str(Path(sys.argv[1])/'providers'));from evidence_receipt import check_evidence_directory;check_evidence_directory(Path(sys.argv[2]));print('NF_SELFDEV_REAL_PRIVATE_WINDOWS_EVIDENCE_DACL=PASS')" "$env:NF_SIGNED_QWEN_STAGED_COMPONENTS" "$folder"
           if ($LASTEXITCODE -ne 0) {throw 'PROVIDER_REAL_WINDOWS_EVIDENCE_DACL_DENIED'}
