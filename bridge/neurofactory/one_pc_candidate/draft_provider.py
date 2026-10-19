@@ -17,8 +17,15 @@ class DraftProviderDenied(ValueError):
 SUPPORTED=("qwen3:0.6b","qwen2.5-coder:1.5b")
 
 def _module(components: Path):
-    from installed_integrity import verify
-    stamp=verify(components)
+    local_verify=Path(__file__).resolve().with_name("installed_integrity.py")
+    if local_verify.is_symlink() or not local_verify.is_file():
+        raise DraftProviderDenied("Pinned verifier missing")
+    spec=importlib.util.spec_from_file_location("_nf_draft_verify",local_verify)
+    if spec is None or spec.loader is None:
+        raise DraftProviderDenied("Pinned verifier cannot load")
+    imported=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(imported)
+    stamp=imported.verify(components)
     if stamp["files_verified"]!=16 or stamp["live_execution_allowed"] is not False:
         raise DraftProviderDenied("Invalid installed pinned code")
     location=components/"providers"
