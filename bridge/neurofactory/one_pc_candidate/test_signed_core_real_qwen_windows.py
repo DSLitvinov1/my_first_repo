@@ -38,13 +38,13 @@ EVIDENCE = Path(os.environ["NF_SIGNED_QWEN_EVIDENCE_DIR"]).resolve(strict=True)
 MODEL = "qwen2.5-coder:1.5b"
 EXPECTED_SCOPE = "OWNER_SIGNED_SINGLE_TEST_CORE_ENQUEUE_NO_EXECUTION"
 OBJECTIVE = (
-    "Review this exact bug in our signed_owner_admission.py: _one_draft returns "
-    "core_project_id='p-'+row[1] without validating row[1] is 32 lowercase "
-    "hex digits. Propose Python if-guard using re.fullmatch and one SQLite "
-    "corrupted-project-ID negative regression test. Do NOT edit code."
+    "In signed_owner_admission._one_draft, row[1] comes from SQLite and gets "
+    "'p-' prepended without checking a 32-character lowercase hex UUID. "
+    "Propose one Python validation guard and one malformed-project-ID test "
+    "in less than 90 words; no file changes."
 )
 TARGET = "bridge/neurofactory/development/core_owned/review.md"
-TASK_ID = "NF-DEV-05-Q952"
+TASK_ID = "NF-DEV-05-Q953"
 
 
 def check(condition, message):
@@ -195,18 +195,16 @@ def main():
         resources = ollama_worker.check_resources(MODEL)
         check(resources["model"] == MODEL, "Ollama model preflight mismatch")
         prompt = (
-            "You are only reviewing this project's actual signed_owner_admission.py. "
-            "Do not access files, run tools, claim approval, or edit source. "
-            "Our current function _one_draft joins projects and returns "
-            "{'core_project_id': 'p-' + row[1]}; row[1] is a SQLite project id. "
-            "There is no regex validation after the SELECT. "
-            "Give exactly TWO concrete plain-text paragraphs, titled GUARD and TEST. "
-            "GUARD: show a small Python if statement requiring a 32-char lower-case "
-            "hex project id before constructing the CORE project id. "
-            "TEST: describe a negative test corrupting the stored project id, "
-            "and prove CORE enqueue is denied. Do not return JSON or markdown "
-            "fences; this is an untrusted analysis-only proposal.\n"
-            "Bound approved task: " + task.instruction
+            "Review signed_owner_admission._one_draft; it constructs "
+            "'p-' + row[1] from a SQLite project identifier WITHOUT a "
+            "32-char lowercase hex check. Give a concise actionable answer "
+            "in TWO lines and fewer than 90 words total. "
+            "GUARD: show a concrete Python if statement using re.fullmatch "
+            "to reject malformed row[1]. "
+            "TEST: specify one regression test with an invalid project ID "
+            "that must be rejected. Do not run commands, create files, "
+            "return JSON, or claim applied changes.\n"
+            "Signed CI task instruction: " + task.instruction
         )
         check(len(prompt) <= 12000, "analysis prompt too large")
         persistent_budget = ollama_worker.DurableBudget(
@@ -217,7 +215,32 @@ def main():
                 max_output_tokens=512),
             persistent_budget)
         started = monotonic_ns()
-        reply = adapter.generate(prompt, task_id=TASK_ID)
+        try:
+            reply = adapter.generate(prompt, task_id=TASK_ID)
+        except ollama_worker.LocalProviderUnknownResult:
+            # Do NOT repeat an ambiguous or truncated Qwen response.
+            check(persistent_budget.snapshot()["attempts"] == 1,
+                  "Qwen unknown result had no durable consumed reservation")
+            unknown = {
+                "schema": "nf.ci.signed_real_qwen_selfdev.v1",
+                "status": "UNKNOWN_NO_RETRY",
+                "core_task_id": TASK_ID,
+                "model": MODEL,
+                "core_state": core.snapshot()["state"],
+                "source_sha256": source_digest,
+                "signed_admission_accepted": True,
+                "attempt_consumed": True,
+                "review_approved": False,
+                "source_applied": False,
+                "production_queue_enabled": False,
+            }
+            with (OUT / "unknown_model_result.json").open("xb") as file:
+                raw_unknown = (json.dumps(unknown, sort_keys=True) + "\n").encode()
+                file.write(raw_unknown)
+                file.flush()
+                os.fsync(file.fileno())
+            print("NF_SELFDEV_QWEN_UNKNOWN_OUTPUT=CONSUMED_NO_RETRY")
+            raise
         elapsed_ms = (monotonic_ns() - started) // 1_000_000
         check(reply.model == MODEL and reply.local_only is True
               and reply.published is False and type(reply.text) is str

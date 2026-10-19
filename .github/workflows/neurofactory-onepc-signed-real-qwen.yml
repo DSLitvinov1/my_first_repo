@@ -6,8 +6,6 @@ on:
       - .github/workflows/neurofactory-onepc-signed-real-qwen.yml
       - bridge/neurofactory/one_pc_candidate/test_signed_core_real_qwen_windows.py
       - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
-  pull_request:
-    branches: [neurofactory-onepc-signed-owner-admission-20261019]
 permissions:
   contents: read
 jobs:
@@ -48,9 +46,8 @@ jobs:
       - name: Validate disposable Windows scope, memory and exact integration source
         run: |
           if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'DISPOSABLE_WINDOWS_ONLY'}
-          if ((git rev-parse HEAD).Trim() -cne '23c9464548c137ba75dac3a1ba55af5c5f89b460') {
-            Write-Output 'NF_CI_BRANCH_NEW_SHA=EXPECTED_ONLY_AFTER_DIFF_ISOLATION'
-          }
+          git merge-base --is-ancestor '23c9464548c137ba75dac3a1ba55af5c5f89b460' HEAD
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_ADMISSION_BASE_NOT_IN_ANCESTRY'}
           $os=Get-CimInstance Win32_OperatingSystem
           $free=[math]::Floor([double]$os.FreePhysicalMemory/1024)
           if ($free -lt 6000) {throw 'REAL_QWEN_INSUFFICIENT_RAM'}
