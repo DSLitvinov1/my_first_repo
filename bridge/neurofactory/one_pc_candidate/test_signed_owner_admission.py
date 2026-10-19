@@ -225,6 +225,36 @@ class SignedRealCoreAdmission(unittest.TestCase):
         self.assertEqual(self.core.snapshot()["state"], "EMPTY")
         print("NF_SIGNED_FOREIGN_TARGET_BY_CORE=DENIED")
 
+    def test_malformed_joined_project_uuid_denied_before_owner_signature(self):
+        """Corrupt-but-foreign-key-consistent SQLite IDs must not map into CORE.
+
+        A signed browser cannot select project UUIDs; the trusted admission
+        reader must still defend against externally tampered local DB rows.
+        """
+        bad_ids = ("abc", "A"*32, "x"*32, "f"*31,
+                   "f"*33, "not-hex_uuid")
+        for i, bad in enumerate(bad_ids):
+            with self.subTest(project_uuid=bad):
+                task_id = f"{i+100:032x}"
+                with self.workspace.connect() as db:
+                    db.execute(
+                        "INSERT INTO projects(id,name,description,created_utc) "
+                        "VALUES(?,?,?,?)",
+                        (bad, "SQLite tamper fixture", "", "2026-10-19T10:00:00Z"))
+                    db.execute(
+                        "INSERT INTO tasks(id,project_id,objective,"
+                        "model_preference,state,created_utc) "
+                        "VALUES(?,?,?,?,?,?)",
+                        (task_id, bad,
+                         "Create one harmless CORE test proposal without applying files.",
+                         "qwen2.5-coder:1.5b", "DRAFT_PENDING_OWNER_AUTH",
+                         "2026-10-19T10:00:00Z"))
+                    db.commit()
+                with self.assertRaises(AdmissionDenied):
+                    prepare_draft_request(self.workspace, task_id)
+                self.assertEqual(self.core.snapshot()["state"], "EMPTY")
+        print("NF_SIGNED_ADMISSION_CORRUPT_JOINED_PROJECT_UUID=DENIED_NO_CORE")
+
     def test_oversized_or_ineligible_draft_never_enqueued(self):
         long_draft = self.workspace.create_task({
             "project_id": self.project["id"],
