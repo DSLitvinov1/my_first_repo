@@ -233,6 +233,20 @@ class WorkspaceStore:
                 "error_code":error,"core_enqueued":False,"host_write_allowed":False,
                 "review_approved":False}
 
+    def recover_unknown_proposals(self):
+        """An interrupted local model attempt is UNKNOWN, never automatically retried."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            pending=db.execute("SELECT task_id FROM task_proposals WHERE status='REQUESTED'").fetchall()
+            for (task_id,) in pending:
+                db.execute("UPDATE task_proposals SET status='UNKNOWN',completed_utc=?,"
+                           "error_code='INTERRUPTED_ATTEMPT_NO_RETRY' "
+                           "WHERE task_id=? AND status='REQUESTED'",(_utc(),task_id))
+                db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                           (_utc(),"DRAFT_PROVIDER_INTERRUPTED_UNKNOWN",task_id))
+            db.commit()
+        return len(pending)
+
     def list_task_proposals(self):
         with self.connect() as db:
             rows=db.execute("SELECT task_id,model,status,created_utc,completed_utc,"
@@ -552,6 +566,7 @@ def main(argv=None):
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
                     handler(app,ui,one_time_token,args.port,components_dir=args.components_dir)) as srv:
+        app.recover_unknown_proposals()
         print("NEUROFACTORY_LOCAL_DRAFT_WORKSPACE=127.0.0.1:"+str(args.port),flush=True)
         srv.serve_forever(poll_interval=0.2)
 
