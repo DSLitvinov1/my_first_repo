@@ -19,7 +19,8 @@ PINNED={
              "windows_scm_ci_worker.py","signed_effect_permit.py")),
     "providers":("827b654d9f7c6a10a9b90a9c97802e63116711b9",
             ("ollama_worker.py","local_qwen.py","provider_interface.py",
-             "evidence_receipt.py","durable_budget.py","coordinator_adapter.py")),
+             "evidence_receipt.py","durable_budget.py","coordinator_adapter.py",
+             "windows_private_acl.py")),
     "coordinator":("ad82e853d9db2a0567c61e8d9a3f1e5f62905271",
             ("mvp_task_exchange.py","mvp_status_projection.py","release_readiness.py")),
 }
@@ -30,6 +31,7 @@ ANCHORED_BLOBS={
     "host/windows_named_pipe_pilot_receiver.py": "a3b01ad2e281eca40d13869fed6fbed5ffbe88b1",
     "host/windows_scm_ci_worker.py": "e5444b9485950cec360058b10c84331b2d60700c",
     "host/signed_effect_permit.py": "2f6cb04295536edd7d834f39d364af4786b22d23",
+    "providers/windows_private_acl.py": "efc006a22c6deea911b0384a10acfe11e27d2821",
     "providers/ollama_worker.py": "8effd007628db0f144e7b5ddf9d835edd3476887",
     "providers/local_qwen.py": "278ea77977ea5c43df7fe2d60fd69222660da7ca",
     "providers/provider_interface.py": "04404e8cd992d858a77ea6f5f15124ec1e65a3c6",

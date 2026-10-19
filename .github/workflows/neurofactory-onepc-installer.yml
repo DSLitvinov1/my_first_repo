@@ -1,13 +1,14 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
+      - bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py
       - bridge/neurofactory/control_ui/**
       - .github/workflows/neurofactory-onepc-installer.yml
 permissions:
@@ -57,6 +58,7 @@ jobs:
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
@@ -66,7 +68,7 @@ jobs:
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'COMPONENT_SOURCE_PROVENANCE_FAILED'}
           $manifest=Get-Content "$stage\components\manifest.json" -Raw | ConvertFrom-Json
-          if ($manifest.entries.Count -ne 15 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
+          if ($manifest.entries.Count -ne 16 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
           Write-Output 'NF_INSTALLER_IMMUTABLE_CORE_HOST_PROVIDERS_COORDINATOR_STAGED=PASS_NOT_ACTIVE'
       - name: Install Inno Setup compiler on disposable GitHub Windows only
         run: |
@@ -93,12 +95,14 @@ jobs:
           $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
           if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
           $manifest=Get-Content "$install\components\manifest.json" -Raw | ConvertFrom-Json
-          if ($manifest.entries.Count -ne 15 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
+          if ($manifest.entries.Count -ne 16 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
           foreach($entry in $manifest.entries) {
             $file=Join-Path (Join-Path "$install\components" $entry.role) $entry.file
             if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
           }
           Write-Output 'NF_INSTALLER_REAL_CORE_HOST_PROVIDER_SOURCE_SHA256_IN_PACKAGE=PASS_NOT_ACTIVE'
+          & "$install\runtime\python.exe" -B "$install\app\test_installed_provider_import.py" --components "$install\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_PROVIDER_CORE_IMPORT_FAILED'}
           python -B bridge/neurofactory/one_pc_candidate/test_installed_integrity.py --app "$install\app" --components "$install\components"
           if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_RUNTIME_TAMPER_NOT_DENIED'}
           $port=18766

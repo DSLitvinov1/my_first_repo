@@ -14,7 +14,7 @@ def run(app,components):
     sys.path.insert(0,str(app))
     from installed_integrity import verify,IntegrityDenied
     good=verify(components)
-    if good["files_verified"]!=15 or good["live_execution_allowed"] is not False:
+    if good["files_verified"]!=16 or good["live_execution_allowed"] is not False:
         raise AssertionError("Invalid pinned installed-code trust status")
     with tempfile.TemporaryDirectory(prefix="nf-installed-integrity-") as tmp:
         root=Path(tmp)
@@ -47,7 +47,7 @@ def run(app,components):
                 continue
             raise AssertionError("Untrusted installed component accepted")
     print("NF_INSTALLED_COMPONENT_TAMPER_AND_PRIVILEGE_ESCALATION=DENIED")
-    print("NF_INSTALLED_COMPONENT_INTEGRITY=PINNED_15_NO_LIVE")
+    print("NF_INSTALLED_COMPONENT_INTEGRITY=PINNED_16_NO_LIVE")
 
 def main():
     p=argparse.ArgumentParser()
