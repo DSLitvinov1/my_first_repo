@@ -142,6 +142,34 @@ jobs:
           finally {
             if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
           }
+          $secondPort=18767
+          $secondOut=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-out.log'
+          $secondErr=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-err.log'
+          $server2=Start-Process -PassThru -WindowStyle Hidden -RedirectStandardOutput $secondOut -RedirectStandardError $secondErr -FilePath "$install\runtime\python.exe" -ArgumentList @(
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--components-dir',"$install\components",'--port',"$secondPort")
+          try {
+            $url2="http://127.0.0.1:$secondPort"
+            $again=$false
+            for($k=0;$k -lt 40;$k++) {
+              Start-Sleep -Milliseconds 200
+              if ($server2.HasExited) {break}
+              try { $bootstrapAgain=Invoke-RestMethod "$url2/api/bootstrap" -TimeoutSec 2; $again=$true; break } catch {}
+            }
+            if (!$again -or $bootstrapAgain.mode -ne 'LOCAL_DRAFT_ONLY') {
+              if (Test-Path $secondErr) {Get-Content $secondErr | Select-Object -Last 12}
+              throw 'INSTALLED_RESTART_FAILED'
+            }
+            $savedProjects=Invoke-RestMethod "$url2/api/projects"
+            $savedTasks=Invoke-RestMethod "$url2/api/tasks"
+            if (@($savedProjects.projects | Where-Object {$_.id -eq $created.id}).Count -ne 1) {throw 'PROJECT_LOST_ON_RESTART'}
+            if (@($savedTasks.tasks | Where-Object {$_.id -eq $createdTask.id -and $_.state -eq 'DRAFT_PENDING_OWNER_AUTH'}).Count -ne 1) {throw 'TASK_LOST_ON_RESTART'}
+            $health=Invoke-RestMethod "$url2/api/status"
+            if ($health.real_core_dispatch_enabled -or $health.model_inference_enabled) {throw 'UNEXPECTED_EXECUTION_ON_RESTART'}
+            Write-Output 'NF_INSTALLED_WINDOWS_APPLICATION_PROCESS_RESTART_DURABLE_DATA=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server2.HasExited) {Stop-Process -Id $server2.Id -Force}
+          }
           $uninstall="$install\unins000.exe"
           if (!(Test-Path $uninstall)) {throw 'UNINSTALLER_MISSING'}
           $u=Start-Process -Wait -PassThru -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
