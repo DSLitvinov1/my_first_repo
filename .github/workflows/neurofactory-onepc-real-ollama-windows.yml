@@ -71,6 +71,37 @@ jobs:
           $exe=Get-ChildItem $folder -Filter ollama.exe -File -Recurse | Select-Object -First 1
           if (!$exe) {throw 'OLLAMA_EXE_MISSING'}
           Write-Output 'NF_REAL_OLLAMA_OFFICIAL_PINNED_BINARY=VERIFIED'
+      - name: Build and install the actual candidate Windows app on disposable hosted runner
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'DISPOSABLE_RUNNER_REQUIRED'}
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage'
+          New-Item -ItemType Directory -Force "$stage\\app","$stage\\ui","$stage\\runtime" | Out-Null
+          $archive=Join-Path $env:RUNNER_TEMP 'nf-python-embed.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $archive -MaximumRedirection 2
+          if ((Get-Item $archive).Length -ne 11133606) {throw 'EMBEDDED_PYTHON_LENGTH_MISMATCH'}
+          Expand-Archive -LiteralPath $archive -DestinationPath "$stage\\runtime" -Force
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\\app"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\\ui"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\\start_neurofactory.cmd"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\\README.txt"
+          choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {throw 'DISPOSABLE_INNO_INSTALL_FAILED'}
+          $compiler='C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe'
+          if (!(Test-Path $compiler)) {throw 'INNO_COMPILER_NOT_INSTALLED'}
+          $script=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').Path
+          & $compiler "/DSourceRoot=$stage" $script
+          if ($LASTEXITCODE -ne 0) {throw 'DRAFT_INSTALLER_COMPILE_FAILED'}
+          $installer='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe'
+          $installer=(Resolve-Path $installer).Path
+          Write-Output ('NF_REAL_QWEN_INSTALLER_SHA256='+(Get-FileHash $installer -Algorithm SHA256).Hash)
+          $installed=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-actual-install'
+          $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$installed")
+          if ($p.ExitCode -ne 0) {throw 'DISPOSABLE_INSTALL_FAILED'}
+          $env:NF_REAL_QWEN_INSTALLED_APP=Join-Path $installed 'app'
+          & "$installed\\runtime\\python.exe" -B "$installed\\app\\test_installed_provider_import.py" --components "$installed\\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_PROVIDER_IMPORT_FAILED'}
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py' "$installed\\app\\nf-ci-qwen-test.py"
+          Write-Output 'NF_REAL_QWEN_ACTUAL_WINDOWS_INSTALLATION=PASS_DISPOSABLE_ONLY'
       - name: Start real Ollama and pull actual Qwen3 0.6B weights to temp only
         run: |
           $exe=(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-ollama-official') -Filter ollama.exe -File -Recurse | Select-Object -First 1).FullName
@@ -104,8 +135,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_OLLAMA_INFERENCE_FAILED'}
             $env:NF_REAL_QWEN_COMPONENTS=Join-Path (Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage') 'components'
             $env:NF_REAL_QWEN_DISPOSABLE_TEST='1'
-            python -B bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py
-            if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_DRAFT_PROVIDER_HTTP_FAILED'}
+            $installed=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-actual-install'
+            $env:NF_REAL_QWEN_INSTALLED_APP=Join-Path $installed 'app'
+            & "$installed\\runtime\\python.exe" -B "$installed\\app\\nf-ci-qwen-test.py"
+            if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_INSTALLED_APP_HTTP_FAILED'}
             Write-Output 'NF_REAL_QWEN_CORE_HOST_REAL_QUEUE=NOT_TESTED'
             Write-Output 'NF_REAL_QWEN_HOST_SERVICE_ENABLED=FALSE'
           } finally {
