@@ -4,6 +4,8 @@ on:
     branches: [neurofactory-onepc-complete-package-20261019]
     paths:
       - .github/workflows/neurofactory-onepc-real-ollama-windows.yml
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/test_local_qwen_probe.py
 permissions:
   contents: read
 jobs:
