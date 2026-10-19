@@ -1,0 +1,75 @@
+name: Neurofactory real Qwen via genuine Ollama provider on disposable Windows
+on:
+  push:
+    branches: [neurofactory-onepc-complete-package-20261019]
+    paths:
+      - .github/workflows/neurofactory-onepc-real-ollama-windows.yml
+permissions:
+  contents: read
+jobs:
+  real-qwen-ollama-test:
+    runs-on: windows-2025
+    timeout-minutes: 24
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deny owner runner and undersized machine
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') {throw 'DISPOSABLE_WINDOWS_ONLY'}
+          $os=Get-CimInstance Win32_OperatingSystem
+          $free=[math]::Floor([double]$os.FreePhysicalMemory/1024)
+          if ($free -lt 6000) {throw 'OLLAMA_QWEN_INFERENCE_RESOURCE_GUARD'}
+          $disk=Get-PSDrive -Name $env:SystemDrive.Substring(0,1)
+          if ($disk.Free -lt 6500000000) {throw 'OLLAMA_QWEN_INFERENCE_DISK_GUARD'}
+          Write-Output ('NF_REAL_OLLAMA_HOSTED_AVAILABLE_RAM_MB='+$free)
+      - name: Download pinned official Ollama Windows binary only onto disposable runner
+        run: |
+          $zip=Join-Path $env:RUNNER_TEMP 'nf-ollama-win-amd64.zip'
+          Invoke-WebRequest -Uri 'https://github.com/ollama/ollama/releases/download/v0.34.0/ollama-windows-amd64.zip' -OutFile $zip -MaximumRedirection 3 -TimeoutSec 480
+          if ((Get-Item $zip).Length -ne 1469375054) {throw 'OLLAMA_OFFICIAL_ASSET_LENGTH_MISMATCH'}
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne 'a7dd1b174f39d3d1b8a25d4cbc86045d0e190b17187bfdcbe2f2ee3b5a11470e') {throw 'OLLAMA_OFFICIAL_ASSET_HASH_MISMATCH'}
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-ollama-official'
+          Expand-Archive -LiteralPath $zip -DestinationPath $folder
+          $exe=Get-ChildItem $folder -Filter ollama.exe -File -Recurse | Select-Object -First 1
+          if (!$exe) {throw 'OLLAMA_EXE_MISSING'}
+          Write-Output 'NF_REAL_OLLAMA_OFFICIAL_PINNED_BINARY=VERIFIED'
+      - name: Start real Ollama and pull actual Qwen3 0.6B weights to temp only
+        run: |
+          $exe=(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-ollama-official') -Filter ollama.exe -File -Recurse | Select-Object -First 1).FullName
+          $env:OLLAMA_HOST='127.0.0.1:11434'
+          $env:OLLAMA_MODELS=Join-Path $env:RUNNER_TEMP 'nf-ollama-disposable-models'
+          $out=Join-Path $env:RUNNER_TEMP 'nf-ollama-out.log'
+          $err=Join-Path $env:RUNNER_TEMP 'nf-ollama-err.log'
+          $server=Start-Process -PassThru -WindowStyle Hidden -FilePath $exe -ArgumentList @('serve') -RedirectStandardOutput $out -RedirectStandardError $err
+          try {
+            $ready=$false
+            for ($i=0;$i -lt 80;$i++) {
+              Start-Sleep -Milliseconds 500
+              if ($server.HasExited) {break}
+              try {$tags=Invoke-RestMethod 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; $ready=$true;break} catch {}
+            }
+            if (!$ready) {
+              if (Test-Path $err) {Get-Content $err | Select-Object -Last 15}
+              throw 'GENUINE_OLLAMA_SERVER_NOT_STARTED'
+            }
+            & $exe pull 'qwen3:0.6b'
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN3_PULL_FAILED'}
+            $inventory=Invoke-RestMethod 'http://127.0.0.1:11434/api/tags'
+            $matched=@($inventory.models | Where-Object {$_.name -eq 'qwen3:0.6b'})
+            if ($matched.Count -ne 1 -or $matched[0].digest -notmatch '^[a-fA-F0-9]{64}$') {throw 'GENUINE_QWEN3_NOT_REPORTED_BY_OLLAMA'}
+            Write-Output ('NF_REAL_OLLAMA_QWEN_MODEL_REPORTED_DIGEST='+$matched[0].digest)
+            $src=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
+            $env:PYTHONPATH=$src
+            & python -B -c "from local_workspace import probe_local_qwen; r=probe_local_qwen('qwen3:0.6b'); assert r['status']=='OLLAMA_LOCAL_RESPONSE_UNATTESTED'; assert r['model_provenance_attested'] is False; assert r['core_dispatch_allowed'] is False; print('NF_REAL_QWEN_OLLAMA_RESPONSE_SHA256='+r['response_sha256']); print('NF_REAL_QWEN_REAL_OLLAMA_PROVIDER=PASS_UNATTESTED')"
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_OLLAMA_INFERENCE_FAILED'}
+            Write-Output 'NF_REAL_QWEN_CORE_HOST_REAL_QUEUE=NOT_TESTED'
+            Write-Output 'NF_REAL_QWEN_HOST_SERVICE_ENABLED=FALSE'
+          } finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+      - name: Ensure source untouched
+        run: git diff --exit-code
