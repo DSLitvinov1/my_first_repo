@@ -1,0 +1,29 @@
+name: Neurofactory one-PC signed project UUID admission guard regression
+on:
+  push:
+    branches: [neurofactory-onepc-project-id-regression-proposal-20261019]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+      - bridge/neurofactory/one_pc_candidate/test_signed_owner_admission.py
+      - .github/workflows/neurofactory-onepc-project-uuid-guard-ci.yml
+permissions:
+  contents: read
+jobs:
+  trusted-project-id-guard-windows:
+    runs-on: windows-2025
+    timeout-minutes: 7
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install ephemeral Ed25519 CI test verifier only
+        run: python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+      - name: Test actual SQLite bad joined project IDs and existing owner-signed CORE admission
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_signed_owner_admission.py -v
+      - name: Verify syntax without bytecode writes
+        run: python -B -m py_compile bridge/neurofactory/one_pc_candidate/signed_owner_admission.py bridge/neurofactory/one_pc_candidate/test_signed_owner_admission.py
+      - name: No checkout source changes from testing
+        run: git diff --exit-code
