@@ -1,6 +1,7 @@
 """Actual draft SQLite backup restoration, corruption and overwrite rejection."""
 from __future__ import annotations
 import shutil
+from contextlib import closing
 import sqlite3
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -46,7 +47,7 @@ class OfflineRestoreTests(unittest.TestCase):
         self.assertFalse((self.root/"invalid-destination").exists())
         future=self.root/"future.sqlite3"
         shutil.copyfile(self.backup,future)
-        with sqlite3.connect(future) as con:
+        with closing(sqlite3.connect(future)) as con:
             con.execute("PRAGMA user_version=999")
         with self.assertRaises(RestoreDenied):
             restore(future,self.root/"future-destination")
@@ -55,7 +56,7 @@ class OfflineRestoreTests(unittest.TestCase):
     def test_missing_table_and_spoofed_task_state_fail_closed(self):
         bad=self.root/"missing.sqlite3"
         shutil.copyfile(self.backup,bad)
-        with sqlite3.connect(bad) as con:
+        with closing(sqlite3.connect(bad)) as con:
             con.execute("DROP TABLE model_checks")
         with self.assertRaises(RestoreDenied):
             restore(bad,self.root/"missing-destination")
