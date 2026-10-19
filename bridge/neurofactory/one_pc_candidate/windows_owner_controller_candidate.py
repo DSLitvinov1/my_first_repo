@@ -287,7 +287,7 @@ def signed_enqueue_only(root, *, prepared_draft, spec,
     try:
         _, private = crypt.CryptUnprotectData(
             read_file(root, PRIVATE_FILE), entropy, None, None,
-            crypt.CRYPTPROTECT_UI_FORBIDDEN)
+            0x1)  # CRYPTPROTECT_UI_FORBIDDEN for WinCrypt
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
         key = Ed25519PrivateKey.from_private_bytes(private)
