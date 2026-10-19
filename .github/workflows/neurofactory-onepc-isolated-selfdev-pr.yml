@@ -1,0 +1,82 @@
+name: Neurofactory one-PC verified Qwen artifact to isolated signed candidate PR
+on:
+  push:
+    branches: [neurofactory-onepc-selfdev-isolated-patch-gate-20261019]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/selfdev_isolated_worktree.py
+      - bridge/neurofactory/one_pc_candidate/test_selfdev_isolated_ci_windows.py
+      - .github/workflows/neurofactory-onepc-isolated-selfdev-pr.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  isolated-reviewed-change-test:
+    runs-on: windows-2025
+    timeout-minutes: 13
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_SELFDEV_ISOLATED_CI_ONLY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch exact existing PR43 baseline (no branch merge)
+        uses: actions/checkout@v4
+        with:
+          ref: 23c9464548c137ba75dac3a1ba55af5c5f89b460
+          path: .nf_base
+          persist-credentials: false
+      - name: Fetch exact separately reviewed PR46 (no branch merge)
+        uses: actions/checkout@v4
+        with:
+          ref: a46b5e48685008f6a556d6b1c2aaeffaa0ad136b
+          path: .nf_reviewed
+          fetch-depth: 10
+          persist-credentials: false
+      - name: Download EXISTING real Qwen sealed output from successful Windows run — NO new inference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'WINDOWS_HOSTED_CI_ONLY'}
+          $evidence=Join-Path $env:RUNNER_TEMP 'nf-selfdev-first-qwen'
+          $report=Join-Path $env:RUNNER_TEMP 'nf-selfdev-auto-pr'
+          New-Item -ItemType Directory -Force $evidence,$report | Out-Null
+          gh run download 39259557140 -R 'DSLitvinov1/my_first_repo' -n 'Neurofactory-REAL-QWEN-SIGNED-CORE-UNREVIEWED-SELFDEV' -D "$evidence"
+          if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_GITHUB_RUN_ARCHIVE_UNAVAILABLE_FAIL_CLOSED'}
+          if (!(Test-Path "$evidence/nf-signed-qwen-report/evidence_summary.json")) {throw 'REAL_QWEN_SEALED_REPORT_NOT_DOWNLOADED'}
+          "NF_SELFDEV_QWEN_EVIDENCE=$evidence" | Out-File -Append $env:GITHUB_ENV
+          "NF_SELFDEV_REPORT_DIR=$report" | Out-File -Append $env:GITHUB_ENV
+          "NF_SELFDEV_BASE_REPO=$(Join-Path $env:GITHUB_WORKSPACE '.nf_base')" | Out-File -Append $env:GITHUB_ENV
+          "NF_SELFDEV_REVIEWED_REPO=$(Join-Path $env:GITHUB_WORKSPACE '.nf_reviewed')" | Out-File -Append $env:GITHUB_ENV
+          Write-Output 'NF_SELFDEV_ORIGINAL_SIGNED_QWEN_ARTIFACT=DOWNLOADED_NO_MODEL_CALL'
+      - name: Install temporary CI-only Ed25519 signature verifier
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) {throw 'DISPOSABLE_ED25519_NOT_AVAILABLE'}
+      - name: Compile only newly introduced isolated worktree source
+        run: |
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/selfdev_isolated_worktree.py bridge/neurofactory/one_pc_candidate/test_selfdev_isolated_ci_windows.py
+          if ($LASTEXITCODE -ne 0) {throw 'ISOLATED_CODE_SYNTAX_INVALID'}
+      - name: Verify original real Qwen evidence, reject unsafe code, sign reviewed change and test nine CORE cases in isolated Git worktree
+        run: |
+          python -B bridge/neurofactory/one_pc_candidate/test_selfdev_isolated_ci_windows.py
+          if ($LASTEXITCODE -ne 0) {throw 'UNTRUSTED_OR_UNTESTED_SELFDEV_ISOLATION_DENIED'}
+      - name: Verify no parent checkout source or dependency changed
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'PARENT_REPO_MUTATED'}
+          git -C .nf_base status --porcelain
+          if ($LASTEXITCODE -ne 0) {throw 'BASE_REPO_STATUS_UNKNOWN'}
+      - name: Preserve review-only draft PR patch and exact Git evidence (not remote published)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-SIGNED-QWEN-ISOLATED-REVIEWED-PR-CANDIDATE
+          path: |
+            ${{ runner.temp }}/nf-selfdev-auto-pr/REVIEW_ONLY_*
+          if-no-files-found: warn
+          retention-days: 7
