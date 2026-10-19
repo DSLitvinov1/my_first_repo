@@ -47,7 +47,7 @@ def run(app,components):
                 continue
             raise AssertionError("Untrusted installed component accepted")
     print("NF_INSTALLED_COMPONENT_TAMPER_AND_PRIVILEGE_ESCALATION=DENIED")
-    print("NF_INSTALLED_COMPONENT_INTEGRITY=PINNED_15_NO_LIVE")
+    print("NF_INSTALLED_COMPONENT_INTEGRITY=PINNED_16_NO_LIVE")
 
 def main():
     p=argparse.ArgumentParser()
