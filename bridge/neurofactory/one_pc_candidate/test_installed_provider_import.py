@@ -10,8 +10,16 @@ import sys
 
 def check(components: Path) -> None:
     # The deployed integrity module lives beside this file.
-    from installed_integrity import verify
-    status=verify(components)
+    import importlib.util
+    pinned_verifier=Path(__file__).resolve().with_name("installed_integrity.py")
+    if pinned_verifier.is_symlink() or not pinned_verifier.is_file():
+        raise RuntimeError("Missing installed source verification module")
+    module_spec=importlib.util.spec_from_file_location("_nf_installed_verify",pinned_verifier)
+    if module_spec is None or module_spec.loader is None:
+        raise RuntimeError("Cannot load installed verification module")
+    verifier=importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(verifier)
+    status=verifier.verify(components)
     if status["files_verified"] != 16 or status["live_execution_allowed"] is not False:
         raise RuntimeError("Installed code not verified")
     provider_dir=components/"providers"
