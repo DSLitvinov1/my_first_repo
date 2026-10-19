@@ -305,12 +305,13 @@ class WorkspaceStore:
                 "sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
                 "created_utc":_utc()}
 
-    def diag(self):
+    def diag(self,manual_provider_available=False):
         with self.connect() as db:
             good=db.execute("PRAGMA quick_check").fetchone()[0]=="ok"
         return {"database_connected":good,"projects":len(self.list_projects()),
                 "tasks":len(self.list_tasks()),"real_core_dispatch_enabled":False,
-                "model_inference_enabled":False,"external_publish_enabled":False,
+                "model_inference_enabled":False,"manual_draft_proposal_available":bool(manual_provider_available),
+                "external_publish_enabled":False,
                 "handoff":"PAUSED_BY_USER"}
 
 def _ollama_json(method, path, *, payload=None, port=11434, timeout=2, cap=32768):
@@ -445,7 +446,7 @@ def handler(store,ui,token,port,components_dir=None):
             if p.path=="/api/history":
                 self._json(200,{"history":store.history()});return
             if p.path=="/api/status":
-                self._json(200,store.diag());return
+                self._json(200,store.diag(components_dir is not None));return
             if p.path=="/api/models":
                 self._json(200,local_models());return
             if p.path=="/api/model-checks":
