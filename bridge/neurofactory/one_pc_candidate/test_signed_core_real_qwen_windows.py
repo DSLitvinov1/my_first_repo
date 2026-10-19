@@ -239,8 +239,8 @@ def main():
               "durable model reservation failed to block replay")
 
         candidate = OUT / "proposal_for_independent_review.md"
-        with candidate.open("xb", encoding="utf-8", newline="\n") as out:
-            out.write(text)
+        with candidate.open("xb") as out:
+            out.write(text.encode("utf-8"))
             out.flush()
             os.fsync(out.fileno())
         check(sha256(candidate.read_bytes()).hexdigest()
