@@ -47,7 +47,8 @@ class FakeOllama(BaseHTTPRequestHandler):
         type(self).request_model=value.get("model")
         assert value["prompt"]==QWEN_PROBE_PROMPT
         assert value["stream"] is False
-        assert value["options"]["num_predict"]==48
+        assert value["options"]["num_predict"]==128
+        assert value["think"] is False
         if self.mode=="bad":
             self.json_reply({"model":"qwen3:0.6b","done":False,"response":""})
         elif self.mode=="oversize":
