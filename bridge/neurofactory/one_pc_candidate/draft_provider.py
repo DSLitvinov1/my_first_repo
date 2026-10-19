@@ -77,7 +77,7 @@ def generate(components: Path, workspace_dir: Path, task: dict, *, model: str):
     if ledger.is_symlink():
         raise DraftProviderDenied("Linked provider attempt ledger")
     result=worker.execute_one(request,model=model,ledger_dir=ledger,
-                              max_output_tokens=256,evidence_dir=None)
+                              max_output_tokens=512,evidence_dir=None)
     if (type(result) is not dict or
         result.get("task_id")!=task_id or result.get("project_id")!=project or
         result.get("model")!=model or result.get("review_approved") is not False or
