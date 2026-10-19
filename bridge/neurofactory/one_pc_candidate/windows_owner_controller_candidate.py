@@ -65,6 +65,20 @@ def operator_sid():
         sec.GetTokenInformation(token, sec.TokenUser)[0])
 
 
+def require_real_different_ui_account(sid):
+    """An arbitrary caller-supplied SID string is never proof of a real UI user."""
+    if type(sid) is not str or not SID_PATTERN.fullmatch(sid) or sid == operator_sid():
+        deny("UI must have a distinct real Windows user SID")
+    _, _, _, sec = windows()
+    try:
+        _, _, kind = sec.LookupAccountSid(None, sec.ConvertStringSidToSid(sid))
+    except Exception as exc:
+        raise WindowsOwnerDenied("UI SID not resolvable by this Windows host") from exc
+    if kind != sec.SidTypeUser:
+        deny("UI SID must belong to a user, not a built-in group")
+    return sid
+
+
 def check_root(root, *, exists=True):
     if not isinstance(root, Path) or not root.is_absolute() or root.is_symlink():
         deny("Absolute nonlinked controller directory required")
@@ -162,9 +176,7 @@ def operator_confirm(callback, challenge, *, ci):
 def enroll(root, *, ui_sid, confirm, ci=False):
     """Manual separate-account key enrollment, no owner-PC automation."""
     sid = operator_sid()
-    if (not isinstance(ui_sid, str) or not SID_PATTERN.fullmatch(ui_sid) or
-            ui_sid == sid):
-        deny("Require actual distinct unprivileged Windows UI SID")
+    require_real_different_ui_account(ui_sid)
     root = check_root(root, exists=False)
     if root.exists():
         deny("No automatic overwrite or key rotation")
@@ -214,8 +226,8 @@ def read_manifest(root, pinned_public):
     if (type(manifest) is not dict or set(manifest) != required or
             manifest["schema"] != ROOT_SCHEMA or
             manifest["owner_sid"] != operator_sid() or
-            not SID_PATTERN.fullmatch(manifest["ui_sid"]) or
-            manifest["ui_sid"] == operator_sid() or
+            require_real_different_ui_account(manifest["ui_sid"]) !=
+                manifest["ui_sid"] or
             type(pinned_public) is not bytes or len(pinned_public) != 32 or
             public != pinned_public or
             hashlib.sha256(public).hexdigest() != manifest["public_sha256"] or
