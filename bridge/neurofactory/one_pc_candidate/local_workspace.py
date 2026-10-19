@@ -80,7 +80,7 @@ class WorkspaceStore:
         with self.connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             version=conn.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0,1,2):
+            if version not in (0,1,2,3):
                 raise WorkspaceDenied("Unknown newer database version")
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS projects(
@@ -99,9 +99,17 @@ class WorkspaceStore:
               reported_model TEXT NOT NULL, reported_digest TEXT NOT NULL,
               prompt_sha256 TEXT NOT NULL, response_sha256 TEXT NOT NULL,
               provenance_attested INTEGER NOT NULL DEFAULT 0 CHECK(provenance_attested=0));
+            CREATE TABLE IF NOT EXISTS task_proposals(
+              task_id TEXT PRIMARY KEY REFERENCES tasks(id),
+              model TEXT NOT NULL,
+              status TEXT NOT NULL CHECK(status IN (
+                'REQUESTED','PROPOSED_UNVERIFIED','INVALID_MODEL_OUTPUT','BLOCKED','UNKNOWN')),
+              created_utc TEXT NOT NULL, completed_utc TEXT,
+              response_sha256 TEXT, content_sha256 TEXT,
+              proposal_text TEXT, error_code TEXT);
             """)
-            if version in (0,1):
-                conn.execute("PRAGMA user_version=2")
+            if version in (0,1,2):
+                conn.execute("PRAGMA user_version=3")
             conn.commit()
 
     @contextmanager
@@ -164,6 +172,75 @@ class WorkspaceStore:
                        (_utc(),"TASK_CREATED_NOT_QUEUED",row[0]))
             db.commit()
         return dict(zip(("id","project_id","objective","model_preference","state","created_utc"),row))
+
+    def find_task(self,task_id):
+        if type(task_id) is not str or not PROJECT_ID.fullmatch(task_id):
+            raise WorkspaceDenied("Invalid task identifier")
+        with self.connect() as db:
+            row=db.execute("SELECT id,project_id,objective,model_preference,state,created_utc FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if row is None or row[4]!="DRAFT_PENDING_OWNER_AUTH":
+            raise WorkspaceDenied("Unknown or unauthorized draft task")
+        return dict(zip(("id","project_id","objective","model_preference","state","created_utc"),row))
+
+    def reserve_task_proposal(self,task_id,model):
+        if type(model) is not str or model not in SUPPORTED_QWEN:
+            raise WorkspaceDenied("Unsupported local model")
+        self.find_task(task_id)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute("SELECT 1 FROM task_proposals WHERE task_id=?",(task_id,)).fetchone():
+                raise WorkspaceDenied("Draft model attempt already reserved: no automatic retry")
+            if not db.execute("SELECT 1 FROM tasks WHERE id=? AND state='DRAFT_PENDING_OWNER_AUTH'",(task_id,)).fetchone():
+                raise WorkspaceDenied("Draft no longer valid")
+            db.execute("INSERT INTO task_proposals(task_id,model,status,created_utc) VALUES(?,?,?,?)",
+                       (task_id,model,"REQUESTED",_utc()))
+            db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                       (_utc(),"DRAFT_PROVIDER_ATTEMPT_RESERVED",task_id))
+            db.commit()
+
+    def finalize_task_proposal(self,task_id,result):
+        if type(result) is not dict or result.get("status") not in (
+            "PROPOSED_UNVERIFIED","INVALID_MODEL_OUTPUT","BLOCKED","UNKNOWN"):
+            raise WorkspaceDenied("Invalid untrusted provider result")
+        status=result["status"]
+        response_hash=None;content_hash=None;content=None;error=None
+        if status=="PROPOSED_UNVERIFIED":
+            content=result.get("text")
+            response_hash=result.get("response_sha256")
+            content_hash=result.get("content_sha256")
+            if (type(content) is not str or not 1<=len(content.encode("utf-8"))<=12000 or
+                type(content_hash) is not str or
+                hashlib.sha256(content.encode("utf-8")).hexdigest()!=content_hash or
+                type(response_hash) is not str or not re.fullmatch(r"[a-f0-9]{64}",response_hash)):
+                raise WorkspaceDenied("Invalid proposed content or digest")
+        else:
+            error=result.get("error_code","UNKNOWN")
+            if type(error) is not str or len(error)>80:
+                raise WorkspaceDenied("Invalid provider error marker")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row=db.execute("SELECT status,model FROM task_proposals WHERE task_id=?",(task_id,)).fetchone()
+            if row is None or row[0]!="REQUESTED" or row[1]!=result.get("model"):
+                raise WorkspaceDenied("Attempt missing, already finalized or wrong model")
+            db.execute("UPDATE task_proposals SET status=?,completed_utc=?,response_sha256=?,"
+                       "content_sha256=?,proposal_text=?,error_code=? WHERE task_id=? AND status='REQUESTED'",
+                       (status,_utc(),response_hash,content_hash,content,error,task_id))
+            db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                       (_utc(),"DRAFT_PROVIDER_"+status,task_id))
+            db.commit()
+        return {"task_id":task_id,"status":status,"model":result["model"],
+                "text":content,"content_sha256":content_hash,"response_sha256":response_hash,
+                "error_code":error,"core_enqueued":False,"host_write_allowed":False,
+                "review_approved":False}
+
+    def list_task_proposals(self):
+        with self.connect() as db:
+            rows=db.execute("SELECT task_id,model,status,created_utc,completed_utc,"
+                            "response_sha256,content_sha256,proposal_text,error_code "
+                            "FROM task_proposals ORDER BY created_utc DESC,task_id LIMIT 100").fetchall()
+        keys=("task_id","model","status","created_utc","completed_utc",
+              "response_sha256","content_sha256","text","error_code")
+        return [dict(zip(keys,row)) for row in rows]
 
     def record_model_check(self, result):
         """Store only hashes and declared Ollama model, never trust them as proof."""
@@ -322,7 +399,7 @@ def probe_local_qwen(model_preference, *, port=11434):
             "automatic_retry_allowed":False,"publication_allowed":False}
 
 
-def handler(store,ui,token,port):
+def handler(store,ui,token,port,components_dir=None):
     origin="http://127.0.0.1:"+str(port)
     class Local(BaseHTTPRequestHandler):
         def _secure_request(self):
@@ -373,6 +450,8 @@ def handler(store,ui,token,port):
                 self._json(200,local_models());return
             if p.path=="/api/model-checks":
                 self._json(200,{"checks":store.model_checks()});return
+            if p.path=="/api/task-proposals":
+                self._json(200,{"proposals":store.list_task_proposals()});return
             fn=FILES.get(p.path)
             if not fn:
                 self._json(404,{"error":"NOT_FOUND"});return
@@ -390,7 +469,7 @@ def handler(store,ui,token,port):
             if self.headers.get("Content-Type")!="application/json":
                 self._json(415,{"error":"JSON_REQUIRED"});return
             p=urlsplit(self.path)
-            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup","/api/model-probe"):
+            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup","/api/model-probe","/api/draft-propose"):
                 self._json(404,{"error":"WRITE_NOT_ALLOWED"});return
             try:
                 size=int(self.headers.get("Content-Length","0"))
@@ -402,6 +481,30 @@ def handler(store,ui,token,port):
                     result=store.create_project(body)
                 elif p.path=="/api/tasks":
                     result=store.create_task(body)
+                elif p.path=="/api/draft-propose":
+                    if components_dir is None or type(body) is not dict or set(body)!={"task_id"}:
+                        raise WorkspaceDenied("Pinned provider and explicit task required")
+                    import importlib.util
+                    module_path=Path(__file__).with_name("draft_provider.py")
+                    if module_path.is_symlink() or not module_path.is_file():
+                        raise WorkspaceDenied("Installed draft provider unavailable")
+                    spec=importlib.util.spec_from_file_location("_nf_draft_provider",module_path)
+                    if spec is None or spec.loader is None:
+                        raise WorkspaceDenied("Draft provider cannot load")
+                    provider=importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(provider)
+                    task=store.find_task(body["task_id"])
+                    try:
+                        worker,model=provider.preflight(components_dir,task["model_preference"])
+                    except provider.DraftProviderDenied:
+                        raise WorkspaceDenied("Local model missing or resource guard")
+                    store.reserve_task_proposal(task["id"],model)
+                    try:
+                        proposed=provider.generate(components_dir,store.directory,task,model=model)
+                    except Exception:
+                        # An unknown provider/model outcome is sticky; never retry automatically.
+                        proposed={"status":"UNKNOWN","model":model,"error_code":"UNKNOWN_MODEL_RESULT"}
+                    result=store.finalize_task_proposal(task["id"],proposed)
                 elif p.path=="/api/model-probe":
                     if type(body) is not dict or set(body)!={"model_preference"}:
                         raise WorkspaceDenied("Explicit model only")
@@ -447,7 +550,7 @@ def main(argv=None):
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
-                    handler(app,ui,one_time_token,args.port)) as srv:
+                    handler(app,ui,one_time_token,args.port,components_dir=args.components_dir)) as srv:
         print("NEUROFACTORY_LOCAL_DRAFT_WORKSPACE=127.0.0.1:"+str(args.port),flush=True)
         srv.serve_forever(poll_interval=0.2)
 
