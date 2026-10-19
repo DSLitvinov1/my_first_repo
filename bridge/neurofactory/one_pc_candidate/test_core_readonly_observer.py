@@ -81,7 +81,8 @@ class CoreReadOnlyIntegration(unittest.TestCase):
         self.assertEqual(observed["task"]["model"], "qwen2.5-coder:1.5b")
         self.assertNotIn(claim["token"], json.dumps(observed))
         self.assertNotIn("owner", json.dumps(observed))
-        self.assertNotIn('"receipt":', json.dumps(observed))        reopened = observe_core(self.state)
+        self.assertNotIn('"receipt":', json.dumps(observed))
+        reopened = observe_core(self.state)
         self.assertEqual(reopened["task"], observed["task"])
         print("NF_CORE_REAL_SQLITE_READONLY_QUEUE_CLAIM_RESTART=PASS")
 
