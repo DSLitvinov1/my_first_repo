@@ -1,11 +1,12 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-core-readonly-ui-20261019]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-core-readonly-ui-20261019, neurofactory-onepc-signed-owner-admission-20261019]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
@@ -59,6 +60,7 @@ jobs:
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py' "$stage\app\core_readonly_observer.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\app\signed_owner_admission.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"

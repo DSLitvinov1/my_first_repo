@@ -27,6 +27,7 @@ import sys
 # Admit only the directory containing this launched app, not cwd or model input.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
+from signed_owner_admission import prepare_draft_request, AdmissionDenied
 
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
@@ -372,6 +373,13 @@ def handler(store,ui,token,port,*,core_state_dir=None):
                 self._json(200,{"projects":store.list_projects()});return
             if p.path=="/api/tasks":
                 self._json(200,{"tasks":store.list_tasks()});return
+            match=re.fullmatch(r"/api/tasks/([a-f0-9]{32})/admission-request",p.path)
+            if match:
+                try:
+                    candidate=prepare_draft_request(store,match.group(1))
+                except AdmissionDenied:
+                    self._json(404,{"error":"DRAFT_ADMISSION_REQUEST_UNAVAILABLE"});return
+                self._json(200,candidate);return
             if p.path=="/api/history":
                 self._json(200,{"history":store.history()});return
             if p.path=="/api/status":
