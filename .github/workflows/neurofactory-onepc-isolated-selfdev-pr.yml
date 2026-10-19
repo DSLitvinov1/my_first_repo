@@ -6,9 +6,9 @@ on:
       - bridge/neurofactory/one_pc_candidate/selfdev_isolated_worktree.py
       - bridge/neurofactory/one_pc_candidate/test_selfdev_isolated_ci_windows.py
       - .github/workflows/neurofactory-onepc-isolated-selfdev-pr.yml
+      - bridge/neurofactory/one_pc_candidate/selfdev_evidence/q953/**
 permissions:
   contents: read
-  actions: read
 jobs:
   isolated-reviewed-change-test:
     runs-on: windows-2025
@@ -37,22 +37,21 @@ jobs:
           path: .nf_reviewed
           fetch-depth: 10
           persist-credentials: false
-      - name: Download EXISTING real Qwen sealed output from successful Windows run — NO new inference
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Read permanently retained untrusted original Qwen Q953 evidence from pinned Git tree; no inference
         run: |
           if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'WINDOWS_HOSTED_CI_ONLY'}
+          $source=Join-Path $env:GITHUB_WORKSPACE 'bridge/neurofactory/one_pc_candidate/selfdev_evidence/q953'
           $evidence=Join-Path $env:RUNNER_TEMP 'nf-selfdev-first-qwen'
           $report=Join-Path $env:RUNNER_TEMP 'nf-selfdev-auto-pr'
+          if (!(Test-Path "$source/nf-signed-qwen-report/evidence_summary.json")) {throw 'PINNED_REPOSITORY_QWEN_RECORD_UNAVAILABLE'}
           New-Item -ItemType Directory -Force $evidence,$report | Out-Null
-          gh run download 39259557140 -R 'DSLitvinov1/my_first_repo' -n 'Neurofactory-REAL-QWEN-SIGNED-CORE-UNREVIEWED-SELFDEV' -D "$evidence"
-          if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_GITHUB_RUN_ARCHIVE_UNAVAILABLE_FAIL_CLOSED'}
-          if (!(Test-Path "$evidence/nf-signed-qwen-report/evidence_summary.json")) {throw 'REAL_QWEN_SEALED_REPORT_NOT_DOWNLOADED'}
+          Copy-Item "$source/nf-signed-qwen-report" "$evidence/nf-signed-qwen-report" -Recurse
+          Copy-Item "$source/nf-signed-qwen-evidence" "$evidence/nf-signed-qwen-evidence" -Recurse
           "NF_SELFDEV_QWEN_EVIDENCE=$evidence" | Out-File -Append $env:GITHUB_ENV
           "NF_SELFDEV_REPORT_DIR=$report" | Out-File -Append $env:GITHUB_ENV
           "NF_SELFDEV_BASE_REPO=$(Join-Path $env:GITHUB_WORKSPACE '.nf_base')" | Out-File -Append $env:GITHUB_ENV
           "NF_SELFDEV_REVIEWED_REPO=$(Join-Path $env:GITHUB_WORKSPACE '.nf_reviewed')" | Out-File -Append $env:GITHUB_ENV
-          Write-Output 'NF_SELFDEV_ORIGINAL_SIGNED_QWEN_ARTIFACT=DOWNLOADED_NO_MODEL_CALL'
+          Write-Output 'NF_SELFDEV_DURABLE_QWEN_GIT_EVIDENCE=READ_ONLY_NO_MODEL_CALL'
       - name: Install temporary CI-only Ed25519 signature verifier
         run: |
           python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
