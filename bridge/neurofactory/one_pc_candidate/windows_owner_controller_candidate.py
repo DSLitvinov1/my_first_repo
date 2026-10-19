@@ -94,9 +94,14 @@ def acl_check(path, *, directory):
     owner = sec.ConvertSidToStringSid(descriptor.GetSecurityDescriptorOwner())
     dacl = descriptor.GetSecurityDescriptorDacl()
     if owner != operator_sid() or dacl is None or dacl.GetAceCount() != 1:
+        roles = [] if dacl is None else [
+            (dacl.GetAce(i)[0][0],
+             sec.ConvertSidToStringSid(dacl.GetAce(i)[2]) == operator_sid(),
+             dacl.GetAce(i)[0][1])
+            for i in range(dacl.GetAceCount())
+        ]
         deny("Controller ACL not exclusive: owner_matches_signer=" +
-             str(owner == operator_sid()) + " ace_count=" +
-             str(dacl.GetAceCount() if dacl is not None else -1))
+             str(owner == operator_sid()) + " ace_roles=" + str(roles))
     ace = dacl.GetAce(0)
     (atype, flags), mask, sid = ace
     if (atype != sec.ACCESS_ALLOWED_ACE_TYPE or
