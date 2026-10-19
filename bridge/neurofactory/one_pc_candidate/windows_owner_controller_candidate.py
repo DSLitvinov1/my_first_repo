@@ -112,8 +112,9 @@ def protect_acl(path, *, directory):
     acl.AddAccessAllowedAceEx(sec.ACL_REVISION, flags, con.GENERIC_ALL, sid)
     sec.SetNamedSecurityInfo(
         str(path), sec.SE_FILE_OBJECT,
-        sec.DACL_SECURITY_INFORMATION | sec.PROTECTED_DACL_SECURITY_INFORMATION,
-        None, None, acl, None)
+        sec.DACL_SECURITY_INFORMATION | sec.PROTECTED_DACL_SECURITY_INFORMATION |
+        sec.OWNER_SECURITY_INFORMATION,
+        sid, None, acl, None)
     return acl_check(path, directory=directory)
 
 
