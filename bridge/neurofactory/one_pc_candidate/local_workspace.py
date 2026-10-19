@@ -20,6 +20,13 @@ import sqlite3
 import stat
 from urllib.parse import urlsplit
 import uuid
+import sys
+
+# Python's official Windows embeddable runtime uses an isolated ._pth file;
+# its application directory is not automatically part of the module search path.
+# Admit only the directory containing this launched app, not cwd or model input.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
 
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
@@ -322,7 +329,7 @@ def probe_local_qwen(model_preference, *, port=11434):
             "automatic_retry_allowed":False,"publication_allowed":False}
 
 
-def handler(store,ui,token,port):
+def handler(store,ui,token,port,*,core_state_dir=None):
     origin="http://127.0.0.1:"+str(port)
     class Local(BaseHTTPRequestHandler):
         def _secure_request(self):
@@ -369,6 +376,16 @@ def handler(store,ui,token,port):
                 self._json(200,{"history":store.history()});return
             if p.path=="/api/status":
                 self._json(200,store.diag());return
+            if p.path=="/api/core/status":
+                if core_state_dir is None:
+                    self._json(200,unavailable_core());return
+                try:
+                    observed=observe_core(core_state_dir)
+                except CoreObservationDenied:
+                    self._json(503,{"error":"CORE_READONLY_UNAVAILABLE",
+                        "execution_allowed":False,
+                        "queue_mutation_allowed":False});return
+                self._json(200,observed);return
             if p.path=="/api/models":
                 self._json(200,local_models());return
             if p.path=="/api/model-checks":
@@ -428,6 +445,8 @@ def main(argv=None):
     p.add_argument("--data-dir",type=Path,required=True)
     p.add_argument("--ui-dir",type=Path,required=True)
     p.add_argument("--components-dir",type=Path,default=None)
+    p.add_argument("--core-state-dir",type=Path,default=None,
+                   help="Read-only view of existing explicit CORE state directory; no creation or admission")
     p.add_argument("--port",type=int,default=8766)
     args=p.parse_args(argv)
     if not 1024<=args.port<=65535:
@@ -444,10 +463,14 @@ def main(argv=None):
         module=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.verify(args.components_dir)
+    if args.core_state_dir is not None:
+        # Fail before opening a network socket; never create or mutate CORE.
+        observe_core(args.core_state_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
-                    handler(app,ui,one_time_token,args.port)) as srv:
+                    handler(app,ui,one_time_token,args.port,
+                            core_state_dir=args.core_state_dir)) as srv:
         print("NEUROFACTORY_LOCAL_DRAFT_WORKSPACE=127.0.0.1:"+str(args.port),flush=True)
         srv.serve_forever(poll_interval=0.2)
 
