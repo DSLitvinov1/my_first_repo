@@ -8,6 +8,8 @@ on:
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/restore_offline.py
+      - bridge/neurofactory/one_pc_candidate/test_draft_provider_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py
       - bridge/neurofactory/control_ui/**
