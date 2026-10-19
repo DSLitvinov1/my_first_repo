@@ -84,9 +84,10 @@
     append(warning,el("strong","Безопасный локальный режим: задания сохраняются, но НЕ отправляются в исполнительную очередь."));
     main.append(warning);
     try{
-      const [projects,tasks,history,health,models,checks]=await Promise.all([
+      const [projects,tasks,history,health,models,checks,core]=await Promise.all([
         request("/api/projects"),request("/api/tasks"),
-        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks")
+        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),
+        request("/api/core/status").catch(()=>({configured:true,available:false,reported_state:"UNAVAILABLE"}))
       ]);
       const summary=box("Реальное состояние","Данные непосредственно из локального сервера");
       const metrics=el("div",undefined,"metric-grid");
@@ -99,6 +100,26 @@
         metrics.append(metric);
       }
       summary.append(metrics);
+      const coreBox=box("CORE — только чтение","Локальная SQLite-очередь, не является независимой аттестацией и не разрешает выполнение");
+      if(core.available && core.task){
+        const labels={
+          QUEUED:"В очереди",CLAIMED:"Выдано исполнителю",
+          APPLYING:"Применяется (учебный режим)",
+          CHECKPOINTED_TEST:"Учебная контрольная точка",
+          HOST_CHECKPOINTED_TEST:"Учебный результат HOST",
+          NEEDS_MANUAL_REVIEW:"Нужна ручная проверка"
+        };
+        row(coreBox,"CORE: "+(labels[core.reported_state]||"Неизвестное состояние"),
+          core.task.task_id+" · проект "+core.task.project_id+
+          " · "+core.task.model+" · попыток: "+core.task.attempts);
+      }else if(core.available){
+        row(coreBox,"CORE: очередь пуста","Подключено явное локальное состояние, заданий пока нет");
+      }else if(core.configured){
+        row(coreBox,"CORE: данные недоступны","Доступ или целостность локального состояния не подтверждены — работа заблокирована");
+      }else{
+        row(coreBox,"CORE не подключён","Только просмотр после явной настройки каталога состояния; новые задания остаются черновиками");
+      }
+      row(coreBox,"Полномочия","Чтение без исполнения. Проверка подписи HOST и независимая приёмка здесь НЕ производятся.");
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
       const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");
