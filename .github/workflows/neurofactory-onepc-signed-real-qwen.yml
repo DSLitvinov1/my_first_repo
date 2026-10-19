@@ -23,6 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 40
       - uses: actions/checkout@v4
         with:
           ref: beb08eff32923d8ca364aabfde0458f380acf8e7
