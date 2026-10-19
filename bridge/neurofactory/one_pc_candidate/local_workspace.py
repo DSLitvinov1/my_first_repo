@@ -303,7 +303,8 @@ def probe_local_qwen(model_preference, *, port=11434):
     if selected not in installed:
         raise WorkspaceDenied("Requested Qwen not installed")
     body={"model":selected,"prompt":QWEN_PROBE_PROMPT,"stream":False,
-          "options":{"num_predict":48,"temperature":0},"keep_alive":"0"}
+          "think":False,
+          "options":{"num_predict":128,"temperature":0},"keep_alive":"0"}
     result=_ollama_json("POST","/api/generate",payload=body,
                         port=port,timeout=35,cap=16384)
     response=result.get("response")
