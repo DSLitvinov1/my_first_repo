@@ -178,7 +178,7 @@ def _git(repo, *args, max_bytes=200_000):
         check=False, timeout=45)
     if done.returncode or len(done.stdout) > max_bytes:
         _fail("Isolated Git operation failed")
-    return done.stdout.decode("utf-8", errors="strict").strip()
+    return done.stdout.decode("utf-8", errors="strict").rstrip("\r\n")
 
 
 def make_reviewed_descriptor(base_repo, reviewed_repo, qwen):
@@ -189,7 +189,11 @@ def make_reviewed_descriptor(base_repo, reviewed_repo, qwen):
             _git(reviewed, "rev-parse", "HEAD") != REVIEWED_SHA):
         _fail("Git source revision does not match approved head")
     diff_names = _git(reviewed, "diff", "--name-only", BASE_SHA, REVIEWED_SHA)
-    if set(diff_names.splitlines()) != set(ALLOWED) or len(diff_names.splitlines()) != 2:
+    expected_reviewed_diff = set(ALLOWED) | {
+        ".github/workflows/neurofactory-onepc-project-uuid-guard-ci.yml"
+    }
+    if (set(diff_names.splitlines()) != expected_reviewed_diff or
+            len(diff_names.splitlines()) != 3):
         _fail("Reviewed PR touches unapproved files")
     if _git(reviewed, "diff", "--check", BASE_SHA, REVIEWED_SHA):
         _fail("Reviewed PR diff has whitespace errors")
