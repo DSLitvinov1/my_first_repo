@@ -6,6 +6,8 @@ This is telemetry, NEVER proof that a HOST effect or Qwen output is approved.
 """
 from __future__ import annotations
 
+from contextlib import closing
+
 import hashlib
 import json
 import os
@@ -101,7 +103,7 @@ def observe_core(state_dir):
     # File URL is escaped, no caller-controlled query parameters or SQLite writes.
     uri = db_file.as_uri() + "?mode=ro"
     try:
-        with sqlite3.connect(uri, uri=True, timeout=2) as conn:
+        with closing(sqlite3.connect(uri, uri=True, timeout=2)) as conn:
             conn.execute("PRAGMA query_only=ON")
             info = conn.execute("PRAGMA table_info(single_job)").fetchall()
             columns = {row[1] for row in info}
