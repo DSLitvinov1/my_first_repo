@@ -203,6 +203,28 @@ class SignedRealCoreAdmission(unittest.TestCase):
                                owner_public_raw=self.owner_public_raw, now=self.now)
         self.assertEqual(self.core.snapshot()["state"], "EMPTY")
 
+    def test_changed_durable_ui_draft_after_owner_signature_denied(self):
+        signed = self.permit()
+        with self.workspace.connect() as db:
+            db.execute(
+                "UPDATE tasks SET objective=? WHERE id=?",
+                ("Altered saved objective after independently signed permit.",
+                 self.draft["id"]))
+            db.commit()
+        with self.assertRaises(AdmissionDenied):
+            admit_signed_draft(self.workspace, self.core, signed,
+                               owner_public_raw=self.owner_public_raw, now=self.now)
+        self.assertEqual(self.core.snapshot()["state"], "EMPTY")
+        print("NF_CHANGED_SIGNED_WORKSPACE_DRAFT=DENIED")
+
+    def test_legit_signer_cannot_force_foreign_windows_target(self):
+        spec = {**self.permit()["spec"], "target": "C:/Windows/System32/bad.txt"}
+        with self.assertRaises(AdmissionDenied):
+            admit_signed_draft(self.workspace, self.core, self.permit(spec=spec),
+                               owner_public_raw=self.owner_public_raw, now=self.now)
+        self.assertEqual(self.core.snapshot()["state"], "EMPTY")
+        print("NF_SIGNED_FOREIGN_TARGET_BY_CORE=DENIED")
+
     def test_oversized_or_ineligible_draft_never_enqueued(self):
         long_draft = self.workspace.create_task({
             "project_id": self.project["id"],
