@@ -287,6 +287,15 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertEqual(self.fi.core.snapshot()["state"], "QUEUED")
         self.assertEqual(self.fi.workspace.list_tasks()[0]["state"],
                          "DRAFT_PENDING_OWNER_AUTH")
+        # SAME existing read-only UI projection sees the persisted CORE state,
+        # including after this distinct client process has already exited.
+        from core_readonly_observer import observe_core
+        shown = observe_core(self.fi.core.state)
+        self.assertEqual(shown["reported_state"], "QUEUED")
+        self.assertEqual(shown["task"]["task_id"], permit["spec"]["task_id"])
+        self.assertEqual(shown["task"]["project_id"], permit["spec"]["project_id"])
+        self.assertFalse(shown.get("execution_allowed", False))
+        print("NF_IPC_EXISTING_UI_OBSERVER_SEES_DURABLE_QUEUED=PASS_READ_ONLY")
         print("NF_IPC_REAL_SEPARATE_WINDOWS_PROCESS_TO_CORE=PASS_NO_OWNER_KEY")
 
     def test_real_different_windows_sid_delivers_one_approved_core_task(self):
