@@ -296,6 +296,47 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertEqual(shown["task"]["project_id"], permit["spec"]["project_id"])
         self.assertFalse(shown.get("execution_allowed", False))
         print("NF_IPC_EXISTING_UI_OBSERVER_SEES_DURABLE_QUEUED=PASS_READ_ONLY")
+        # Exercise the real existing LOCAL UI HTTP route, rather than
+        # pretending a read-only observer object is a browser response.
+        import socket
+        import http.client
+        from http.server import HTTPServer
+        from local_workspace import handler
+        with socket.socket() as probe_port:
+            probe_port.bind(("127.0.0.1", 0))
+            port = probe_port.getsockname()[1]
+        ui_dir = Path(__file__).resolve().parents[1] / "control_ui"
+        server = HTTPServer(
+            ("127.0.0.1", port),
+            handler(self.fi.workspace, ui_dir, secrets.token_hex(16),
+                    port, core_state_dir=self.fi.core.state))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=4)
+            try:
+                connection.request("GET", "/api/core/status")
+                result = connection.getresponse()
+                self.assertEqual(result.status, 200)
+                observed_ui = json.loads(result.read().decode("utf-8"))
+            finally:
+                connection.close()
+            self.assertEqual(observed_ui["reported_state"], "QUEUED")
+            self.assertEqual(observed_ui["task"]["task_id"],
+                             permit["spec"]["task_id"])
+            self.assertEqual(observed_ui["task"]["project_id"],
+                             permit["spec"]["project_id"])
+            self.assertFalse(observed_ui["execution_allowed"])
+            self.assertFalse(observed_ui["queue_mutation_allowed"])
+            self.assertFalse(observed_ui["independently_verified"])
+            self.assertEqual(self.fi.workspace.list_tasks()[0]["state"],
+                             "DRAFT_PENDING_OWNER_AUTH")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        print("NF_IPC_REAL_UI_HTTP_CORE_STATUS=QUEUED_READ_ONLY_AFTER_CHILD_EXIT")
+
         print("NF_IPC_REAL_SEPARATE_WINDOWS_PROCESS_TO_CORE=PASS_NO_OWNER_KEY")
 
     def test_real_different_windows_sid_delivers_one_approved_core_task(self):
