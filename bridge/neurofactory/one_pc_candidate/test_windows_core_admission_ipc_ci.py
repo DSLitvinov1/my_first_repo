@@ -125,8 +125,21 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertFalse(root.exists())
         root.mkdir()
         file = root / "signed-owner-permit.json"
+        # The child proves its own actual primary-token SID and real
+        # NTFS read-denial of three protected operator/CORE resources.
+        # These CI-only probe paths do NOT enter the Named Pipe message.
+        document = {
+            "schema": "nf.onepc.ci.signed_input_and_acl_probes.v1",
+            "expected_client_sid": self.sid,
+            "permit": permit,
+            "denied_read_paths": [
+                str(self.operator.root / PRIVATE_FILE),
+                str(self.fi.workspace.database),
+                str(self.fi.core.state / "queue.sqlite3"),
+            ],
+        }
         data = json.dumps(
-            permit, sort_keys=True, ensure_ascii=False,
+            document, sort_keys=True, ensure_ascii=False,
             separators=(",", ":")).encode("utf-8")
         self.assertTrue(500 <= len(data) <= 6500)
         with file.open("xb") as output:
