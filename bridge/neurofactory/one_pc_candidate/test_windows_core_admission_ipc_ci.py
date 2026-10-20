@@ -195,8 +195,8 @@ class SignedIPCRealWindows(unittest.TestCase):
                 os.environ["COMPUTERNAME"],
                 self.operator.ci_user_password,
                 0, sys.executable, command,
-                0x08000000 | 0x400, ctypes.cast(environment, ctypes.c_void_p),
-                str(child.parent), ctypes.byref(startup), ctypes.byref(pi))
+                0x400, ctypes.cast(environment, ctypes.c_void_p),
+                None, ctypes.byref(startup), ctypes.byref(pi))
             self.assertTrue(created,
                             "Separate Windows user process creation failed, "
                             "Windows error=" + str(ctypes.get_last_error()))
