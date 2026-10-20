@@ -156,7 +156,9 @@ jobs:
             $admission=Invoke-RestMethod "$url/api/tasks/$($createdTask.id)/admission-request"
             if ($admission.owner_signed -ne $false -or $admission.queue_mutation_allowed -ne $false -or
                 $admission.execution_allowed -ne $false -or $admission.draft_id -ne $createdTask.id -or
-                $admission.draft_sha256 -notmatch '^[a-f0-9]{64}
+                $admission.draft_sha256 -notmatch '^[a-f0-9]{64}$') {throw 'UI_DRAFT_UNSIGNED_BOUNDARY_FAILED'}
+            Write-Output 'NF_INSTALLED_APP_QWEN_CORE_READONLY_OWNER_REQUEST=PASS_NO_EXECUTION'
+            Write-Output 'NF_INSTALLED_CORE_QUEUE_AND_HOST_SERVICE=OFF'
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
           }
           finally {
