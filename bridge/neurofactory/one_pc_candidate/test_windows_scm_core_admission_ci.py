@@ -311,6 +311,10 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
         exitcode = win32_child(
             self.operator.ci_user_name, self.operator.ci_user_password,
             client_script, self.pipe, signed_file)
+        failure = ROOT / "core" / "ci-core-receiver-denial.json"
+        if exitcode != 0 and failure.exists():
+            self.fail("True SCM CORE separately signed admission failed: " +
+                      failure.read_text(encoding="ascii")[:260])
         self.assertEqual(exitcode, 0, "True separate-SID UI process failed")
         # The protected SCM process did the actual sqlite durable admission.
         state = ROOT / "core" / "state"
