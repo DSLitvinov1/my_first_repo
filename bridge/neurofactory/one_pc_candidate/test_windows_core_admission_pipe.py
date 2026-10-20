@@ -87,6 +87,33 @@ class WindowsNamedPipeOwnerCoreCI(unittest.TestCase):
         print("NF_WINDOWS_REAL_SIGNED_NAMED_PIPE_CORE_QUEUED_ONCE=PASS")
         print("NF_WINDOWS_REAL_SIGNED_NAMED_PIPE_DUPLICATE=DENIED")
 
+    def test_unknown_result_after_real_core_commit_never_auto_retries(self):
+        class CommitThenLoseAcknowledgement:
+            def __init__(self, core):
+                self.core = core
+
+            def enqueue(self, *args, **kwargs):
+                self.core.enqueue(*args, **kwargs)
+                # Simulates disconnect/crash AFTER the real SQLite commit.
+                raise RuntimeError("Injected CI-only post-commit unknown result")
+
+        permit = self.fixture.sign()
+        thread = self.server(
+            core=CommitThenLoseAcknowledgement(self.fixture.fi.core))
+        result = send_one_owner_permit(
+            self.pipe, permit,
+            expected_receiver_sid=self.fixture.signer_identity)
+        self.finish(thread)
+        self.assertEqual(result["status"], "DENIED_OR_UNKNOWN_MANUAL_REVIEW")
+        self.assertFalse(result["auto_retry_allowed"])
+        # Real CORE database is already QUEUED. Never trust the failed
+        # response as proof that it was not admitted.
+        self.assertEqual(self.fixture.fi.core.snapshot()["state"], "QUEUED")
+        self.assertEqual(
+            self.fixture.fi.workspace.list_tasks()[0]["state"],
+            "DRAFT_PENDING_OWNER_AUTH")
+        print("NF_WINDOWS_CORE_POST_COMMIT_UNKNOWN=MANUAL_STOP_NO_RETRY")
+
     def test_forged_signed_task_via_pipe_fails_closed(self):
         permit = self.fixture.sign()
         permit["spec"]["objective"] = "Mutated request with invalid signature and changed owner decision."
