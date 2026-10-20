@@ -127,9 +127,19 @@ def _load_admin_config():
             hashlib.sha256(exe.read_bytes()).hexdigest() !=
                 cfg["git_exe_sha256"]):
         _fail("SCM Git executable does not match independently pinned vendor")
-    os.environ["PATH"] = (
-        str(exe.parent) + os.pathsep +
-        str(Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32"))
+    vendor = Path(r"C:\Program Files\Git")
+    # Git for Windows may load MSYS2 / MinGW DLLs from vendor-controlled
+    # directories. SCM LocalService has neither the runner PATH nor a
+    # suitable writable temporary directory by default.
+    # All writable runtime state stays in SERVICE-SID-protected CORE only.
+    system32 = Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32"
+    allowed_path = [exe.parent, vendor / "mingw64" / "bin",
+                    vendor / "usr" / "bin", system32]
+    os.environ["PATH"] = os.pathsep.join(
+        str(item) for item in allowed_path if item.is_dir())
+    service_temp = ROOT / "core"
+    for key in ("TMP", "TEMP", "HOME"):
+        os.environ[key] = str(service_temp)
     return cfg, public, service_sid
 
 
