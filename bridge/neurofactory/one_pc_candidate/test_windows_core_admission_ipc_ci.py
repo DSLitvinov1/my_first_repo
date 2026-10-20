@@ -10,6 +10,8 @@ import ctypes
 from ctypes import wintypes
 import json
 import subprocess
+import shutil
+import stat
 import os
 from pathlib import Path
 import secrets
@@ -111,12 +113,81 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertFalse(answer["independently_verified"])
         return answer
 
-    @unittest.skipUnless(
-        os.environ.get("NF_EXPERIMENTAL_SEPARATE_PROCESS_CI") == "1",
-        "NOT VERIFIED: Windows hosted CI CreateProcessWithLogonW and "
-        "CreateProcessWithTokenW failed with E_INVALIDARG; a real separate "
-        "process security assessment is REQUIRED before release"
-    )
+    def protect_disposable_signed_input(self, permit):
+        """Same-owner writable + other-user read-only NTFS; no broad grant.
+
+        Existing TRUSTED HOST SCM tests use a separate ProgramData CI folder.
+        This folder is NOT the owner key store, nor a CORE state path.
+        """
+        import ntsecuritycon
+        root = Path(os.environ["PROGRAMDATA"]) / (
+            "nf-core-admission-ci-" + secrets.token_hex(10))
+        self.assertFalse(root.exists())
+        root.mkdir()
+        file = root / "signed-owner-permit.json"
+        # The child proves its own actual primary-token SID and real
+        # NTFS read-denial of three protected operator/CORE resources.
+        # These CI-only probe paths do NOT enter the Named Pipe message.
+        document = {
+            "schema": "nf.onepc.ci.signed_input_and_acl_probes.v1",
+            "expected_client_sid": self.sid,
+            "permit": permit,
+            "denied_read_paths": [
+                str(self.operator.root / PRIVATE_FILE),
+                str(self.fi.workspace.database),
+                str(self.fi.core.state / "queue.sqlite3"),
+            ],
+        }
+        data = json.dumps(
+            document, sort_keys=True, ensure_ascii=False,
+            separators=(",", ":")).encode("utf-8")
+        self.assertTrue(500 <= len(data) <= 6500)
+        with file.open("xb") as output:
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
+
+        owner = win32security.ConvertStringSidToSid(
+            fixture_module.operator_sid())
+        client = win32security.ConvertStringSidToSid(self.sid)
+        for path, is_folder in ((root, True), (file, False)):
+            acl = win32security.ACL()
+            flags = (win32con.CONTAINER_INHERIT_ACE |
+                     win32con.OBJECT_INHERIT_ACE) if is_folder else 0
+            acl.AddAccessAllowedAceEx(
+                win32security.ACL_REVISION, flags, win32con.GENERIC_ALL,
+                owner)
+            acl.AddAccessAllowedAceEx(
+                win32security.ACL_REVISION, flags,
+                ntsecuritycon.FILE_GENERIC_READ |
+                ntsecuritycon.FILE_GENERIC_EXECUTE if is_folder else
+                ntsecuritycon.FILE_GENERIC_READ,
+                client)
+            win32security.SetNamedSecurityInfo(
+                str(path), win32security.SE_FILE_OBJECT,
+                win32security.OWNER_SECURITY_INFORMATION |
+                win32security.DACL_SECURITY_INFORMATION |
+                win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+                owner, None, acl, None)
+            desc = win32security.GetNamedSecurityInfo(
+                str(path), win32security.SE_FILE_OBJECT,
+                win32security.OWNER_SECURITY_INFORMATION |
+                win32security.DACL_SECURITY_INFORMATION)
+            dacl = desc.GetSecurityDescriptorDacl()
+            allowed = {fixture_module.operator_sid(), self.sid}
+            observed = {
+                win32security.ConvertSidToStringSid(dacl.GetAce(i)[2])
+                for i in range(dacl.GetAceCount())
+            }
+            self.assertEqual(observed, allowed,
+                             "Foreign SID found in staged permit ACL")
+            self.assertFalse(path.is_symlink())
+            self.assertFalse(
+                path.lstat().st_file_attributes &
+                stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        self.assertEqual(file.read_bytes(), data)
+        return root, file
+
     def test_separate_windows_user_process_delivers_genuine_signed_permit(self):
         """Use Windows CreateProcessWithLogonW, not same-process impersonation.
 
@@ -124,10 +195,7 @@ class SignedIPCRealWindows(unittest.TestCase):
         in child args/env. Only a pre-signed permit and pinned pipe name.
         """
         permit = self.operator.sign()
-        encoded = base64.b64encode(
-            json.dumps(permit, sort_keys=True, ensure_ascii=False,
-                       separators=(",", ":")).encode("utf-8")).decode("ascii")
-        self.assertLess(len(encoded), 10000)
+        shared, signed_file = self.protect_disposable_signed_input(permit)
         name = PREFIX + secrets.token_hex(12)
         listener, records, errors = self.serve(name)
         child = Path(__file__).resolve().with_name(
@@ -157,38 +225,25 @@ class SignedIPCRealWindows(unittest.TestCase):
                 ("dwThreadId", wintypes.DWORD),
             ]
 
-        allowed_env = {
-            "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
-            "WINDIR": os.environ.get("WINDIR", r"C:\Windows"),
-            "TEMP": os.environ.get("TEMP", r"C:\Windows\Temp"),
-            "TMP": os.environ.get("TMP", r"C:\Windows\Temp"),
-            "PATH": os.path.dirname(sys.executable),
-            "GITHUB_ACTIONS": "true",
-            "RUNNER_ENVIRONMENT": "github-hosted",
-            "NF_CORE_ADMISSION_PIPE_CI_ONLY": "1",
-            "PYTHONNOUSERSITE": "1",
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-        environment = ctypes.create_unicode_buffer(
-            "\x00".join(f"{k}={v}" for k, v in
-                      sorted(allowed_env.items())) + "\x00\x00")
+        # Reuse exact Windows 2025 SCM proven launch contract from
+        # trusted_host/test_windows_scm_two_user_recovery.py:
+        # CreateProcessWithLogonW with "." domain, NULL environment,
+        # CREATE_NO_WINDOW and existing source directory.
         command = ctypes.create_unicode_buffer(subprocess.list2cmdline([
-            sys.executable, "-B", str(child), name, encoded,
+            sys.executable, "-B", str(child), name, str(signed_file),
         ]))
+        self.assertLess(len(command.value), 1024,
+                        "Win32 CreateProcessWithLogonW command limit")
         startup = Startup()
         startup.cb = ctypes.sizeof(startup)
         pi = ProcessInfo()
         adv = ctypes.WinDLL("advapi32", use_last_error=True)
-        # Use LogonUser token already exercised by the kernel SID tests.
-        # CreateProcessWithTokenW is the alternate documented Win32 API for
-        # launching a distinct logon token as a genuine OS child process.
-        # No passwords or user tokens are sent to the child.
-        creator = adv.CreateProcessWithTokenW
+        creator = adv.CreateProcessWithLogonW
         creator.argtypes = [
-            wintypes.HANDLE, wintypes.DWORD, wintypes.LPCWSTR,
-            wintypes.LPWSTR, wintypes.DWORD, ctypes.c_void_p,
-            wintypes.LPCWSTR, ctypes.POINTER(Startup),
-            ctypes.POINTER(ProcessInfo),
+            wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
+            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPWSTR,
+            wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
+            ctypes.POINTER(Startup), ctypes.POINTER(ProcessInfo),
         ]
         creator.restype = wintypes.BOOL
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -200,22 +255,15 @@ class SignedIPCRealWindows(unittest.TestCase):
         kernel.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel.CloseHandle.restype = wintypes.BOOL
         try:
-            child_token = win32security.LogonUser(
-                self.operator.ci_user_name, os.environ["COMPUTERNAME"],
-                self.operator.ci_user_password,
-                win32con.LOGON32_LOGON_INTERACTIVE,
-                win32con.LOGON32_PROVIDER_DEFAULT)
-            try:
-                created = creator(
-                    wintypes.HANDLE(int(child_token)), 0,
-                    sys.executable, command,
-                    0x400, ctypes.cast(environment, ctypes.c_void_p),
-                    None, ctypes.byref(startup), ctypes.byref(pi))
-            finally:
-                child_token.Close()
+            created = creator(
+                self.operator.ci_user_name, ".", self.operator.ci_user_password,
+                0, sys.executable, command,
+                0x08000000, None, str(child.parent),
+                ctypes.byref(startup), ctypes.byref(pi))
             self.assertTrue(created,
-                            "Separate Windows logon-token process creation "
-                            "failed; Windows error=" + str(ctypes.get_last_error()))
+                            "Existing SCM-proven CreateProcessWithLogonW refused "
+                            "real separate UI account, Win32 error=" +
+                            str(ctypes.get_last_error()))
             try:
                 code = kernel.WaitForSingleObject(pi.hProcess, 20000)
                 if code != 0:
@@ -231,6 +279,7 @@ class SignedIPCRealWindows(unittest.TestCase):
                 kernel.CloseHandle(pi.hProcess)
         finally:
             listener.join(timeout=8)
+            shutil.rmtree(shared)
         self.assertFalse(listener.is_alive())
         self.assertFalse(errors, errors)
         self.assertEqual(len(records), 1)
@@ -238,6 +287,56 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertEqual(self.fi.core.snapshot()["state"], "QUEUED")
         self.assertEqual(self.fi.workspace.list_tasks()[0]["state"],
                          "DRAFT_PENDING_OWNER_AUTH")
+        # SAME existing read-only UI projection sees the persisted CORE state,
+        # including after this distinct client process has already exited.
+        from core_readonly_observer import observe_core
+        shown = observe_core(self.fi.core.state)
+        self.assertEqual(shown["reported_state"], "QUEUED")
+        self.assertEqual(shown["task"]["task_id"], permit["spec"]["task_id"])
+        self.assertEqual(shown["task"]["project_id"], permit["spec"]["project_id"])
+        self.assertFalse(shown.get("execution_allowed", False))
+        print("NF_IPC_EXISTING_UI_OBSERVER_SEES_DURABLE_QUEUED=PASS_READ_ONLY")
+        # Exercise the real existing LOCAL UI HTTP route, rather than
+        # pretending a read-only observer object is a browser response.
+        import socket
+        import http.client
+        from http.server import HTTPServer
+        from local_workspace import handler
+        with socket.socket() as probe_port:
+            probe_port.bind(("127.0.0.1", 0))
+            port = probe_port.getsockname()[1]
+        ui_dir = Path(__file__).resolve().parents[1] / "control_ui"
+        server = HTTPServer(
+            ("127.0.0.1", port),
+            handler(self.fi.workspace, ui_dir, secrets.token_hex(16),
+                    port, core_state_dir=self.fi.core.state))
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=4)
+            try:
+                connection.request("GET", "/api/core/status")
+                result = connection.getresponse()
+                self.assertEqual(result.status, 200)
+                observed_ui = json.loads(result.read().decode("utf-8"))
+            finally:
+                connection.close()
+            self.assertEqual(observed_ui["reported_state"], "QUEUED")
+            self.assertEqual(observed_ui["task"]["task_id"],
+                             permit["spec"]["task_id"])
+            self.assertEqual(observed_ui["task"]["project_id"],
+                             permit["spec"]["project_id"])
+            self.assertFalse(observed_ui["execution_allowed"])
+            self.assertFalse(observed_ui["queue_mutation_allowed"])
+            self.assertFalse(observed_ui["independently_verified"])
+            self.assertEqual(self.fi.workspace.list_tasks()[0]["state"],
+                             "DRAFT_PENDING_OWNER_AUTH")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        print("NF_IPC_REAL_UI_HTTP_CORE_STATUS=QUEUED_READ_ONLY_AFTER_CHILD_EXIT")
+
         print("NF_IPC_REAL_SEPARATE_WINDOWS_PROCESS_TO_CORE=PASS_NO_OWNER_KEY")
 
     def test_real_different_windows_sid_delivers_one_approved_core_task(self):
