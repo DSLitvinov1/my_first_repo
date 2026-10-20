@@ -1,0 +1,26 @@
+name: Neurofactory final SCM candidate installer remains DRAFT without privileged service
+on:
+  push:
+    branches: [neurofactory-onepc-triple-sid-scm-core-admission-20261020]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/test_multiprocess_installer_release_fence.py
+      - .github/workflows/neurofactory-scm-release-fence-ci.yml
+permissions:
+  contents: read
+jobs:
+  ensure-privileged-scm-cannot-leak-into-user-installer:
+    runs-on: windows-2025
+    timeout-minutes: 4
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Only three scoped negative packaging/authority boundary tests
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_multiprocess_installer_release_fence.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'PRIVILEGED_SCM_LEAKED_TO_UNTRUSTED_INSTALLER' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'RELEASE_FENCE_TEST_DIRTY_SOURCE' }
