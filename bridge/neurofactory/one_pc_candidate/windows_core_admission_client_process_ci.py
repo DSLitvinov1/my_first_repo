@@ -68,9 +68,39 @@ def main():
         permit = json.loads(raw.decode("utf-8"), object_pairs_hook=unique)
     except (ValueError, UnicodeError, TypeError, OSError) as exc:
         raise SystemExit(93) from exc
-    if type(permit) is not dict:
+    if (type(permit) is not dict or
+            set(permit) != {"schema", "expected_client_sid",
+                            "permit", "denied_read_paths"} or
+            permit["schema"] != "nf.onepc.ci.signed_input_and_acl_probes.v1" or
+            type(permit["permit"]) is not dict or
+            type(permit["denied_read_paths"]) is not list or
+            len(permit["denied_read_paths"]) != 3):
         raise SystemExit(94)
-    response = send_signed_permit_once_ci(name, permit)
+    import win32api
+    import win32con
+    import win32security
+    # Process token SID, not an impersonated thread SID; validates the
+    # credential-isolated REAL second OS process created by SCM-proven Win32.
+    token = win32security.OpenProcessToken(
+        win32api.GetCurrentProcess(), win32con.TOKEN_QUERY)
+    actual_sid = win32security.ConvertSidToStringSid(
+        win32security.GetTokenInformation(
+            token, win32security.TokenUser)[0])
+    if actual_sid != permit["expected_client_sid"]:
+        raise SystemExit(97)
+    for raw_path in permit["denied_read_paths"]:
+        if (type(raw_path) is not str or len(raw_path) > 300 or
+                not Path(raw_path).is_absolute()):
+            raise SystemExit(98)
+        try:
+            # A successful read is a SECURITY FAILURE, not an acceptable
+            # condition to continue with the CORE request.
+            Path(raw_path).read_bytes()
+        except (PermissionError, OSError):
+            continue
+        raise SystemExit(99)
+    print("NF_WINDOWS_SEPARATE_PROCESS_REAL_NTFS_OWNER_CORE_READ=DENIED")
+    response = send_signed_permit_once_ci(name, permit["permit"])
     if response.get("status") != "OBSERVED_QUEUED_TEST_ONLY":
         raise SystemExit(95)
     if (response.get("queue_claim_allowed") is not False or
