@@ -5,6 +5,7 @@ on:
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_core_admission_ipc_ci.py
       - bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+      - bridge/neurofactory/one_pc_candidate/windows_core_admission_client_process_ci.py
       - .github/workflows/neurofactory-onepc-trusted-admission-pipe-ci.yml
   pull_request:
     branches: [neurofactory-onepc-win-owner-dpapi-controller-20261019]
@@ -27,7 +28,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'NO_PRODUCTION_OR_OTHER_HOST'}
-          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_core_admission_ipc_ci.py bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_core_admission_ipc_ci.py bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py bridge/neurofactory/one_pc_candidate/windows_core_admission_client_process_ci.py
           if ($LASTEXITCODE -ne 0) {throw 'SIGNED_CORE_PIPE_SYNTAX_FAILURE'}
       - name: Install temporary CI-only Windows security modules
         shell: pwsh
