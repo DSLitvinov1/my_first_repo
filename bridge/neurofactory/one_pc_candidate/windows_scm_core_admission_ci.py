@@ -174,9 +174,21 @@ def _one_request(pipe_name, ui_sid, service_sid, public, store, core):
                 "core_task_id": answer["core_task_id"],
                 "signed_permit_sha256": hashlib.sha256(_canon(permit)).hexdigest(),
             })
-        except Exception:
-            # Unknown and partially committed tasks are NEVER repeated.
-            pass
+        except Exception as exc:
+            # Temporary CI-only operator-visible diagnostic. Never includes
+            # owner key, signed packet, model proposal or filesystem content.
+            # No client may write to CORE-owned protected diagnostic folder.
+            try:
+                diagnosis = {
+                    "status": "DENIED_OR_UNKNOWN_NO_AUTO_RETRY",
+                    "exception_class": type(exc).__name__,
+                    "reason": str(exc)[:180],
+                    "production_release": False,
+                }
+                (ROOT / "core" / "ci-core-receiver-denial.json").write_text(
+                    json.dumps(diagnosis, sort_keys=True), encoding="ascii")
+            except Exception:
+                pass
         win32file.WriteFile(handle, _canon(result))
         win32file.FlushFileBuffers(handle)
     finally:
