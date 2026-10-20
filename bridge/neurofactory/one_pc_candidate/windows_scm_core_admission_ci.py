@@ -254,7 +254,9 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
                 ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
                 capture_output=True, timeout=15, check=False)
             if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
-                _fail("SCM LocalService Git source preimage is inaccessible")
+                _fail("SCM LocalService Git source preimage inaccessible: exit=" +
+                      str(git_probe.returncode) + ", diagnostic=" +
+                      git_probe.stderr.decode("utf-8", errors="replace")[:180])
             core = OneTaskCore(core_dir, git_dir)
         except Exception as exc:
             # CI-local SCM startup denial: no secret bytes or permit
