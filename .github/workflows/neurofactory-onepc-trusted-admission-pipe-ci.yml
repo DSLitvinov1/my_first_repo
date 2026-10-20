@@ -1,0 +1,43 @@
+name: Neurofactory one-PC restricted signed CORE admission Windows named-pipe
+on:
+  push:
+    branches: [neurofactory-onepc-trusted-core-admission-ipc-20261020]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_core_admission_ipc_ci.py
+      - bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+      - .github/workflows/neurofactory-onepc-trusted-admission-pipe-ci.yml
+  pull_request:
+    branches: [neurofactory-onepc-win-owner-dpapi-controller-20261019]
+permissions:
+  contents: read
+jobs:
+  genuine-sid-restricted-core-queue-windows:
+    runs-on: windows-2025
+    timeout-minutes: 9
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_OWNER_SIGNER_DISPOSABLE_CI: "1"
+      NF_CORE_ADMISSION_PIPE_CI_ONLY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify no live or non-Windows execution is permitted
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'NO_PRODUCTION_OR_OTHER_HOST'}
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_core_admission_ipc_ci.py bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_CORE_PIPE_SYNTAX_FAILURE'}
+      - name: Install temporary CI-only Windows security modules
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) {throw 'CI_WINDOWS_SECURITY_MODULES_UNAVAILABLE'}
+      - name: Exact new Windows named-pipe SID and REAL CORE SQLite integration negatives
+        shell: pwsh
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_windows_core_admission_ipc_ci.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_CORE_IPC_BOUNDARY_UNVERIFIED'}
+      - name: Source files remain unmodified
+        run: git diff --exit-code
