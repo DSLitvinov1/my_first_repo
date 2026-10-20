@@ -258,7 +258,10 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
              "('ProcessId='+$x.ProcessId);"
              "($p | Invoke-CimMethod -MethodName GetOwner).User")
         ]).stdout.strip().upper()
-        self.assertIn("LOCAL SERVICE", actual)
+        self.assertIn(
+            "LOCAL SERVICE", actual,
+            "SCM owner telemetry missing; exact service status=" +
+            command(["sc.exe", "queryex", SERVICE_NAME], required=False).stdout[-700:])
         print("NF_SCM_ACTUAL_RESTRICTED_LOCALSERVICE_SEPARATE_PROCESS=PASS")
         print("NF_SCM_OWNER_DPAPI_KEY_READ_FROM_SERVICE=DENIED_BY_SCOPED_START")
 
