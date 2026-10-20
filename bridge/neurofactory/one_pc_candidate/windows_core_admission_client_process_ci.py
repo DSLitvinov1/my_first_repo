@@ -7,7 +7,8 @@ writer. stdout prints only constant safe proof labels.
 """
 from __future__ import annotations
 
-import base64
+import stat
+from pathlib import Path
 import json
 import os
 import sys
@@ -37,16 +38,35 @@ def main():
     os.environ["GITHUB_ACTIONS"] = "true"
     os.environ["RUNNER_ENVIRONMENT"] = "github-hosted"
     os.environ["NF_CORE_ADMISSION_PIPE_CI_ONLY"] = "1"
-    name, encoded = sys.argv[1:]
-    if (not name.startswith(PREFIX) or
-            len(encoded) > 12000 or len(encoded) < 500):
+    # Keep the Win32 command line far below its 1,024 character limit.
+    # Signed content is a separately ACL-protected regular file, never a
+    # private Ed25519 signing key and never model-generated authority.
+    name, file_arg = sys.argv[1:]
+    if not name.startswith(PREFIX) or len(file_arg) > 240:
+        raise SystemExit(92)
+    path = Path(file_arg)
+    if (not path.is_absolute() or path.is_symlink() or
+            path.name != "signed-owner-permit.json" or
+            not path.parent.name.startswith("nf-core-admission-ci-") or
+            not path.parent.parent.samefile(
+                Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData"))) or
+            path.parent.is_symlink() or not path.is_file() or
+            path.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT or
+            not 500 <= path.stat().st_size <= 6500):
         raise SystemExit(92)
     try:
-        raw = base64.b64decode(encoded, validate=True)
-        if not 0 < len(raw) <= 6500:
-            raise ValueError("oversized envelope")
-        permit = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError, TypeError) as exc:
+        raw = path.read_bytes()
+        if len(raw) != path.stat().st_size:
+            raise ValueError("changed read")
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError("duplicate signed permit field")
+                result[key] = value
+            return result
+        permit = json.loads(raw.decode("utf-8"), object_pairs_hook=unique)
+    except (ValueError, UnicodeError, TypeError, OSError) as exc:
         raise SystemExit(93) from exc
     if type(permit) is not dict:
         raise SystemExit(94)
