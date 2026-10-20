@@ -259,6 +259,18 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
                        (core_dir, workspace_dir, git_dir)):
                 _fail("Missing administrator-provisioned protected state")
             store = WorkspaceStore(workspace_dir)
+            # Restricted service process has no inherited console. Some
+            # Git-for-Windows child DLL initializers fail with 0xC0000142
+            # when spawned from a restricted no-console Windows service.
+            # Request an isolated Session-0 service console only; NEVER
+            # attach to an owner/user interactive console or relax ACL.
+            import ctypes
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel.AllocConsole.argtypes = []
+            kernel.AllocConsole.restype = ctypes.c_int
+            if not kernel.AllocConsole():
+                _fail("Restricted SCM cannot initialize own Session-0 console: " +
+                      str(ctypes.get_last_error()))
             # Fail closed on unreadable Git source, never bypass CORE pin.
             git_probe = subprocess.run(
                 ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
