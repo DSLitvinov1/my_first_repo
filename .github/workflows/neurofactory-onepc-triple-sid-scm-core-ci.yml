@@ -1,0 +1,50 @@
+name: Neurofactory one-PC three real Windows principals SCM CORE signed admission
+on:
+  push:
+    branches: [neurofactory-onepc-triple-sid-scm-core-admission-20261020]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_scm_core_admission_ci.py
+      - bridge/neurofactory/one_pc_candidate/test_windows_scm_core_admission_ci.py
+      - .github/workflows/neurofactory-onepc-triple-sid-scm-core-ci.yml
+permissions:
+  contents: read
+jobs:
+  restricted-scm-localservice-separate-owner-and-ui:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_OWNER_SIGNER_DISPOSABLE_CI: "1"
+      NF_CORE_ADMISSION_PIPE_CI_ONLY: "1"
+      NF_SCM_CORE_TRIPLE_SID_CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Disallow non-disposable machines or accidental source syntax defects
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'SCM_ONLY_ON_EPHEMERAL_WINDOWS_CI' }
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_scm_core_admission_ci.py bridge/neurofactory/one_pc_candidate/test_windows_scm_core_admission_ci.py
+          if ($LASTEXITCODE -ne 0) { throw 'SCM_RECEIVER_SYNTAX_INCORRECT' }
+      - name: Install temporary pywin32 Ed25519 isolated security runtime only
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) { throw 'SCM_WINDOWS_SECURITY_RUNTIME_NOT_AVAILABLE' }
+      - name: One real three-identity SCM signed owner to CORE SQLite test, no models or installer
+        run: |
+          Push-Location bridge/neurofactory/one_pc_candidate
+          try {
+            python -B -m unittest test_windows_scm_core_admission_ci.ThreeRealWindowsPrincipals.test_actual_three_windows_identities_one_signed_core_enqueue -v
+            if ($LASTEXITCODE -ne 0) { throw 'TRIPLE_SID_SCM_ADMISSION_IS_NOT_PROVEN' }
+          } finally { Pop-Location }
+      - name: No checked-out code changes and no service left behind
+        if: always()
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'SCM_CI_CHANGED_REPOSITORY' }
+          $service=sc.exe query NeurofactoryCoreAdmissionCI 2>&1
+          if ($LASTEXITCODE -eq 0 -and ($service -join ' ') -match 'RUNNING') { throw 'DISPOSABLE_CORE_SERVICE_LEFT_RUNNING' }
