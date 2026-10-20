@@ -34,6 +34,9 @@ from local_workspace import WorkspaceStore
 from one_task_core import OneTaskCore
 
 # Same rooted TRUSTED HOST code, pinned/copied by the CI-only orchestrator.
+_TRUSTED_HOST_PINNED = Path(__file__).resolve().parents[1] / "trusted_host"
+if str(_TRUSTED_HOST_PINNED) not in sys.path:
+    sys.path.insert(0, str(_TRUSTED_HOST_PINNED))
 from windows_named_pipe_pilot_receiver import _peer_matches
 from windows_core_admission_ipc_ci import PREFIX, MAX_REQUEST, MAX_REPLY, _message
 
