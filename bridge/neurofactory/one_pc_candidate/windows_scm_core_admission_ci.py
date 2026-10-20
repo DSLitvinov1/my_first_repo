@@ -122,7 +122,7 @@ def _load_admin_config():
     exe = Path(cfg["git_exe"])
     if (not exe.is_absolute() or exe.name.lower() != "git.exe" or
             exe.is_symlink() or not exe.is_file() or
-            not str(exe).lower().startswith(r"c:\program files\git\") or
+            not str(exe).lower().startswith("c:\\program files\\git\\") or
             exe.lstat().st_file_attributes & 0x400 or
             hashlib.sha256(exe.read_bytes()).hexdigest() !=
                 cfg["git_exe_sha256"]):
