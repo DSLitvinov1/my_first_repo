@@ -1,0 +1,38 @@
+name: Neurofactory one-PC signed owner to CORE protected Windows named pipe
+on:
+  push:
+    branches: [neurofactory-onepc-owner-core-pipe-admission-20261020]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_core_admission_pipe.py
+      - bridge/neurofactory/one_pc_candidate/test_windows_core_admission_pipe.py
+      - .github/workflows/neurofactory-onepc-core-owner-pipe.yml
+permissions:
+  contents: read
+jobs:
+  signed-owner-pipe-to-real-core-ci:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_OWNER_SIGNER_DISPOSABLE_CI: "1"
+      NF_CORE_OWNER_PIPE_CI_ONLY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Gate disposable Windows runner and compile ONLY new pipe interface
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'DISPOSABLE_WINDOWS_ONLY'}
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_core_admission_pipe.py bridge/neurofactory/one_pc_candidate/test_windows_core_admission_pipe.py
+          if ($LASTEXITCODE -ne 0) {throw 'PIPE_SOURCE_SYNTAX_FAILED'}
+      - name: Actual two Windows user SIDs + existing HOST protected named pipe primitives + signed owner + genuine CORE SQLite
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) {throw 'REQUIRED_WINDOWS_CRYPTO_LIBS_UNAVAILABLE'}
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_windows_core_admission_pipe.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'REAL_SIGNED_WINDOWS_CORE_PIPE_FAILED'}
+      - name: Parent Git checkout unchanged
+        run: git diff --exit-code
