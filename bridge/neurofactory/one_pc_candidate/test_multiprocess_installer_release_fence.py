@@ -31,6 +31,8 @@ class ExistingInstallerAuthorityBoundary(unittest.TestCase):
             "windows_core_admission_client_process_ci.py",
             "test_windows_core_admission_ipc_ci.py",
             "windows_scm_sandbox_receiver.py",  # pinned *component* allowed only
+            "windows_scm_core_admission_ci.py",  # NEW private SCM cannot enter UI
+            "test_windows_scm_core_admission_ci.py",
         )
         # Explicitly refuse privileged modules inside app (including a
         # recursive wildcard). Pinned read-only *components* have a separate
