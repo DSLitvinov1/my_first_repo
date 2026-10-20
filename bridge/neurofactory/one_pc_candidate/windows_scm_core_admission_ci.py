@@ -240,21 +240,34 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop)
 
     def SvcDoRun(self):
-        cfg, public, service_sid = _load_admin_config()
-        core_dir = ROOT / "core"
-        workspace_dir = ROOT / "workspace"
-        git_dir = ROOT / "git"
-        if not all(p.is_dir() and not p.is_symlink() for p in
-                   (core_dir, workspace_dir, git_dir)):
-            _fail("Missing administrator-provisioned protected state")
-        store = WorkspaceStore(workspace_dir)
-        # Fail closed on unreadable Git source, never bypass the CORE pin.
-        git_probe = subprocess.run(
-            ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
-            capture_output=True, timeout=15, check=False)
-        if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
-            _fail("SCM LocalService Git source preimage is inaccessible")
-        core = OneTaskCore(core_dir, git_dir)
+        try:
+            cfg, public, service_sid = _load_admin_config()
+            core_dir = ROOT / "core"
+            workspace_dir = ROOT / "workspace"
+            git_dir = ROOT / "git"
+            if not all(p.is_dir() and not p.is_symlink() for p in
+                       (core_dir, workspace_dir, git_dir)):
+                _fail("Missing administrator-provisioned protected state")
+            store = WorkspaceStore(workspace_dir)
+            # Fail closed on unreadable Git source, never bypass CORE pin.
+            git_probe = subprocess.run(
+                ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
+                capture_output=True, timeout=15, check=False)
+            if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
+                _fail("SCM LocalService Git source preimage is inaccessible")
+            core = OneTaskCore(core_dir, git_dir)
+        except Exception as exc:
+            # CI-local SCM startup denial: no secret bytes or permit
+            # included. Operator-controlled protected root, NO HTTP log.
+            try:
+                (ROOT / "core" / "scm-ci-startup-denial.json").write_text(
+                    json.dumps({"exception_class": type(exc).__name__,
+                                "reason": str(exc)[:250],
+                                "release_allowed": False}),
+                    encoding="ascii")
+            except Exception:
+                pass
+            raise
         def run():
             while not self.is_stopping.is_set():
                 try:
