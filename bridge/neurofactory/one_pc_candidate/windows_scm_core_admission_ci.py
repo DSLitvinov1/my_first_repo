@@ -183,6 +183,10 @@ def _one_request(pipe_name, ui_sid, service_sid, public, store, core):
                     "status": "DENIED_OR_UNKNOWN_NO_AUTO_RETRY",
                     "exception_class": type(exc).__name__,
                     "reason": str(exc)[:180],
+                    "underlying_class": (
+                        type(exc.__cause__).__name__ if exc.__cause__ else None),
+                    "underlying_reason": (
+                        str(exc.__cause__)[:180] if exc.__cause__ else None),
                     "production_release": False,
                 }
                 (ROOT / "core" / "ci-core-receiver-denial.json").write_text(
