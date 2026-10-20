@@ -1,13 +1,15 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-user-draft-provider-20261019]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/restore_offline.py
       - bridge/neurofactory/one_pc_candidate/test_draft_provider_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
@@ -62,6 +64,8 @@ jobs:
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/draft_provider.py' "$stage\app\draft_provider.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py' "$stage\app\core_readonly_observer.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\app\signed_owner_admission.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
@@ -146,6 +150,65 @@ jobs:
             Write-Output 'NF_INSTALLER_OFFLINE_VERIFIED_SQLITE_RESTORE=PASS_DRAFT_ONLY'
             $diag=Invoke-RestMethod "$url/api/status"
             if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            if (!(Test-Path "$install\app\core_readonly_observer.py") -or !(Test-Path "$install\app\signed_owner_admission.py")) {throw 'MISSING_SIGNED_READONLY_COMPONENTS'}
+            $coreObserve=Invoke-RestMethod "$url/api/core/status"
+            if ($coreObserve.configured -ne $false -or $coreObserve.queue_mutation_allowed -ne $false -or $coreObserve.execution_allowed -ne $false) {throw 'CORE_STATUS_EXPOSED_LIVE_ACCESS'}
+            $admission=Invoke-RestMethod "$url/api/tasks/$($createdTask.id)/admission-request"
+            if ($admission.owner_signed -ne $false -or $admission.queue_mutation_allowed -ne $false -or
+                $admission.execution_allowed -ne $false -or $admission.draft_id -ne $createdTask.id -or
+                $admission.draft_sha256 -notmatch '^[a-f0-9]{64}
+            Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+          $secondPort=18767
+          $secondOut=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-out.log'
+          $secondErr=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-err.log'
+          $server2=Start-Process -PassThru -WindowStyle Hidden -RedirectStandardOutput $secondOut -RedirectStandardError $secondErr -FilePath "$install\runtime\python.exe" -ArgumentList @(
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--components-dir',"$install\components",'--port',"$secondPort")
+          try {
+            $url2="http://127.0.0.1:$secondPort"
+            $again=$false
+            for($k=0;$k -lt 40;$k++) {
+              Start-Sleep -Milliseconds 200
+              if ($server2.HasExited) {break}
+              try { $bootstrapAgain=Invoke-RestMethod "$url2/api/bootstrap" -TimeoutSec 2; $again=$true; break } catch {}
+            }
+            if (!$again -or $bootstrapAgain.mode -ne 'LOCAL_DRAFT_ONLY') {
+              if (Test-Path $secondErr) {Get-Content $secondErr | Select-Object -Last 12}
+              throw 'INSTALLED_RESTART_FAILED'
+            }
+            $savedProjects=Invoke-RestMethod "$url2/api/projects"
+            $savedTasks=Invoke-RestMethod "$url2/api/tasks"
+            if (@($savedProjects.projects | Where-Object {$_.id -eq $created.id}).Count -ne 1) {throw 'PROJECT_LOST_ON_RESTART'}
+            if (@($savedTasks.tasks | Where-Object {$_.id -eq $createdTask.id -and $_.state -eq 'DRAFT_PENDING_OWNER_AUTH'}).Count -ne 1) {throw 'TASK_LOST_ON_RESTART'}
+            $health=Invoke-RestMethod "$url2/api/status"
+            if ($health.real_core_dispatch_enabled -or $health.model_inference_enabled) {throw 'UNEXPECTED_EXECUTION_ON_RESTART'}
+            Write-Output 'NF_INSTALLED_WINDOWS_APPLICATION_PROCESS_RESTART_DURABLE_DATA=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server2.HasExited) {Stop-Process -Id $server2.Id -Force}
+          }
+          $uninstall="$install\unins000.exe"
+          if (!(Test-Path $uninstall)) {throw 'UNINSTALLER_MISSING'}
+          $u=Start-Process -Wait -PassThru -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($u.ExitCode -ne 0) {throw 'UNINSTALL_FAILED'}
+          if (Test-Path "$install\app\local_workspace.py") {throw 'APP_NOT_REMOVED'}
+          if (!(Test-Path "$data\workspace.sqlite3")) {throw 'USER_DATABASE_DELETED_ON_UNINSTALL'}
+          Write-Output 'NF_INSTALLER_UNINSTALL_DATA_PRESERVED=PASS'
+          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=SOURCE_INCLUDED_NOT_WIRED_NOT_RELEASED'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          path: bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify repository unchanged
+        run: git diff --exit-code
+) {throw 'UI_DRAFT_UNSIGNED_BOUNDARY_FAILED'}
+            Write-Output 'NF_INSTALLED_APP_QWEN_CORE_READONLY_OWNER_REQUEST=PASS_NO_EXECUTION'
+            Write-Output 'NF_INSTALLED_CORE_QUEUE_AND_HOST_SERVICE=OFF'
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
           }
           finally {
