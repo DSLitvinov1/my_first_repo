@@ -1,0 +1,26 @@
+name: Neurofactory one-PC current installer authority boundary (no reinstall)
+on:
+  push:
+    branches: [neurofactory-onepc-real-multiprocess-ipc-20261020]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/test_multiprocess_installer_release_fence.py
+      - .github/workflows/neurofactory-onepc-installer-authority-fence-ci.yml
+permissions:
+  contents: read
+jobs:
+  no-operator-privilege-in-unprivileged-ui-installer:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Static exact release boundary of existing Inno and pinned staged files
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_multiprocess_installer_release_fence.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'UNPRIVILEGED_INSTALLER_CONTAINS_TRUSTED_AUTHORITY' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'INSTALLER_SCOPE_TEST_MODIFIED_SOURCE' }
