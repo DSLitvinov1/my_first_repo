@@ -173,12 +173,16 @@ class SignedIPCRealWindows(unittest.TestCase):
         startup.cb = ctypes.sizeof(startup)
         pi = ProcessInfo()
         adv = ctypes.WinDLL("advapi32", use_last_error=True)
-        creator = adv.CreateProcessWithLogonW
+        # Use LogonUser token already exercised by the kernel SID tests.
+        # CreateProcessWithTokenW is the alternate documented Win32 API for
+        # launching a distinct logon token as a genuine OS child process.
+        # No passwords or user tokens are sent to the child.
+        creator = adv.CreateProcessWithTokenW
         creator.argtypes = [
-            wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
-            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPWSTR,
-            wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
-            ctypes.POINTER(Startup), ctypes.POINTER(ProcessInfo)
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPCWSTR,
+            wintypes.LPWSTR, wintypes.DWORD, ctypes.c_void_p,
+            wintypes.LPCWSTR, ctypes.POINTER(Startup),
+            ctypes.POINTER(ProcessInfo),
         ]
         creator.restype = wintypes.BOOL
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -190,16 +194,22 @@ class SignedIPCRealWindows(unittest.TestCase):
         kernel.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel.CloseHandle.restype = wintypes.BOOL
         try:
-            created = creator(
-                self.operator.ci_user_name,
-                os.environ["COMPUTERNAME"],
+            child_token = win32security.LogonUser(
+                self.operator.ci_user_name, os.environ["COMPUTERNAME"],
                 self.operator.ci_user_password,
-                0, sys.executable, command,
-                0x400, ctypes.cast(environment, ctypes.c_void_p),
-                None, ctypes.byref(startup), ctypes.byref(pi))
+                win32con.LOGON32_LOGON_INTERACTIVE,
+                win32con.LOGON32_PROVIDER_DEFAULT)
+            try:
+                created = creator(
+                    wintypes.HANDLE(int(child_token)), 0,
+                    sys.executable, command,
+                    0x400, ctypes.cast(environment, ctypes.c_void_p),
+                    None, ctypes.byref(startup), ctypes.byref(pi))
+            finally:
+                child_token.Close()
             self.assertTrue(created,
-                            "Separate Windows user process creation failed, "
-                            "Windows error=" + str(ctypes.get_last_error()))
+                            "Separate Windows logon-token process creation "
+                            "failed; Windows error=" + str(ctypes.get_last_error()))
             try:
                 code = kernel.WaitForSingleObject(pi.hProcess, 20000)
                 if code != 0:
