@@ -16,11 +16,11 @@ import unittest
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from test_windows_owner_controller_candidate import OwnerControllerWindowsCI
+import test_windows_owner_controller_candidate as fixture_module
 from windows_owner_controller_candidate import protect_acl, PRIVATE_FILE
 from windows_core_admission_ipc_ci import (
     serve_signed_core_once_ci, send_signed_permit_once_ci, PREFIX,
-    AdmissionIPCRejected,
+    AdmissionIPCRejected, _message,
 )
 
 if os.name == "nt":
@@ -34,7 +34,7 @@ class SignedIPCRealWindows(unittest.TestCase):
                 os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted" or
                 os.environ.get("NF_CORE_ADMISSION_PIPE_CI_ONLY") != "1"):
             self.skipTest("Disposable GitHub Windows only")
-        self.operator = OwnerControllerWindowsCI(
+        self.operator = fixture_module.OwnerControllerWindowsCI(
             "test_real_dpapi_signing_and_real_core_queue_one_shot")
         self.operator.setUp()
         self.addCleanup(self.operator.tearDown)
@@ -148,6 +148,27 @@ class SignedIPCRealWindows(unittest.TestCase):
                          "DENIED_OR_UNKNOWN_NO_AUTO_RETRY")
         self.assertEqual(self.fi.core.snapshot()["state"], "EMPTY")
         print("NF_IPC_FORGED_FOREIGN_PROJECT_EXPIRED_PERMIT=DENIED")
+
+    def test_true_signature_cannot_override_independent_wrong_owner_key_pin(self):
+        genuine = self.operator.sign()
+        wrong_pin = b"\x42" * 32
+        denied = self.one_exchange(genuine, pub=wrong_pin)
+        self.assertEqual(denied["status"], "DENIED_OR_UNKNOWN_NO_AUTO_RETRY")
+        self.assertEqual(self.fi.core.snapshot()["state"], "EMPTY")
+        print("NF_IPC_WRONG_INDEPENDENT_OWNER_KEY_PIN=DENIED")
+
+    def test_wire_contract_rejects_duplicate_keys_and_extra_authorities(self):
+        with self.assertRaises(AdmissionIPCRejected):
+            _message(b'{"schema":"nf.onepc.ipc.owner_admission_delivery_ci.v1",'
+                     b'"schema":"nf.onepc.ipc.owner_admission_delivery_ci.v1",'
+                     b'"permit":{}}')
+        with self.assertRaises(AdmissionIPCRejected):
+            _message(b'{"schema":"nf.onepc.ipc.owner_admission_delivery_ci.v1",'
+                     b'"permit":{},"owner_key":"attacker_key"}')
+        with self.assertRaises(AdmissionIPCRejected):
+            _message(b"x" * 9000)
+        self.assertEqual(self.fi.core.snapshot()["state"], "EMPTY")
+        print("NF_IPC_DUPLICATE_KEY_EXTRA_AUTHORITY_AND_OVERSIZE=DENIED")
 
     def test_stale_draft_and_malformed_wire_payload_do_not_enqueue(self):
         signed = self.operator.sign()
