@@ -43,6 +43,21 @@ MIMES = {
 class WorkspaceDenied(ValueError):
     pass
 
+def _load_local_readonly_module(name):
+    """Load exact adjacent shipped module with embedded Python _pth isolation."""
+    if name not in ("core_readonly_observer","signed_owner_admission"):
+        raise WorkspaceDenied("Unapproved read-only module")
+    import importlib.util
+    module_path=Path(__file__).resolve().with_name(name+".py")
+    if module_path.is_symlink() or not module_path.is_file():
+        raise WorkspaceDenied("Missing installed read-only module")
+    spec=importlib.util.spec_from_file_location("_nf_local_"+name,module_path)
+    if spec is None or spec.loader is None:
+        raise WorkspaceDenied("Read-only module unavailable")
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 def _safe_dir(value: Path, *, create=False) -> Path:
     value = Path(value)
     if not value.is_absolute() or value.is_symlink():
@@ -414,7 +429,7 @@ def probe_local_qwen(model_preference, *, port=11434):
             "automatic_retry_allowed":False,"publication_allowed":False}
 
 
-def handler(store,ui,token,port,components_dir=None):
+def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
     origin="http://127.0.0.1:"+str(port)
     class Local(BaseHTTPRequestHandler):
         def _secure_request(self):
@@ -461,6 +476,27 @@ def handler(store,ui,token,port,components_dir=None):
                 self._json(200,{"history":store.history()});return
             if p.path=="/api/status":
                 self._json(200,store.diag(components_dir is not None));return
+            if p.path=="/api/core/status":
+                if core_state_dir is None:
+                    self._json(200,{"schema":"nf.core.readonly.local.v1",
+                        "configured":False,"available":False,
+                        "execution_allowed":False,"queue_mutation_allowed":False,
+                        "independently_verified":False,"reported_state":"NOT_CONFIGURED",
+                        "task":None});return
+                try:
+                    observer=_load_local_readonly_module("core_readonly_observer")
+                    result=observer.observe_core(core_state_dir)
+                except (WorkspaceDenied,ValueError,sqlite3.Error,OSError):
+                    self._json(503,{"error":"CORE_OBSERVATION_UNAVAILABLE_NO_EXECUTION"});return
+                self._json(200,result);return
+            signed_request=re.fullmatch(r"/api/tasks/([a-f0-9]{32})/admission-request",p.path)
+            if signed_request:
+                try:
+                    admission=_load_local_readonly_module("signed_owner_admission")
+                    req=admission.prepare_draft_request(store,signed_request.group(1))
+                except (WorkspaceDenied,ValueError,sqlite3.Error):
+                    self._json(404,{"error":"DRAFT_NOT_ELIGIBLE"});return
+                self._json(200,req);return
             if p.path=="/api/models":
                 self._json(200,local_models());return
             if p.path=="/api/model-checks":
@@ -546,6 +582,8 @@ def main(argv=None):
     p.add_argument("--data-dir",type=Path,required=True)
     p.add_argument("--ui-dir",type=Path,required=True)
     p.add_argument("--components-dir",type=Path,default=None)
+    p.add_argument("--core-state-dir",type=Path,default=None,
+        help="Optional existing private CORE checkpoint path for read-only observation")
     p.add_argument("--port",type=int,default=8766)
     args=p.parse_args(argv)
     if not 1024<=args.port<=65535:
@@ -562,10 +600,13 @@ def main(argv=None):
         module=importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.verify(args.components_dir)
+    if args.core_state_dir is not None:
+        observer=_load_local_readonly_module("core_readonly_observer")
+        observer.observe_core(args.core_state_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
-                    handler(app,ui,one_time_token,args.port,components_dir=args.components_dir)) as srv:
+                    handler(app,ui,one_time_token,args.port,components_dir=args.components_dir,core_state_dir=args.core_state_dir)) as srv:
         app.recover_unknown_proposals()
         print("NEUROFACTORY_LOCAL_DRAFT_WORKSPACE=127.0.0.1:"+str(args.port),flush=True)
         srv.serve_forever(poll_interval=0.2)

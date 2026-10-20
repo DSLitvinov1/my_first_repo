@@ -77,18 +77,34 @@ def main():
                 token="ephemeral-ci-only-token")
             if code!=201:
                 raise RuntimeError("Real local project creation failed")
-            objective=("Create a harmless one-line text file containing exactly "
-                "NEUROFACTORY_REAL_QWEN_DRAFT_PREVIEW. Your entire reply MUST be one "
-                "strict JSON object with exactly two keys named path and content. "
-                "Copy the target path character for character from the instruction "
-                "above into the path key. Do not use markdown, backticks, code fences, "
-                "analysis, comments or explanations. Do not execute anything.")
+            objective=("Prepare a short harmless plain text explanation that two plus two equals four. "
+                "Do not edit files, execute commands, approve work, or claim any operation "
+                "has happened. Return only a draft suggestion.")
             code,task=request(port,"POST","/api/tasks",
                 {"project_id":proj["id"],"objective":objective,
                  "model_preference":"qwen2.5-coder:1.5b"},
                 token="ephemeral-ci-only-token")
             if code!=201 or task.get("state")!="DRAFT_PENDING_OWNER_AUTH":
                 raise RuntimeError("UI draft not persisted")
+            code,core=request(port,"GET","/api/core/status")
+            if code!=200 or core.get("configured") is not False or (
+                core.get("queue_mutation_allowed") is not False or
+                core.get("execution_allowed") is not False):
+                raise RuntimeError("Unattested local CORE preview incorrectly granted permission")
+            code,admission=request(port,"GET",
+                "/api/tasks/"+task["id"]+"/admission-request")
+            if (code!=200 or admission.get("owner_signed") is not False or
+                admission.get("execution_allowed") is not False or
+                admission.get("queue_mutation_allowed") is not False or
+                admission.get("core_project_id")!="p-"+proj["id"] or
+                type(admission.get("draft_sha256")) is not str or
+                len(admission["draft_sha256"])!=64):
+                raise RuntimeError("Installed signed admission request preparation failed")
+            code,denied=request(port,"POST","/api/core/admit",
+                {"draft_id":task["id"]},token="ephemeral-ci-only-token")
+            if code!=404:
+                raise RuntimeError("Browser must never directly admit CORE task")
+            print("NF_REAL_QWEN_INSTALLED_OWNER_REQUEST=PASS_UNSIGNED_NO_CORE_WRITE")
             code,proposal=request(port,"POST","/api/draft-propose",
                 {"task_id":task["id"]},token="ephemeral-ci-only-token")
             if code!=201 or proposal.get("status")!="PROPOSED_UNVERIFIED":
@@ -117,6 +133,11 @@ def main():
                 reopened.list_tasks()[0]["state"]!="DRAFT_PENDING_OWNER_AUTH" or
                 reopened.diag()["real_core_dispatch_enabled"] is not False):
                 raise RuntimeError("No-replay durable state invalid")
+            code,later=request(port,"GET",
+                "/api/tasks/"+task["id"]+"/admission-request")
+            if code!=200 or later.get("draft_sha256")!=admission["draft_sha256"]:
+                raise RuntimeError("Qwen modified immutable owner approval request")
+            print("NF_REAL_QWEN_DRAFT_REQUEST_SHA256_IMMUTABLE=PASS")
             print("NF_REAL_QWEN_USER_TASK_TO_DURABLE_PROPOSAL=PASS_UNATTESTED")
             print("NF_REAL_QWEN_PROVIDER_SINGLE_CALL_NO_REPLAY=PASS")
             print("NF_REAL_QWEN_TO_CORE_HOST_EFFECT=NOT_EXECUTED")

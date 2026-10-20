@@ -1,12 +1,14 @@
 name: Neurofactory real Qwen via genuine Ollama provider on disposable Windows
 on:
   push:
-    branches: [neurofactory-onepc-complete-package-20261019, neurofactory-onepc-user-draft-provider-20261019]
+    branches: [neurofactory-onepc-complete-package-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020]
     paths:
       - .github/workflows/neurofactory-onepc-real-ollama-windows.yml
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_local_qwen_probe.py
       - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
 permissions:
@@ -80,7 +82,7 @@ jobs:
           Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $archive -MaximumRedirection 2
           if ((Get-Item $archive).Length -ne 11133606) {throw 'EMBEDDED_PYTHON_LENGTH_MISMATCH'}
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\\runtime" -Force
-          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\\app"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py','bridge/neurofactory/one_pc_candidate/core_readonly_observer.py','bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\\app"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\\README.txt"
