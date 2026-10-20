@@ -258,6 +258,10 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
              "('ProcessId='+$x.ProcessId);"
              "($p | Invoke-CimMethod -MethodName GetOwner).User")
         ]).stdout.strip().upper()
+        start_diagnostic = ROOT / "core" / "scm-ci-startup-denial.json"
+        if not actual and start_diagnostic.exists():
+            self.fail("SCM LocalService refused startup: " +
+                      start_diagnostic.read_text(encoding="ascii")[:400])
         self.assertIn(
             "LOCAL SERVICE", actual,
             "SCM owner telemetry missing; exact service status=" +
