@@ -1,0 +1,44 @@
+name: Neurofactory one-PC real separate Windows user-process signed IPC acceptance
+on:
+  push:
+    branches: [neurofactory-onepc-real-multiprocess-ipc-20261020]
+    paths:
+      - .github/workflows/neurofactory-onepc-real-multiprocess-ipc-ci.yml
+      - bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+      - bridge/neurofactory/one_pc_candidate/windows_core_admission_client_process_ci.py
+permissions:
+  contents: read
+jobs:
+  real-distinct-processes-only:
+    runs-on: windows-2025
+    timeout-minutes: 9
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_OWNER_SIGNER_DISPOSABLE_CI: "1"
+      NF_CORE_ADMISSION_PIPE_CI_ONLY: "1"
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify ephemeral Windows test environment and new script syntax
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'NO_OWNER_PC_EXECUTION' }
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_core_admission_client_process_ci.py bridge/neurofactory/one_pc_candidate/test_windows_core_admission_ipc_ci.py
+          if ($LASTEXITCODE -ne 0) { throw 'INCORRECT_CI_TEST_SOURCE' }
+      - name: Provision only ephemeral Windows security dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) { throw 'WINDOWS_CI_DEPENDENCIES_NOT_AVAILABLE' }
+      - name: One NEW real separate OS user process and signed named-pipe-to-CORE SQLite scenario
+        run: |
+          Push-Location bridge/neurofactory/one_pc_candidate
+          try {
+            python -B -m unittest test_windows_core_admission_ipc_ci.SignedIPCRealWindows.test_separate_windows_user_process_delivers_genuine_signed_permit -v
+            if ($LASTEXITCODE -ne 0) { throw 'REAL_DISTINCT_WINDOWS_PROCESS_NOT_PROVEN' }
+          } finally { Pop-Location }
+      - name: Confirm checked-out sources unchanged
+        run: git diff --exit-code
