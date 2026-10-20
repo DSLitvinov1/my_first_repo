@@ -76,6 +76,7 @@ class WindowsNamedPipeOwnerCoreCI(unittest.TestCase):
         self.assertEqual(self.fixture.fi.core.snapshot()["state"], "QUEUED")
         # Actual second pipe instance with same signed permit is denied
         # at existing CORE SQLite singleton. No automatic retry inside app.
+        self.responses.clear()
         thread2 = self.server()
         duplicate = send_one_owner_permit(
             self.pipe, permit, expected_receiver_sid=self.fixture.signer_identity)
