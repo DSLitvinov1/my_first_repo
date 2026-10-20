@@ -43,6 +43,21 @@ MIMES = {
 class WorkspaceDenied(ValueError):
     pass
 
+def _load_local_readonly_module(name):
+    """Load exact adjacent shipped module with embedded Python _pth isolation."""
+    if name not in ("core_readonly_observer","signed_owner_admission"):
+        raise WorkspaceDenied("Unapproved read-only module")
+    import importlib.util
+    module_path=Path(__file__).resolve().with_name(name+".py")
+    if module_path.is_symlink() or not module_path.is_file():
+        raise WorkspaceDenied("Missing installed read-only module")
+    spec=importlib.util.spec_from_file_location("_nf_local_"+name,module_path)
+    if spec is None or spec.loader is None:
+        raise WorkspaceDenied("Read-only module unavailable")
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 def _safe_dir(value: Path, *, create=False) -> Path:
     value = Path(value)
     if not value.is_absolute() or value.is_symlink():
@@ -469,17 +484,17 @@ def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
                         "independently_verified":False,"reported_state":"NOT_CONFIGURED",
                         "task":None});return
                 try:
-                    from core_readonly_observer import observe_core,CoreObservationDenied
-                    result=observe_core(core_state_dir)
-                except (CoreObservationDenied,ValueError,sqlite3.Error,OSError):
+                    observer=_load_local_readonly_module("core_readonly_observer")
+                    result=observer.observe_core(core_state_dir)
+                except (WorkspaceDenied,ValueError,sqlite3.Error,OSError):
                     self._json(503,{"error":"CORE_OBSERVATION_UNAVAILABLE_NO_EXECUTION"});return
                 self._json(200,result);return
             signed_request=re.fullmatch(r"/api/tasks/([a-f0-9]{32})/admission-request",p.path)
             if signed_request:
                 try:
-                    from signed_owner_admission import prepare_draft_request,AdmissionDenied
-                    req=prepare_draft_request(store,signed_request.group(1))
-                except (AdmissionDenied,WorkspaceDenied,ValueError,sqlite3.Error):
+                    admission=_load_local_readonly_module("signed_owner_admission")
+                    req=admission.prepare_draft_request(store,signed_request.group(1))
+                except (WorkspaceDenied,ValueError,sqlite3.Error):
                     self._json(404,{"error":"DRAFT_NOT_ELIGIBLE"});return
                 self._json(200,req);return
             if p.path=="/api/models":
@@ -586,8 +601,8 @@ def main(argv=None):
         spec.loader.exec_module(module)
         module.verify(args.components_dir)
     if args.core_state_dir is not None:
-        from core_readonly_observer import observe_core
-        observe_core(args.core_state_dir)
+        observer=_load_local_readonly_module("core_readonly_observer")
+        observer.observe_core(args.core_state_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
