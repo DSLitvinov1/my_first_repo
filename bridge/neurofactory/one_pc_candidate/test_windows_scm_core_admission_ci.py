@@ -10,6 +10,7 @@ Windows CI ONLY. Never perform any of this on the user's computer.
 from __future__ import annotations
 
 import base64
+import hashlib
 import ctypes
 from ctypes import wintypes
 import json
@@ -192,6 +193,9 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
             "owner_public_b64": base64.b64encode(self.operator.pub).decode(),
             "pipe_name": self.pipe,
             "operator_dpapi_key_path": str(private),
+            "git_exe": str(Path(shutil.which("git")).resolve()),
+            "git_exe_sha256": hashlib.sha256(
+                Path(shutil.which("git")).resolve().read_bytes()).hexdigest(),
         }
         CONFIG.write_text(json.dumps(config, sort_keys=True), encoding="ascii")
 
