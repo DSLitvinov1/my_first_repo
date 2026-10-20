@@ -111,12 +111,6 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertFalse(answer["independently_verified"])
         return answer
 
-    @unittest.skipUnless(
-        os.environ.get("NF_EXPERIMENTAL_SEPARATE_PROCESS_CI") == "1",
-        "NOT VERIFIED: Windows hosted CI CreateProcessWithLogonW and "
-        "CreateProcessWithTokenW failed with E_INVALIDARG; a real separate "
-        "process security assessment is REQUIRED before release"
-    )
     def test_separate_windows_user_process_delivers_genuine_signed_permit(self):
         """Use Windows CreateProcessWithLogonW, not same-process impersonation.
 
@@ -157,21 +151,10 @@ class SignedIPCRealWindows(unittest.TestCase):
                 ("dwThreadId", wintypes.DWORD),
             ]
 
-        allowed_env = {
-            "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
-            "WINDIR": os.environ.get("WINDIR", r"C:\Windows"),
-            "TEMP": os.environ.get("TEMP", r"C:\Windows\Temp"),
-            "TMP": os.environ.get("TMP", r"C:\Windows\Temp"),
-            "PATH": os.path.dirname(sys.executable),
-            "GITHUB_ACTIONS": "true",
-            "RUNNER_ENVIRONMENT": "github-hosted",
-            "NF_CORE_ADMISSION_PIPE_CI_ONLY": "1",
-            "PYTHONNOUSERSITE": "1",
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-        environment = ctypes.create_unicode_buffer(
-            "\x00".join(f"{k}={v}" for k, v in
-                      sorted(allowed_env.items())) + "\x00\x00")
+        # Reuse exact Windows 2025 SCM proven launch contract from
+        # trusted_host/test_windows_scm_two_user_recovery.py:
+        # CreateProcessWithLogonW with "." domain, NULL environment,
+        # CREATE_NO_WINDOW and existing source directory.
         command = ctypes.create_unicode_buffer(subprocess.list2cmdline([
             sys.executable, "-B", str(child), name, encoded,
         ]))
@@ -179,16 +162,12 @@ class SignedIPCRealWindows(unittest.TestCase):
         startup.cb = ctypes.sizeof(startup)
         pi = ProcessInfo()
         adv = ctypes.WinDLL("advapi32", use_last_error=True)
-        # Use LogonUser token already exercised by the kernel SID tests.
-        # CreateProcessWithTokenW is the alternate documented Win32 API for
-        # launching a distinct logon token as a genuine OS child process.
-        # No passwords or user tokens are sent to the child.
-        creator = adv.CreateProcessWithTokenW
+        creator = adv.CreateProcessWithLogonW
         creator.argtypes = [
-            wintypes.HANDLE, wintypes.DWORD, wintypes.LPCWSTR,
-            wintypes.LPWSTR, wintypes.DWORD, ctypes.c_void_p,
-            wintypes.LPCWSTR, ctypes.POINTER(Startup),
-            ctypes.POINTER(ProcessInfo),
+            wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
+            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPWSTR,
+            wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
+            ctypes.POINTER(Startup), ctypes.POINTER(ProcessInfo),
         ]
         creator.restype = wintypes.BOOL
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -200,22 +179,15 @@ class SignedIPCRealWindows(unittest.TestCase):
         kernel.CloseHandle.argtypes = [wintypes.HANDLE]
         kernel.CloseHandle.restype = wintypes.BOOL
         try:
-            child_token = win32security.LogonUser(
-                self.operator.ci_user_name, os.environ["COMPUTERNAME"],
-                self.operator.ci_user_password,
-                win32con.LOGON32_LOGON_INTERACTIVE,
-                win32con.LOGON32_PROVIDER_DEFAULT)
-            try:
-                created = creator(
-                    wintypes.HANDLE(int(child_token)), 0,
-                    sys.executable, command,
-                    0x400, ctypes.cast(environment, ctypes.c_void_p),
-                    None, ctypes.byref(startup), ctypes.byref(pi))
-            finally:
-                child_token.Close()
+            created = creator(
+                self.operator.ci_user_name, ".", self.operator.ci_user_password,
+                0, sys.executable, command,
+                0x08000000, None, str(child.parent),
+                ctypes.byref(startup), ctypes.byref(pi))
             self.assertTrue(created,
-                            "Separate Windows logon-token process creation "
-                            "failed; Windows error=" + str(ctypes.get_last_error()))
+                            "Existing SCM-proven CreateProcessWithLogonW refused "
+                            "real separate UI account, Win32 error=" +
+                            str(ctypes.get_last_error()))
             try:
                 code = kernel.WaitForSingleObject(pi.hProcess, 20000)
                 if code != 0:
