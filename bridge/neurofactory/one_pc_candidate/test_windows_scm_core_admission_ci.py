@@ -210,7 +210,8 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
 
         sys_sid, admin_sid, local_service = (
             "S-1-5-18", "S-1-5-32-544", "S-1-5-19")
-        owner_grants = [(sys_sid, "F"), (admin_sid, "F")]
+        owner_grants = [(sys_sid, "(OI)(CI)F"), (admin_sid, "(OI)(CI)F")]
+        owner_file_grants = [(sys_sid, "F"), (admin_sid, "F")]
         readonly_service = owner_grants + [
             (local_service, "(OI)(CI)RX"),
             (self.service_sid, "(OI)(CI)RX")]
@@ -221,12 +222,12 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
             lock_acl(ROOT / folder, owner_grants + [
                 (self.service_sid, "(OI)(CI)M"),
                 (local_service, "(OI)(CI)M")])
-        lock_acl(CONFIG, owner_grants + [(self.service_sid, "R")])
+        lock_acl(CONFIG, owner_file_grants + [(self.service_sid, "R")])
         # Explicitly pinned service principal (not shared LocalService)
         # must be the ONLY non-administrator reader of public admin config.
         for path in (ROOT / "workspace" / "workspace.sqlite3",
                      ROOT / "core" / "state" / "queue.sqlite3"):
-            lock_acl(path, owner_grants + [
+            lock_acl(path, owner_file_grants + [
                 (self.service_sid, "M"), (local_service, "M")])
         launch = command(["sc.exe", "start", SERVICE_NAME],
                          required=False, timeout=30)
