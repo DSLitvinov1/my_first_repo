@@ -18,6 +18,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import threading
 
@@ -47,6 +48,7 @@ CONFIG = ROOT / "core-receiver-config.json"
 ALLOWED_FIELDS = {
     "schema", "ci_only", "ui_sid", "operator_sid", "owner_public_b64",
     "pipe_name", "operator_dpapi_key_path",
+    "git_exe", "git_exe_sha256",
 }
 SID_PATTERN = re.compile(r"S-1-5-21-(?:[0-9]+-){3}[0-9]+\Z")
 SERVICE_SID = "NT SERVICE\\" + SERVICE_NAME
@@ -88,7 +90,10 @@ def _load_admin_config():
             not re.fullmatch(r"[a-f0-9]{24}",
                              cfg["pipe_name"][len(PREFIX):]) or
             len(public) != 32 or
-            type(cfg["operator_dpapi_key_path"]) is not str):
+            type(cfg["operator_dpapi_key_path"]) is not str or
+            type(cfg["git_exe"]) is not str or
+            type(cfg["git_exe_sha256"]) is not str or
+            not re.fullmatch(r"[a-f0-9]{64}", cfg["git_exe_sha256"])):
         _fail("Invalid operator, worker or public-key trust pin")
     service_sid, domain, kind = win32security.LookupAccountName(None, SERVICE_SID)
     if win32security.ConvertSidToStringSid(service_sid) == cfg["operator_sid"]:
@@ -110,6 +115,21 @@ def _load_admin_config():
         raise RuntimeError("SCM signer key inaccessible, but not ACL-denied") from exc
     else:
         _fail("SCM receiver can read owner encrypted signing key")
+    # Git is needed for existing OneTaskCore's immutable source preimage
+    # validation. A Windows SCM LocalService does not inherit the GitHub
+    # runner's PATH. Pin the actual vendor binary by operator SHA-256 and
+    # restricted Program Files location instead of trusting user PATH.
+    exe = Path(cfg["git_exe"])
+    if (not exe.is_absolute() or exe.name.lower() != "git.exe" or
+            exe.is_symlink() or not exe.is_file() or
+            not str(exe).lower().startswith(r"c:\program files\git\") or
+            exe.lstat().st_file_attributes & 0x400 or
+            hashlib.sha256(exe.read_bytes()).hexdigest() !=
+                cfg["git_exe_sha256"]):
+        _fail("SCM Git executable does not match independently pinned vendor")
+    os.environ["PATH"] = (
+        str(exe.parent) + os.pathsep +
+        str(Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32"))
     return cfg, public, service_sid
 
 
@@ -228,6 +248,12 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
                    (core_dir, workspace_dir, git_dir)):
             _fail("Missing administrator-provisioned protected state")
         store = WorkspaceStore(workspace_dir)
+        # Fail closed on unreadable Git source, never bypass the CORE pin.
+        git_probe = subprocess.run(
+            ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
+            capture_output=True, timeout=15, check=False)
+        if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
+            _fail("SCM LocalService Git source preimage is inaccessible")
         core = OneTaskCore(core_dir, git_dir)
         def run():
             while not self.is_stopping.is_set():
