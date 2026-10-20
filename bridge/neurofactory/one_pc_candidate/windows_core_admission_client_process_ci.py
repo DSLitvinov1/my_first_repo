@@ -30,9 +30,9 @@ def main():
     from pathlib import Path
     source = Path(__file__).resolve()
     if (len(source.parts) < 4 or
-            source.parts[0].upper() != "D:\\\\" or
+            source.drive.upper() != "D:" or
             "my_first_repo" not in source.parts or
-            not Path(r"D:\\a\\_temp").is_dir()):
+            not Path(r"D:\a\_temp").is_dir()):
         raise SystemExit(91)
     os.environ["GITHUB_ACTIONS"] = "true"
     os.environ["RUNNER_ENVIRONMENT"] = "github-hosted"
