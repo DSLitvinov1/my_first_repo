@@ -6,6 +6,10 @@ repeat. The pipeline source modules from PR48 remain unmodified.
 from __future__ import annotations
 
 import base64
+import ctypes
+from ctypes import wintypes
+import json
+import subprocess
 import os
 from pathlib import Path
 import secrets
@@ -106,6 +110,119 @@ class SignedIPCRealWindows(unittest.TestCase):
         self.assertFalse(answer["automatic_retry_allowed"])
         self.assertFalse(answer["independently_verified"])
         return answer
+
+    def test_separate_windows_user_process_delivers_genuine_signed_permit(self):
+        """Use Windows CreateProcessWithLogonW, not same-process impersonation.
+
+        No delegated password, bearer token, owner key or CORE path arrives
+        in child args/env. Only a pre-signed permit and pinned pipe name.
+        """
+        permit = self.operator.sign()
+        encoded = base64.b64encode(
+            json.dumps(permit, sort_keys=True, ensure_ascii=False,
+                       separators=(",", ":")).encode("utf-8")).decode("ascii")
+        self.assertLess(len(encoded), 10000)
+        name = PREFIX + secrets.token_hex(12)
+        listener, records, errors = self.serve(name)
+        child = Path(__file__).resolve().with_name(
+            "windows_core_admission_client_process_ci.py")
+
+        class Startup(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD), ("lpReserved", wintypes.LPWSTR),
+                ("lpDesktop", wintypes.LPWSTR), ("lpTitle", wintypes.LPWSTR),
+                ("dwX", wintypes.DWORD), ("dwY", wintypes.DWORD),
+                ("dwXSize", wintypes.DWORD), ("dwYSize", wintypes.DWORD),
+                ("dwXCountChars", wintypes.DWORD),
+                ("dwYCountChars", wintypes.DWORD),
+                ("dwFillAttribute", wintypes.DWORD),
+                ("dwFlags", wintypes.DWORD),
+                ("wShowWindow", wintypes.WORD), ("cbReserved2", wintypes.WORD),
+                ("lpReserved2", ctypes.c_void_p),
+                ("hStdInput", wintypes.HANDLE),
+                ("hStdOutput", wintypes.HANDLE),
+                ("hStdError", wintypes.HANDLE),
+            ]
+
+        class ProcessInfo(ctypes.Structure):
+            _fields_ = [
+                ("hProcess", wintypes.HANDLE), ("hThread", wintypes.HANDLE),
+                ("dwProcessId", wintypes.DWORD),
+                ("dwThreadId", wintypes.DWORD),
+            ]
+
+        allowed_env = {
+            "SYSTEMROOT": os.environ.get("SYSTEMROOT", r"C:\Windows"),
+            "WINDIR": os.environ.get("WINDIR", r"C:\Windows"),
+            "TEMP": os.environ.get("TEMP", r"C:\Windows\Temp"),
+            "TMP": os.environ.get("TMP", r"C:\Windows\Temp"),
+            "PATH": os.path.dirname(sys.executable),
+            "GITHUB_ACTIONS": "true",
+            "RUNNER_ENVIRONMENT": "github-hosted",
+            "NF_CORE_ADMISSION_PIPE_CI_ONLY": "1",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONDONTWRITEBYTECODE": "1",
+        }
+        environment = ctypes.create_unicode_buffer(
+            "\x00".join(f"{k}={v}" for k, v in
+                      sorted(allowed_env.items())) + "\x00\x00")
+        command = ctypes.create_unicode_buffer(subprocess.list2cmdline([
+            sys.executable, "-B", str(child), name, encoded,
+        ]))
+        startup = Startup()
+        startup.cb = ctypes.sizeof(startup)
+        pi = ProcessInfo()
+        adv = ctypes.WinDLL("advapi32", use_last_error=True)
+        creator = adv.CreateProcessWithLogonW
+        creator.argtypes = [
+            wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
+            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPWSTR,
+            wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
+            ctypes.POINTER(Startup), ctypes.POINTER(ProcessInfo)
+        ]
+        creator.restype = wintypes.BOOL
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.GetExitCodeProcess.argtypes = [
+            wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel.GetExitCodeProcess.restype = wintypes.BOOL
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle.restype = wintypes.BOOL
+        try:
+            created = creator(
+                self.operator.ci_user_name,
+                os.environ["COMPUTERNAME"],
+                self.operator.ci_user_password,
+                0, sys.executable, command,
+                0x08000000 | 0x400, ctypes.cast(environment, ctypes.c_void_p),
+                str(child.parent), ctypes.byref(startup), ctypes.byref(pi))
+            self.assertTrue(created,
+                            "Separate Windows user process creation failed, "
+                            "Windows error=" + str(ctypes.get_last_error()))
+            try:
+                code = kernel.WaitForSingleObject(pi.hProcess, 20000)
+                if code != 0:
+                    kernel.TerminateProcess(pi.hProcess, 3)
+                    self.fail("Unprivileged Windows child process hung")
+                exit_code = wintypes.DWORD(999)
+                self.assertTrue(kernel.GetExitCodeProcess(
+                    pi.hProcess, ctypes.byref(exit_code)))
+                self.assertEqual(exit_code.value, 0,
+                                 "Unprivileged separate process denied IPC")
+            finally:
+                kernel.CloseHandle(pi.hThread)
+                kernel.CloseHandle(pi.hProcess)
+        finally:
+            listener.join(timeout=8)
+        self.assertFalse(listener.is_alive())
+        self.assertFalse(errors, errors)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["status"], "OBSERVED_QUEUED_TEST_ONLY")
+        self.assertEqual(self.fi.core.snapshot()["state"], "QUEUED")
+        self.assertEqual(self.fi.workspace.list_tasks()[0]["state"],
+                         "DRAFT_PENDING_OWNER_AUTH")
+        print("NF_IPC_REAL_SEPARATE_WINDOWS_PROCESS_TO_CORE=PASS_NO_OWNER_KEY")
 
     def test_real_different_windows_sid_delivers_one_approved_core_task(self):
         permit = self.operator.sign()
