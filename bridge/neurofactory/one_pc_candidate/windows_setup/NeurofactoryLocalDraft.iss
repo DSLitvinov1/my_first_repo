@@ -29,6 +29,8 @@ Source: "{#SourceRoot}\runtime\*"; DestDir: "{app}\runtime"; Flags: recursesubdi
 Source: "{#SourceRoot}\app\local_workspace.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\app\installed_integrity.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\app\draft_provider.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\app\core_readonly_observer.py"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "{#SourceRoot}\app\signed_owner_admission.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\app\test_installed_provider_import.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\app\restore_offline.py"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "{#SourceRoot}\ui\*"; DestDir: "{app}\ui"; Flags: recursesubdirs createallsubdirs ignoreversion
