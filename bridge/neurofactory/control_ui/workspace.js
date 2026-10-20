@@ -84,9 +84,10 @@
     append(warning,el("strong","Безопасный локальный режим: задания сохраняются, но НЕ отправляются в исполнительную очередь."));
     main.append(warning);
     try{
-      const [projects,tasks,history,health,models,checks,proposals]=await Promise.all([
+      const [projects,tasks,history,health,models,checks,proposals,core]=await Promise.all([
         request("/api/projects"),request("/api/tasks"),
-        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),request("/api/task-proposals")
+        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),request("/api/task-proposals"),
+        request("/api/core/status").catch(()=>({configured:true,available:false,reported_state:"UNAVAILABLE"}))
       ]);
       const summary=box("Реальное состояние","Данные непосредственно из локального сервера");
       const metrics=el("div",undefined,"metric-grid");
@@ -99,6 +100,18 @@
         metrics.append(metric);
       }
       summary.append(metrics);
+      const coreBox=box("CORE — состояние без права выполнения","Настоящая очередь только при явном выборе её каталога. Данные не являются независимой аттестацией.");
+      if(core.available&&core.task){
+        row(coreBox,"CORE: "+core.reported_state,
+          core.task.task_id+" · проект "+core.task.project_id+" · "+core.task.model+" · попыток: "+core.task.attempts);
+      }else if(core.available){
+        row(coreBox,"CORE: EMPTY","Нет задания в выбранном локальном хранилище CORE");
+      }else if(core.configured){
+        row(coreBox,"CORE: недоступно","Ошибка доступа или проверки; никакого допуска на выполнение");
+      }else{
+        row(coreBox,"CORE не подключён","Необходим отдельный существующий частный каталог состояния CORE");
+      }
+      row(coreBox,"Разрешения","Только чтение; Qwen, браузер и пользовательский токен не могут запускать CORE/HOST.");
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
       const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");
@@ -137,6 +150,25 @@
       for(const t of tasks.tasks){
         row(taskBox,t.objective.slice(0,85),
           "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения · Не в CORE");
+        const prepare=el("button","Подготовить запрос на допуск CORE (без исполнения)","outline-btn");
+        prepare.type="button";
+        prepare.addEventListener("click",async()=>{
+          prepare.disabled=true;
+          try{
+            const draft=await request("/api/tasks/"+t.id+"/admission-request");
+            if(draft.schema!=="nf.onepc.draft_admission_request.v1"||
+               draft.draft_id!==t.id||draft.owner_signed!==false||
+               draft.execution_allowed!==false||draft.queue_mutation_allowed!==false||
+               !/^[a-f0-9]{64}$/.test(draft.draft_sha256)){
+              throw Error("Недостоверное подтверждение подготовки");
+            }
+            status("Запрос для отдельного доверенного подписанта: "+draft.draft_sha256+
+              ". Задание остаётся черновиком. Выполнение не разрешено.");
+          }catch(e){
+            status("Подготовка отклонена: "+(e.message||"неподходящее задание"),true);
+          }finally{prepare.disabled=false;}
+        });
+        taskBox.append(prepare);
         const proposed=proposals.proposals.find(p=>p.task_id===t.id);
         if(proposed){
           row(taskBox,"ИИ: "+proposed.status,
