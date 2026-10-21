@@ -1,0 +1,104 @@
+name: Neurofactory Qwen SCM unified candidate strict Windows acceptance
+on:
+  push:
+    branches: [neurofactory-onepc-qwen-scm-unification-20261021]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/**'
+      - 'bridge/neurofactory/development/core_owned/**'
+      - 'bridge/neurofactory/control_ui/**'
+      - '.github/workflows/neurofactory-onepc-qwen-scm-integration-ci.yml'
+permissions:
+  contents: read
+jobs:
+  workspace-and-security-regression:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated Ed25519 test support
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) { throw "CRYPTO_TEST_DEPENDENCY_FAILED" }
+      - name: Enforce one-shot Qwen draft, signed admission, read-only CORE, restore, browser and installer fences
+        run: |
+          $ErrorActionPreference='Stop'
+          $p='bridge/neurofactory/one_pc_candidate'
+          $tests=@('test_local_workspace.py','test_local_qwen_probe.py','test_draft_provider_workspace.py','test_restore_offline.py','test_core_readonly_observer.py','test_signed_owner_admission.py','test_signed_host_core_completion.py','test_owner_core_host_unified_e2e.py','test_multiprocess_installer_release_fence.py')
+          foreach($test in $tests) {
+            python -B -m unittest discover -s $p -p $test -v
+            if ($LASTEXITCODE -ne 0) { throw ("FAIL_CLOSED_"+$test) }
+          }
+          python -B -m py_compile "$p/local_workspace.py" "$p/draft_provider.py" "$p/signed_owner_admission.py"
+          if ($LASTEXITCODE -ne 0) { throw 'UNIFIED_CODE_SYNTAX_ERROR' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'TRACKED_SOURCE_MODIFIED' }
+  restricted-scm-actual-core-admission:
+    runs-on: windows-2025
+    timeout-minutes: 14
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_OWNER_SIGNER_DISPOSABLE_CI: "1"
+      NF_CORE_ADMISSION_PIPE_CI_ONLY: "1"
+      NF_SCM_CORE_TRIPLE_SID_CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Refuse local and self-hosted machines
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'EPHEMERAL_WINDOWS_REQUIRED' }
+      - name: Install scoped test-only Windows security libraries
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "pywin32==311" "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) { throw 'SCM_TEST_DEPENDENCY_FAILED' }
+      - name: Require genuine three Windows principals signed queue and replay rejection
+        run: |
+          Push-Location 'bridge/neurofactory/one_pc_candidate'
+          try {
+            python -B -m unittest test_windows_scm_core_admission_ci.ThreeRealWindowsPrincipals.test_actual_three_windows_identities_one_signed_core_enqueue -v
+            if ($LASTEXITCODE -ne 0) { throw 'SCM_SIGNED_CORE_E2E_FAILED_CLOSED' }
+          } finally { Pop-Location }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'TRACKED_SOURCE_MODIFIED' }
+      - name: Ensure temporary protected test service is not running
+        if: always()
+        run: |
+          $svc=sc.exe query NeurofactoryCoreAdmissionCI 2>&1
+          $queryExit=$LASTEXITCODE
+          if ($queryExit -eq 0 -and ($svc -join ' ') -match 'RUNNING') { throw 'TEST_SERVICE_LEFT_RUNNING' }
+          if ($queryExit -ne 0) { Write-Output 'SCM_TEST_SERVICE_REMOVED=PASS' }
+          else { Write-Output 'SCM_TEST_SERVICE_NOT_RUNNING=PASS' }
+          exit 0
+
+  desktop-and-mobile-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONNOUSERSITE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use isolated browser environment and pinned Chromium driver
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_browser"
+          "$RUNNER_TEMP/nf_browser/bin/python" -m pip install --disable-pip-version-check --no-input "playwright==1.56.0"
+          "$RUNNER_TEMP/nf_browser/bin/python" -m playwright install --with-deps chromium
+      - name: Exercise actual desktop/mobile localhost UI and durable SQLite
+        run: |
+          "$RUNNER_TEMP/nf_browser/bin/python" -B bridge/neurofactory/one_pc_candidate/test_local_workspace_browser.py
+      - name: Source remains immutable
+        run: git diff --exit-code

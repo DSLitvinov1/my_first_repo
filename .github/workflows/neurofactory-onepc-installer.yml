@@ -1,14 +1,17 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-core-readonly-ui-20261019, neurofactory-onepc-signed-owner-admission-20261019]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020, neurofactory-onepc-qwen-scm-unification-20261021]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
-      - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
-      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
+      - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+      - bridge/neurofactory/one_pc_candidate/restore_offline.py
+      - bridge/neurofactory/one_pc_candidate/test_draft_provider_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py
       - bridge/neurofactory/control_ui/**
@@ -59,9 +62,10 @@ jobs:
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/draft_provider.py' "$stage\app\draft_provider.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py' "$stage\app\core_readonly_observer.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\app\signed_owner_admission.py"
-          Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
           Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
@@ -105,6 +109,7 @@ jobs:
             if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
           }
           Write-Output 'NF_INSTALLER_REAL_CORE_HOST_PROVIDER_SOURCE_SHA256_IN_PACKAGE=PASS_NOT_ACTIVE'
+          if (!(Test-Path "$install\app\draft_provider.py")) {throw 'INSTALLED_DRAFT_PROVIDER_MODULE_MISSING'}
           & "$install\runtime\python.exe" -B "$install\app\test_installed_provider_import.py" --components "$install\components"
           if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_PROVIDER_CORE_IMPORT_FAILED'}
           python -B bridge/neurofactory/one_pc_candidate/test_installed_integrity.py --app "$install\app" --components "$install\components"
@@ -145,6 +150,15 @@ jobs:
             Write-Output 'NF_INSTALLER_OFFLINE_VERIFIED_SQLITE_RESTORE=PASS_DRAFT_ONLY'
             $diag=Invoke-RestMethod "$url/api/status"
             if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            if (!(Test-Path "$install\app\core_readonly_observer.py") -or !(Test-Path "$install\app\signed_owner_admission.py")) {throw 'MISSING_SIGNED_READONLY_COMPONENTS'}
+            $coreObserve=Invoke-RestMethod "$url/api/core/status"
+            if ($coreObserve.configured -ne $false -or $coreObserve.queue_mutation_allowed -ne $false -or $coreObserve.execution_allowed -ne $false) {throw 'CORE_STATUS_EXPOSED_LIVE_ACCESS'}
+            $admission=Invoke-RestMethod "$url/api/tasks/$($createdTask.id)/admission-request"
+            if ($admission.owner_signed -ne $false -or $admission.queue_mutation_allowed -ne $false -or
+                $admission.execution_allowed -ne $false -or $admission.draft_id -ne $createdTask.id -or
+                $admission.draft_sha256 -notmatch '^[a-f0-9]{64}$') {throw 'UI_DRAFT_UNSIGNED_BOUNDARY_FAILED'}
+            Write-Output 'NF_INSTALLED_APP_QWEN_CORE_READONLY_OWNER_REQUEST=PASS_NO_EXECUTION'
+            Write-Output 'NF_INSTALLED_CORE_QUEUE_AND_HOST_SERVICE=OFF'
             Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
           }
           finally {

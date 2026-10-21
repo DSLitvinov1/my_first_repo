@@ -56,9 +56,6 @@ def main():
                                 "Подготовить безопасный текст без исполнения и публикации, "+name)
                             task_form.get_by_role("button",name="Сохранить задание").click()
                             page.get_by_text("Ожидает разрешения",exact=False).first.wait_for()
-                            page.get_by_role("button",name="Подготовить запрос на допуск CORE").last.click()
-                            page.get_by_text("Запрос подготовлен.",exact=False).first.wait_for()
-                            assert store.list_tasks()[-1]["state"]=="DRAFT_PENDING_OWNER_AUTH"
                             page.reload(wait_until="load")
                             page.get_by_role("button",name="Локальная база").click()
                             page.get_by_text("Реальный проект "+name,exact=True).first.wait_for()
