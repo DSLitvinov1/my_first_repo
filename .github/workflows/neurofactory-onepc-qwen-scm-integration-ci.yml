@@ -31,7 +31,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $p='bridge/neurofactory/one_pc_candidate'
-          $tests=@('test_local_workspace.py','test_local_qwen_probe.py','test_draft_provider_workspace.py','test_restore_offline.py','test_core_readonly_observer.py','test_signed_owner_admission.py','test_multiprocess_installer_release_fence.py')
+          $tests=@('test_local_workspace.py','test_local_qwen_probe.py','test_draft_provider_workspace.py','test_restore_offline.py','test_core_readonly_observer.py','test_signed_owner_admission.py','test_signed_host_core_completion.py','test_multiprocess_installer_release_fence.py')
           foreach($test in $tests) {
             python -B -m unittest discover -s $p -p $test -v
             if ($LASTEXITCODE -ne 0) { throw ("FAIL_CLOSED_"+$test) }
