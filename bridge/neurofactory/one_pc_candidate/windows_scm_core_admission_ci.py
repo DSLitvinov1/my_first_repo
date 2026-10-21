@@ -264,9 +264,42 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
                 ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
                 capture_output=True, timeout=15, check=False)
             if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
-                _fail("SCM LocalService Git source preimage inaccessible: exit=" +
-                      str(git_probe.returncode) + ", diagnostic=" +
-                      git_probe.stderr.decode("utf-8", errors="replace")[:180])
+                # CI-ONLY differential diagnosis; not fallback authority.
+                # Probe the exact pinned executable using Windows process
+                # creation modes without weakening restricted service token
+                # or replacing CORE's mandatory authenticated Git lookup.
+                diagnostics = []
+                for label, flags in (
+                        ("default", 0),
+                        ("no_window", subprocess.CREATE_NO_WINDOW),
+                        ("detached", subprocess.DETACHED_PROCESS)):
+                    try:
+                        result = subprocess.run(
+                            [cfg["git_exe"], "-C", str(git_dir),
+                             "rev-parse", "HEAD"],
+                            stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            creationflags=flags, cwd=str(git_dir),
+                            timeout=10, check=False)
+                        diagnostics.append({
+                            "mode": label, "exit": result.returncode,
+                            "matched_expected_head": (
+                                len(result.stdout.strip()) == 40),
+                            "stderr_category": (
+                                "EMPTY" if not result.stderr else
+                                "NONEMPTY_REDACTED"),
+                        })
+                    except (OSError, subprocess.TimeoutExpired) as error:
+                        diagnostics.append({
+                            "mode": label, "error_class": type(error).__name__})
+                (ROOT / "core" / "scm-git-child-diagnostic.json").write_text(
+                    json.dumps({"schema": "nf.scm.git_child_probe_ci.v1",
+                                "results": diagnostics,
+                                "source_verification_bypassed": False,
+                                "production_release": False}),
+                    encoding="ascii")
+                _fail("SCM Git preimage verification failed; diagnostic-only "
+                      "probe saved. Real CORE source verifier still mandatory")
             core = OneTaskCore(core_dir, git_dir)
         except Exception as exc:
             # CI-local SCM startup denial: no secret bytes or permit
