@@ -262,7 +262,9 @@ class NeurofactoryCoreAdmissionCI(win32serviceutil.ServiceFramework):
             # Fail closed on unreadable Git source, never bypass CORE pin.
             git_probe = subprocess.run(
                 ["git", "-C", str(git_dir), "rev-parse", "HEAD"],
-                capture_output=True, timeout=15, check=False)
+                stdin=subprocess.DEVNULL, capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                timeout=15, check=False)
             if git_probe.returncode or len(git_probe.stdout.strip()) != 40:
                 # CI-ONLY differential diagnosis; not fallback authority.
                 # Probe the exact pinned executable using Windows process
