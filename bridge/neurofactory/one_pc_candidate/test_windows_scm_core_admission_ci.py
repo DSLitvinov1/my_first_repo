@@ -239,6 +239,17 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
             lock_acl(ROOT / folder, owner_grants + [
                 (self.service_sid, "(OI)(CI)M"),
                 (local_service, "(OI)(CI)M")])
+        # SQLite's transaction journal and WAL live in the SAME parent
+        # directory as the database. Explicitly protect pre-created state
+        # directories rather than relying on old inherited ACLs; only the
+        # restricted service SID and LocalService can modify their contents.
+        for state_directory in (
+                ROOT / "core" / "state",
+                ROOT / "core" / "sandbox"):
+            self.assertTrue(state_directory.is_dir())
+            lock_acl(state_directory, owner_grants + [
+                (self.service_sid, "(OI)(CI)M"),
+                (local_service, "(OI)(CI)M")])
         lock_acl(CONFIG, owner_file_grants + [(self.service_sid, "R")])
         # Explicitly pinned service principal (not shared LocalService)
         # must be the ONLY non-administrator reader of public admin config.
