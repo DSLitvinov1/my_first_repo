@@ -140,7 +140,26 @@ def main():
             print("NF_REAL_QWEN_DRAFT_REQUEST_SHA256_IMMUTABLE=PASS")
             print("NF_REAL_QWEN_USER_TASK_TO_DURABLE_PROPOSAL=PASS_UNATTESTED")
             print("NF_REAL_QWEN_PROVIDER_SINGLE_CALL_NO_REPLAY=PASS")
-            print("NF_REAL_QWEN_TO_CORE_HOST_EFFECT=NOT_EXECUTED")
+            # Export only a verified SQLite snapshot of this ACTUAL installed-app
+            # Qwen response to the disposable runner. No signer secrets, permits,
+            # model text in workflow logs or privileged service binaries.
+            export_value=os.environ.get("NF_REAL_QWEN_E2E_EXPORT")
+            if export_value:
+                import shutil
+                export=Path(export_value)
+                runner=Path(os.environ["RUNNER_TEMP"]).resolve(strict=True)
+                if (not export.is_absolute() or export.is_symlink()
+                    or export.parent.resolve(strict=True)!=runner or export.exists()):
+                    raise RuntimeError("Untrusted Qwen CI export directory")
+                export.mkdir(mode=0o700)
+                snapshot=store.backup()
+                src=store.directory/"backups"/snapshot["filename"]
+                dest=export/"workspace.sqlite3"
+                shutil.copyfile(src,dest)
+                if sha256(dest.read_bytes()).hexdigest()!=snapshot["sha256"]:
+                    raise RuntimeError("Qwen snapshot did not match durable original")
+                print("NF_REAL_QWEN_WORKSPACE_BACKUP_FOR_SEPARATE_SIGNER=VERIFIED_CI_ONLY")
+            print("NF_REAL_QWEN_TO_CORE_HOST_EFFECT=NOT_EXECUTED_BY_UI")
         finally:
             server.shutdown()
             server.server_close()
