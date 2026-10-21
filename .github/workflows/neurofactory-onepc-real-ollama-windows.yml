@@ -10,6 +10,7 @@ on:
       - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
       - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py
+      - bridge/neurofactory/one_pc_candidate/test_real_qwen_signed_host_cycle_ci.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
 permissions:
   contents: read
@@ -139,9 +140,15 @@ jobs:
             $env:NF_REAL_QWEN_DISPOSABLE_TEST='1'
             $installed=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-actual-install'
             $env:NF_REAL_QWEN_INSTALLED_APP=Join-Path $installed 'app'
+            $env:NF_REAL_QWEN_E2E_EXPORT=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-owner-host-export'
             & "$installed\\runtime\\python.exe" -B "$installed\\app\\nf-ci-qwen-test.py"
             if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_INSTALLED_APP_HTTP_FAILED'}
-            Write-Output 'NF_REAL_QWEN_CORE_HOST_REAL_QUEUE=NOT_TESTED'
+            python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+            if ($LASTEXITCODE -ne 0) {throw 'EXTERNAL_OWNER_TEST_SIGNER_DEPENDENCY_FAILED'}
+            & python -B bridge/neurofactory/one_pc_candidate/test_real_qwen_signed_host_cycle_ci.py
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_SAME_DRAFT_SIGNED_CORE_HOST_CI_FAILED'}
+            Write-Output 'NF_REAL_QWEN_SAME_DRAFT_CORE_HOST_SIGNED_TEST=PASS_NO_PRODUCTION_SCM'
+            Write-Output 'NF_REAL_QWEN_PROTECTED_SCM_SERVICE_IN_SAME_RUN=NOT_TESTED'
             Write-Output 'NF_REAL_QWEN_HOST_SERVICE_ENABLED=FALSE'
           } finally {
             if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
