@@ -90,7 +90,7 @@ def prepare(data):
     }
 
 def _safe_git_checkout(repo: Path):
-    if type(repo) is not Path or not repo.is_absolute() or repo.is_symlink() or not repo.is_dir():
+    if not isinstance(repo, Path) or not repo.is_absolute() or repo.is_symlink() or not repo.is_dir():
         raise HandoffDenied("Exact trusted local repository required")
     if not (repo / ".git").exists() or (repo / ".git").is_symlink():
         raise HandoffDenied("Read-only Codex requires existing local Git checkout")
@@ -100,7 +100,7 @@ def _safe_git_checkout(repo: Path):
 
 def _codex_executable(exe: Path):
     """Require an operator-pinned native CLI, not .cmd/.bat argument wrappers."""
-    if type(exe) is not Path or not exe.is_absolute() or exe.is_symlink() or not exe.is_file():
+    if not isinstance(exe, Path) or not exe.is_absolute() or exe.is_symlink() or not exe.is_file():
         raise HandoffDenied("Exact existing Codex CLI binary required")
     if os.name == "nt":
         if exe.name.lower() != "codex.exe" or (
