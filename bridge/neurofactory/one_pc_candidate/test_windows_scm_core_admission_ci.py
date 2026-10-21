@@ -361,6 +361,18 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
                          permit["spec"]["project_id"])
         self.assertEqual(self.fixture.core.snapshot()["state"], "EMPTY")
         print("NF_THREE_PROCESS_OWNER_SIGNER_SCM_RECEIVER_UI_CORE=QUEUED_ONCE")
+        # A second real UI process can deliver the SAME valid owner
+        # signature again, but the SCM receiver/real CORE must refuse the
+        # replay. Exit 95 denotes an explicitly denied/no-retry observation.
+        second = win32_child(
+            self.operator.ci_user_name, self.operator.ci_user_password,
+            client_script, self.pipe, signed_file)
+        self.assertEqual(second, 95, "A replay unexpectedly obtained permission")
+        self.assertEqual(observe_core(state)["reported_state"], "QUEUED")
+        self.assertEqual(observe_core(state)["task"]["task_id"],
+                         permit["spec"]["task_id"])
+        print("NF_TRIPLE_SID_REPLAY_VALID_OWNER_SIGNATURE=DENIED_NO_RETRY")
+
         # Never infer permission to execute from successful enqueue.
         self.assertFalse(observe_core(state)["execution_allowed"])
         # The same signed permit must not be enqueued twice; no worker
