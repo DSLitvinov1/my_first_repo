@@ -76,7 +76,11 @@ jobs:
         if: always()
         run: |
           $svc=sc.exe query NeurofactoryCoreAdmissionCI 2>&1
-          if ($LASTEXITCODE -eq 0 -and ($svc -join ' ') -match 'RUNNING') { throw 'TEST_SERVICE_LEFT_RUNNING' }
+          $queryExit=$LASTEXITCODE
+          if ($queryExit -eq 0 -and ($svc -join ' ') -match 'RUNNING') { throw 'TEST_SERVICE_LEFT_RUNNING' }
+          if ($queryExit -ne 0) { Write-Output 'SCM_TEST_SERVICE_REMOVED=PASS' }
+          else { Write-Output 'SCM_TEST_SERVICE_NOT_RUNNING=PASS' }
+          exit 0
 
   desktop-and-mobile-browser:
     runs-on: ubuntu-24.04
