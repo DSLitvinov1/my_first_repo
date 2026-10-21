@@ -22,7 +22,7 @@ PROJECT = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
 OBJECTIVE_LIMIT = 1200
 SUFFIX = re.compile(r"(?:[A-Za-z0-9._-]{1,60}/){0,5}[A-Za-z0-9._-]{1,60}\Z")
-SITES_URL = "https://chatgpt.com/features/sites/"
+SITES_URL = "https://chatgpt.com/sites"
 CODEX_URL = "https://chatgpt.com/codex"
 
 def _str(value, lo, hi):
