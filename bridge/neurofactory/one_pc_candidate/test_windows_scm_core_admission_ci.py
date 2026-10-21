@@ -135,7 +135,20 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
         self.pipe = PREFIX + secrets.token_hex(12)
         self.worker_stage = None
         self.addCleanup(self.cleanup_service)
-        self.deploy_ci_only_scm()
+        try:
+            self.deploy_ci_only_scm()
+        except Exception:
+            proof = ROOT / "core" / "scm-git-child-diagnostic.json"
+            if proof.is_file():
+                try:
+                    # This CI-only file contains exit/status flags, no signed
+                    # task, private key, owner credentials or repository data.
+                    print("NF_SCM_RESTRICTED_GIT_CHILD_DIAG=" +
+                          proof.read_text(encoding="ascii")[:1200],
+                          flush=True)
+                except OSError:
+                    print("NF_SCM_GIT_CHILD_DIAG_NOT_READABLE", flush=True)
+            raise
 
     def cleanup_service(self):
         if self.service_created:
@@ -224,6 +237,17 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
             lock_acl(ROOT / folder, readonly_service)
         for folder in ("workspace", "core"):
             lock_acl(ROOT / folder, owner_grants + [
+                (self.service_sid, "(OI)(CI)M"),
+                (local_service, "(OI)(CI)M")])
+        # SQLite's transaction journal and WAL live in the SAME parent
+        # directory as the database. Explicitly protect pre-created state
+        # directories rather than relying on old inherited ACLs; only the
+        # restricted service SID and LocalService can modify their contents.
+        for state_directory in (
+                ROOT / "core" / "state",
+                ROOT / "core" / "sandbox"):
+            self.assertTrue(state_directory.is_dir())
+            lock_acl(state_directory, owner_grants + [
                 (self.service_sid, "(OI)(CI)M"),
                 (local_service, "(OI)(CI)M")])
         lock_acl(CONFIG, owner_file_grants + [(self.service_sid, "R")])
@@ -337,6 +361,18 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
                          permit["spec"]["project_id"])
         self.assertEqual(self.fixture.core.snapshot()["state"], "EMPTY")
         print("NF_THREE_PROCESS_OWNER_SIGNER_SCM_RECEIVER_UI_CORE=QUEUED_ONCE")
+        # A second real UI process can deliver the SAME valid owner
+        # signature again, but the SCM receiver/real CORE must refuse the
+        # replay. Exit 95 denotes an explicitly denied/no-retry observation.
+        second = win32_child(
+            self.operator.ci_user_name, self.operator.ci_user_password,
+            client_script, self.pipe, signed_file)
+        self.assertEqual(second, 95, "A replay unexpectedly obtained permission")
+        self.assertEqual(observe_core(state)["reported_state"], "QUEUED")
+        self.assertEqual(observe_core(state)["task"]["task_id"],
+                         permit["spec"]["task_id"])
+        print("NF_TRIPLE_SID_REPLAY_VALID_OWNER_SIGNATURE=DENIED_NO_RETRY")
+
         # Never infer permission to execute from successful enqueue.
         self.assertFalse(observe_core(state)["execution_allowed"])
         # The same signed permit must not be enqueued twice; no worker
