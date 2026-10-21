@@ -135,7 +135,20 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
         self.pipe = PREFIX + secrets.token_hex(12)
         self.worker_stage = None
         self.addCleanup(self.cleanup_service)
-        self.deploy_ci_only_scm()
+        try:
+            self.deploy_ci_only_scm()
+        except Exception:
+            proof = ROOT / "core" / "scm-git-child-diagnostic.json"
+            if proof.is_file():
+                try:
+                    # This CI-only file contains exit/status flags, no signed
+                    # task, private key, owner credentials or repository data.
+                    print("NF_SCM_RESTRICTED_GIT_CHILD_DIAG=" +
+                          proof.read_text(encoding="ascii")[:1200],
+                          flush=True)
+                except OSError:
+                    print("NF_SCM_GIT_CHILD_DIAG_NOT_READABLE", flush=True)
+            raise
 
     def cleanup_service(self):
         if self.service_created:
