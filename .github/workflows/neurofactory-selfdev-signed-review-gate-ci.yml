@@ -19,13 +19,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Only new signer verification dependency
+      - name: Isolate only new signer dependency from locked global Python
         run: |
-          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          python -m venv "$RUNNER_TEMP/nf_selfdev_venv"
+          "$RUNNER_TEMP/nf_selfdev_venv/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
       - name: Seven NEW positive and fail-closed cases; no legacy matrices
         run: |
           cd bridge/neurofactory/one_pc_candidate
-          python -B -m unittest test_selfdev_review_candidate -v
+          "$RUNNER_TEMP/nf_selfdev_venv/bin/python" -B -m unittest test_selfdev_review_candidate -v
       - name: Validate source integrity
         run: |
           python -B -m py_compile bridge/neurofactory/one_pc_candidate/selfdev_review_candidate.py
