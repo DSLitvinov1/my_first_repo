@@ -15,6 +15,7 @@ on:
       - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py
       - bridge/neurofactory/control_ui/**
+      - bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py
       - .github/workflows/neurofactory-onepc-installer.yml
 permissions:
   contents: read
@@ -64,11 +65,12 @@ jobs:
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/draft_provider.py' "$stage\app\draft_provider.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py' "$stage\app\codex_sites_bridge.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py' "$stage\app\core_readonly_observer.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\app\signed_owner_admission.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
-          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\ui"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js','bridge/neurofactory/control_ui/integrations.js' "$stage\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
           & "$stage\runtime\python.exe" -B -c "import sqlite3,http.server,json,uuid;print('NF_VENDOR_RUNTIME_EMBEDDED_READY')"

@@ -33,6 +33,7 @@ FILES = {
     "/demo-data.js": "demo-data.js",
     "/app.js": "app.js",
     "/workspace.js": "workspace.js",
+    "/integrations.js": "integrations.js",
 }
 MIMES = {
     ".html": "text/html; charset=utf-8",
