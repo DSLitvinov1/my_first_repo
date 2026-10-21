@@ -84,9 +84,9 @@
     append(warning,el("strong","Безопасный локальный режим: задания сохраняются, но НЕ отправляются в исполнительную очередь."));
     main.append(warning);
     try{
-      const [projects,tasks,history,health,models,checks,core]=await Promise.all([
+      const [projects,tasks,history,health,models,checks,proposals,core]=await Promise.all([
         request("/api/projects"),request("/api/tasks"),
-        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),
+        request("/api/history"),request("/api/status"),request("/api/models"),request("/api/model-checks"),request("/api/task-proposals"),
         request("/api/core/status").catch(()=>({configured:true,available:false,reported_state:"UNAVAILABLE"}))
       ]);
       const summary=box("Реальное состояние","Данные непосредственно из локального сервера");
@@ -100,26 +100,18 @@
         metrics.append(metric);
       }
       summary.append(metrics);
-      const coreBox=box("CORE — только чтение","Локальная SQLite-очередь, не является независимой аттестацией и не разрешает выполнение");
-      if(core.available && core.task){
-        const labels={
-          QUEUED:"В очереди",CLAIMED:"Выдано исполнителю",
-          APPLYING:"Применяется (учебный режим)",
-          CHECKPOINTED_TEST:"Учебная контрольная точка",
-          HOST_CHECKPOINTED_TEST:"Учебный результат HOST",
-          NEEDS_MANUAL_REVIEW:"Нужна ручная проверка"
-        };
-        row(coreBox,"CORE: "+(labels[core.reported_state]||"Неизвестное состояние"),
-          core.task.task_id+" · проект "+core.task.project_id+
-          " · "+core.task.model+" · попыток: "+core.task.attempts);
+      const coreBox=box("CORE — состояние без права выполнения","Настоящая очередь только при явном выборе её каталога. Данные не являются независимой аттестацией.");
+      if(core.available&&core.task){
+        row(coreBox,"CORE: "+core.reported_state,
+          core.task.task_id+" · проект "+core.task.project_id+" · "+core.task.model+" · попыток: "+core.task.attempts);
       }else if(core.available){
-        row(coreBox,"CORE: очередь пуста","Подключено явное локальное состояние, заданий пока нет");
+        row(coreBox,"CORE: EMPTY","Нет задания в выбранном локальном хранилище CORE");
       }else if(core.configured){
-        row(coreBox,"CORE: данные недоступны","Доступ или целостность локального состояния не подтверждены — работа заблокирована");
+        row(coreBox,"CORE: недоступно","Ошибка доступа или проверки; никакого допуска на выполнение");
       }else{
-        row(coreBox,"CORE не подключён","Только просмотр после явной настройки каталога состояния; новые задания остаются черновиками");
+        row(coreBox,"CORE не подключён","Необходим отдельный существующий частный каталог состояния CORE");
       }
-      row(coreBox,"Полномочия","Чтение без исполнения. Проверка подписи HOST и независимая приёмка здесь НЕ производятся.");
+      row(coreBox,"Разрешения","Только чтение; Qwen, браузер и пользовательский токен не могут запускать CORE/HOST.");
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
       const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");
@@ -157,28 +149,54 @@
       const taskBox=box("Новые задания","Сохраняются как черновики без запуска");
       for(const t of tasks.tasks){
         row(taskBox,t.objective.slice(0,85),
-          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения");
-        const prep=el("button","Подготовить запрос на допуск CORE","outline-btn");
-        prep.type="button";
-        prep.addEventListener("click",async()=>{
-          prep.disabled=true;
+          "Проект: "+t.project_id.slice(0,10)+" · "+t.model_preference+" · Ожидает разрешения · Не в CORE");
+        const prepare=el("button","Подготовить запрос на допуск CORE (без исполнения)","outline-btn");
+        prepare.type="button";
+        prepare.addEventListener("click",async()=>{
+          prepare.disabled=true;
           try{
-            const requestData=await request("/api/tasks/"+t.id+"/admission-request");
-            if(requestData.schema!=="nf.onepc.draft_admission_request.v1" ||
-                requestData.owner_signed!==false ||
-                requestData.queue_mutation_allowed!==false ||
-                requestData.execution_allowed!==false ||
-                requestData.draft_id!==t.id){
-              throw Error("Недостоверный запрос на допуск");
+            const draft=await request("/api/tasks/"+t.id+"/admission-request");
+            if(draft.schema!=="nf.onepc.draft_admission_request.v1"||
+               draft.draft_id!==t.id||draft.owner_signed!==false||
+               draft.execution_allowed!==false||draft.queue_mutation_allowed!==false||
+               !/^[a-f0-9]{64}$/.test(draft.draft_sha256)){
+              throw Error("Недостоверное подтверждение подготовки");
             }
-            status("Запрос подготовлен. ID: "+requestData.draft_id+
-                   " · SHA-256: "+requestData.draft_sha256+
-                   ". Задание остаётся черновиком. Только отдельный защищённый механизм владельца может подписать допуск.");
-          }catch(err){
-            status("Допуск не подготовлен: "+(err.message||"проверьте ограничения задания"),true);
-          }finally{prep.disabled=false;}
+            status("Запрос для отдельного доверенного подписанта: "+draft.draft_sha256+
+              ". Задание остаётся черновиком. Выполнение не разрешено.");
+          }catch(e){
+            status("Подготовка отклонена: "+(e.message||"неподходящее задание"),true);
+          }finally{prepare.disabled=false;}
         });
-        taskBox.append(prep);
+        taskBox.append(prepare);
+        const proposed=proposals.proposals.find(p=>p.task_id===t.id);
+        if(proposed){
+          row(taskBox,"ИИ: "+proposed.status,
+              proposed.error_code||"Ответ сохранён отдельно от CORE; запуск HOST не разрешён");
+          if(proposed.text){
+            const draft=el("div",proposed.text,"item-meta");
+            draft.style.whiteSpace="pre-wrap";
+            taskBox.append(draft);
+          }
+        }else if(health.manual_draft_proposal_available){
+          const run=el("button","Получить предложение Qwen (без запуска CORE/HOST)","outline-btn");
+          run.type="button";
+          run.disabled=!models.installed_qwen.length;
+          run.addEventListener("click",async()=>{
+            run.disabled=true;
+            try{
+              const proposal=await request("/api/draft-propose",{task_id:t.id});
+              status(proposal.status==="PROPOSED_UNVERIFIED"
+                ?"Непроверенное предложение Qwen сохранено; изменений файлов не выполнено."
+                :"Предложение не получено ("+proposal.status+"); попытка зафиксирована без права автоматического повтора.",
+                proposal.status!=="PROPOSED_UNVERIFIED");
+              await render();
+            }catch(e){
+              status("Не удалось получить предложение: "+(e.message||"нет ресурсов"),true);
+            }finally{run.disabled=false;}
+          });
+          taskBox.append(run);
+        }
       }
       if(projects.projects.length){
         const taskForm=el("form");taskForm.className="form-card";

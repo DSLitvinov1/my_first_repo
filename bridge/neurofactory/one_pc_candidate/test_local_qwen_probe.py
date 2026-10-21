@@ -138,7 +138,7 @@ class IsolatedQwenProbe(unittest.TestCase):
         reopened=WorkspaceStore(self.directory)
         self.assertEqual(reopened.list_projects()[0]["name"],"Существующий проект")
         with reopened.connect() as con:
-            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0],2)
+            self.assertEqual(con.execute("PRAGMA user_version").fetchone()[0],3)
         self.assertEqual(reopened.model_checks(),[])
 
     def test_future_unknown_schema_denied(self):

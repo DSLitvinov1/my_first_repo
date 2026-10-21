@@ -20,14 +20,6 @@ import sqlite3
 import stat
 from urllib.parse import urlsplit
 import uuid
-import sys
-
-# Python's official Windows embeddable runtime uses an isolated ._pth file;
-# its application directory is not automatically part of the module search path.
-# Admit only the directory containing this launched app, not cwd or model input.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
-from signed_owner_admission import prepare_draft_request, AdmissionDenied
 
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
@@ -50,6 +42,21 @@ MIMES = {
 
 class WorkspaceDenied(ValueError):
     pass
+
+def _load_local_readonly_module(name):
+    """Load exact adjacent shipped module with embedded Python _pth isolation."""
+    if name not in ("core_readonly_observer","signed_owner_admission"):
+        raise WorkspaceDenied("Unapproved read-only module")
+    import importlib.util
+    module_path=Path(__file__).resolve().with_name(name+".py")
+    if module_path.is_symlink() or not module_path.is_file():
+        raise WorkspaceDenied("Missing installed read-only module")
+    spec=importlib.util.spec_from_file_location("_nf_local_"+name,module_path)
+    if spec is None or spec.loader is None:
+        raise WorkspaceDenied("Read-only module unavailable")
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 def _safe_dir(value: Path, *, create=False) -> Path:
     value = Path(value)
@@ -88,7 +95,7 @@ class WorkspaceStore:
         with self.connect() as conn:
             conn.execute("PRAGMA journal_mode=WAL")
             version=conn.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0,1,2):
+            if version not in (0,1,2,3):
                 raise WorkspaceDenied("Unknown newer database version")
             conn.executescript("""
             CREATE TABLE IF NOT EXISTS projects(
@@ -107,9 +114,17 @@ class WorkspaceStore:
               reported_model TEXT NOT NULL, reported_digest TEXT NOT NULL,
               prompt_sha256 TEXT NOT NULL, response_sha256 TEXT NOT NULL,
               provenance_attested INTEGER NOT NULL DEFAULT 0 CHECK(provenance_attested=0));
+            CREATE TABLE IF NOT EXISTS task_proposals(
+              task_id TEXT PRIMARY KEY REFERENCES tasks(id),
+              model TEXT NOT NULL,
+              status TEXT NOT NULL CHECK(status IN (
+                'REQUESTED','PROPOSED_UNVERIFIED','INVALID_MODEL_OUTPUT','BLOCKED','UNKNOWN')),
+              created_utc TEXT NOT NULL, completed_utc TEXT,
+              response_sha256 TEXT, content_sha256 TEXT,
+              proposal_text TEXT, error_code TEXT);
             """)
-            if version in (0,1):
-                conn.execute("PRAGMA user_version=2")
+            if version in (0,1,2):
+                conn.execute("PRAGMA user_version=3")
             conn.commit()
 
     @contextmanager
@@ -172,6 +187,89 @@ class WorkspaceStore:
                        (_utc(),"TASK_CREATED_NOT_QUEUED",row[0]))
             db.commit()
         return dict(zip(("id","project_id","objective","model_preference","state","created_utc"),row))
+
+    def find_task(self,task_id):
+        if type(task_id) is not str or not PROJECT_ID.fullmatch(task_id):
+            raise WorkspaceDenied("Invalid task identifier")
+        with self.connect() as db:
+            row=db.execute("SELECT id,project_id,objective,model_preference,state,created_utc FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if row is None or row[4]!="DRAFT_PENDING_OWNER_AUTH":
+            raise WorkspaceDenied("Unknown or unauthorized draft task")
+        return dict(zip(("id","project_id","objective","model_preference","state","created_utc"),row))
+
+    def reserve_task_proposal(self,task_id,model):
+        if type(model) is not str or model not in SUPPORTED_QWEN:
+            raise WorkspaceDenied("Unsupported local model")
+        self.find_task(task_id)
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute("SELECT 1 FROM task_proposals WHERE task_id=?",(task_id,)).fetchone():
+                raise WorkspaceDenied("Draft model attempt already reserved: no automatic retry")
+            if not db.execute("SELECT 1 FROM tasks WHERE id=? AND state='DRAFT_PENDING_OWNER_AUTH'",(task_id,)).fetchone():
+                raise WorkspaceDenied("Draft no longer valid")
+            db.execute("INSERT INTO task_proposals(task_id,model,status,created_utc) VALUES(?,?,?,?)",
+                       (task_id,model,"REQUESTED",_utc()))
+            db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                       (_utc(),"DRAFT_PROVIDER_ATTEMPT_RESERVED",task_id))
+            db.commit()
+
+    def finalize_task_proposal(self,task_id,result):
+        if type(result) is not dict or result.get("status") not in (
+            "PROPOSED_UNVERIFIED","INVALID_MODEL_OUTPUT","BLOCKED","UNKNOWN"):
+            raise WorkspaceDenied("Invalid untrusted provider result")
+        status=result["status"]
+        response_hash=None;content_hash=None;content=None;error=None
+        if status=="PROPOSED_UNVERIFIED":
+            content=result.get("text")
+            response_hash=result.get("response_sha256")
+            content_hash=result.get("content_sha256")
+            if (type(content) is not str or not 1<=len(content.encode("utf-8"))<=12000 or
+                type(content_hash) is not str or
+                hashlib.sha256(content.encode("utf-8")).hexdigest()!=content_hash or
+                type(response_hash) is not str or not re.fullmatch(r"[a-f0-9]{64}",response_hash)):
+                raise WorkspaceDenied("Invalid proposed content or digest")
+        else:
+            error=result.get("error_code","UNKNOWN")
+            if type(error) is not str or len(error)>80:
+                raise WorkspaceDenied("Invalid provider error marker")
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row=db.execute("SELECT status,model FROM task_proposals WHERE task_id=?",(task_id,)).fetchone()
+            if row is None or row[0]!="REQUESTED" or row[1]!=result.get("model"):
+                raise WorkspaceDenied("Attempt missing, already finalized or wrong model")
+            db.execute("UPDATE task_proposals SET status=?,completed_utc=?,response_sha256=?,"
+                       "content_sha256=?,proposal_text=?,error_code=? WHERE task_id=? AND status='REQUESTED'",
+                       (status,_utc(),response_hash,content_hash,content,error,task_id))
+            db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                       (_utc(),"DRAFT_PROVIDER_"+status,task_id))
+            db.commit()
+        return {"task_id":task_id,"status":status,"model":result["model"],
+                "text":content,"content_sha256":content_hash,"response_sha256":response_hash,
+                "error_code":error,"core_enqueued":False,"host_write_allowed":False,
+                "review_approved":False}
+
+    def recover_unknown_proposals(self):
+        """An interrupted local model attempt is UNKNOWN, never automatically retried."""
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            pending=db.execute("SELECT task_id FROM task_proposals WHERE status='REQUESTED'").fetchall()
+            for (task_id,) in pending:
+                db.execute("UPDATE task_proposals SET status='UNKNOWN',completed_utc=?,"
+                           "error_code='INTERRUPTED_ATTEMPT_NO_RETRY' "
+                           "WHERE task_id=? AND status='REQUESTED'",(_utc(),task_id))
+                db.execute("INSERT INTO history(event_utc,event,record_id) VALUES(?,?,?)",
+                           (_utc(),"DRAFT_PROVIDER_INTERRUPTED_UNKNOWN",task_id))
+            db.commit()
+        return len(pending)
+
+    def list_task_proposals(self):
+        with self.connect() as db:
+            rows=db.execute("SELECT task_id,model,status,created_utc,completed_utc,"
+                            "response_sha256,content_sha256,proposal_text,error_code "
+                            "FROM task_proposals ORDER BY created_utc DESC,task_id LIMIT 100").fetchall()
+        keys=("task_id","model","status","created_utc","completed_utc",
+              "response_sha256","content_sha256","text","error_code")
+        return [dict(zip(keys,row)) for row in rows]
 
     def record_model_check(self, result):
         """Store only hashes and declared Ollama model, never trust them as proof."""
@@ -236,12 +334,13 @@ class WorkspaceStore:
                 "sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
                 "created_utc":_utc()}
 
-    def diag(self):
+    def diag(self,manual_provider_available=False):
         with self.connect() as db:
             good=db.execute("PRAGMA quick_check").fetchone()[0]=="ok"
         return {"database_connected":good,"projects":len(self.list_projects()),
                 "tasks":len(self.list_tasks()),"real_core_dispatch_enabled":False,
-                "model_inference_enabled":False,"external_publish_enabled":False,
+                "model_inference_enabled":False,"manual_draft_proposal_available":bool(manual_provider_available),
+                "external_publish_enabled":False,
                 "handoff":"PAUSED_BY_USER"}
 
 def _ollama_json(method, path, *, payload=None, port=11434, timeout=2, cap=32768):
@@ -330,7 +429,7 @@ def probe_local_qwen(model_preference, *, port=11434):
             "automatic_retry_allowed":False,"publication_allowed":False}
 
 
-def handler(store,ui,token,port,*,core_state_dir=None):
+def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
     origin="http://127.0.0.1:"+str(port)
     class Local(BaseHTTPRequestHandler):
         def _secure_request(self):
@@ -373,31 +472,37 @@ def handler(store,ui,token,port,*,core_state_dir=None):
                 self._json(200,{"projects":store.list_projects()});return
             if p.path=="/api/tasks":
                 self._json(200,{"tasks":store.list_tasks()});return
-            match=re.fullmatch(r"/api/tasks/([a-f0-9]{32})/admission-request",p.path)
-            if match:
-                try:
-                    candidate=prepare_draft_request(store,match.group(1))
-                except AdmissionDenied:
-                    self._json(404,{"error":"DRAFT_ADMISSION_REQUEST_UNAVAILABLE"});return
-                self._json(200,candidate);return
             if p.path=="/api/history":
                 self._json(200,{"history":store.history()});return
             if p.path=="/api/status":
-                self._json(200,store.diag());return
+                self._json(200,store.diag(components_dir is not None));return
             if p.path=="/api/core/status":
                 if core_state_dir is None:
-                    self._json(200,unavailable_core());return
+                    self._json(200,{"schema":"nf.core.readonly.local.v1",
+                        "configured":False,"available":False,
+                        "execution_allowed":False,"queue_mutation_allowed":False,
+                        "independently_verified":False,"reported_state":"NOT_CONFIGURED",
+                        "task":None});return
                 try:
-                    observed=observe_core(core_state_dir)
-                except CoreObservationDenied:
-                    self._json(503,{"error":"CORE_READONLY_UNAVAILABLE",
-                        "execution_allowed":False,
-                        "queue_mutation_allowed":False});return
-                self._json(200,observed);return
+                    observer=_load_local_readonly_module("core_readonly_observer")
+                    result=observer.observe_core(core_state_dir)
+                except (WorkspaceDenied,ValueError,sqlite3.Error,OSError):
+                    self._json(503,{"error":"CORE_OBSERVATION_UNAVAILABLE_NO_EXECUTION"});return
+                self._json(200,result);return
+            signed_request=re.fullmatch(r"/api/tasks/([a-f0-9]{32})/admission-request",p.path)
+            if signed_request:
+                try:
+                    admission=_load_local_readonly_module("signed_owner_admission")
+                    req=admission.prepare_draft_request(store,signed_request.group(1))
+                except (WorkspaceDenied,ValueError,sqlite3.Error):
+                    self._json(404,{"error":"DRAFT_NOT_ELIGIBLE"});return
+                self._json(200,req);return
             if p.path=="/api/models":
                 self._json(200,local_models());return
             if p.path=="/api/model-checks":
                 self._json(200,{"checks":store.model_checks()});return
+            if p.path=="/api/task-proposals":
+                self._json(200,{"proposals":store.list_task_proposals()});return
             fn=FILES.get(p.path)
             if not fn:
                 self._json(404,{"error":"NOT_FOUND"});return
@@ -415,7 +520,7 @@ def handler(store,ui,token,port,*,core_state_dir=None):
             if self.headers.get("Content-Type")!="application/json":
                 self._json(415,{"error":"JSON_REQUIRED"});return
             p=urlsplit(self.path)
-            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup","/api/model-probe"):
+            if p.query or p.path not in ("/api/projects","/api/tasks","/api/backup","/api/model-probe","/api/draft-propose"):
                 self._json(404,{"error":"WRITE_NOT_ALLOWED"});return
             try:
                 size=int(self.headers.get("Content-Length","0"))
@@ -427,6 +532,30 @@ def handler(store,ui,token,port,*,core_state_dir=None):
                     result=store.create_project(body)
                 elif p.path=="/api/tasks":
                     result=store.create_task(body)
+                elif p.path=="/api/draft-propose":
+                    if components_dir is None or type(body) is not dict or set(body)!={"task_id"}:
+                        raise WorkspaceDenied("Pinned provider and explicit task required")
+                    import importlib.util
+                    module_path=Path(__file__).with_name("draft_provider.py")
+                    if module_path.is_symlink() or not module_path.is_file():
+                        raise WorkspaceDenied("Installed draft provider unavailable")
+                    spec=importlib.util.spec_from_file_location("_nf_draft_provider",module_path)
+                    if spec is None or spec.loader is None:
+                        raise WorkspaceDenied("Draft provider cannot load")
+                    provider=importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(provider)
+                    task=store.find_task(body["task_id"])
+                    try:
+                        worker,model=provider.preflight(components_dir,task["model_preference"])
+                    except provider.DraftProviderDenied:
+                        raise WorkspaceDenied("Local model missing or resource guard")
+                    store.reserve_task_proposal(task["id"],model)
+                    try:
+                        proposed=provider.generate(components_dir,store.directory,task,model=model)
+                    except Exception:
+                        # An unknown provider/model outcome is sticky; never retry automatically.
+                        proposed={"status":"UNKNOWN","model":model,"error_code":"UNKNOWN_MODEL_RESULT"}
+                    result=store.finalize_task_proposal(task["id"],proposed)
                 elif p.path=="/api/model-probe":
                     if type(body) is not dict or set(body)!={"model_preference"}:
                         raise WorkspaceDenied("Explicit model only")
@@ -454,7 +583,7 @@ def main(argv=None):
     p.add_argument("--ui-dir",type=Path,required=True)
     p.add_argument("--components-dir",type=Path,default=None)
     p.add_argument("--core-state-dir",type=Path,default=None,
-                   help="Read-only view of existing explicit CORE state directory; no creation or admission")
+        help="Optional existing private CORE checkpoint path for read-only observation")
     p.add_argument("--port",type=int,default=8766)
     args=p.parse_args(argv)
     if not 1024<=args.port<=65535:
@@ -472,13 +601,13 @@ def main(argv=None):
         spec.loader.exec_module(module)
         module.verify(args.components_dir)
     if args.core_state_dir is not None:
-        # Fail before opening a network socket; never create or mutate CORE.
-        observe_core(args.core_state_dir)
+        observer=_load_local_readonly_module("core_readonly_observer")
+        observer.observe_core(args.core_state_dir)
     app=WorkspaceStore(args.data_dir)
     one_time_token=secrets.token_urlsafe(32)
     with HTTPServer(("127.0.0.1",args.port),
-                    handler(app,ui,one_time_token,args.port,
-                            core_state_dir=args.core_state_dir)) as srv:
+                    handler(app,ui,one_time_token,args.port,components_dir=args.components_dir,core_state_dir=args.core_state_dir)) as srv:
+        app.recover_unknown_proposals()
         print("NEUROFACTORY_LOCAL_DRAFT_WORKSPACE=127.0.0.1:"+str(args.port),flush=True)
         srv.serve_forever(poll_interval=0.2)
 

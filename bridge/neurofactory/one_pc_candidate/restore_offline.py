@@ -6,13 +6,15 @@ HOST, Qwen or a service. Stop the application before switching data directories.
 from __future__ import annotations
 import argparse
 from contextlib import closing
+from hashlib import sha256
 from pathlib import Path
 import os
 import shutil
 import sqlite3
 import stat
 
-TABLES=frozenset(("projects","tasks","history","model_checks"))
+TABLES_V2=frozenset(("projects","tasks","history","model_checks"))
+TABLES_V3=TABLES_V2 | {"task_proposals"}
 MAX_BACKUP_BYTES=100_000_000
 class RestoreDenied(ValueError): pass
 
@@ -33,14 +35,16 @@ def _validate(con):
         raise RestoreDenied("Backup integrity check failed")
     if con.execute("PRAGMA foreign_key_check").fetchone():
         raise RestoreDenied("Backup references damaged")
-    if con.execute("PRAGMA user_version").fetchone()[0]!=2:
+    version=con.execute("PRAGMA user_version").fetchone()[0]
+    if version not in (2,3):
         raise RestoreDenied("Unsupported backup format")
+    required=TABLES_V3 if version==3 else TABLES_V2
     tables=con.execute(
         "SELECT name,type FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
     ).fetchall()
-    if set(tables)!={(name,"table") for name in TABLES}:
+    if set(tables)!={(name,"table") for name in required}:
         raise RestoreDenied("Unknown or missing database schema objects")
-    for name in TABLES:
+    for name in required:
         if not con.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(name,)
         ).fetchone():
@@ -51,6 +55,25 @@ def _validate(con):
         raise RestoreDenied("Unexpected executable task checkpoint")
     if con.execute("SELECT 1 FROM model_checks WHERE provenance_attested<>0 LIMIT 1").fetchone():
         raise RestoreDenied("Unverified model evidence unexpectedly promoted")
+    if version==3:
+        from string import hexdigits
+        for status,model,text,digest,response in con.execute(
+            "SELECT status,model,proposal_text,content_sha256,response_sha256 "
+            "FROM task_proposals"):
+            if model not in ("qwen3:0.6b","qwen2.5-coder:1.5b"):
+                raise RestoreDenied("Unapproved proposal model")
+            if status=="PROPOSED_UNVERIFIED":
+                if (type(text) is not str or not 1<=len(text.encode("utf-8"))<=12000
+                    or type(digest) is not str or
+                    sha256(text.encode("utf-8")).hexdigest()!=digest or
+                    type(response) is not str or len(response)!=64
+                    or any(ch not in "0123456789abcdef" for ch in response)):
+                    raise RestoreDenied("Corrupted draft provider proposal")
+            elif status in ("REQUESTED","UNKNOWN","INVALID_MODEL_OUTPUT","BLOCKED"):
+                if text is not None or digest is not None or response is not None:
+                    raise RestoreDenied("Untrusted proposal incorrectly checkpointed")
+            else:
+                raise RestoreDenied("Unknown draft provider status")
 
 def restore(backup:Path,target_dir:Path):
     backup=Path(backup)
