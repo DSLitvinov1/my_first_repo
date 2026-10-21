@@ -4,6 +4,7 @@ on:
     branches: [neurofactory-scm-git-child-diagnostics-20261021]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_scm_core_admission_ci.py
+      - bridge/neurofactory/one_pc_candidate/test_windows_scm_core_admission_ci.py
       - .github/workflows/neurofactory-scm-git-child-diagnostic-ci.yml
 permissions:
   contents: read
