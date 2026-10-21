@@ -31,7 +31,7 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           $p='bridge/neurofactory/one_pc_candidate'
-          $tests=@('test_local_workspace.py','test_local_qwen_probe.py','test_draft_provider_workspace.py','test_restore_offline.py','test_local_workspace_browser.py','test_core_readonly_observer.py','test_signed_owner_admission.py','test_multiprocess_installer_release_fence.py')
+          $tests=@('test_local_workspace.py','test_local_qwen_probe.py','test_draft_provider_workspace.py','test_restore_offline.py','test_core_readonly_observer.py','test_signed_owner_admission.py','test_multiprocess_installer_release_fence.py')
           foreach($test in $tests) {
             python -B -m unittest discover -s $p -p $test -v
             if ($LASTEXITCODE -ne 0) { throw ("FAIL_CLOSED_"+$test) }
@@ -77,3 +77,24 @@ jobs:
         run: |
           $svc=sc.exe query NeurofactoryCoreAdmissionCI 2>&1
           if ($LASTEXITCODE -eq 0 -and ($svc -join ' ') -match 'RUNNING') { throw 'TEST_SERVICE_LEFT_RUNNING' }
+
+  desktop-and-mobile-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONNOUSERSITE: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use isolated browser environment and pinned Chromium driver
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_browser"
+          "$RUNNER_TEMP/nf_browser/bin/python" -m pip install --disable-pip-version-check --no-input "playwright==1.56.0"
+          "$RUNNER_TEMP/nf_browser/bin/python" -m playwright install --with-deps chromium
+      - name: Exercise actual desktop/mobile localhost UI and durable SQLite
+        run: |
+          "$RUNNER_TEMP/nf_browser/bin/python" -B bridge/neurofactory/one_pc_candidate/test_local_workspace_browser.py
+      - name: Source remains immutable
+        run: git diff --exit-code
