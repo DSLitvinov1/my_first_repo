@@ -88,9 +88,17 @@ def _safe_directory(path, *, create=False):
 
 def _git(repo, *arguments):
     try:
-        result = subprocess.run(["git", "-C", str(repo), *arguments],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=10, check=False)
+        # Windows SCM LocalService with a restricted Service SID may
+        # return STATUS_DLL_INIT_FAILED (0xC0000142) on a Git child with
+        # inherited console startup. CREATE_NO_WINDOW gives the pinned Git
+        # verifier a noninteractive OS startup WITHOUT relaxing file ACLs,
+        # shell escape, SHA checks, or owner admission authorization.
+        result = subprocess.run(
+            ["git", "-C", str(repo), *arguments],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0),
+            timeout=10, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise CoreSafetyError("Trusted local Git inspection unavailable") from exc
     if result.returncode:
