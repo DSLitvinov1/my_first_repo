@@ -28,9 +28,12 @@ DESCRIPTOR = {"schema", "base_sha", "reviewed_sha", "draft_id", "project_id",
 SHA40 = re.compile(r"[a-f0-9]{40}\Z")
 SHA64 = re.compile(r"[a-f0-9]{64}\Z")
 UUID32 = re.compile(r"[a-f0-9]{32}\Z")
+# The model-development gate is deliberately unable to modify itself,
+# signer/SCM logic, browser code or any installed executable. Review-only
+# experiments live in a non-imported sandbox directory; privilege changes
+# require a distinct separately reviewed engineering workflow.
 ALLOWED = re.compile(
-    r"(?:bridge/neurofactory/one_pc_candidate/[a-z][a-z0-9_]*\.py|"
-    r"bridge/neurofactory/control_ui/[a-z][a-z0-9_-]*\.(?:js|css))\Z"
+    r"bridge/neurofactory/one_pc_candidate/selfdev_sandbox/[a-z][a-z0-9_]*\.py\Z"
 )
 MAX_FILE = 80_000
 MAX_PATCH = 160_000

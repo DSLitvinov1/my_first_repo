@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from selfdev_review_candidate import DOMAIN, SCOPE, SelfDevGateDenied, _canon, prepare_candidate
 
-FILE = "bridge/neurofactory/one_pc_candidate/safe_increment.py"
+FILE = "bridge/neurofactory/one_pc_candidate/selfdev_sandbox/safe_increment.py"
 QWEN_REPLY = "Original Qwen proposal must remain untrusted and NOT become program source."
 
 def git(repo, *args):
@@ -149,6 +149,10 @@ class SignedProposalToDraftPatch(unittest.TestCase):
 
     def test_privileged_paths_symlink_and_traversal_denied(self):
         for path in ("bridge/neurofactory/trusted_host/windows_scm_ci_worker.py",
+                     "bridge/neurofactory/one_pc_candidate/signed_owner_admission.py",
+                     "bridge/neurofactory/one_pc_candidate/windows_scm_core_admission_ci.py",
+                     "bridge/neurofactory/one_pc_candidate/selfdev_review_candidate.py",
+                     "bridge/neurofactory/control_ui/app.js",
                      "../../Windows/System32/evil.py", ".github/workflows/live.yml"):
             desc = {**self.descriptor, "changes": [{
                 **self.descriptor["changes"][0], "path": path}]}
