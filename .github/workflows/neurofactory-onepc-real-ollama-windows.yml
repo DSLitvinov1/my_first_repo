@@ -7,6 +7,8 @@ on:
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/one_pc_candidate/test_local_qwen_probe.py
       - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py
+      - bridge/neurofactory/control_ui/integrations.js
       - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
       - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
       - bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py
@@ -83,8 +85,8 @@ jobs:
           Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $archive -MaximumRedirection 2
           if ((Get-Item $archive).Length -ne 11133606) {throw 'EMBEDDED_PYTHON_LENGTH_MISMATCH'}
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\\runtime" -Force
-          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py','bridge/neurofactory/one_pc_candidate/core_readonly_observer.py','bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\\app"
-          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js' "$stage\\ui"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py','bridge/neurofactory/one_pc_candidate/core_readonly_observer.py','bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\\app"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js','bridge/neurofactory/control_ui/integrations.js' "$stage\\ui"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\\start_neurofactory.cmd"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\\README.txt"
           choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
