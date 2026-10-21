@@ -1,0 +1,32 @@
+name: Neurofactory signed Qwen self-development review gate only
+on:
+  push:
+    branches: [neurofactory-selfdev-signed-review-gate-20261021]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/selfdev_review_candidate.py
+      - bridge/neurofactory/one_pc_candidate/test_selfdev_review_candidate.py
+      - .github/workflows/neurofactory-selfdev-signed-review-gate-ci.yml
+permissions:
+  contents: read
+jobs:
+  new-gate-only-no-ollama-or-scm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Only new signer verification dependency
+        run: |
+          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+      - name: Seven NEW positive and fail-closed cases; no legacy matrices
+        run: |
+          cd bridge/neurofactory/one_pc_candidate
+          python -B -m unittest test_selfdev_review_candidate -v
+      - name: Validate source integrity
+        run: |
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/selfdev_review_candidate.py
+          git diff --exit-code
