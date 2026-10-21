@@ -1,0 +1,53 @@
+name: Neurofactory Codex and Sites targeted integration acceptance
+on:
+  push:
+    branches: [neurofactory-codex-sites-handoff-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py
+      - bridge/neurofactory/one_pc_candidate/test_codex_sites_bridge.py
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/control_ui/integrations.js
+      - bridge/neurofactory/control_ui/index.html
+      - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss
+      - .github/workflows/neurofactory-codex-sites-handoff-ci.yml
+permissions:
+  contents: read
+jobs:
+  new-adapters-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run only Codex/Sites focused no-network unit tests
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_codex_sites_bridge.py -v
+      - name: Ensure adapter source and browser JS are syntactically valid
+        run: |
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py
+          node --check bridge/neurofactory/control_ui/integrations.js
+      - name: Check new static route and exact installed distribution staging
+        run: |
+          python -B - <<'PY'
+          from pathlib import Path
+          import sys
+          sys.path.insert(0,'bridge/neurofactory/one_pc_candidate')
+          from local_workspace import FILES
+          root=Path('bridge/neurofactory')
+          assert FILES.get('/integrations.js')=='integrations.js'
+          assert (root/'control_ui/integrations.js').is_file()
+          assert 'src="integrations.js"' in (root/'control_ui/index.html').read_text()
+          installer=(root/'one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').read_text()
+          assert 'codex_sites_bridge.py' in installer
+          for wf in ('neurofactory-onepc-installer.yml','neurofactory-onepc-real-ollama-windows.yml'):
+              source=Path('.github/workflows',wf).read_text()
+              assert 'codex_sites_bridge.py' in source
+              assert 'control_ui/integrations.js' in source
+          print('NF_CODEX_SITES_LOCAL_UI_AND_DRAFT_INSTALLER_STAGING=PASS_NO_EXTERNAL_ACCESS')
+          PY
+      - name: Verify no source changes by tests
+        run: git diff --exit-code
