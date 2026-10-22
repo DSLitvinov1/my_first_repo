@@ -19,7 +19,7 @@ import time
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from signed_release_staging import (
-    _canon, DOMAIN_OWNER,DOMAIN_REVIEW,INSTALLER_SOURCE_COMMIT,
+    _canon, DOMAIN_OWNER,DOMAIN_REVIEW,INSTALLER_SOURCE_COMMIT,_locked_acl,
     SCHEMA,SCOPE,StagingDenied,operator_stage_signed_candidate,_privileged_acl,
 )
 
@@ -42,6 +42,8 @@ def main():
         raise RuntimeError("Never reuse existing system release staging")
     try:
         data_root.mkdir()
+        _locked_acl(data_root)
+        _privileged_acl(data_root)
         trust=data_root/"TrustPins"
         trust.mkdir()
         args=["icacls",str(trust),"/inheritance:r","/grant:r",
