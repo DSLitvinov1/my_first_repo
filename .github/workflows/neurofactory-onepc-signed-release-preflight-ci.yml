@@ -1,0 +1,49 @@
+name: Neurofactory one-PC signed release preflight — targeted no installation
+on:
+  push:
+    branches: [neurofactory-onepc-signed-release-preflight-20261022]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/secure_release_preflight.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_secure_release_preflight.py'
+      - 'bridge/neurofactory/one_pc_candidate/windows_package_preflight.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_windows_package_preflight.py'
+      - '.github/workflows/neurofactory-onepc-signed-release-preflight-ci.yml'
+permissions:
+  contents: read
+jobs:
+  independent-approval-crypto-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Disposable Python and pinned Ed25519 test verification only
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_preflight"
+          "$RUNNER_TEMP/nf_preflight/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_preflight/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_secure_release_preflight.py -v
+      - name: Compile only new source and verify tracked files unmodified
+        run: |
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/secure_release_preflight.py
+          git diff --exit-code
+  windows-read-only-signed-installer-preflight:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Only mocked Authenticode and local file guard; NO installer run
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_windows_package_preflight.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_INSTALLER_PREFLIGHT_DENIED'}
+          python -B -m py_compile bridge/neurofactory/one_pc_candidate/windows_package_preflight.py
+          if ($LASTEXITCODE -ne 0) {throw 'WINDOWS_PREFLIGHT_INVALID_SOURCE'}
+      - name: Ensure no service or installer script was executed
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'PREVIEW_MUTATED_SOURCE'}
