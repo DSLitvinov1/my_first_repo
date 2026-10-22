@@ -1,0 +1,141 @@
+name: Neurofactory disposable Authenticode signer of real UNSIGNED draft (test only)
+on:
+  push:
+    branches: [neurofactory-onepc-production-trust-gates-20261022]
+    paths:
+      - .github/workflows/neurofactory-onepc-disposable-authenticode-signing-ci.yml
+      - bridge/neurofactory/one_pc_candidate/windows_package_preflight.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ephemeral-selfsigned-authenticode-no-release:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download exact existing UNRELEASED Inno installer, never execute
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39701930342
+          github-token: ${{ github.token }}
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          path: ${{ runner.temp }}/nf-disposable-sign
+      - name: Test cryptographic Windows installer signing with THROWAWAY local CI certificate
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or
+              $env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or
+              $env:RUNNER_OS -cne 'Windows') {throw 'NEVER_SIGN_ANYTHING_ON_OWNER_PC'}
+          $files=@(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-disposable-sign') -Filter 'Neurofactory-Local-Draft-Setup.exe' -File -Recurse)
+          if ($files.Count -ne 1) {throw 'EXPECTED_EXACT_ONE_UNSIGNED_INNO'}
+          $exe=$files[0].FullName
+          $before=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($before -cne '648DC60F51390578C1835CA46B5151B61F1CB64858C34D6E164A8092381E35CF') {
+            throw 'SOURCE_UNSIGNED_INSTALLER_MISMATCH'
+          }
+          $old=Get-AuthenticodeSignature -LiteralPath $exe
+          if ($old.Status.ToString() -cne 'NotSigned') {throw 'SOURCE_INSTALLER_NOT_UNSIGNED'}
+          $cert=$null
+          try {
+            Write-Output 'NF_DISPOSABLE_CERT_GENERATION_STARTED'
+            # Build the temporary test certificate in .NET, without accessing
+            # unavailable hardware signing services or production identities.
+            $rsa=[Security.Cryptography.RSA]::Create(2048)
+            $request=[Security.Cryptography.X509Certificates.CertificateRequest]::new(
+              'CN=NEUROFACTORY-DISPOSABLE-GITHUB-CI-DO-NOT-TRUST',
+              $rsa,[Security.Cryptography.HashAlgorithmName]::SHA256,
+              [Security.Cryptography.RSASignaturePadding]::Pkcs1)
+            $eku=[Security.Cryptography.OidCollection]::new()
+            [void]$eku.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.3'))
+            $request.CertificateExtensions.Add(
+              [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($eku,$false))
+            $request.CertificateExtensions.Add(
+              [Security.Cryptography.X509Certificates.X509KeyUsageExtension]::new(
+                [Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature,$true))
+            $temporary=$request.CreateSelfSigned((Get-Date).AddMinutes(-5),(Get-Date).AddHours(4))
+            $pfx=Join-Path $env:RUNNER_TEMP 'nf-CI-ephemeral-signing-secret.pfx'
+            $password=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+            try {
+              [IO.File]::WriteAllBytes($pfx,$temporary.Export(
+                [Security.Cryptography.X509Certificates.X509ContentType]::Pfx,$password))
+              $secure=ConvertTo-SecureString -String $password -AsPlainText -Force
+              $cert=Import-PfxCertificate -FilePath $pfx -CertStoreLocation 'Cert:\CurrentUser\My' -Password $secure
+            }
+            finally {
+              Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue
+              $password=$null
+              $secure=$null
+              $temporary.Dispose()
+              $rsa.Dispose()
+            }
+            if (!$cert -or !$cert.HasPrivateKey) {throw 'NO_EPHEMERAL_CI_CODE_SIGNER'}
+            Write-Output 'NF_DISPOSABLE_CERT_GENERATION=COMPLETE'
+            # Never insert a disposable CI self-signed signer in the
+            # Windows TRUSTED ROOT store. Its Authenticode MUST be untrusted,
+            # and protected production preflight MUST refuse it.
+            Write-Output 'NF_CI_EPHEMERAL_SIGNER_IS_NOT_A_TRUSTED_PRODUCTION_PUBLISHER'
+            $sdk=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction Stop |
+                Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending
+            $tools=@($sdk | ForEach-Object {Join-Path $_.FullName 'x64\signtool.exe'} |
+                      Where-Object { Test-Path -LiteralPath $_ })
+            if ($tools.Count -lt 1) {throw 'NO_WINDOWS_SDK_SIGNTOOL_AVAILABLE'}
+            Write-Output 'NF_DISPOSABLE_SIGNTOOL_FOUND'
+            & $tools[0] sign /sha1 $cert.Thumbprint /s My /fd SHA256 $exe | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'THROWAWAY_AUTHENTICODE_SIGNING_FAILED'}
+            Write-Output 'NF_DISPOSABLE_INNO_AUTHENTICODE_SIGNATURE_WRITTEN'
+            $signed=Get-AuthenticodeSignature -LiteralPath $exe
+            if ($null -eq $signed.SignerCertificate -or
+                $signed.Status.ToString() -eq 'NotSigned' -or
+                $signed.SignerCertificate.Thumbprint.ToUpperInvariant() -cne $cert.Thumbprint.ToUpperInvariant()) {
+              throw 'CI_INNO_AUTHENTICODE_SIGNATURE_ABSENT_OR_WRONG'
+            }
+            if ($signed.Status.ToString() -eq 'Valid') {
+              throw 'DANGEROUSLY_TRUSTED_DISPOSABLE_SIGNER'
+            }
+            Write-Output ('NF_CI_SELF_SIGNED_AUTHENTICODE_STATUS='+$signed.Status.ToString())
+            $after=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($after -eq $before.ToLowerInvariant()) {throw 'WINDOWS_SIGNATURE_DID_NOT_CHANGE_EXE_DIGEST'}
+            $env:NF_CI_SIGNED_EXE=$exe
+            $env:NF_CI_SIGNED_HASH=$after
+            $env:NF_CI_SIGNER_THUMB=$cert.Thumbprint.ToUpperInvariant()
+            @'
+          import os,sys
+          from pathlib import Path
+          sys.path.insert(0,"bridge/neurofactory/one_pc_candidate")
+          from windows_package_preflight import inspect_windows_package,WindowsPackageDenied
+          # Even the MATCHING transient thumbprint must be rejected, since
+          # Windows does not trust this self-signed CI-only publisher.
+          try:
+              inspect_windows_package(
+                  installer=Path(os.environ["NF_CI_SIGNED_EXE"]),
+                  expected_sha256=os.environ["NF_CI_SIGNED_HASH"],
+                  pinned_publisher_thumbprint=os.environ["NF_CI_SIGNER_THUMB"])
+          except WindowsPackageDenied:
+              pass
+          else:
+              raise SystemExit("UNTRUSTED_TEST_SIGNER_WAS_ACCEPTED_FOR_PRODUCTION")
+          print("NF_REAL_INNO_AUTHENTICODE_SIGNED_WITH_EPHEMERAL_CI_KEY=PASS_TEST_ONLY")
+          print("NF_CI_SELF_SIGNED_SIGNER_REJECTED_BY_PRODUCTION_PREFLIGHT=PASS")
+          print("NF_WRONG_WINDOWS_SIGNER_CERTIFICATE=DENIED")
+          print("NF_PRODUCTION_SIGNER_ENROLLED=FALSE")
+          print("NF_ACTUAL_SIGNED_PRODUCTION_INSTALLER=FALSE")
+          '@ | python -B -
+            if ($LASTEXITCODE -ne 0) {throw 'CI_AUTHENTICODE_EXTERNAL_INSPECTION_FAILED'}
+          }
+          finally {
+            if ($cert) {
+              Remove-Item -LiteralPath ('Cert:\CurrentUser\My\'+$cert.Thumbprint) -Force -ErrorAction SilentlyContinue
+            }
+          }
+          Write-Output 'NF_DISPOSABLE_WINDOWS_CODE_SIGNING_CERT_REMOVED=REQUESTED'
+      - name: No generated CI signatures saved or shipped as production
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'CI_SIGNER_MUTATED_REPO'}
+          Write-Output 'NF_NO_PRODUCTION_SIGNED_ARTIFACT_UPLOADED=TRUE'
