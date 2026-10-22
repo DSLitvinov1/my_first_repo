@@ -1,0 +1,109 @@
+name: Neurofactory disposable Authenticode signer of real UNSIGNED draft (test only)
+on:
+  push:
+    branches: [neurofactory-onepc-production-trust-gates-20261022]
+    paths:
+      - .github/workflows/neurofactory-onepc-disposable-authenticode-signing-ci.yml
+      - bridge/neurofactory/one_pc_candidate/windows_package_preflight.py
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ephemeral-selfsigned-authenticode-no-release:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download exact existing UNRELEASED Inno installer, never execute
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 39701930342
+          github-token: ${{ github.token }}
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          path: ${{ runner.temp }}/nf-disposable-sign
+      - name: Test cryptographic Windows installer signing with THROWAWAY local CI certificate
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or
+              $env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or
+              $env:RUNNER_OS -cne 'Windows') {throw 'NEVER_SIGN_ANYTHING_ON_OWNER_PC'}
+          $files=@(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-disposable-sign') -Filter 'Neurofactory-Local-Draft-Setup.exe' -File -Recurse)
+          if ($files.Count -ne 1) {throw 'EXPECTED_EXACT_ONE_UNSIGNED_INNO'}
+          $exe=$files[0].FullName
+          $before=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($before -cne '648DC60F51390578C1835CA46B5151B61F1CB64858C34D6E164A8092381E35CF') {
+            throw 'SOURCE_UNSIGNED_INSTALLER_MISMATCH'
+          }
+          $old=Get-AuthenticodeSignature -LiteralPath $exe
+          if ($old.Status.ToString() -cne 'NotSigned') {throw 'SOURCE_INSTALLER_NOT_UNSIGNED'}
+          $cert=$null
+          $addedRoot=$false
+          try {
+            $cert=New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=NEUROFACTORY-DISPOSABLE-GITHUB-CI-DO-NOT-TRUST' -CertStoreLocation 'Cert:\CurrentUser\My' -KeyAlgorithm RSA -KeyLength 3072 -KeyExportPolicy NonExportable -NotAfter (Get-Date).AddDays(1)
+            if (!$cert -or !$cert.HasPrivateKey) {throw 'NO_EPHEMERAL_CI_CODE_SIGNER'}
+            $export=Join-Path $env:RUNNER_TEMP 'nf-CI-temporary-pub.cer'
+            Export-Certificate -Cert $cert -FilePath $export | Out-Null
+            Import-Certificate -FilePath $export -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
+            $addedRoot=$true
+            $tools=@(Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -File -Recurse -ErrorAction Stop | Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } | Sort-Object FullName -Descending)
+            if ($tools.Count -lt 1) {throw 'NO_WINDOWS_SDK_SIGNTOOL_AVAILABLE'}
+            & $tools[0].FullName sign /sha1 $cert.Thumbprint /s My /fd SHA256 $exe | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'THROWAWAY_AUTHENTICODE_SIGNING_FAILED'}
+            $signed=Get-AuthenticodeSignature -LiteralPath $exe
+            if ($signed.Status.ToString() -cne 'Valid' -or
+                $signed.SignerCertificate.Thumbprint.ToUpperInvariant() -cne $cert.Thumbprint.ToUpperInvariant()) {
+              throw 'THROWAWAY_SIGNED_EXE_NOT_VERIFIED'
+            }
+            $after=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($after -eq $before.ToLowerInvariant()) {throw 'WINDOWS_SIGNATURE_DID_NOT_CHANGE_EXE_DIGEST'}
+            $env:NF_CI_SIGNED_EXE=$exe
+            $env:NF_CI_SIGNED_HASH=$after
+            $env:NF_CI_SIGNER_THUMB=$cert.Thumbprint.ToUpperInvariant()
+            @'
+          import os,sys
+          from pathlib import Path
+          sys.path.insert(0,"bridge/neurofactory/one_pc_candidate")
+          from windows_package_preflight import inspect_windows_package,WindowsPackageDenied
+          result=inspect_windows_package(
+              installer=Path(os.environ["NF_CI_SIGNED_EXE"]),
+              expected_sha256=os.environ["NF_CI_SIGNED_HASH"],
+              pinned_publisher_thumbprint=os.environ["NF_CI_SIGNER_THUMB"])
+          assert result["status"]=="SIGNED_PACKAGE_AND_PIN_MATCH_NO_INSTALL"
+          assert result["service_install_allowed"] is False
+          assert result["production_release_allowed"] is False
+          try:
+              inspect_windows_package(
+                  installer=Path(os.environ["NF_CI_SIGNED_EXE"]),
+                  expected_sha256=os.environ["NF_CI_SIGNED_HASH"],
+                  pinned_publisher_thumbprint="F"*40)
+          except WindowsPackageDenied:
+              pass
+          else:
+              raise SystemExit("THROWAWAY_CERT_NOT_PINNED_WAS_ACCEPTED")
+          print("NF_ACTUAL_WINDOWS_INNO_AUTHENTICODE_SIGN_AND_PIN=PASS_THROWAWAY_CERT_TEST_ONLY")
+          print("NF_WRONG_WINDOWS_SIGNER_CERTIFICATE=DENIED")
+          print("NF_PRODUCTION_SIGNER_ENROLLED=FALSE")
+          print("NF_ACTUAL_SIGNED_PRODUCTION_INSTALLER=FALSE")
+          '@ | python -B -
+            if ($LASTEXITCODE -ne 0) {throw 'CI_AUTHENTICODE_EXTERNAL_INSPECTION_FAILED'}
+          }
+          finally {
+            if ($addedRoot -and $cert) {
+              Remove-Item -LiteralPath ('Cert:\CurrentUser\Root\'+$cert.Thumbprint) -Force -ErrorAction SilentlyContinue
+            }
+            if ($cert) {
+              Remove-Item -LiteralPath ('Cert:\CurrentUser\My\'+$cert.Thumbprint) -Force -ErrorAction SilentlyContinue
+            }
+            Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'nf-CI-temporary-pub.cer') -Force -ErrorAction SilentlyContinue
+          }
+          Write-Output 'NF_DISPOSABLE_WINDOWS_CODE_SIGNING_CERT_REMOVED=REQUESTED'
+      - name: No generated CI signatures saved or shipped as production
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'CI_SIGNER_MUTATED_REPO'}
+          Write-Output 'NF_NO_PRODUCTION_SIGNED_ARTIFACT_UPLOADED=TRUE'
