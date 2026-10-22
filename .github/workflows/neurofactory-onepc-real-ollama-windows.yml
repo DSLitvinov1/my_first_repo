@@ -1,7 +1,7 @@
 name: Neurofactory real Qwen via genuine Ollama provider on disposable Windows
 on:
   push:
-    branches: [neurofactory-onepc-complete-package-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020, neurofactory-onepc-qwen-scm-unification-20261021]
+    branches: [neurofactory-onepc-complete-package-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020, neurofactory-onepc-qwen-scm-unification-20261021, neurofactory-onepc-release-packaging-hardening-20261022]
     paths:
       - .github/workflows/neurofactory-onepc-real-ollama-windows.yml
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
