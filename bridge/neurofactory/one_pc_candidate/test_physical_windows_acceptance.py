@@ -2,6 +2,7 @@
 from __future__ import annotations
 from hashlib import sha1,sha256
 import json
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch, Mock
 import os
@@ -64,7 +65,7 @@ class PhysicalWindowsPreflight(unittest.TestCase):
         self.assertEqual(set(doc),MANIFEST_FIELDS)
         self.manifest=components/"manifest.json"
         self.manifest.write_text(json.dumps(doc),encoding="utf-8")
-        with sqlite3.connect(self.user/"workspace.sqlite3") as con:
+        with closing(sqlite3.connect(self.user/"workspace.sqlite3")) as con:
             con.execute("PRAGMA user_version=3")
             con.execute("CREATE TABLE harmless(x INTEGER)")
             con.commit()
