@@ -1,0 +1,60 @@
+name: Neurofactory Windows protected public key directory — isolated ACL boundary
+on:
+  push:
+    branches: [neurofactory-onepc-production-trust-gates-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/audit_windows_operator_public_pins.ps1
+      - .github/workflows/neurofactory-onepc-windows-public-pins-acl-ci.yml
+permissions:
+  contents: read
+jobs:
+  test-protected-public-root-no-keys-enrolled:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deny missing trust root and foreign writer on hosted disposable Windows
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or $env:RUNNER_ENVIRONMENT -cne 'github-hosted') {throw 'NOT_DISPOSABLE_WINDOWS'}
+          $base=[Environment]::GetFolderPath('CommonApplicationData')
+          $root=Join-Path $base 'Neurofactory'
+          $trust=Join-Path $root 'trust'
+          $file=Join-Path $trust 'four-party-public-pins.json'
+          $script='bridge/neurofactory/one_pc_candidate/windows_setup/audit_windows_operator_public_pins.ps1'
+          if (Test-Path -LiteralPath $root) {throw 'NEVER_CHANGE_PREEXISTING_TRUST_ROOT'}
+          & pwsh -NoProfile -NonInteractive -File $script *> $null
+          if ($LASTEXITCODE -eq 0) {throw 'ABSENT_REAL_OPERATOR_TRUST_ROOT_ACCEPTED'}
+          $created=$false
+          try {
+            New-Item -ItemType Directory -Force $trust | Out-Null
+            $created=$true
+            # Synthetic PUBLIC metadata ONLY; no secrets or signatures.
+            [IO.File]::WriteAllBytes($file,[byte[]](97)*300)
+            foreach($p in @($root,$trust,$file)) {
+              & icacls $p /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
+              if ($LASTEXITCODE -ne 0) {throw 'CANNOT_SET_EXPLICIT_TEST_ACL'}
+            }
+            $ok=(& pwsh -NoProfile -NonInteractive -File $script | ConvertFrom-Json)
+            if ($ok.result -cne 'PROTECTED_PUBLIC_PIN_FILE_OBSERVED_NOT_ENROLLED' -or
+                $ok.production_service_enabled -ne $false -or
+                $ok.private_keys_enrolled_by_auditor -ne $false) {
+              throw 'ACL_INSPECTOR_GRANTED_UNJUSTIFIED_TRUST'
+            }
+            Write-Output 'NF_OPERATOR_WINDOWS_FIXED_PUBLIC_TRUST_ACL_READONLY=PASS_CI_SYNTHETIC'
+            & icacls $file /grant '*S-1-5-32-545:M' | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'CANNOT_INJECT_FOREIGN_WRITER'}
+            & pwsh -NoProfile -NonInteractive -File $script *> $null
+            if ($LASTEXITCODE -eq 0) {throw 'FOREIGN_WINDOWS_WRITER_UNEXPECTEDLY_ACCEPTED'}
+            Write-Output 'NF_OPERATOR_WINDOWS_FOREIGN_PUBLIC_TRUST_WRITER=DENIED'
+          }
+          finally {
+            if ($created -and (Test-Path -LiteralPath $root)) {
+              Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
