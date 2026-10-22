@@ -22,7 +22,13 @@ if (!$role.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrato
     throw 'NF_NO_OPERATOR_ADMIN_RIGHTS'
 }
 $name='NeurofactoryCoreHost'
-$target=Join-Path $env:PROGRAMDATA 'NeurofactoryDormantAcceptanceCI'
+$commonData=[System.Environment]::GetFolderPath('CommonApplicationData')
+if ([string]::IsNullOrWhiteSpace($commonData) -or
+    [System.IO.Path]::GetFullPath($env:PROGRAMDATA).TrimEnd('\\') -ine
+        [System.IO.Path]::GetFullPath($commonData).TrimEnd('\\')) {
+    throw 'NF_PROGRAMDATA_MUST_BE_OS_PINNED'
+}
+$target=Join-Path $commonData 'NeurofactoryDormantAcceptanceCI'
 $package=Join-Path $env:RUNNER_TEMP 'NeurofactoryProtectedHost-REVIEW-ONLY'
 $marker=Join-Path $target 'review-ci-install-marker.json'
 $script=Join-Path $target 'neurofactory_dormant_service.py'
@@ -46,6 +52,12 @@ if ($Operation -eq 'Remove') {
     if (!$service -or !(Test-Path -LiteralPath $marker -PathType Leaf)) {
         throw 'NF_NEVER_REMOVE_UNOWNED_SERVICE'
     }
+    foreach($checkPath in @($target,$marker,$script,$binary)) {
+        $item=Get-Item -LiteralPath $checkPath -Force -ErrorAction Stop
+        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw 'NF_NEVER_REMOVE_REPARSE_OR_JUNCTION_BOUND_SERVICE'
+        }
+    }
     $sealed=Get-Content -LiteralPath $marker -Raw -Encoding ascii | ConvertFrom-Json
     if ($sealed.schema -cne 'nf.onepc.ci_review_install_marker.v1' -or
         $sealed.service_name -cne $name -or
@@ -54,9 +66,8 @@ if ($Operation -eq 'Remove') {
         throw 'NF_NEVER_REMOVE_FOREIGN_OR_UNVERIFIED_SERVICE'
     }
     $cmd=$service.PathName
-    if (!$cmd -or
-        !$cmd.ToLowerInvariant().Contains($binary.ToLowerInvariant()) -or
-        !$cmd.ToLowerInvariant().Contains($script.ToLowerInvariant())) {
+    $onlyExpectedCommand=('"{0}" -B "{1}"' -f $binary,$script)
+    if (!$cmd -or $cmd.Trim() -ine $onlyExpectedCommand) {
         throw 'NF_SCM_BINARY_IS_NOT_OUR_REVIEW_INSTALLATION'
     }
     Remove-CreatedService
