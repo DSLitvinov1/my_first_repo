@@ -34,8 +34,31 @@ jobs:
           try {
             New-Item -ItemType Directory -Force $trust | Out-Null
             $created=$true
-            # Synthetic PUBLIC metadata ONLY; no secrets or signatures.
-            [IO.File]::WriteAllBytes($file,[byte[]](97)*300)
+            # Synthetic PUBLIC metadata ONLY: four distinct random 32-byte
+            # placeholders for syntactic verification, never real keys.
+            $keys=@{}
+            foreach($role in @('operator','owner','host','witness')) {
+              $keys[$role]=[Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+            }
+            $opHash=[Convert]::ToHexString(
+              [Security.Cryptography.SHA256]::HashData($keys['operator'])).ToLowerInvariant()
+            $now=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            $fixture=[ordered]@{
+              schema='neurofactory.operator.public_pins.v1'
+              repository='DSLitvinov1/my_first_repo'
+              github_user_id='151650108'
+              repository_id='723328237'
+              key_valid_from_unix=$now-60
+              key_valid_until_unix=$now+1200
+              operator_public_base64=[Convert]::ToBase64String($keys['operator'])
+              owner_public_base64=[Convert]::ToBase64String($keys['owner'])
+              host_public_base64=[Convert]::ToBase64String($keys['host'])
+              witness_public_base64=[Convert]::ToBase64String($keys['witness'])
+              operator_public_sha256=$opHash
+              mtls_witness_cert_sha256=('f'*64)
+            }
+            [IO.File]::WriteAllBytes($file,[Text.Encoding]::ASCII.GetBytes(
+              ($fixture|ConvertTo-Json -Compress)))
             foreach($p in @($root,$trust,$file)) {
               & icacls $p /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' | Out-Null
               if ($LASTEXITCODE -ne 0) {throw 'CANNOT_SET_EXPLICIT_TEST_ACL'}
@@ -47,6 +70,12 @@ jobs:
               throw 'ACL_INSPECTOR_GRANTED_UNJUSTIFIED_TRUST'
             }
             Write-Output 'NF_OPERATOR_WINDOWS_FIXED_PUBLIC_TRUST_ACL_READONLY=PASS_CI_SYNTHETIC'
+            $validContent=[IO.File]::ReadAllBytes($file)
+            [IO.File]::WriteAllBytes($file,[byte[]](97)*300)
+            & pwsh -NoProfile -NonInteractive -File $script *> $null
+            if ($LASTEXITCODE -eq 0) {throw 'INVALID_KEY_CONTENT_ELEVATED_TO_TRUST'}
+            [IO.File]::WriteAllBytes($file,$validContent)
+            Write-Output 'NF_PROTECTED_BUT_INVALID_PUBLIC_KEYS=DENIED'
             & icacls $file /grant '*S-1-5-32-545:M' | Out-Null
             if ($LASTEXITCODE -ne 0) {throw 'CANNOT_INJECT_FOREIGN_WRITER'}
             & pwsh -NoProfile -NonInteractive -File $script *> $null
