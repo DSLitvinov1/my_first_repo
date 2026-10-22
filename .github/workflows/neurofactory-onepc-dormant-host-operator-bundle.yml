@@ -5,6 +5,7 @@ on:
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py
       - bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt
+      - bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1
       - .github/workflows/neurofactory-onepc-dormant-host-operator-bundle.yml
 permissions:
   contents: read
@@ -33,6 +34,7 @@ jobs:
           Expand-Archive $zip "$root\runtime"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py' "$root\neurofactory_dormant_service.py"
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt' "$root\README-ACCEPTANCE-RU.txt"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1' "$root\audit_protected_host_readonly.ps1"
           [ordered]@{
             schema='nf.windows.dormant_host_provision.v1'
             service_name='NeurofactoryCoreHost'

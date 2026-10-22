@@ -5,6 +5,7 @@ on:
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py
       - bridge/neurofactory/one_pc_candidate/test_dormant_service_config.py
+      - bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1
       - .github/workflows/neurofactory-onepc-dormant-scm-acceptance-ci.yml
 permissions:
   contents: read
@@ -107,6 +108,12 @@ jobs:
           Write-Output 'NF_ACTUAL_WINDOWS_RESTRICTED_COREHOST_SERVICE_RUNNING=PASS_CI_DORMANT_ONLY'
           Write-Output 'NF_ACTUAL_WINDOWS_LOCALSERVICE_AND_PROTECTED_STATUS=PASS_TEST_ONLY'
           Write-Output 'NF_WINDOWS_SERVICE_CORE_QUEUE_AND_EFFECTS=FALSE'
+          # Independent operator-view inspection, no service modification.
+          $audit=& pwsh -NoProfile -NonInteractive -File 'bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1' -InstallRoot $root | ConvertFrom-Json
+          if ($audit.result -cne 'DORMANT_RESTRICTED_SCM_OBSERVED_NOT_RELEASED' -or
+              $audit.core_queue_enabled -or $audit.host_effects_enabled -or
+              $audit.shared_local_service_write_denied -ne $true) {throw 'READONLY_INDEPENDENT_REVIEW_INSPECTOR_FAILED'}
+          Write-Output 'NF_READONLY_OPERATOR_REVIEW_OF_ACTUAL_RESTRICTED_SCM=PASS_NO_MUTATIONS'
 
           # Deliberate test-operator config corruption after clean stop.
           & sc.exe stop $name | Out-Null
