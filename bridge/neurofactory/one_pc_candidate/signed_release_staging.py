@@ -115,7 +115,7 @@ def verify_two_person_signatures(approval,owner_public,reviewer_public, *,
         "unsigned_replacement_authorized":False,
         "independent_physical_acceptance_complete":False,
         "live_qwen_core_host_authority":False,
-        "external_antiro llback_witness_verified".replace(" ",""):False,
+        "external_antirollback_witness_verified":False,
     }
 
 def _private_file(path:Path, limit):
@@ -126,6 +126,44 @@ def _private_file(path:Path, limit):
             or (os.name=="nt" and st.st_file_attributes & 0x400)):
         _deny("unsafe file, link, size or reparse")
     return path.read_bytes()
+
+def _privileged_acl(path):
+    """The real on-disk DACL must grant only SYSTEM/Administrators.
+
+    A public key's cryptography proves nothing if an untrusted UI user could
+    replace the trust-root file or the directory holding it.
+    """
+    if os.name!="nt":
+        _deny("ACL verification requires native Windows")
+    try:
+        import win32security
+        import win32con
+        st=path.lstat()
+        if (path.is_symlink() or st.st_file_attributes & 0x400):
+            _deny("linked root or file")
+        descriptor=win32security.GetNamedSecurityInfo(
+            str(path),win32security.SE_FILE_OBJECT,
+            win32security.DACL_SECURITY_INFORMATION |
+            win32security.OWNER_SECURITY_INFORMATION)
+        acl=descriptor.GetSecurityDescriptorDacl()
+        if acl is None or acl.GetAceCount()<2:
+            _deny("missing or null privileged DACL")
+        allowed={"S-1-5-18","S-1-5-32-544"}
+        seen=set()
+        for index in range(acl.GetAceCount()):
+            ace=acl.GetAce(index)
+            if ace[0][0] not in (win32security.ACCESS_ALLOWED_ACE_TYPE,
+                                 win32security.ACCESS_ALLOWED_OBJECT_ACE_TYPE):
+                _deny("unreviewed access-control entry")
+            sid=win32security.ConvertSidToStringSid(ace[-1])
+            if sid not in allowed:
+                _deny("non-operator account has access to trust/staging root")
+            seen.add(sid)
+        if seen!=allowed:
+            _deny("SYSTEM and Administrators missing from private DACL")
+    except (OSError,ImportError,AttributeError,TypeError,ValueError) as exc:
+        raise StagingDenied("Unable to authenticate Windows root DACL") from exc
+
 
 def _admin():
     if os.name!="nt":
@@ -166,6 +204,9 @@ def operator_stage_signed_candidate(installer,approval_file,*,expected_source_co
     # overrides, the signed request, the browser, or a model proposal.
     if trust.is_symlink() or not trust.is_dir():
         _deny("independent reviewer and owner pins are not enrolled")
+    _privileged_acl(trust)
+    _privileged_acl(trust/"owner-ed25519.pub")
+    _privileged_acl(trust/"reviewer-ed25519.pub")
     owner=_private_file(trust/"owner-ed25519.pub",32)
     reviewer=_private_file(trust/"reviewer-ed25519.pub",32)
     if len(owner)!=32 or len(reviewer)!=32:
@@ -195,6 +236,7 @@ def operator_stage_signed_candidate(installer,approval_file,*,expected_source_co
         quarantine.parent.mkdir(mode=0o700,exist_ok=True)
         quarantine.mkdir(mode=0o700)
         _locked_acl(quarantine)
+        _privileged_acl(quarantine)
         dest=quarantine/path.name
         with dest.open("xb") as stream:
             stream.write(data);stream.flush();os.fsync(stream.fileno())
