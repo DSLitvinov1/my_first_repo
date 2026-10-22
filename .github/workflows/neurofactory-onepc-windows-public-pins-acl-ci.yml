@@ -58,3 +58,7 @@ jobs:
               Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
+          # Expected denial runs leave PowerShell's LASTEXITCODE nonzero even
+          # when assertions pass. Reset only after all security probes.
+          $global:LASTEXITCODE=0
+          exit 0
