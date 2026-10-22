@@ -1,0 +1,29 @@
+name: Neurofactory physical read-only acceptance scope targeted tests
+on:
+  push:
+    branches: [neurofactory-onepc-signed-install-acceptance-20261022]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/physical_windows_acceptance.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_physical_windows_acceptance.py'
+      - '.github/workflows/neurofactory-physical-readonly-acceptance-ci.yml'
+permissions:
+  contents: read
+jobs:
+  physical-attestation-code-negative-only:
+    runs-on: windows-2025
+    timeout-minutes: 4
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reject unreviewed installed code and require read-only no-release verdict
+        shell: pwsh
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_physical_windows_acceptance.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'PHYSICAL_READONLY_TEST_FAILURE'}
+      - name: Verify unchanged tracked sources
+        shell: pwsh
+        run: git diff --exit-code
