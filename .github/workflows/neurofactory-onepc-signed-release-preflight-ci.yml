@@ -10,6 +10,7 @@ on:
       - '.github/workflows/neurofactory-onepc-signed-release-preflight-ci.yml'
 permissions:
   contents: read
+  actions: read
 jobs:
   independent-approval-crypto-only:
     runs-on: ubuntu-24.04
@@ -47,3 +48,44 @@ jobs:
         run: |
           git diff --exit-code
           if ($LASTEXITCODE -ne 0) {throw 'PREVIEW_MUTATED_SOURCE'}
+
+  inspect-actual-unreleased-installer-without-running-it:
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Retrieve exact prior Windows UNRELEASED candidate artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          run-id: 39701930342
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/nf-unreleased-verified
+      - name: Prove unsigned draft cannot cross protected installation gate
+        shell: pwsh
+        run: |
+          $files=@(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-unreleased-verified') -Filter 'Neurofactory-Local-Draft-Setup.exe' -File -Recurse)
+          if ($files.Count -ne 1) {throw 'EXPECTED_ONE_RELEASE_ARTIFACT'}
+          $exe=$files[0].FullName
+          $digest=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($digest -cne '648DC60F51390578C1835CA46B5151B61F1CB64858C34D6E164A8092381E35CF') {throw 'UNRELEASED_INSTALLER_HASH_CHANGED'}
+          $real=Get-AuthenticodeSignature -LiteralPath $exe
+          if ($real.Status.ToString() -cne 'NotSigned') {throw 'REVIEW_UNSIGNED_STATUS_UNEXPECTED'}
+          $env:NF_PREFLIGHT_READONLY_EXE=$exe
+          @'
+          import os,sys
+          from pathlib import Path
+          sys.path.insert(0,"bridge/neurofactory/one_pc_candidate")
+          from windows_package_preflight import inspect_windows_package,WindowsPackageDenied
+          try:
+              inspect_windows_package(installer=Path(os.environ["NF_PREFLIGHT_READONLY_EXE"]),
+                  expected_sha256="648dc60f51390578c1835ca46b5151b61f1cb64858c34d6e164a8092381e35cf",
+                  pinned_publisher_thumbprint="AB"*20)
+          except WindowsPackageDenied:
+              print("NF_REAL_UNSIGNED_DRAFT_PRODUCTION_SERVICE_INSTALL=BLOCKED")
+          else:
+              raise SystemExit("FATAL_UNSIGNED_SETUP_UNEXPECTEDLY_ACCEPTED")
+          '@ | python -B -
+          if ($LASTEXITCODE -ne 0) {throw 'REAL_UNSIGNED_RELEASE_GATE_NOT_FAIL_CLOSED'}
