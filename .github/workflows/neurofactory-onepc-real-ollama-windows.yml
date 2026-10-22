@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
           path: .nf_pin_core
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -47,14 +47,14 @@ jobs:
           ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
           path: .nf_pin_coordinator
           persist-credentials: false
-      - name: Stage immutable 16 source components for genuine UI draft provider request
+      - name: Stage immutable 15 source components for genuine UI draft provider request
         run: |
           $stage=Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage'
           New-Item -ItemType Directory -Force $stage | Out-Null
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_PINNED_SOURCE_STAGING_FAILED'}
           $env:NF_REAL_QWEN_COMPONENTS=Join-Path $stage 'components'
-          python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;assert verify(Path(sys.argv[1]))['files_verified']==16;print('NF_REAL_QWEN_DRAFT_PINNED_PROVIDER=VERIFIED')" "$env:NF_REAL_QWEN_COMPONENTS"
+          python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;assert verify(Path(sys.argv[1]))['files_verified']==15;print('NF_REAL_QWEN_DRAFT_PINNED_PROVIDER=VERIFIED')" "$env:NF_REAL_QWEN_COMPONENTS"
           if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_INSTALL_INTEGRITY_FAILED'}
       - name: Deny owner runner and undersized machine
         run: |

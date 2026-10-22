@@ -20,7 +20,7 @@ def check(components: Path) -> None:
     verifier=importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(verifier)
     status=verifier.verify(components)
-    if status["files_verified"] != 16 or status["live_execution_allowed"] is not False:
+    if status["files_verified"] != 15 or status["live_execution_allowed"] is not False:
         raise RuntimeError("Installed code not verified")
     provider_dir=components/"providers"
     core_dir=components/"core"
