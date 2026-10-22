@@ -1,0 +1,159 @@
+name: Neurofactory protected dormant SCM service readiness — new targeted Windows trial
+on:
+  push:
+    branches: [neurofactory-onepc-service-install-readiness-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py
+      - bridge/neurofactory/one_pc_candidate/test_dormant_service_config.py
+      - bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1
+      - .github/workflows/neurofactory-onepc-dormant-scm-acceptance-ci.yml
+permissions:
+  contents: read
+jobs:
+  actual-restricted-scm-dormant-service-only:
+    runs-on: windows-2025
+    timeout-minutes: 13
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONNOUSERSITE: "1"
+      NF_CI_RESTRICTED_SCM_ONLY: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: New dormant service exact-config negative tests only
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_dormant_service_config.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'DORMANT_SCM_CONFIG_FENCE_FAILED'}
+      - name: Create and exercise actual restricted service only on disposable CI
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or $env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:RUNNER_OS -cne 'Windows' -or $env:NF_CI_RESTRICTED_SCM_ONLY -cne '1') {throw 'DISPOSABLE_GITHUB_HOSTED_WINDOWS_ONLY'}
+          $name='NeurofactoryCoreHost'
+          $exists=Get-CimInstance Win32_Service -Filter "Name='$name'" -ErrorAction SilentlyContinue
+          if ($exists) {throw 'SERVICE_NAME_OCCUPIED_NO_CHANGES'}
+          $root=Join-Path $env:PROGRAMDATA 'NeurofactoryDormantAcceptanceCI'
+          if (Test-Path $root) {throw 'CI_ROOT_COLLISION_NO_CHANGES'}
+          $zip=Join-Path $env:RUNNER_TEMP 'nf-python-embedded-pinned.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $zip -MaximumRedirection 2
+          if ((Get-Item $zip).Length -ne 11133606 -or
+            (Get-FileHash $zip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'EMBEDDED_PYTHON_IDENTITY_NOT_PINNED'}
+          New-Item -ItemType Directory -Force "$root\runtime","$root\status" | Out-Null
+          Expand-Archive -LiteralPath $zip -DestinationPath "$root\runtime"
+          $script=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py').Path
+          Copy-Item $script "$root\neurofactory_dormant_service.py"
+          $config=@{
+            schema='nf.windows.dormant_host_provision.v1'
+            service_name=$name
+            source_sha40='a9bb3724c2a0636803987496e26b51af3276f55c'
+            mode='REVIEW_BLOCKED_NOT_PRODUCTION'
+            real_host_execution_allowed=$false
+            core_queue_allowed=$false
+            network_listener_allowed=$false
+            production_release_approved=$false
+            independent_review_approved=$false
+            owner_key_installed=$false
+            external_witness_verified=$false
+          }
+          $config|ConvertTo-Json -Compress|Set-Content -LiteralPath "$root\dormant-config.json" -Encoding ascii
+          $bin=('"{0}" -B "{1}"' -f "$root\runtime\python.exe", "$root\neurofactory_dormant_service.py")
+          & sc.exe create $name binPath= $bin start= demand obj= 'NT AUTHORITY\LocalService' type= own
+          if ($LASTEXITCODE -ne 0) {throw 'CI_SCM_CREATE_FAILED'}
+          & sc.exe sidtype $name restricted
+          if ($LASTEXITCODE -ne 0) {throw 'CI_RESTRICTED_SID_FAILED'}
+          $sid=([System.Security.Principal.NTAccount]"NT SERVICE\$name").Translate([System.Security.Principal.SecurityIdentifier]).Value
+          if (!$sid.StartsWith('S-1-5-80-')) {throw 'NO_DEDICATED_SERVICE_SID'}
+          & icacls $root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-19:(OI)(CI)RX' ('*'+$sid+':(OI)(CI)RX') /T
+          if ($LASTEXITCODE -ne 0) {throw 'SERVICE_ACL_RESTRICT_FAILURE'}
+          # Files do not acquire effective READ from OI/CI-only ACEs applied
+          # directly by icacls /T. Windows SCM needs actual file READ access.
+          # Keep directory inheritance and restrict every individual file
+          # explicitly to SYSTEM/Administrators/LocalService + Service SID.
+          foreach ($file in @(Get-ChildItem -LiteralPath $root -File -Recurse)) {
+            & icacls $file.FullName /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' '*S-1-5-19:RX' ('*'+$sid+':RX') | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'SERVICE_FILE_ACL_NOT_EFFECTIVE'}
+          }
+          & icacls "$root\status" /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' ('*'+$sid+':(OI)(CI)M')
+          if ($LASTEXITCODE -ne 0) {throw 'SERVICE_STATUS_DIRECTORY_ACL_FAILURE'}
+          Write-Output 'NF_CI_ROOT_ACL_BEFORE_SCM_START'
+          & icacls $root
+          & icacls "$root\\runtime\\python.exe"
+          & icacls "$root\\neurofactory_dormant_service.py"
+          & icacls "$root\\status"
+          & sc.exe qc $name
+          & sc.exe start $name
+          if ($LASTEXITCODE -ne 0) {
+            & sc.exe queryex $name
+            Get-WinEvent -FilterHashtable @{LogName='System';ProviderName='Service Control Manager';StartTime=(Get-Date).AddMinutes(-3)} -MaxEvents 12 -ErrorAction SilentlyContinue | Select-Object TimeCreated,Id,Message | Format-List | Out-String | Write-Output
+            throw 'SCM_REAL_SERVICE_DID_NOT_START'
+          }
+          $running=$false
+          for ($i=0;$i -lt 60;$i++) {
+            Start-Sleep -Milliseconds 250
+            $svc=Get-CimInstance Win32_Service -Filter "Name='$name'"
+            if ($svc.State -eq 'Running') {$running=$true;break}
+          }
+          if (!$running) {throw 'SCM_ACTUAL_SERVICE_NOT_RUNNING'}
+          $owner=(Get-CimInstance Win32_Process -Filter "ProcessId=$($svc.ProcessId)" | Invoke-CimMethod -MethodName GetOwner).User
+          if ($owner.ToUpperInvariant() -cne 'LOCAL SERVICE') {throw 'WRONG_REAL_WINDOWS_SERVICE_PRINCIPAL'}
+          $mark=Join-Path $root 'status\dormant-status.json'
+          if (!(Test-Path $mark)) {throw 'PROTECTED_SERVICE_STATUS_MISSING'}
+          $result=Get-Content $mark -Raw|ConvertFrom-Json
+          if ($result.status -cne 'REVIEW_BLOCKED_NOT_PRODUCTION' -or $result.core_queue_allowed -or $result.host_execution_allowed -or $result.untrusted_model_effects_allowed -or $result.immutable_install_root_write_denied -ne $true) {throw 'REVIEW_BARRIER_OR_IMMUTABLE_ROOT_NOT_ENFORCED'}
+          $qc=(& sc.exe qsidtype $name | Out-String)
+          if ($qc -notmatch 'RESTRICTED') {throw 'REAL_SERVICE_SID_NOT_RESTRICTED'}
+          Write-Output 'NF_ACTUAL_WINDOWS_RESTRICTED_COREHOST_SERVICE_RUNNING=PASS_CI_DORMANT_ONLY'
+          Write-Output 'NF_ACTUAL_WINDOWS_LOCALSERVICE_AND_PROTECTED_STATUS=PASS_TEST_ONLY'
+          Write-Output 'NF_WINDOWS_SERVICE_CORE_QUEUE_AND_EFFECTS=FALSE'
+          # Independent operator-view inspection, no service modification.
+          $audit=& pwsh -NoProfile -NonInteractive -File 'bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1' -InstallRoot $root | ConvertFrom-Json
+          if ($audit.result -cne 'DORMANT_RESTRICTED_SCM_OBSERVED_NOT_RELEASED' -or
+              $audit.core_queue_enabled -or $audit.host_effects_enabled -or
+              $audit.shared_local_service_write_denied -ne $true) {throw 'READONLY_INDEPENDENT_REVIEW_INSPECTOR_FAILED'}
+          Write-Output 'NF_READONLY_OPERATOR_REVIEW_OF_ACTUAL_RESTRICTED_SCM=PASS_NO_MUTATIONS'
+
+          # Deliberate test-operator config corruption after clean stop.
+          & sc.exe stop $name | Out-Null
+          $stopped=$false
+          for ($i=0;$i -lt 60;$i++) {
+            Start-Sleep -Milliseconds 250
+            if ((Get-CimInstance Win32_Service -Filter "Name='$name'").State -eq 'Stopped') {$stopped=$true;break}
+          }
+          if (!$stopped) {throw 'DORMANT_SERVICE_CANNOT_STOP_CLEANLY'}
+          $config.core_queue_allowed=$true
+          $config|ConvertTo-Json -Compress|Set-Content -LiteralPath "$root\dormant-config.json" -Encoding ascii
+          & sc.exe start $name | Out-Null
+          $tamperStartCode=$LASTEXITCODE
+          Start-Sleep -Seconds 2
+          $badState=(Get-CimInstance Win32_Service -Filter "Name='$name'").State
+          if ($badState -eq 'Running') {throw 'TAMPERED_CORE_QUEUE_FLAG_ACTIVATED_SERVICE'}
+          Write-Output 'NF_DORMANT_SCM_TAMPERED_QUEUE_AUTHORITY=DENIED'
+          # Only the separately privileged CI operator can restore the
+          # immutable config; do not grant service-account write access.
+          $config.core_queue_allowed=$false
+          $config|ConvertTo-Json -Compress|Set-Content -LiteralPath "$root\dormant-config.json" -Encoding ascii
+          Remove-Item -LiteralPath $mark -Force
+          & sc.exe start $name | Out-Null
+          if ($LASTEXITCODE -ne 0) {throw 'RESTART_AFTER_CONFIG_REPAIR_FAILED'}
+          $restarted=$false
+          for ($i=0;$i -lt 60;$i++) {
+            Start-Sleep -Milliseconds 250
+            if ((Get-CimInstance Win32_Service -Filter "Name='$name'").State -eq 'Running' -and (Test-Path $mark)) {$restarted=$true;break}
+          }
+          if (!$restarted) {throw 'DORMANT_SERVICE_RESTART_NOT_REPRODUCIBLE'}
+          $again=Get-Content -LiteralPath $mark -Raw | ConvertFrom-Json
+          if ($again.core_queue_allowed -or $again.host_execution_allowed -or $again.immutable_install_root_write_denied -ne $true) {throw 'DORMANT_RESTART_ESCALATED'}
+          Write-Output 'NF_DORMANT_WINDOWS_SERVICE_STOP_TAMPER_DENIAL_AND_RESTART=PASS_TEST_ONLY'
+
+      - name: Always remove disposable Windows service and program files
+        if: always()
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted') {throw 'NOT_DISPOSABLE'}
+          & sc.exe stop NeurofactoryCoreHost
+          & sc.exe delete NeurofactoryCoreHost
+          $root=Join-Path $env:PROGRAMDATA 'NeurofactoryDormantAcceptanceCI'
+          if (Test-Path $root) {Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue}
+          Write-Output 'NF_DISPOSABLE_WINDOWS_SERVICE_REMOVE_REQUESTED'

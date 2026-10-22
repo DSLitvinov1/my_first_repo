@@ -1,0 +1,83 @@
+name: Neurofactory protected HOST reviewer bundle — no install
+on:
+  push:
+    branches: [neurofactory-onepc-service-install-readiness-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py
+      - bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt
+      - bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1
+      - .github/workflows/neurofactory-onepc-dormant-host-operator-bundle.yml
+permissions:
+  contents: read
+jobs:
+  assemble-unsigned-operator-review-source:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify embedded vendor runtime and prepare inert host package
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:GITHUB_ACTIONS -cne 'true') {throw 'DISPOSABLE_CI_PACKAGER_ONLY'}
+          $zip=Join-Path $env:RUNNER_TEMP 'python-embedded-pinned.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $zip -MaximumRedirection 2
+          $vendor=(Get-FileHash $zip -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ((Get-Item $zip).Length -ne 11133606 -or $vendor -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'BAD_VENDOR_RUNTIME'}
+          $root=Join-Path $env:RUNNER_TEMP 'NeurofactoryProtectedHost-REVIEW-ONLY'
+          if (Test-Path $root) {throw 'EXISTING_REVIEW_ROOT'}
+          New-Item -ItemType Directory -Force "$root\runtime","$root\status" | Out-Null
+          Expand-Archive $zip "$root\runtime"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/neurofactory_dormant_service.py' "$root\neurofactory_dormant_service.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt' "$root\README-ACCEPTANCE-RU.txt"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/audit_protected_host_readonly.ps1' "$root\audit_protected_host_readonly.ps1"
+          [ordered]@{
+            schema='nf.windows.dormant_host_provision.v1'
+            service_name='NeurofactoryCoreHost'
+            source_sha40=$env:GITHUB_SHA
+            mode='REVIEW_BLOCKED_NOT_PRODUCTION'
+            real_host_execution_allowed=$false
+            core_queue_allowed=$false
+            network_listener_allowed=$false
+            production_release_approved=$false
+            independent_review_approved=$false
+            owner_key_installed=$false
+            external_witness_verified=$false
+          } | ConvertTo-Json -Compress | Set-Content "$root\dormant-config.json" -Encoding ascii
+          $files=@(Get-ChildItem $root -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $rel=$_.FullName.Substring($root.Length+1).Replace('\','/')
+            [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
+          })
+          if ($files.Count -lt 35) {throw 'PINNED_RUNTIME_FILES_MISSING'}
+          [ordered]@{
+            schema='nf.windows.protected_host_review_bundle.v1'
+            source_sha=$env:GITHUB_SHA
+            vendor_python_sha256=$vendor.ToLowerInvariant()
+            service_sha256=(Get-FileHash "$root\neurofactory_dormant_service.py" -Algorithm SHA256).Hash.ToLowerInvariant()
+            status='UNSIGNED_REVIEW_ONLY'
+            production_release_approved=$false
+            host_effect_allowed=$false
+            windows_service_installed=$false
+            independent_reviewer_approved=$false
+            entries=$files
+          } | ConvertTo-Json -Depth 5 | Set-Content "$root\bundle-manifest.json" -Encoding utf8
+          $validate=Get-Content "$root\bundle-manifest.json" -Raw|ConvertFrom-Json
+          if ($validate.production_release_approved -or $validate.host_effect_allowed -or $validate.entries.Count -ne $files.Count) {throw 'REVIEW_BUNDLE_NOT_FAIL_CLOSED'}
+          $output=Join-Path $env:RUNNER_TEMP 'Neurofactory-Protected-Host-Operator-Review-UNSIGNED.zip'
+          Compress-Archive -LiteralPath $root -DestinationPath $output -CompressionLevel Optimal
+          if (!(Test-Path $output) -or (Get-Item $output).Length -lt 3000000) {throw 'REVIEW_ARCHIVE_EMPTY'}
+          Write-Output ('NF_DORMANT_HOST_REVIEW_ARCHIVE_SHA256='+(Get-FileHash $output -Algorithm SHA256).Hash)
+          Write-Output ('NF_DORMANT_HOST_REVIEW_SOURCE_SHA='+$env:GITHUB_SHA)
+          Write-Output ('NF_DORMANT_HOST_REVIEW_FILE_COUNT='+$files.Count)
+          Write-Output 'NF_PRODUCTION_EFFECTS_AND_INSTALL=DISABLED'
+      - name: Upload restricted service unsigned review bundle only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-Protected-Host-Operator-Review-UNSIGNED
+          path: ${{ runner.temp }}/Neurofactory-Protected-Host-Operator-Review-UNSIGNED.zip
+          retention-days: 7
+          if-no-files-found: error
