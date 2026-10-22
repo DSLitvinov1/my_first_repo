@@ -38,6 +38,7 @@ BASE_FIELDS={
     "nonce", "issued_unix", "expires_unix",
 }
 SIGNED_FIELDS=BASE_FIELDS | {"owner_signature_base64","reviewer_signature_base64"}
+INSTALLER_SOURCE_COMMIT="48529c50f9a40d20cd5b0d7e586eb4f092ed0b7e"
 TRUST_REL=Path("Neurofactory")/"TrustPins"
 STAGING_REL=Path("Neurofactory")/"Quarantine"
 
@@ -70,6 +71,7 @@ def verify_two_person_signatures(approval,owner_public,reviewer_public, *,
             or any(type(approval[x]) is not str for x in (
                 "source_commit","installer_sha256","nonce"))
             or approval["source_commit"]!=expected_source_commit
+            or approval["source_commit"]!=INSTALLER_SOURCE_COMMIT
             or not HEX64.fullmatch(approval["installer_sha256"])
             or not NONCE.fullmatch(approval["nonce"])
             or any(type(approval[x]) is not int or approval[x]<1
@@ -152,8 +154,7 @@ def _privileged_acl(path):
         seen=set()
         for index in range(acl.GetAceCount()):
             ace=acl.GetAce(index)
-            if ace[0][0] not in (win32security.ACCESS_ALLOWED_ACE_TYPE,
-                                 win32security.ACCESS_ALLOWED_OBJECT_ACE_TYPE):
+            if ace[0][0] != win32security.ACCESS_ALLOWED_ACE_TYPE:
                 _deny("unreviewed access-control entry")
             sid=win32security.ConvertSidToStringSid(ace[-1])
             if sid not in allowed:
