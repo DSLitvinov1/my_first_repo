@@ -1,0 +1,72 @@
+name: Neurofactory dual-signed Windows quarantine acceptance (new tests only)
+on:
+  push:
+    branches: [neurofactory-onepc-signed-install-acceptance-20261022]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/signed_release_staging.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_signed_release_staging.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_windows_signed_quarantine_ci.py'
+      - '.github/workflows/neurofactory-signed-staging-acceptance-ci.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  new-offline-signature-negative-cases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated cryptography dependency
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_signed_staging"
+          "$RUNNER_TEMP/nf_signed_staging/bin/python" -m pip install --disable-pip-version-check --no-input 'cryptography==46.0.3'
+      - name: Only new two-person staging signature tests
+        run: |
+          "$RUNNER_TEMP/nf_signed_staging/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_signed_release_staging.py -v
+      - name: No source modifications
+        run: git diff --exit-code
+  disposable-windows-real-installer-quarantine:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    env:
+      NF_TEST_DISPOSABLE_RELEASE_STAGING: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm ephemeral Windows 2025 with administrative test identity
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') {throw 'HOSTED_WINDOWS_ONLY'}
+          $id=[Security.Principal.WindowsIdentity]::GetCurrent()
+          $admin=(New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+          if (-not $admin) {throw 'ADMINISTRATIVE_HOSTED_TEST_IDENTITY_REQUIRED'}
+      - name: Test dependencies only; do not install product or model
+        run: |
+          python -m pip install --disable-pip-version-check --no-input 'cryptography==46.0.3' 'pywin32==311'
+          if ($LASTEXITCODE -ne 0) {throw 'TEST_ONLY_WINDOWS_DEPENDENCIES_FAILED'}
+      - name: Retrieve EXACT previously successful signed-scope Windows installer artifact
+        run: |
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-pinned-draft-artifact'
+          New-Item -ItemType Directory -Path $folder -Force | Out-Null
+          gh run download 39701930342 --repo 'DSLitvinov1/my_first_repo' --name 'Neurofactory-Local-Draft-Windows-Installer-UNRELEASED' --dir $folder
+          if ($LASTEXITCODE -ne 0) {throw 'ARTIFACT_DOWNLOAD_FAILED'}
+          $artifact=Join-Path $folder 'Neurofactory-Local-Draft-Setup.exe'
+          if (!(Test-Path $artifact -PathType Leaf)) {throw 'PINNED_INSTALLER_MISSING'}
+          $hash=(Get-FileHash $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -cne '648dc60f51390578c1835ca46b5151b61f1cb64858c34d6e164a8092381e35cf') {throw 'ORIGINAL_GH_ACTIONS_INSTALLER_SHA_MISMATCH'}
+          Write-Output 'NF_PRIOR_ISOLATED_INSTALLER_BYTES_VERIFIED=PASS'
+      - name: Test real NTFS trust-root ACL and strict quarantined copy, no executable start
+        run: |
+          $env:PYTHONPATH=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
+          python -B bridge/neurofactory/one_pc_candidate/test_windows_signed_quarantine_ci.py (Join-Path $env:RUNNER_TEMP 'nf-pinned-draft-artifact/Neurofactory-Local-Draft-Setup.exe')
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_WINDOWS_QUARANTINE_ACCEPTANCE_FAILED'}
+      - name: No source modifications
+        run: git diff --exit-code
