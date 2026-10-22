@@ -91,6 +91,22 @@ def prepare_dormant(root: Path):
     # cannot establish the service SID/DACL, verified separately at runtime.
     return doc,output
 
+def _assert_readonly_install_root(root: Path):
+    # POSIX permissions / os.access do not represent Windows restricted
+    # tokens. Prove directly that this REAL service token cannot create a
+    # non-status file in the operator-owned immutable installation root.
+    name=root/("nf-protected-write-denial-"+secrets.token_hex(12)+".tmp")
+    try:
+        fd=os.open(name,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    except PermissionError:
+        return True
+    except OSError as exc:
+        raise DormantServiceDenied("Read-only root probe inconclusive") from exc
+    else:
+        os.close(fd)
+        try: name.unlink()
+        finally: raise DormantServiceDenied("Restricted service can modify immutable files")
+
 def _publish_status(folder: Path,doc):
     marker={
         "schema":"nf.windows.dormant_service_status.v1",
@@ -102,6 +118,7 @@ def _publish_status(folder: Path,doc):
         "untrusted_model_effects_allowed":False,
         "independent_review_complete":False,
         "protected_runtime_production_attested":False,
+        "immutable_install_root_write_denied":True,
     }
     raw=(json.dumps(marker,sort_keys=True,separators=(",",":"))+"\n").encode("ascii")
     tmp=folder/("nf-readiness-"+secrets.token_hex(12)+".tmp")
@@ -187,6 +204,7 @@ def run_windows_service():
             status(SERVICE_START_PENDING,checkpoint=1)
             root=Path(__file__).resolve().parent
             doc,folder=prepare_dormant(root)
+            _assert_readonly_install_root(root)
             _publish_status(folder,doc)
             status(SERVICE_RUNNING)
             kernel32.WaitForSingleObject(stop,WAIT_INFINITE)
