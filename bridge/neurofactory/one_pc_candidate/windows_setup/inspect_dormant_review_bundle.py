@@ -81,7 +81,7 @@ def _regular(root, path, *, directory=False):
     return st
 
 def verify_review_bundle(root: Path, *, expected_source_sha: str):
-    if (type(root) is not Path or not root.is_absolute() or
+    if (not isinstance(root, Path) or not root.is_absolute() or
         type(expected_source_sha) is not str or not HEX40.fullmatch(expected_source_sha)):
         _deny("operator must independently pin exact source")
     _regular(root, Path("."), directory=True)
