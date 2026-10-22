@@ -143,7 +143,7 @@ def verify_review_bundle(root: Path, *, expected_source_sha: str):
         where = Path(cur)
         for name in dirs:
             rel = (where/name).relative_to(root).as_posix()
-            if rel != "runtime":
+            if rel not in ("runtime", "status"):
                 _deny("unlisted directory")
             _regular(root,Path(rel),directory=True)
         for name in files:
