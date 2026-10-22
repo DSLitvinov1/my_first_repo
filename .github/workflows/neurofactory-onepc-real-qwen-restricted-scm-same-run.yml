@@ -1,0 +1,169 @@
+name: Neurofactory TRUE same-run installed genuine Qwen to actual restricted Windows SCM HOST (TEST ONLY)
+on:
+  push:
+    branches: [neurofactory-genuine-qwen-real-scm-onecycle-20261022]
+    paths:
+      - .github/workflows/neurofactory-onepc-real-qwen-restricted-scm-same-run.yml
+      - bridge/neurofactory/one_pc_candidate/test_real_qwen_actual_restricted_scm_ci.py
+permissions:
+  contents: read
+jobs:
+  real-qwen-ollama-test:
+    runs-on: windows-2025
+    timeout-minutes: 24
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          path: .nf_pinned_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 681375ce0b959812fc836bf4d14abc107b58e9ca
+          path: .nf_pinned_acl
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c92e102efed49e62eac1bc0e434b3d412d62e40
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
+      - name: Stage immutable 15 source components for genuine UI draft provider request
+        run: |
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
+          if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_PINNED_SOURCE_STAGING_FAILED'}
+          $env:NF_REAL_QWEN_COMPONENTS=Join-Path $stage 'components'
+          python -B -c "import sys;from pathlib import Path;sys.path.insert(0,'bridge/neurofactory/one_pc_candidate');from installed_integrity import verify;assert verify(Path(sys.argv[1]))['files_verified']==15;print('NF_REAL_QWEN_DRAFT_PINNED_PROVIDER=VERIFIED')" "$env:NF_REAL_QWEN_COMPONENTS"
+          if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_INSTALL_INTEGRITY_FAILED'}
+      - name: Deny owner runner and undersized machine
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') {throw 'DISPOSABLE_WINDOWS_ONLY'}
+          $os=Get-CimInstance Win32_OperatingSystem
+          $free=[math]::Floor([double]$os.FreePhysicalMemory/1024)
+          if ($free -lt 6000) {throw 'OLLAMA_QWEN_INFERENCE_RESOURCE_GUARD'}
+          $disk=Get-PSDrive -Name $env:SystemDrive.Substring(0,1)
+          if ($disk.Free -lt 6500000000) {throw 'OLLAMA_QWEN_INFERENCE_DISK_GUARD'}
+          Write-Output ('NF_REAL_OLLAMA_HOSTED_AVAILABLE_RAM_MB='+$free)
+      - name: Download pinned official Ollama Windows binary only onto disposable runner
+        run: |
+          $zip=Join-Path $env:RUNNER_TEMP 'nf-ollama-win-amd64.zip'
+          Invoke-WebRequest -Uri 'https://github.com/ollama/ollama/releases/download/v0.34.0/ollama-windows-amd64.zip' -OutFile $zip -MaximumRedirection 3 -TimeoutSec 480
+          if ((Get-Item $zip).Length -ne 1469375054) {throw 'OLLAMA_OFFICIAL_ASSET_LENGTH_MISMATCH'}
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -cne 'a7dd1b174f39d3d1b8a25d4cbc86045d0e190b17187bfdcbe2f2ee3b5a11470e') {throw 'OLLAMA_OFFICIAL_ASSET_HASH_MISMATCH'}
+          $folder=Join-Path $env:RUNNER_TEMP 'nf-ollama-official'
+          Expand-Archive -LiteralPath $zip -DestinationPath $folder
+          $exe=Get-ChildItem $folder -Filter ollama.exe -File -Recurse | Select-Object -First 1
+          if (!$exe) {throw 'OLLAMA_EXE_MISSING'}
+          Write-Output 'NF_REAL_OLLAMA_OFFICIAL_PINNED_BINARY=VERIFIED'
+      - name: Build and install the actual candidate Windows app on disposable hosted runner
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -ne 'github-hosted') {throw 'DISPOSABLE_RUNNER_REQUIRED'}
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage'
+          New-Item -ItemType Directory -Force "$stage\\app","$stage\\ui","$stage\\runtime" | Out-Null
+          $archive=Join-Path $env:RUNNER_TEMP 'nf-python-embed.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $archive -MaximumRedirection 2
+          if ((Get-Item $archive).Length -ne 11133606) {throw 'EMBEDDED_PYTHON_LENGTH_MISMATCH'}
+          Expand-Archive -LiteralPath $archive -DestinationPath "$stage\\runtime" -Force
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py','bridge/neurofactory/one_pc_candidate/installed_integrity.py','bridge/neurofactory/one_pc_candidate/draft_provider.py','bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py','bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py','bridge/neurofactory/one_pc_candidate/restore_offline.py','bridge/neurofactory/one_pc_candidate/core_readonly_observer.py','bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\\app"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js','bridge/neurofactory/control_ui/integrations.js' "$stage\\ui"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\\start_neurofactory.cmd"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\\README.txt"
+          choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {throw 'DISPOSABLE_INNO_INSTALL_FAILED'}
+          $compiler='C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe'
+          if (!(Test-Path $compiler)) {throw 'INNO_COMPILER_NOT_INSTALLED'}
+          $script=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').Path
+          & $compiler "/DSourceRoot=$stage" $script
+          if ($LASTEXITCODE -ne 0) {throw 'DRAFT_INSTALLER_COMPILE_FAILED'}
+          $installer='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe'
+          $installer=(Resolve-Path $installer).Path
+          Write-Output ('NF_REAL_QWEN_INSTALLER_SHA256='+(Get-FileHash $installer -Algorithm SHA256).Hash)
+          $installed=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-actual-install'
+          $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$installed")
+          if ($p.ExitCode -ne 0) {throw 'DISPOSABLE_INSTALL_FAILED'}
+          $env:NF_REAL_QWEN_INSTALLED_APP=Join-Path $installed 'app'
+          & "$installed\\runtime\\python.exe" -B "$installed\\app\\test_installed_provider_import.py" --components "$installed\\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_PROVIDER_IMPORT_FAILED'}
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/test_real_user_qwen_proposal_windows.py' "$installed\\app\\nf-ci-qwen-test.py"
+          Write-Output 'NF_REAL_QWEN_ACTUAL_WINDOWS_INSTALLATION=PASS_DISPOSABLE_ONLY'
+      - name: Start real Ollama and pull actual Qwen3 0.6B weights to temp only
+        run: |
+          $exe=(Get-ChildItem (Join-Path $env:RUNNER_TEMP 'nf-ollama-official') -Filter ollama.exe -File -Recurse | Select-Object -First 1).FullName
+          $env:OLLAMA_HOST='127.0.0.1:11434'
+          $env:OLLAMA_MODELS=Join-Path $env:RUNNER_TEMP 'nf-ollama-disposable-models'
+          $out=Join-Path $env:RUNNER_TEMP 'nf-ollama-out.log'
+          $err=Join-Path $env:RUNNER_TEMP 'nf-ollama-err.log'
+          $server=Start-Process -PassThru -WindowStyle Hidden -FilePath $exe -ArgumentList @('serve') -RedirectStandardOutput $out -RedirectStandardError $err
+          try {
+            $ready=$false
+            for ($i=0;$i -lt 80;$i++) {
+              Start-Sleep -Milliseconds 500
+              if ($server.HasExited) {break}
+              try {$tags=Invoke-RestMethod 'http://127.0.0.1:11434/api/tags' -TimeoutSec 2; $ready=$true;break} catch {}
+            }
+            if (!$ready) {
+              if (Test-Path $err) {Get-Content $err | Select-Object -Last 15}
+              throw 'GENUINE_OLLAMA_SERVER_NOT_STARTED'
+            }
+            & $exe pull 'qwen3:0.6b'
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN3_PULL_FAILED'}
+            & $exe pull 'qwen2.5-coder:1.5b'
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_CODER_PULL_FAILED'}
+            $inventory=Invoke-RestMethod 'http://127.0.0.1:11434/api/tags'
+            $matched=@($inventory.models | Where-Object {$_.name -eq 'qwen3:0.6b'})
+            if ($matched.Count -ne 1 -or $matched[0].digest -notmatch '^[a-fA-F0-9]{64}$') {throw 'GENUINE_QWEN3_NOT_REPORTED_BY_OLLAMA'}
+            Write-Output ('NF_REAL_OLLAMA_QWEN_MODEL_REPORTED_DIGEST='+$matched[0].digest)
+            $src=(Resolve-Path 'bridge/neurofactory/one_pc_candidate').Path
+            $env:PYTHONPATH=$src
+            & python -B -c "from local_workspace import probe_local_qwen; r=probe_local_qwen('qwen3:0.6b'); assert r['status']=='OLLAMA_LOCAL_RESPONSE_UNATTESTED'; assert r['model_provenance_attested'] is False; assert r['core_dispatch_allowed'] is False; print('NF_REAL_QWEN_OLLAMA_RESPONSE_SHA256='+r['response_sha256']); print('NF_REAL_QWEN_REAL_OLLAMA_PROVIDER=PASS_UNATTESTED')"
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_OLLAMA_INFERENCE_FAILED'}
+            $env:NF_REAL_QWEN_COMPONENTS=Join-Path (Join-Path $env:RUNNER_TEMP 'nf-real-provider-stage') 'components'
+            $env:NF_REAL_QWEN_DISPOSABLE_TEST='1'
+            $installed=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-actual-install'
+            $env:NF_REAL_QWEN_INSTALLED_APP=Join-Path $installed 'app'
+            $env:NF_REAL_QWEN_E2E_EXPORT=Join-Path $env:RUNNER_TEMP 'nf-real-qwen-owner-host-export'
+            & "$installed\\runtime\\python.exe" -B "$installed\\app\\nf-ci-qwen-test.py"
+            if ($LASTEXITCODE -ne 0) {throw 'REAL_QWEN_INSTALLED_APP_HTTP_FAILED'}
+            python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3" "pywin32==311"
+            if ($LASTEXITCODE -ne 0) {throw 'EXTERNAL_OWNER_TEST_SIGNER_DEPENDENCY_FAILED'}
+            # This ONE run replaces the prior synthetic HOST completion with
+            # the genuine restricted Windows SCM receiver+separate worker.
+            # There is no second model request; the verified backup is reused.
+            $env:NF_WINDOWS_SCM_DISPOSABLE_ONLY='1'
+            $env:NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY='1'
+            $env:NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID='1'
+            $env:NF_ONEPC_FINAL_SIGNED_CI='1'
+            if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne '1c4ccd7d64e87e284a3796b3432f13910a48679c') {throw 'REAL_SCM_CORE_PIN_CHANGED'}
+            if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') {throw 'REAL_SCM_ACL_PIN_CHANGED'}
+            & python -B bridge/neurofactory/one_pc_candidate/test_real_qwen_actual_restricted_scm_ci.py
+            if ($LASTEXITCODE -ne 0) {throw 'GENUINE_QWEN_TO_REAL_RESTRICTED_SCM_ONE_RUN_FAILED'}
+            Write-Output 'NF_REAL_QWEN_TO_RESTRICTED_SCM_SAME_RUN=PASS_EPHEMERAL_OWNER_TEST_ONLY'
+            Write-Output 'NF_REAL_QWEN_PRODUCTION_SIGNED_SERVICE_NOT_INSTALLED=TRUE'
+            Write-Output 'NF_REAL_QWEN_EXTERNAL_WITNESS_NOT_CONFIGURED=TRUE'
+          } finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+      - name: Ensure source untouched
+        run: git diff --exit-code
