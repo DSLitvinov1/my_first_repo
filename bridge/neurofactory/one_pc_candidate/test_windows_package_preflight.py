@@ -91,9 +91,9 @@ class WindowsPublisherPreflightTest(unittest.TestCase):
 
     def test_broken_signature_process_no_auto_retry(self):
         with patch("subprocess.run",side_effect=TimeoutError("synthetic")) as tool:
-            # Real subprocess timeout is subprocess.TimeoutExpired, not generic TimeoutError,
-            # and fail-closed on it is verified by the following native exception.
-            with self.assertRaises(TimeoutError):
+            # TimeoutError is also an OSError on Windows; fail closed and
+            # expose no uncontrolled retry.
+            with self.assertRaises(WindowsPackageDenied):
                 self.observe()
             self.assertEqual(tool.call_count,1)
         from subprocess import TimeoutExpired
