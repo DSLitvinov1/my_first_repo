@@ -89,6 +89,17 @@ class WindowsPublisherPreflightTest(unittest.TestCase):
                 with self.assertRaises(WindowsPackageDenied):
                     self.observe()
 
+    def test_installer_swap_between_hash_and_authenticode_refused(self):
+        fake=Mock(returncode=0,stdout=json.dumps({"status":"Valid","thumbprint":PUB}),stderr="")
+        def altered_during_check(*args, **kwargs):
+            with self.file.open("ab") as stream:
+                stream.write(b"MALICIOUS_MODIFICATION_AFTER_INITIAL_HASH")
+            return fake
+        with patch("subprocess.run",side_effect=altered_during_check) as run:
+            with self.assertRaises(WindowsPackageDenied):
+                self.observe()
+        self.assertEqual(run.call_count,1)
+
     def test_broken_signature_process_no_auto_retry(self):
         with patch("subprocess.run",side_effect=TimeoutError("synthetic")) as tool:
             # TimeoutError is also an OSError on Windows; fail closed and
