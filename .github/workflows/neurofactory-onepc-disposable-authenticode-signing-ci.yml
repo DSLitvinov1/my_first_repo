@@ -77,10 +77,16 @@ jobs:
             }
             if (!$cert -or !$cert.HasPrivateKey) {throw 'NO_EPHEMERAL_CI_CODE_SIGNER'}
             Write-Output 'NF_DISPOSABLE_CERT_GENERATION=COMPLETE'
-            $export=Join-Path $env:RUNNER_TEMP 'nf-CI-temporary-pub.cer'
-            Export-Certificate -Cert $cert -FilePath $export | Out-Null
-            Import-Certificate -FilePath $export -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
-            $addedRoot=$true
+            Write-Output 'NF_DISPOSABLE_TEST_TRUST_STORE_OPEN_STARTED'
+            $rootStore=[Security.Cryptography.X509Certificates.X509Store]::new(
+              [Security.Cryptography.X509Certificates.StoreName]::Root,
+              [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+            try {
+              $rootStore.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+              $rootStore.Add($cert)
+              $addedRoot=$true
+            }
+            finally { $rootStore.Close() }
             Write-Output 'NF_DISPOSABLE_CERT_LOCAL_TRUST=TEST_RUNNER_ONLY'
             $sdk=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction Stop |
                 Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending
