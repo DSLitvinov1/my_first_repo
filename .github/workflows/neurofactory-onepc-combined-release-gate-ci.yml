@@ -1,0 +1,24 @@
+name: Neurofactory combined Windows signer and external witness release gate (no install)
+on:
+  push:
+    branches: [neurofactory-onepc-production-trust-gates-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/combined_release_review_gate.py
+      - bridge/neurofactory/one_pc_candidate/test_combined_release_review_gate.py
+      - .github/workflows/neurofactory-onepc-combined-release-gate-ci.yml
+permissions:
+  contents: read
+jobs:
+  synthetic-crypto-no-real-privileges:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Only new combined release approval boundaries
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_combined"
+          "$RUNNER_TEMP/nf_combined/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_combined/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_combined_release_review_gate.py -v
+          git diff --exit-code
