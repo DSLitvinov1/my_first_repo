@@ -101,12 +101,46 @@ jobs:
           $mark=Join-Path $root 'status\dormant-status.json'
           if (!(Test-Path $mark)) {throw 'PROTECTED_SERVICE_STATUS_MISSING'}
           $result=Get-Content $mark -Raw|ConvertFrom-Json
-          if ($result.status -cne 'REVIEW_BLOCKED_NOT_PRODUCTION' -or $result.core_queue_allowed -or $result.host_execution_allowed -or $result.untrusted_model_effects_allowed) {throw 'REVIEW_BARRIER_NOT_ENFORCED'}
+          if ($result.status -cne 'REVIEW_BLOCKED_NOT_PRODUCTION' -or $result.core_queue_allowed -or $result.host_execution_allowed -or $result.untrusted_model_effects_allowed -or $result.immutable_install_root_write_denied -ne $true) {throw 'REVIEW_BARRIER_OR_IMMUTABLE_ROOT_NOT_ENFORCED'}
           $qc=(& sc.exe qsidtype $name | Out-String)
           if ($qc -notmatch 'RESTRICTED') {throw 'REAL_SERVICE_SID_NOT_RESTRICTED'}
           Write-Output 'NF_ACTUAL_WINDOWS_RESTRICTED_COREHOST_SERVICE_RUNNING=PASS_CI_DORMANT_ONLY'
           Write-Output 'NF_ACTUAL_WINDOWS_LOCALSERVICE_AND_PROTECTED_STATUS=PASS_TEST_ONLY'
           Write-Output 'NF_WINDOWS_SERVICE_CORE_QUEUE_AND_EFFECTS=FALSE'
+
+          # Deliberate test-operator config corruption after clean stop.
+          & sc.exe stop $name | Out-Null
+          $stopped=$false
+          for ($i=0;$i -lt 60;$i++) {
+            Start-Sleep -Milliseconds 250
+            if ((Get-CimInstance Win32_Service -Filter "Name='$name'").State -eq 'Stopped') {$stopped=$true;break}
+          }
+          if (!$stopped) {throw 'DORMANT_SERVICE_CANNOT_STOP_CLEANLY'}
+          $config.core_queue_allowed=$true
+          $config|ConvertTo-Json -Compress|Set-Content -LiteralPath "$root\dormant-config.json" -Encoding ascii
+          & sc.exe start $name | Out-Null
+          $tamperStartCode=$LASTEXITCODE
+          Start-Sleep -Seconds 2
+          $badState=(Get-CimInstance Win32_Service -Filter "Name='$name'").State
+          if ($badState -eq 'Running') {throw 'TAMPERED_CORE_QUEUE_FLAG_ACTIVATED_SERVICE'}
+          Write-Output 'NF_DORMANT_SCM_TAMPERED_QUEUE_AUTHORITY=DENIED'
+          # Only the separately privileged CI operator can restore the
+          # immutable config; do not grant service-account write access.
+          $config.core_queue_allowed=$false
+          $config|ConvertTo-Json -Compress|Set-Content -LiteralPath "$root\dormant-config.json" -Encoding ascii
+          Remove-Item -LiteralPath $mark -Force
+          & sc.exe start $name | Out-Null
+          if ($LASTEXITCODE -ne 0) {throw 'RESTART_AFTER_CONFIG_REPAIR_FAILED'}
+          $restarted=$false
+          for ($i=0;$i -lt 60;$i++) {
+            Start-Sleep -Milliseconds 250
+            if ((Get-CimInstance Win32_Service -Filter "Name='$name'").State -eq 'Running' -and (Test-Path $mark)) {$restarted=$true;break}
+          }
+          if (!$restarted) {throw 'DORMANT_SERVICE_RESTART_NOT_REPRODUCIBLE'}
+          $again=Get-Content -LiteralPath $mark -Raw | ConvertFrom-Json
+          if ($again.core_queue_allowed -or $again.host_execution_allowed -or $again.immutable_install_root_write_denied -ne $true) {throw 'DORMANT_RESTART_ESCALATED'}
+          Write-Output 'NF_DORMANT_WINDOWS_SERVICE_STOP_TAMPER_DENIAL_AND_RESTART=PASS_TEST_ONLY'
+
       - name: Always remove disposable Windows service and program files
         if: always()
         run: |
