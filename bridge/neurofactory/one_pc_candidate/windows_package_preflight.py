@@ -81,6 +81,26 @@ def inspect_windows_package(*, installer, expected_sha256,
             type(obj["thumbprint"]) is not str or
             obj["thumbprint"].upper()!=pinned_publisher_thumbprint):
         _deny("unsigned, untrusted or wrong publisher")
+    # Guard the common read/verify race: the file inspected by Windows must
+    # remain the exact digest and metadata observed before the signature
+    # check. This read-only diagnostic is NOT an atomic secure installer.
+    try:
+        again=installer.lstat()
+        if (installer.is_symlink() or
+                again.st_size != st.st_size or
+                again.st_mtime_ns != st.st_mtime_ns or
+                again.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            _deny("installer changed during Windows signing inspection")
+        digest_again=sha256()
+        with installer.open("rb") as stream:
+            while True:
+                chunk=stream.read(1024*1024)
+                if not chunk:break
+                digest_again.update(chunk)
+        if digest_again.hexdigest()!=expected_sha256:
+            _deny("installer replaced after Authenticode inspection")
+    except OSError as exc:
+        raise WindowsPackageDenied("Windows package denied: installer changed") from exc
     return {
         "schema":"nf.onepc.windows_authenticode_preflight.v1",
         "status":"SIGNED_PACKAGE_AND_PIN_MATCH_NO_INSTALL",
