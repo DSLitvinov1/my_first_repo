@@ -1,0 +1,108 @@
+name: Neurofactory protected HOST operator installer rollback — disposable Windows only
+on:
+  push:
+    branches: [neurofactory-onepc-review-installer-rollback-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/install_dormant_host_acceptance_ci.ps1
+      - bridge/neurofactory/one_pc_candidate/windows_setup/inspect_dormant_review_bundle.py
+      - .github/workflows/neurofactory-onepc-operator-install-rollback-ci.yml
+permissions:
+  contents: read
+jobs:
+  acceptance-installer-new-boundary-only:
+    runs-on: windows-2025
+    timeout-minutes: 14
+    env:
+      NF_CI_REVIEW_INSTALLER_ONLY: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare pinned vendor runtime and inert single-service package
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:GITHUB_ACTIONS -cne 'true') {throw 'UNSAFE_RUNNER_NOT_DISPOSABLE'}
+          $zip=Join-Path $env:RUNNER_TEMP 'nf-embedded-review-installer.zip'
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $zip -MaximumRedirection 2
+          if ((Get-Item $zip).Length -ne 11133606 -or (Get-FileHash $zip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'VENDOR_RUNTIME_CHECK_FAILED'}
+          $root=Join-Path $env:RUNNER_TEMP 'NeurofactoryProtectedHost-REVIEW-ONLY'
+          if (Test-Path $root) {throw 'REVIEW_STAGE_ALREADY_EXISTS'}
+          New-Item -ItemType Directory -Force "$root\runtime","$root\status" | Out-Null
+          Expand-Archive -LiteralPath $zip -DestinationPath "$root\runtime"
+          foreach($file in @('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1')) {
+            Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/windows_setup/$file" -Destination (Join-Path $root $file)
+          }
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt' "$root\README-ACCEPTANCE-RU.txt"
+          [ordered]@{
+            schema='nf.windows.dormant_host_provision.v1'
+            service_name='NeurofactoryCoreHost'
+            source_sha40=$env:GITHUB_SHA
+            mode='REVIEW_BLOCKED_NOT_PRODUCTION'
+            real_host_execution_allowed=$false
+            core_queue_allowed=$false
+            network_listener_allowed=$false
+            production_release_approved=$false
+            independent_review_approved=$false
+            owner_key_installed=$false
+            external_witness_verified=$false
+          } | ConvertTo-Json -Compress | Set-Content "$root\dormant-config.json" -Encoding ascii
+          $files=@(Get-ChildItem $root -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $rel=$_.FullName.Substring($root.Length+1).Replace('\','/')
+            [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
+          })
+          if ($files.Count -lt 35) {throw 'REVIEW_PACKAGE_MISSING_VENDOR_SOURCE'}
+          [ordered]@{
+            schema='nf.windows.protected_host_review_bundle.v1'
+            source_sha=$env:GITHUB_SHA
+            vendor_python_sha256='4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3'
+            service_sha256=(Get-FileHash "$root\neurofactory_dormant_service.py" -Algorithm SHA256).Hash.ToLowerInvariant()
+            status='UNSIGNED_REVIEW_ONLY'
+            production_release_approved=$false
+            host_effect_allowed=$false
+            windows_service_installed=$false
+            independent_reviewer_approved=$false
+            entries=$files
+          } | ConvertTo-Json -Depth 5 | Set-Content "$root\bundle-manifest.json" -Encoding utf8
+          Write-Output ('NF_REVIEW_INSTALL_STAGED_IMMUTABLE_FILES='+$files.Count)
+      - name: Deny tampered package before any SCM mutation; test rollback; install and safe remove
+        run: |
+          $ErrorActionPreference='Stop'
+          $script='bridge/neurofactory/one_pc_candidate/windows_setup/install_dormant_host_acceptance_ci.ps1'
+          $root=Join-Path $env:RUNNER_TEMP 'NeurofactoryProtectedHost-REVIEW-ONLY'
+          $serviceFile=Join-Path $root 'neurofactory_dormant_service.py'
+          $original=[System.IO.File]::ReadAllBytes($serviceFile)
+          Add-Content -LiteralPath $serviceFile -Value '# CI_INJECTED_TAMPER'
+          & pwsh -NoProfile -NonInteractive -File $script -Operation Install
+          if ($LASTEXITCODE -eq 0) {throw 'ALTERED_REVIEW_ARCHIVE_WAS_ACCEPTED'}
+          $installed=Join-Path $env:PROGRAMDATA 'NeurofactoryDormantAcceptanceCI'
+          if ((Test-Path $installed) -or (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue)) {throw 'VERIFY_MUST_HAPPEN_BEFORE_INSTALL'}
+          [System.IO.File]::WriteAllBytes($serviceFile,$original)
+          & pwsh -NoProfile -NonInteractive -File $script -Operation Install -InjectFailureAfterCreate
+          if ($LASTEXITCODE -eq 0) {throw 'FORCED_FAILURE_WAS_IGNORED'}
+          if ((Test-Path $installed) -or (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue)) {throw 'FAILED_INSTALL_NOT_ROLLED_BACK'}
+          Write-Output 'NF_STAGED_TAMPER_DENIAL_AND_PARTIAL_INSTALL_ROLLBACK=PASS_CI_ONLY'
+          & pwsh -NoProfile -NonInteractive -File $script -Operation Install
+          if ($LASTEXITCODE -ne 0) {throw 'REVIEW_ONLY_HOST_INSTALL_DID_NOT_PASS'}
+          if ((Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'").State -cne 'Running') {throw 'PROTECTED_SERVICE_NOT_RUNNING'}
+          $status=Get-Content -LiteralPath (Join-Path $installed 'status\dormant-status.json') -Raw|ConvertFrom-Json
+          if ($status.host_execution_allowed -or $status.core_queue_allowed -or $status.immutable_install_root_write_denied -ne $true) {throw 'INSTALLER_ENABLED_FORBIDDEN_EFFECTS'}
+          & pwsh -NoProfile -NonInteractive -File $script -Operation Remove
+          if ($LASTEXITCODE -ne 0) {throw 'REVIEW_ONLY_HOST_OWNED_REMOVAL_FAILED'}
+          if (Test-Path $installed) {throw 'REVIEW_ROOT_LEFT_AFTER_REMOVAL'}
+          Write-Output 'NF_OPERATOR_REVIEW_INSTALL_AUDIT_SAFE_REMOVE=PASS_CI_ONLY'
+      - name: Always stop and delete only this CI-name service on disposable machine
+        if: always()
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:NF_CI_REVIEW_INSTALLER_ONLY -cne '1') {throw 'NOT_HOSTED_NO_CLEANUP'}
+          $root=Join-Path $env:PROGRAMDATA 'NeurofactoryDormantAcceptanceCI'
+          if (Test-Path (Join-Path $root 'review-ci-install-marker.json')) {
+            & sc.exe stop NeurofactoryCoreHost | Out-Null
+            & sc.exe delete NeurofactoryCoreHost | Out-Null
+            Start-Sleep -Milliseconds 500
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+          }
