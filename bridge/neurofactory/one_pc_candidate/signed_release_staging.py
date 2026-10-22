@@ -174,20 +174,31 @@ def _admin():
         _deny("explicit elevated operator process required")
 
 def _locked_acl(path):
-    # Windows icacls is a native operator privilege boundary. Never grant
-    # the local user, model runner, LocalService, UI, or generic Users.
-    args=["icacls",str(path),"/inheritance:r","/grant:r",
-          "*S-1-5-18:(OI)(CI)F","*S-1-5-32-544:(OI)(CI)F"]
+    """REPLACE the entire DACL, do not merely add ACEs with icacls.
+
+    Newly created ProgramData folders may include explicit ACEs for a
+    runner/creator. /inheritance:r does not remove explicit ACEs.
+    """
+    if os.name!="nt":
+        _deny("Windows-only ACL installation")
     try:
-        response=subprocess.run(args,capture_output=True,timeout=20)
-        if response.returncode:
-            _deny("ACL setup failed")
-        report=subprocess.run(["icacls",str(path)],
-                              capture_output=True,text=True,timeout=20)
-    except (OSError,subprocess.TimeoutExpired) as exc:
-        raise StagingDenied("Unable to verify Windows ACL") from exc
-    if report.returncode or "S-1-5-32-545" in report.stdout:
-        _deny("ACL not verifiably privileged-only")
+        import win32security
+        import win32con
+        acl=win32security.ACL()
+        inherit=win32con.CONTAINER_INHERIT_ACE|win32con.OBJECT_INHERIT_ACE
+        for sid_text in ("S-1-5-18","S-1-5-32-544"):
+            sid=win32security.ConvertStringSidToSid(sid_text)
+            acl.AddAccessAllowedAceEx(
+                win32security.ACL_REVISION,inherit,
+                win32con.GENERIC_ALL,sid)
+        win32security.SetNamedSecurityInfo(
+            str(path),win32security.SE_FILE_OBJECT,
+            win32security.DACL_SECURITY_INFORMATION |
+            win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+            None,None,acl,None)
+    except (OSError,ImportError,AttributeError,TypeError,ValueError) as exc:
+        raise StagingDenied("Windows private DACL replacement failed") from exc
+    _privileged_acl(path)
 
 def operator_stage_signed_candidate(installer,approval_file,*,expected_source_commit):
     """One-time admin-only quarantine; NEVER executes the copied installer."""
@@ -205,6 +216,7 @@ def operator_stage_signed_candidate(installer,approval_file,*,expected_source_co
     # overrides, the signed request, the browser, or a model proposal.
     if trust.is_symlink() or not trust.is_dir():
         _deny("independent reviewer and owner pins are not enrolled")
+    _privileged_acl(root/"Neurofactory")
     _privileged_acl(trust)
     _privileged_acl(trust/"owner-ed25519.pub")
     _privileged_acl(trust/"reviewer-ed25519.pub")
