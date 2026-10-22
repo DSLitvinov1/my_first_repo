@@ -1,5 +1,6 @@
 """No remote key creation: synthetic ephemeral Ed25519 keys only inside CI unit tests."""
 import base64
+import json
 from copy import deepcopy
 from hashlib import sha256
 import secrets
@@ -9,7 +10,7 @@ import unittest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from independent_witness_receipt import (
     _DOMAIN, _canonical, IndependentWitnessDenied,
-    verify_external_witness_receipt,
+    verify_external_witness_receipt,parse_bounded_witness_reply,
 )
 
 def digest(s):
@@ -100,6 +101,19 @@ class IndependentExternalWitnessReceiptTests(unittest.TestCase):
                 self.denied(**{field:True})
     def test_duplicate_or_extra_field_denied(self):
         self.denied(privileged_override=True)
+    def test_wire_parser_rejects_duplicate_evidence_and_oversized(self):
+        packet=self.packet()
+        raw=json.dumps(packet,separators=(",",":")).encode("ascii")
+        parsed=parse_bounded_witness_reply(raw)
+        self.assertTrue(self.verify(parsed)["signature_verified"])
+        doubled=b'{"evidence":{},"evidence":{},"signature_base64":"'+b"A"*88+b'"}'
+        with self.assertRaises(IndependentWitnessDenied):
+            parse_bounded_witness_reply(doubled)
+        with self.assertRaises(IndependentWitnessDenied):
+            parse_bounded_witness_reply(b"x"*3501)
+        with self.assertRaises(IndependentWitnessDenied):
+            parse_bounded_witness_reply(b'{"evidence":NaN,"signature_base64":'+b'"'+b"A"*88+b'"}')
+
     def test_signature_envelope_extra_role_denied(self):
         packet=self.packet()
         packet["allow_install"]=True
