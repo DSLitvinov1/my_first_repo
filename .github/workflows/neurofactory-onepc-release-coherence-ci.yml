@@ -1,0 +1,24 @@
+name: Neurofactory integrated release candidate coherence without rerunning model and Windows matrices
+on:
+  push:
+    branches: [neurofactory-onepc-release-packaging-hardening-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/release_candidate_audit.py
+      - bridge/neurofactory/one_pc_candidate/selfdev_review_candidate.py
+      - bridge/neurofactory/development/core_owned/one_task_core.py
+      - .github/workflows/neurofactory-onepc-release-coherence-ci.yml
+permissions:
+  contents: read
+jobs:
+  merged-source-coherence-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Inspect combined exact pinned sources only and report release blocked
+        run: |
+          python -B bridge/neurofactory/one_pc_candidate/release_candidate_audit.py
+      - name: Disallow tracked source changes
+        run: git diff --exit-code
