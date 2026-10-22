@@ -83,7 +83,7 @@ jobs:
             $addedRoot=$true
             Write-Output 'NF_DISPOSABLE_CERT_LOCAL_TRUST=TEST_RUNNER_ONLY'
             $sdk=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction Stop |
-                Where-Object { $_.Name -match '^10\\.' } | Sort-Object Name -Descending
+                Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending
             $tools=@($sdk | ForEach-Object {Join-Path $_.FullName 'x64\signtool.exe'} |
                       Where-Object { Test-Path -LiteralPath $_ })
             if ($tools.Count -lt 1) {throw 'NO_WINDOWS_SDK_SIGNTOOL_AVAILABLE'}
