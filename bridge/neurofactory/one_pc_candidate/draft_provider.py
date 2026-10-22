@@ -26,7 +26,7 @@ def _module(components: Path):
     imported=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(imported)
     stamp=imported.verify(components)
-    if stamp["files_verified"]!=16 or stamp["live_execution_allowed"] is not False:
+    if stamp["files_verified"]!=15 or stamp["live_execution_allowed"] is not False:
         raise DraftProviderDenied("Invalid installed pinned code")
     location=components/"providers"
     if location.is_symlink() or not location.is_dir():

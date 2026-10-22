@@ -1,7 +1,7 @@
 name: Neurofactory ONE-PC true restricted SCM host signed receipt closes CORE (FAKE MODEL)
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-release-packaging-hardening-20261022]
     paths:
       - bridge/neurofactory/development/core_owned/one_task_core.py
       - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
@@ -29,7 +29,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
           path: .nf_pinned_core
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
       - name: Assert existing immutable CORE PROVIDERS and Windows ACL parents
         shell: pwsh
         run: |
-          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'beb08eff32923d8ca364aabfde0458f380acf8e7') { throw 'CORE_SOURCE_MISMATCH' }
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne '1c4ccd7d64e87e284a3796b3432f13910a48679c') { throw 'CORE_SOURCE_MISMATCH' }
           if ((git -C .nf_pinned_providers rev-parse HEAD).Trim() -cne '827b654d9f7c6a10a9b90a9c97802e63116711b9') { throw 'PROVIDER_SOURCE_MISMATCH' }
           if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'ACL_SOURCE_MISMATCH' }
       - name: Install disposable Windows-only isolated runtime dependencies

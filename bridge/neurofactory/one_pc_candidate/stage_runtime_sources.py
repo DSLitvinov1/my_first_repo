@@ -13,9 +13,9 @@ import re
 import subprocess
 
 SOURCES = {
-    "core": ("beb08eff32923d8ca364aabfde0458f380acf8e7",
+    "core": ("1c4ccd7d64e87e284a3796b3432f13910a48679c",
         "bridge/neurofactory/development/core_owned/",
-        ("one_task_core.py","offline_os_receiver_client.py")),
+        ("one_task_core.py",)),
     "host": ("2c92e102efed49e62eac1bc0e434b3d412d62e40",
         "bridge/neurofactory/trusted_host/",
         ("windows_scm_sandbox_receiver.py","windows_named_pipe_pilot_receiver.py",

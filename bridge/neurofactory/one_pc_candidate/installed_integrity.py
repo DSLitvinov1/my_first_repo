@@ -12,8 +12,8 @@ import re
 import stat
 
 PINNED={
-    "core":("beb08eff32923d8ca364aabfde0458f380acf8e7",
-            ("one_task_core.py","offline_os_receiver_client.py")),
+    "core":("1c4ccd7d64e87e284a3796b3432f13910a48679c",
+            ("one_task_core.py",)),
     "host":("2c92e102efed49e62eac1bc0e434b3d412d62e40",
             ("windows_scm_sandbox_receiver.py","windows_named_pipe_pilot_receiver.py",
              "windows_scm_ci_worker.py","signed_effect_permit.py")),
@@ -25,8 +25,7 @@ PINNED={
             ("mvp_task_exchange.py","mvp_status_projection.py","release_readiness.py")),
 }
 ANCHORED_BLOBS={
-    "core/one_task_core.py": "ab1471813c6da29407c913b974a2209467a4b961",
-    "core/offline_os_receiver_client.py": "417f7c1713c8333ff10a79962aafecf87a863cff",
+    "core/one_task_core.py": "b43f4217f0756154fe3d3e6fafd007762c5b5117",
     "host/windows_scm_sandbox_receiver.py": "8232aa365c9baed1b75f14fc8d47f2224e2b1487",
     "host/windows_named_pipe_pilot_receiver.py": "a3b01ad2e281eca40d13869fed6fbed5ffbe88b1",
     "host/windows_scm_ci_worker.py": "e5444b9485950cec360058b10c84331b2d60700c",

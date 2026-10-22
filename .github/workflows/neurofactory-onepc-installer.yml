@@ -1,7 +1,7 @@
 name: Neurofactory one-PC per-user Windows local draft installer verification
 on:
   push:
-    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020, neurofactory-onepc-qwen-scm-unification-20261021]
+    branches: [neurofactory-onepc-final-integration-20261018, neurofactory-onepc-installer-qa-fix-20261018, neurofactory-onepc-local-qwen-probe-20261018, neurofactory-onepc-complete-package-20261019, neurofactory-onepc-provider-runtime-import-20261019, neurofactory-onepc-user-draft-provider-20261019, neurofactory-onepc-unified-qwen-core-ui-20261020, neurofactory-onepc-qwen-scm-unification-20261021, neurofactory-onepc-release-packaging-hardening-20261022]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/**
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
@@ -32,7 +32,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: beb08eff32923d8ca364aabfde0458f380acf8e7
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
           path: .nf_pin_core
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -59,7 +59,9 @@ jobs:
           $archive=Join-Path $env:RUNNER_TEMP 'python-3.12.10-embed-amd64.zip'
           Invoke-WebRequest -Uri $url -OutFile $archive -MaximumRedirection 2
           if ((Get-Item $archive).Length -ne 11133606) {throw 'VENDOR_RUNTIME_UNEXPECTED_LENGTH'}
-          Get-FileHash $archive -Algorithm SHA256 | Format-List | Out-String | Write-Output
+          $runtimeHash=(Get-FileHash $archive -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($runtimeHash -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'VENDOR_RUNTIME_SHA256_NOT_PINNED'}
+          Write-Output ('NF_VENDOR_RUNTIME_SHA256_PINNED='+$runtimeHash)
           Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
           if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
           Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
@@ -78,7 +80,7 @@ jobs:
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'COMPONENT_SOURCE_PROVENANCE_FAILED'}
           $manifest=Get-Content "$stage\components\manifest.json" -Raw | ConvertFrom-Json
-          if ($manifest.entries.Count -ne 16 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
+          if ($manifest.entries.Count -ne 15 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
           Write-Output 'NF_INSTALLER_IMMUTABLE_CORE_HOST_PROVIDERS_COORDINATOR_STAGED=PASS_NOT_ACTIVE'
       - name: Install Inno Setup compiler on disposable GitHub Windows only
         run: |
@@ -105,7 +107,7 @@ jobs:
           $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
           if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
           $manifest=Get-Content "$install\components\manifest.json" -Raw | ConvertFrom-Json
-          if ($manifest.entries.Count -ne 16 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
+          if ($manifest.entries.Count -ne 15 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
           foreach($entry in $manifest.entries) {
             $file=Join-Path (Join-Path "$install\components" $entry.role) $entry.file
             if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
