@@ -51,6 +51,29 @@ def _canonical(value):
         raise IndependentWitnessDenied("Untrusted external witness: invalid canonical packet") from exc
 
 
+def parse_bounded_witness_reply(raw: bytes):
+    """Parse untrusted network JSON without accepting duplicate keys or NaN.
+
+    A verified signed reply remains evidence only; parsing never grants rights.
+    """
+    if type(raw) is not bytes or not 80 <= len(raw) <= 3500:
+        _deny("network reply size")
+    def unique(pairs):
+        out={}
+        for key,value in pairs:
+            if key in out:
+                _deny("duplicate reply property")
+            out[key]=value
+        return out
+    def reject_constant(value):
+        _deny("nonfinite witness JSON")
+    try:
+        return json.loads(raw.decode("ascii"),object_pairs_hook=unique,
+                          parse_constant=reject_constant)
+    except (ValueError, UnicodeError, TypeError, RecursionError) as exc:
+        raise IndependentWitnessDenied("Untrusted external witness: malformed wire encoding") from exc
+
+
 def _claim(claim):
     if type(claim) is not dict or set(claim) != _CLAIM_FIELDS:
         _deny("claim fields mismatch")
