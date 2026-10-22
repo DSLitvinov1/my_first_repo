@@ -111,24 +111,7 @@ $operatorKey=[Convert]::FromBase64String($doc.operator_public_base64)
 $operatorHash=[Convert]::ToHexString(
     [Security.Cryptography.SHA256]::HashData($operatorKey)).ToLowerInvariant()
 if ($doc.operator_public_sha256 -cne $operatorHash -or
-    $doc.mtls_witness_cert_sha256 -notmatch '^[0-9a-f]{64}
-$hashHex=[Convert]::ToHexString($hash).ToLowerInvariant()
-[ordered]@{
-    schema='nf.windows.operator_public_pins_readonly_audit.v1'
-    result='PROTECTED_PUBLIC_PIN_FILE_OBSERVED_NOT_ENROLLED'
-    public_pin_file_sha256=$hashHex
-    windows_file_owner_protected=$true
-    untrusted_accounts_cannot_write=$true
-    four_distinct_public_key_lengths_checked=$true
-    operator_public_fingerprint_matches_file=$true
-    independent_reviewer_key_enrolled=$false
-    authentic_owner_approval_verified=$false
-    independent_operator_hardware_attested=$false
-    private_keys_enrolled_by_auditor=$false
-    remote_witness_highwater_attested=$false
-    production_service_enabled=$false
-} | ConvertTo-Json -Compress
-) {
+    $doc.mtls_witness_cert_sha256 -notmatch '^[0-9a-f]{64}$') {
     throw 'NF_PUBLIC_TRUST_FINGERPRINT_MISMATCH'
 }
 $hash=[Security.Cryptography.SHA256]::HashData($raw)
@@ -139,6 +122,9 @@ $hashHex=[Convert]::ToHexString($hash).ToLowerInvariant()
     public_pin_file_sha256=$hashHex
     windows_file_owner_protected=$true
     untrusted_accounts_cannot_write=$true
+    four_distinct_public_key_lengths_checked=$true
+    operator_public_fingerprint_matches_file=$true
+    independent_reviewer_key_enrolled=$false
     authentic_owner_approval_verified=$false
     independent_operator_hardware_attested=$false
     private_keys_enrolled_by_auditor=$false
