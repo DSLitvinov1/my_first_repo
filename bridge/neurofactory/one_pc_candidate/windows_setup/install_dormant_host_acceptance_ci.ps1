@@ -24,8 +24,8 @@ if (!$role.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrato
 $name='NeurofactoryCoreHost'
 $commonData=[System.Environment]::GetFolderPath('CommonApplicationData')
 if ([string]::IsNullOrWhiteSpace($commonData) -or
-    [System.IO.Path]::GetFullPath($env:PROGRAMDATA).TrimEnd('\\') -ine
-        [System.IO.Path]::GetFullPath($commonData).TrimEnd('\\')) {
+    [System.IO.Path]::GetFullPath($env:PROGRAMDATA).TrimEnd([char]92) -ine
+        [System.IO.Path]::GetFullPath($commonData).TrimEnd([char]92)) {
     throw 'NF_PROGRAMDATA_MUST_BE_OS_PINNED'
 }
 $target=Join-Path $commonData 'NeurofactoryDormantAcceptanceCI'
