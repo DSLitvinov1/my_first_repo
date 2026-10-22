@@ -1,0 +1,31 @@
+name: Neurofactory one-PC independent witness highwater receipt negative tests
+on:
+  push:
+    branches: [neurofactory-onepc-production-trust-gates-20261022]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
+      - bridge/neurofactory/one_pc_candidate/test_independent_witness_receipt.py
+      - .github/workflows/neurofactory-onepc-external-witness-gate-ci.yml
+permissions:
+  contents: read
+jobs:
+  no-remote-key-access:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Synthetic ephemeral Ed25519 verifier cases only
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_witness"
+          "$RUNNER_TEMP/nf_witness/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_witness/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_independent_witness_receipt.py -v
+          git diff --exit-code
+      - name: Keep executable release and service controls explicitly unavailable
+        run: |
+          grep -q '"production_install_authorized":False' bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
+          grep -q '"remote_state_independently_queried":False' bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
+          echo 'NF_REAL_REMOTE_HIGHWATER_OBSERVED=FALSE'
+          echo 'NF_GENUINE_INDEPENDENT_KEY_CUSTODY=NOT_ATTESTED'
+          echo 'NF_REAL_PRODUCTION_SERVICE_ACTIVATION=BLOCKED'
