@@ -44,16 +44,53 @@ jobs:
           $cert=$null
           $addedRoot=$false
           try {
-            $cert=New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=NEUROFACTORY-DISPOSABLE-GITHUB-CI-DO-NOT-TRUST' -CertStoreLocation 'Cert:\CurrentUser\My' -KeyAlgorithm RSA -KeyLength 3072 -KeyExportPolicy NonExportable -NotAfter (Get-Date).AddDays(1)
+            Write-Output 'NF_DISPOSABLE_CERT_GENERATION_STARTED'
+            # Build the temporary test certificate in .NET, without accessing
+            # unavailable hardware signing services or production identities.
+            $rsa=[Security.Cryptography.RSA]::Create(2048)
+            $request=[Security.Cryptography.X509Certificates.CertificateRequest]::new(
+              'CN=NEUROFACTORY-DISPOSABLE-GITHUB-CI-DO-NOT-TRUST',
+              $rsa,[Security.Cryptography.HashAlgorithmName]::SHA256,
+              [Security.Cryptography.RSASignaturePadding]::Pkcs1)
+            $eku=[Security.Cryptography.OidCollection]::new()
+            [void]$eku.Add([Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.3'))
+            $request.CertificateExtensions.Add(
+              [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($eku,$false))
+            $request.CertificateExtensions.Add(
+              [Security.Cryptography.X509Certificates.X509KeyUsageExtension]::new(
+                [Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature,$true))
+            $temporary=$request.CreateSelfSigned((Get-Date).AddMinutes(-5),(Get-Date).AddHours(4))
+            $pfx=Join-Path $env:RUNNER_TEMP 'nf-CI-ephemeral-signing-secret.pfx'
+            $password=[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+            try {
+              [IO.File]::WriteAllBytes($pfx,$temporary.Export(
+                [Security.Cryptography.X509Certificates.X509ContentType]::Pfx,$password))
+              $secure=ConvertTo-SecureString -String $password -AsPlainText -Force
+              $cert=Import-PfxCertificate -FilePath $pfx -CertStoreLocation 'Cert:\CurrentUser\My' -Password $secure
+            }
+            finally {
+              Remove-Item -LiteralPath $pfx -Force -ErrorAction SilentlyContinue
+              $password=$null
+              $secure=$null
+              $temporary.Dispose()
+              $rsa.Dispose()
+            }
             if (!$cert -or !$cert.HasPrivateKey) {throw 'NO_EPHEMERAL_CI_CODE_SIGNER'}
+            Write-Output 'NF_DISPOSABLE_CERT_GENERATION=COMPLETE'
             $export=Join-Path $env:RUNNER_TEMP 'nf-CI-temporary-pub.cer'
             Export-Certificate -Cert $cert -FilePath $export | Out-Null
             Import-Certificate -FilePath $export -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
             $addedRoot=$true
-            $tools=@(Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -File -Recurse -ErrorAction Stop | Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } | Sort-Object FullName -Descending)
+            Write-Output 'NF_DISPOSABLE_CERT_LOCAL_TRUST=TEST_RUNNER_ONLY'
+            $sdk=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction Stop |
+                Where-Object { $_.Name -match '^10\\.' } | Sort-Object Name -Descending
+            $tools=@($sdk | ForEach-Object {Join-Path $_.FullName 'x64\signtool.exe'} |
+                      Where-Object { Test-Path -LiteralPath $_ })
             if ($tools.Count -lt 1) {throw 'NO_WINDOWS_SDK_SIGNTOOL_AVAILABLE'}
-            & $tools[0].FullName sign /sha1 $cert.Thumbprint /s My /fd SHA256 $exe | Out-Null
+            Write-Output 'NF_DISPOSABLE_SIGNTOOL_FOUND'
+            & $tools[0] sign /sha1 $cert.Thumbprint /s My /fd SHA256 $exe | Out-Null
             if ($LASTEXITCODE -ne 0) {throw 'THROWAWAY_AUTHENTICODE_SIGNING_FAILED'}
+            Write-Output 'NF_DISPOSABLE_INNO_AUTHENTICODE_SIGNATURE_WRITTEN'
             $signed=Get-AuthenticodeSignature -LiteralPath $exe
             if ($signed.Status.ToString() -cne 'Valid' -or
                 $signed.SignerCertificate.Thumbprint.ToUpperInvariant() -cne $cert.Thumbprint.ToUpperInvariant()) {
