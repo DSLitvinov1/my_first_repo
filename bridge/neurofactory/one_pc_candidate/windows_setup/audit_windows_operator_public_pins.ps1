@@ -51,6 +51,86 @@ foreach($file in @($root,$trust,$pins)) {
 # Public-key root metadata only; Python independent validator handles strict
 # key lengths and cryptographic identity. JSON content is NEVER emitted.
 $raw=[IO.File]::ReadAllBytes($pins)
+# Reject a file with merely protected ACLs but no plausible enrolled
+# PUBLIC key structure. This is not proof of human consent or actual private
+# key custody. The source format matches the existing operator v1 contract.
+try {
+    $json=[Text.Encoding]::ASCII.GetString($raw)
+    $doc=ConvertFrom-Json -InputObject $json -AsHashtable -ErrorAction Stop
+} catch {
+    throw 'NF_PUBLIC_TRUST_JSON_NOT_VERIFIABLE'
+}
+$fields=@(
+    'schema','repository','github_user_id','repository_id',
+    'key_valid_from_unix','key_valid_until_unix',
+    'operator_public_base64','owner_public_base64',
+    'host_public_base64','witness_public_base64',
+    'operator_public_sha256','mtls_witness_cert_sha256'
+)
+if ($doc -isnot [System.Collections.IDictionary] -or
+    @($doc.Keys).Count -ne $fields.Count) {throw 'NF_PUBLIC_TRUST_FIELDS_MISMATCH'}
+foreach($field in $fields) {
+    if (-not $doc.Contains($field)) {throw 'NF_PUBLIC_TRUST_FIELDS_MISMATCH'}
+}
+if ($doc.schema -cne 'neurofactory.operator.public_pins.v1' -or
+    $doc.repository -cne 'DSLitvinov1/my_first_repo' -or
+    $doc.github_user_id -cne '151650108' -or
+    $doc.repository_id -cne '723328237') {
+    throw 'NF_PUBLIC_TRUST_NOT_PINNED_TO_EXPECTED_PROJECT'
+}
+$now=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+if ($doc.key_valid_from_unix -isnot [long] -and $doc.key_valid_from_unix -isnot [int]) {
+    throw 'NF_PUBLIC_TRUST_INVALID_TIME'
+}
+if ($doc.key_valid_until_unix -isnot [long] -and $doc.key_valid_until_unix -isnot [int]) {
+    throw 'NF_PUBLIC_TRUST_INVALID_TIME'
+}
+if ([long]$doc.key_valid_from_unix -gt $now -or
+    [long]$doc.key_valid_until_unix -le $now -or
+    [long]$doc.key_valid_until_unix -gt ($now+90*86400)) {
+    throw 'NF_PUBLIC_TRUST_EXPIRED_OR_OUT_OF_RANGE'
+}
+$rolePublic=@()
+foreach($role in @('operator','owner','host','witness')) {
+    $encoded=$doc[($role+'_public_base64')]
+    if ($encoded -isnot [string] -or $encoded.Length -ne 44) {
+        throw 'NF_PUBLIC_TRUST_WRONG_ED25519_LENGTH'
+    }
+    try {
+        $key=[Convert]::FromBase64String($encoded)
+    } catch {
+        throw 'NF_PUBLIC_TRUST_KEY_BASE64_INVALID'
+    }
+    if ($key.Length -ne 32) {throw 'NF_PUBLIC_TRUST_WRONG_ED25519_LENGTH'}
+    $rolePublic+=@([Convert]::ToHexString($key))
+}
+if (@($rolePublic | Select-Object -Unique).Count -ne 4) {
+    throw 'NF_PUBLIC_TRUST_SIGNING_ROLES_NOT_DISTINCT'
+}
+$operatorKey=[Convert]::FromBase64String($doc.operator_public_base64)
+$operatorHash=[Convert]::ToHexString(
+    [Security.Cryptography.SHA256]::HashData($operatorKey)).ToLowerInvariant()
+if ($doc.operator_public_sha256 -cne $operatorHash -or
+    $doc.mtls_witness_cert_sha256 -notmatch '^[0-9a-f]{64}
+$hashHex=[Convert]::ToHexString($hash).ToLowerInvariant()
+[ordered]@{
+    schema='nf.windows.operator_public_pins_readonly_audit.v1'
+    result='PROTECTED_PUBLIC_PIN_FILE_OBSERVED_NOT_ENROLLED'
+    public_pin_file_sha256=$hashHex
+    windows_file_owner_protected=$true
+    untrusted_accounts_cannot_write=$true
+    four_distinct_public_key_lengths_checked=$true
+    operator_public_fingerprint_matches_file=$true
+    independent_reviewer_key_enrolled=$false
+    authentic_owner_approval_verified=$false
+    independent_operator_hardware_attested=$false
+    private_keys_enrolled_by_auditor=$false
+    remote_witness_highwater_attested=$false
+    production_service_enabled=$false
+} | ConvertTo-Json -Compress
+) {
+    throw 'NF_PUBLIC_TRUST_FINGERPRINT_MISMATCH'
+}
 $hash=[Security.Cryptography.SHA256]::HashData($raw)
 $hashHex=[Convert]::ToHexString($hash).ToLowerInvariant()
 [ordered]@{
