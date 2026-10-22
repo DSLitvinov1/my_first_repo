@@ -6,6 +6,7 @@ A local operator runs it and keeps the output locally until safe to share.
 """
 from __future__ import annotations
 from hashlib import sha256
+from contextlib import closing
 import json
 import os
 import hashlib
@@ -155,7 +156,7 @@ def observe(app_dir:Path, data_dir:Path):
     # sqlite immutable mode never asks SQLite to create WAL, shm or journals.
     # We intentionally avoid querying user projects, tasks, contents or keys.
     try:
-        with sqlite3.connect(db.as_uri()+"?mode=ro&immutable=1",uri=True,timeout=3) as conn:
+        with closing(sqlite3.connect(db.as_uri()+"?mode=ro&immutable=1",uri=True,timeout=3)) as conn:
             conn.execute("PRAGMA query_only=ON")
             schema=conn.execute("PRAGMA user_version").fetchone()[0]
             if schema not in (1,2,3):
