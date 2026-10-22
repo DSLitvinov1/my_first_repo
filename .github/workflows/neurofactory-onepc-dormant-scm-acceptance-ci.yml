@@ -67,6 +67,14 @@ jobs:
           if (!$sid.StartsWith('S-1-5-80-')) {throw 'NO_DEDICATED_SERVICE_SID'}
           & icacls $root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-19:(OI)(CI)RX' ('*'+$sid+':(OI)(CI)RX') /T
           if ($LASTEXITCODE -ne 0) {throw 'SERVICE_ACL_RESTRICT_FAILURE'}
+          # Files do not acquire effective READ from OI/CI-only ACEs applied
+          # directly by icacls /T. Windows SCM needs actual file READ access.
+          # Keep directory inheritance and restrict every individual file
+          # explicitly to SYSTEM/Administrators/LocalService + Service SID.
+          foreach ($file in @(Get-ChildItem -LiteralPath $root -File -Recurse)) {
+            & icacls $file.FullName /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' '*S-1-5-19:RX' ('*'+$sid+':RX') | Out-Null
+            if ($LASTEXITCODE -ne 0) {throw 'SERVICE_FILE_ACL_NOT_EFFECTIVE'}
+          }
           & icacls "$root\status" /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' ('*'+$sid+':(OI)(CI)M')
           if ($LASTEXITCODE -ne 0) {throw 'SERVICE_STATUS_DIRECTORY_ACL_FAILURE'}
           Write-Output 'NF_CI_ROOT_ACL_BEFORE_SCM_START'
