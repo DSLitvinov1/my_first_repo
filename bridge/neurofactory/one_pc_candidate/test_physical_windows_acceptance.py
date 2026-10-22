@@ -115,7 +115,7 @@ class PhysicalWindowsPreflight(unittest.TestCase):
             observe(self.app,self.user)
 
     def test_unrecognized_sqlite_schema_denied(self):
-        with sqlite3.connect(self.user/"workspace.sqlite3") as con:
+        with closing(sqlite3.connect(self.user/"workspace.sqlite3")) as con:
             con.execute("PRAGMA user_version=999")
         with self.assertRaises(PhysicalAcceptanceDenied):
             observe(self.app,self.user)
