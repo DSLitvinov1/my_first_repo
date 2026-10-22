@@ -69,8 +69,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) {throw 'SERVICE_ACL_RESTRICT_FAILURE'}
           & icacls "$root\status" /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' ('*'+$sid+':(OI)(CI)M')
           if ($LASTEXITCODE -ne 0) {throw 'SERVICE_STATUS_DIRECTORY_ACL_FAILURE'}
+          Write-Output 'NF_CI_ROOT_ACL_BEFORE_SCM_START'
+          & icacls $root
+          & icacls "$root\\runtime\\python.exe"
+          & icacls "$root\\neurofactory_dormant_service.py"
+          & icacls "$root\\status"
+          & sc.exe qc $name
           & sc.exe start $name
-          if ($LASTEXITCODE -ne 0) {throw 'SCM_REAL_SERVICE_DID_NOT_START'}
+          if ($LASTEXITCODE -ne 0) {
+            & sc.exe queryex $name
+            Get-WinEvent -FilterHashtable @{LogName='System';ProviderName='Service Control Manager';StartTime=(Get-Date).AddMinutes(-3)} -MaxEvents 12 -ErrorAction SilentlyContinue | Select-Object TimeCreated,Id,Message | Format-List | Out-String | Write-Output
+            throw 'SCM_REAL_SERVICE_DID_NOT_START'
+          }
           $running=$false
           for ($i=0;$i -lt 60;$i++) {
             Start-Sleep -Milliseconds 250
