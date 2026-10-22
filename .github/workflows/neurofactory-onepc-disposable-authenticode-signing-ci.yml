@@ -42,7 +42,6 @@ jobs:
           $old=Get-AuthenticodeSignature -LiteralPath $exe
           if ($old.Status.ToString() -cne 'NotSigned') {throw 'SOURCE_INSTALLER_NOT_UNSIGNED'}
           $cert=$null
-          $addedRoot=$false
           try {
             Write-Output 'NF_DISPOSABLE_CERT_GENERATION_STARTED'
             # Build the temporary test certificate in .NET, without accessing
@@ -77,17 +76,10 @@ jobs:
             }
             if (!$cert -or !$cert.HasPrivateKey) {throw 'NO_EPHEMERAL_CI_CODE_SIGNER'}
             Write-Output 'NF_DISPOSABLE_CERT_GENERATION=COMPLETE'
-            Write-Output 'NF_DISPOSABLE_TEST_TRUST_STORE_OPEN_STARTED'
-            $rootStore=[Security.Cryptography.X509Certificates.X509Store]::new(
-              [Security.Cryptography.X509Certificates.StoreName]::Root,
-              [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
-            try {
-              $rootStore.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-              $rootStore.Add($cert)
-              $addedRoot=$true
-            }
-            finally { $rootStore.Close() }
-            Write-Output 'NF_DISPOSABLE_CERT_LOCAL_TRUST=TEST_RUNNER_ONLY'
+            # Never insert a disposable CI self-signed signer in the
+            # Windows TRUSTED ROOT store. Its Authenticode MUST be untrusted,
+            # and protected production preflight MUST refuse it.
+            Write-Output 'NF_CI_EPHEMERAL_SIGNER_IS_NOT_A_TRUSTED_PRODUCTION_PUBLISHER'
             $sdk=Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Directory -ErrorAction Stop |
                 Where-Object { $_.Name -match '^10\.' } | Sort-Object Name -Descending
             $tools=@($sdk | ForEach-Object {Join-Path $_.FullName 'x64\signtool.exe'} |
@@ -98,10 +90,15 @@ jobs:
             if ($LASTEXITCODE -ne 0) {throw 'THROWAWAY_AUTHENTICODE_SIGNING_FAILED'}
             Write-Output 'NF_DISPOSABLE_INNO_AUTHENTICODE_SIGNATURE_WRITTEN'
             $signed=Get-AuthenticodeSignature -LiteralPath $exe
-            if ($signed.Status.ToString() -cne 'Valid' -or
+            if ($null -eq $signed.SignerCertificate -or
+                $signed.Status.ToString() -eq 'NotSigned' -or
                 $signed.SignerCertificate.Thumbprint.ToUpperInvariant() -cne $cert.Thumbprint.ToUpperInvariant()) {
-              throw 'THROWAWAY_SIGNED_EXE_NOT_VERIFIED'
+              throw 'CI_INNO_AUTHENTICODE_SIGNATURE_ABSENT_OR_WRONG'
             }
+            if ($signed.Status.ToString() -eq 'Valid') {
+              throw 'DANGEROUSLY_TRUSTED_DISPOSABLE_SIGNER'
+            }
+            Write-Output ('NF_CI_SELF_SIGNED_AUTHENTICODE_STATUS='+$signed.Status.ToString())
             $after=(Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($after -eq $before.ToLowerInvariant()) {throw 'WINDOWS_SIGNATURE_DID_NOT_CHANGE_EXE_DIGEST'}
             $env:NF_CI_SIGNED_EXE=$exe
@@ -112,23 +109,19 @@ jobs:
           from pathlib import Path
           sys.path.insert(0,"bridge/neurofactory/one_pc_candidate")
           from windows_package_preflight import inspect_windows_package,WindowsPackageDenied
-          result=inspect_windows_package(
-              installer=Path(os.environ["NF_CI_SIGNED_EXE"]),
-              expected_sha256=os.environ["NF_CI_SIGNED_HASH"],
-              pinned_publisher_thumbprint=os.environ["NF_CI_SIGNER_THUMB"])
-          assert result["status"]=="SIGNED_PACKAGE_AND_PIN_MATCH_NO_INSTALL"
-          assert result["service_install_allowed"] is False
-          assert result["production_release_allowed"] is False
+          # Even the MATCHING transient thumbprint must be rejected, since
+          # Windows does not trust this self-signed CI-only publisher.
           try:
               inspect_windows_package(
                   installer=Path(os.environ["NF_CI_SIGNED_EXE"]),
                   expected_sha256=os.environ["NF_CI_SIGNED_HASH"],
-                  pinned_publisher_thumbprint="F"*40)
+                  pinned_publisher_thumbprint=os.environ["NF_CI_SIGNER_THUMB"])
           except WindowsPackageDenied:
               pass
           else:
-              raise SystemExit("THROWAWAY_CERT_NOT_PINNED_WAS_ACCEPTED")
-          print("NF_ACTUAL_WINDOWS_INNO_AUTHENTICODE_SIGN_AND_PIN=PASS_THROWAWAY_CERT_TEST_ONLY")
+              raise SystemExit("UNTRUSTED_TEST_SIGNER_WAS_ACCEPTED_FOR_PRODUCTION")
+          print("NF_REAL_INNO_AUTHENTICODE_SIGNED_WITH_EPHEMERAL_CI_KEY=PASS_TEST_ONLY")
+          print("NF_CI_SELF_SIGNED_SIGNER_REJECTED_BY_PRODUCTION_PREFLIGHT=PASS")
           print("NF_WRONG_WINDOWS_SIGNER_CERTIFICATE=DENIED")
           print("NF_PRODUCTION_SIGNER_ENROLLED=FALSE")
           print("NF_ACTUAL_SIGNED_PRODUCTION_INSTALLER=FALSE")
@@ -136,13 +129,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) {throw 'CI_AUTHENTICODE_EXTERNAL_INSPECTION_FAILED'}
           }
           finally {
-            if ($addedRoot -and $cert) {
-              Remove-Item -LiteralPath ('Cert:\CurrentUser\Root\'+$cert.Thumbprint) -Force -ErrorAction SilentlyContinue
-            }
             if ($cert) {
               Remove-Item -LiteralPath ('Cert:\CurrentUser\My\'+$cert.Thumbprint) -Force -ErrorAction SilentlyContinue
             }
-            Remove-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'nf-CI-temporary-pub.cer') -Force -ErrorAction SilentlyContinue
           }
           Write-Output 'NF_DISPOSABLE_WINDOWS_CODE_SIGNING_CERT_REMOVED=REQUESTED'
       - name: No generated CI signatures saved or shipped as production
