@@ -134,7 +134,7 @@ def verify_review_bundle(root: Path, *, expected_source_sha: str):
                 h.update(block)
         if h.hexdigest() != item["sha256"]:
             _deny("staged file SHA256 mismatch")
-    if not REQUIRED_ROOT.issubset(seen) or "runtime/python.exe" not in seen:
+    if not {name.casefold() for name in REQUIRED_ROOT}.issubset(seen) or "runtime/python.exe" not in seen:
         _deny("missing service, auditor, config, manual or Python executable")
     # Detect any extra file, unlisted folder or reparse point even if the
     # attacker supplied a manifest that omits it.
