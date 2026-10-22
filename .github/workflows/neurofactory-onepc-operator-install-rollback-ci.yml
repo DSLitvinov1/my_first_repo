@@ -91,6 +91,16 @@ jobs:
           if ((Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'").State -cne 'Running') {throw 'PROTECTED_SERVICE_NOT_RUNNING'}
           $status=Get-Content -LiteralPath (Join-Path $installed 'status\dormant-status.json') -Raw|ConvertFrom-Json
           if ($status.host_execution_allowed -or $status.core_queue_allowed -or $status.immutable_install_root_write_denied -ne $true) {throw 'INSTALLER_ENABLED_FORBIDDEN_EFFECTS'}
+          $marker=Join-Path $installed 'review-ci-install-marker.json'
+          $markerUnchanged=[System.IO.File]::ReadAllBytes($marker)
+          [System.IO.File]::WriteAllText($marker,'{"schema":"forged"}')
+          & pwsh -NoProfile -NonInteractive -File $script -Operation Remove
+          if ($LASTEXITCODE -eq 0 -or !(Test-Path $installed) -or
+              (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'").State -cne 'Running') {
+            throw 'FORGED_OWNERSHIP_MARKER_DELETED_SYSTEM_SERVICE'
+          }
+          [System.IO.File]::WriteAllBytes($marker,$markerUnchanged)
+          Write-Output 'NF_REVIEW_INSTALL_FORGED_REMOVAL_REQUEST_DENIED'
           & pwsh -NoProfile -NonInteractive -File $script -Operation Remove
           if ($LASTEXITCODE -ne 0) {throw 'REVIEW_ONLY_HOST_OWNED_REMOVAL_FAILED'}
           if (Test-Path $installed) {throw 'REVIEW_ROOT_LEFT_AFTER_REMOVAL'}
