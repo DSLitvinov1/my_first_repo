@@ -30,3 +30,44 @@ jobs:
           echo 'NF_INDEPENDENT_PHYSICAL_REMOTE_WITNESS=NOT_CONNECTED'
           echo 'NF_OWNER_CERTIFICATE_AND_HARDWARE_KEYS=NOT_ENROLLED'
           echo 'NF_PRODUCTION_SERVICE_PERMISSION=BLOCKED'
+
+      - name: Package exact no-secret external witness sources for independent review
+        run: |
+          python - <<'PY'
+          import hashlib,json,zipfile
+          from pathlib import Path
+          root=Path("bridge/neurofactory/one_pc_candidate")
+          names=(
+            "external_highwater_store.py",
+            "external_highwater_mtls_server.py",
+            "remote_highwater_client.py",
+            "independent_witness_receipt.py",
+            "WITNESS_REMOTE_NODE_DEPLOYMENT_BLOCKERS_20261027_RU.md",
+          )
+          out=Path("neurofactory-external-witness-sources-NO-KEYS.zip")
+          hashes=[]
+          with zipfile.ZipFile(out,"w",compression=zipfile.ZIP_DEFLATED) as archive:
+            for name in names:
+              raw=(root/name).read_bytes()
+              assert not any(k in raw for k in (b"BEGIN PRIVATE KEY",b"BEGIN RSA PRIVATE KEY"))
+              archive.writestr(name,raw)
+              hashes.append({"path":name,"sha256":hashlib.sha256(raw).hexdigest(),"bytes":len(raw)})
+            manifest={"schema":"nf.external_witness.source_review_manifest.v1",
+                      "source_sha40":__import__("os").environ["GITHUB_SHA"],
+                      "status":"NO_PRIVATE_KEYS_NOT_ATTESTED_OR_SIGNED",
+                      "files":hashes}
+            archive.writestr("source-manifest.json",
+                             json.dumps(manifest,sort_keys=True,separators=(",",":")))
+          with zipfile.ZipFile(out) as archive:
+            assert len(archive.namelist())==len(names)+1
+            for entry in hashes:
+              assert hashlib.sha256(archive.read(entry["path"])).hexdigest()==entry["sha256"]
+          print("NF_EXTERNAL_WITNESS_REVIEW_SOURCES_WITH_HASH_MANIFEST=PASS_NO_KEYS")
+          print("NF_EXTERNAL_WITNESS_REVIEW_ARCHIVE_SHA256="+hashlib.sha256(out.read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-External-Witness-REVIEW-SOURCES-NO-KEYS
+          path: neurofactory-external-witness-sources-NO-KEYS.zip
+          retention-days: 7
+          if-no-files-found: error
