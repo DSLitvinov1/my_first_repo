@@ -67,10 +67,10 @@ jobs:
           if ($components.entries.Count -ne 15 -or $components.host_service_enrolled -or $components.core_queue_wired -or $components.release_approved) {
               throw 'COMPONENT_SOURCE_INTEGRITY_GATES_CHANGED'
           }
-          $host=Join-Path $PWD 'bridge/neurofactory/one_pc_candidate/windows_setup'
+          $hostSourceDir=Join-Path $PWD 'bridge/neurofactory/one_pc_candidate/windows_setup'
           $reviewHost=@('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1','audit_windows_operator_public_pins.ps1','inspect_dormant_review_bundle.py','PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt')
           $hostManifest=@($reviewHost|ForEach-Object {
-              $source=Join-Path $host $_
+              $source=Join-Path $hostSourceDir $_
               [ordered]@{path=$_;sha256=(Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()}
           })
           $packageEntries=@(Get-ChildItem $stage -Recurse -File|Sort-Object FullName|ForEach-Object {
@@ -100,9 +100,9 @@ jobs:
           $iscc='C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
           if (!(Test-Path $iscc)) {throw 'UNAVAILABLE_INNO_COMPILER'}
           $stage=Join-Path $env:RUNNER_TEMP 'nf-review-machine-stage'
-          $host=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup').Path
+          $hostSourceDir=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup').Path
           $iss=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss').Path
-          & $iscc "/DSourceRoot=$stage" "/DHostSourceRoot=$host" $iss
+          & $iscc "/DSourceRoot=$stage" "/DHostSourceRoot=$hostSourceDir" $iss
           if ($LASTEXITCODE -ne 0) {throw 'REVIEW_MACHINE_INNO_COMPILATION_FAILED'}
           $exe='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Machine-Review-UNSIGNED.exe'
           if (!(Test-Path $exe)) {throw 'REVIEW_MACHINE_INSTALLER_MISSING'}
