@@ -175,7 +175,12 @@ jobs:
           $tokens=$null
           $parseErrors=$null
           $null=[System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$parseErrors)
-          if (@($parseErrors).Count -ne 0) {throw 'PHYSICAL_SCM_PREFLIGHT_POWERSHELL_NOT_PARSEABLE'}
+          if (@($parseErrors).Count -ne 0) {
+              foreach ($parseIssue in $parseErrors) {
+                  Write-Output ('NF_HOST_PRECHECK_PARSER_ERROR_LINE='+$parseIssue.Extent.StartLineNumber+' DETAIL='+$parseIssue.Message)
+              }
+              throw 'PHYSICAL_SCM_PREFLIGHT_POWERSHELL_NOT_PARSEABLE'
+          }
           $pins=@{
               ExpectedHostBinarySha256=('a'*64)
               ExpectedHostSourceSha256=('b'*64)
