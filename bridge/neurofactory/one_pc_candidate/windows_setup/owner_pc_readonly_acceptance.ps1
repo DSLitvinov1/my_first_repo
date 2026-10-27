@@ -35,7 +35,7 @@ if (-not (Test-Path -LiteralPath $root -PathType Container)) {
 }
 function StrictFile([string]$relative,[long]$maxBytes) {
     $parts=$relative.Split('\')
-    if ($parts.Length -lt 1 -or ($parts|Where-Object {$_ -in @('','..','.')}).Count -gt 0) {
+    if ($parts.Length -lt 1 -or @($parts | Where-Object {$_ -in @('','..','.')}).Count -gt 0) {
         Deny 'RELATIVE_SOURCE_PATH_INVALID'
     }
     $cursor=$root
