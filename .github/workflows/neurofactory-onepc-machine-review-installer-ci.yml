@@ -182,12 +182,21 @@ jobs:
               ExpectedOwnerPublicSha256=('c'*64)
               ExpectedReviewerPublicSha256=('d'*64)
               ExpectedWitnessPublicSha256=('e'*64)
+              ExpectedHostPublicSha256=('f'*64)
+              ExpectedOperatorPublicSha256=('1'*64)
+              ExpectedPublicPinsFileSha256=('2'*64)
               PinnedPublisherThumbprint=('F'*40)
           }
           $output=(& pwsh -NoProfile -NonInteractive -File $physicalAudit @pins 2>&1 | Out-String)
           if ($LASTEXITCODE -eq 0 -or $output -notmatch 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE') {
               throw 'PHYSICAL_HOST_RUNNING_ON_CI_GAINED_FALSE_AUTHORITY'
           }
+          $wrongRole=@{}+$pins
+          $wrongRole.ExpectedHostPublicSha256=$pins.ExpectedOwnerPublicSha256
+          $conflicting=(& pwsh -NoProfile -NonInteractive -File $physicalAudit @wrongRole 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {throw 'FOUR_PARTY_PUBLIC_ROLE_CONFLICT_GAINED_AUTHORITY'}
+          $global:LASTEXITCODE=0
+          Write-Output 'NF_PHYSICAL_WINDOWS_HOST_CI_NO_ROLE_SUBSTITUTION=DENIED'
           # The intentional negative pwsh subprocess leaves LASTEXITCODE=1.
           # Reset only after verifying its specific fail-closed response.
           $global:LASTEXITCODE=0
