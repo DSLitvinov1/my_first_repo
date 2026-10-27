@@ -28,9 +28,10 @@ foreach($pin in @($ExpectedHostBinarySha256,$ExpectedHostSourceSha256,
                    $ExpectedWitnessPublicSha256)) {
     if ($pin -cnotmatch '^[0-9a-fA-F]{64}$') {Deny 'EXTERNAL_SHA256_PINS_REQUIRED'}
 }
-if (@($ExpectedOwnerPublicSha256.ToLowerInvariant(),
+$rolePinHashes=@($ExpectedOwnerPublicSha256.ToLowerInvariant(),
      $ExpectedReviewerPublicSha256.ToLowerInvariant(),
-     $ExpectedWitnessPublicSha256.ToLowerInvariant()|Select-Object -Unique).Count -ne 3) {
+     $ExpectedWitnessPublicSha256.ToLowerInvariant())
+if (@($rolePinHashes|Select-Object -Unique).Count -ne 3) {
     Deny 'OWNER_REVIEWER_WITNESS_MUST_HAVE_THREE_DISTINCT_KEYS'
 }
 if ($PinnedPublisherThumbprint -cnotmatch '^[0-9A-Fa-f]{40}$') {
