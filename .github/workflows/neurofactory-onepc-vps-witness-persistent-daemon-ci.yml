@@ -1,4 +1,4 @@
-name: Neurofactory independent VPS witness: long-lived mTLS service and strict operator guard (hosted CI)
+name: Neurofactory independent VPS witness long-lived mTLS service and strict operator guard (hosted CI)
 on:
   push:
     branches: [neurofactory-independent-vps-witness-operator-20261027]
