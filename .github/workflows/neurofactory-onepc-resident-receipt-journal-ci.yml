@@ -1,0 +1,24 @@
+name: Neurofactory signed CORE HOST receipt journal — isolated integrity tests
+on:
+  push:
+    branches: [neurofactory-onepc-resident-scm-release-factory-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/resident_host_audit_journal.py
+      - bridge/neurofactory/one_pc_candidate/test_resident_host_audit_journal.py
+      - .github/workflows/neurofactory-onepc-resident-receipt-journal-ci.yml
+permissions:
+  contents: read
+jobs:
+  local-journal-chain-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify persisted signed-receipt audit log does not repair corruption or permit replay
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_resident_host_audit_journal.py -v
+          git diff --exit-code
+          echo 'NF_LOCAL_SCM_SIGNED_RECEIPT_JOURNAL=PASS_TEST_ONLY'
+          echo 'NF_EXTERNAL_MONOTONIC_WITNESS=NOT_CONFIGURED'
