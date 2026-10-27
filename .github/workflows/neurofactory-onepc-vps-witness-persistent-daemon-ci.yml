@@ -1,0 +1,35 @@
+name: Neurofactory independent VPS witness: long-lived mTLS service and strict operator guard (hosted CI)
+on:
+  push:
+    branches: [neurofactory-independent-vps-witness-operator-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/external_highwater_daemon.py
+      - bridge/neurofactory/one_pc_candidate/test_external_highwater_daemon.py
+      - bridge/neurofactory/one_pc_candidate/vps_witness_systemd/**
+      - .github/workflows/neurofactory-onepc-vps-witness-persistent-daemon-ci.yml
+permissions:
+  contents: read
+jobs:
+  real-repeated-tls1p3-witness-reservations-replay-denied:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run only hosted Linux unprivileged trust boundary
+        run: |
+          test "$GITHUB_ACTIONS" = true
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$(id -u)" -ne 0
+          python -m venv "$RUNNER_TEMP/nf-persistent-remote-witness"
+          "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_daemon.py -v
+          if "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -B bridge/neurofactory/one_pc_candidate/external_highwater_daemon.py --audit; then
+            echo 'UNPROVISIONED_REMOTE_WITNESS_MUST_FAIL_CLOSED'
+            exit 1
+          fi
+          git diff --exit-code
+          echo 'NF_PERSISTENT_VPS_PRIVATE_VPN_MTLS_MULTI_REQUEST_REPLAY=PASS_CI_ONLY'
+          echo 'NF_REAL_EXTERNAL_VPS_ACTUALLY_PROVISIONED=FALSE'
+          echo 'NF_PRODUCTION_EXTERNAL_OWNER_KEYS_INSTALLED=FALSE'
