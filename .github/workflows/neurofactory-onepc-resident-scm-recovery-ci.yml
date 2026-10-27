@@ -79,11 +79,15 @@ jobs:
           for($i=0;$i -lt 130;$i++) {
               Start-Sleep -Milliseconds 250
               $service=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue
-              if ($null -ne $service -and $service.State -cne 'Running' -and $service.ProcessId -and $service.ProcessId -ne $before) {
+              if ($null -ne $service -and $service.State -ceq 'Running' -and $service.ProcessId -and $service.ProcessId -ne $before) {
                   $recovered=$true;break
               }
           }
-          if (!$recovered) {throw 'SCM_AUTOMATIC_RECOVERY_NOT_OBSERVED'}
+          if (!$recovered) {
+              & sc.exe queryex NeurofactoryCoreHost
+              & sc.exe qfailure NeurofactoryCoreHost
+              throw 'SCM_AUTOMATIC_RECOVERY_NOT_OBSERVED'
+          }
           $root=Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'NeurofactoryDormantAcceptanceCI'
           $status=Get-Content -LiteralPath "$root\status\dormant-status.json" -Raw|ConvertFrom-Json
           if ($status.status -cne 'REVIEW_BLOCKED_NOT_PRODUCTION' -or
