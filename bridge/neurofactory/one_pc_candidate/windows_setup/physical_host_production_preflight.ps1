@@ -241,7 +241,6 @@ if ((Get-FileHash -LiteralPath $reviewerFile -Algorithm SHA256).Hash.ToLowerInva
     witness_public_root_hash_matched=$true
     host_public_root_hash_matched=$true
     operator_public_root_hash_matched=$true
-    reviewer_public_root_hash_matched=$true
     four_party_public_root_file_sha256=$observedPins
     observed_scm_running_and_restricted=$true
     physically_independent_review_verdict_proven=$false
