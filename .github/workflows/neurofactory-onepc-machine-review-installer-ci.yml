@@ -1,0 +1,168 @@
+name: Neurofactory machine-wide unsigned combined installer — review and staging only
+on:
+  push:
+    branches: [neurofactory-onepc-resident-scm-release-factory-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
+      - .github/workflows/neurofactory-onepc-machine-review-installer-ci.yml
+permissions:
+  contents: read
+jobs:
+  stage-compile-test-inert-per-machine-installer:
+    runs-on: windows-2025
+    timeout-minutes: 19
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c92e102efed49e62eac1bc0e434b3d412d62e40
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
+      - name: Stage exact 15 pinned application components and local read-only service files
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or $env:RUNNER_ENVIRONMENT -cne 'github-hosted') {throw 'NO_REVIEW_BUILD_ON_OWNER_PC'}
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-review-machine-stage'
+          if (Test-Path $stage) {throw 'REVIEW_MACHINE_STAGE_PREEXISTS'}
+          New-Item -ItemType Directory -Force "$stage\runtime","$stage\app","$stage\ui" | Out-Null
+          $vendorZip=Join-Path $env:RUNNER_TEMP 'nf-pinned-python.zip'
+          Invoke-WebRequest 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $vendorZip -MaximumRedirection 2
+          if ((Get-Item $vendorZip).Length -ne 11133606 -or
+              (Get-FileHash $vendorZip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'REVIEW_VENDOR_RUNTIME_HASH_MISMATCH'}
+          Expand-Archive -LiteralPath $vendorZip -DestinationPath "$stage\runtime"
+          foreach ($file in @('local_workspace.py','installed_integrity.py','draft_provider.py','codex_sites_bridge.py','core_readonly_observer.py','signed_owner_admission.py','test_installed_provider_import.py','restore_offline.py')) {
+              Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/$file" -Destination "$stage\app\$file"
+          }
+          foreach ($file in @('index.html','styles.css','demo-data.js','app.js','workspace.js','integrations.js')) {
+              Copy-Item -LiteralPath "bridge/neurofactory/control_ui/$file" -Destination "$stage\ui\$file"
+          }
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
+          New-Item -ItemType Directory -Force "$stage\review-host" | Out-Null
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/resident_host_audit_journal.py' "$stage\review-host\resident_host_audit_journal.py"
+          python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
+          if ($LASTEXITCODE -ne 0) {throw 'PINNED_COMPONENT_STAGING_REJECTED'}
+          $components=Get-Content "$stage\components\manifest.json" -Raw|ConvertFrom-Json
+          if ($components.entries.Count -ne 15 -or $components.host_service_enrolled -or $components.core_queue_wired -or $components.release_approved) {
+              throw 'COMPONENT_SOURCE_INTEGRITY_GATES_CHANGED'
+          }
+          $hostSourceDir=Join-Path $PWD 'bridge/neurofactory/one_pc_candidate/windows_setup'
+          $reviewHost=@('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1','audit_windows_operator_public_pins.ps1','inspect_dormant_review_bundle.py','PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt')
+          $hostManifest=@($reviewHost|ForEach-Object {
+              $source=Join-Path $hostSourceDir $_
+              [ordered]@{path=$_;sha256=(Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()}
+          })
+          $packageEntries=@(Get-ChildItem $stage -Recurse -File|Sort-Object FullName|ForEach-Object {
+              $rel=$_.FullName.Substring($stage.Length+1).Replace('\','/')
+              [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
+          })
+          if ($packageEntries.Count -lt 35 -or $hostManifest.Count -ne 5) {
+              throw 'COMBINED_MACHINE_REVIEW_PAYLOAD_INCOMPLETE'
+          }
+          [ordered]@{
+              schema='nf.onepc.machine_review_combined_package.v1'
+              source_sha40=$env:GITHUB_SHA
+              stage='UNSIGNED_INERT_OPERATOR_REVIEW_ONLY'
+              production_signed=$false
+              os_service_registered=$false
+              real_host_execution_authorized=$false
+              independent_reviewer_approved=$false
+              source_components=$components.entries.Count
+              entries=$packageEntries
+              host_review_entries=$hostManifest
+          }|ConvertTo-Json -Depth 6|Set-Content -LiteralPath "$stage\release-manifest.json" -Encoding utf8
+          $env:NF_COMBINED_STAGE=$stage
+          Write-Output ('NF_REVIEW_MACHINE_STAGED_COMPONENTS='+$components.entries.Count)
+          Write-Output ('NF_REVIEW_MACHINE_STAGED_FILES='+$packageEntries.Count)
+      - name: Compile machine-wide review-only Inno installer with pinned service source
+        run: |
+          $ErrorActionPreference='Stop'
+          choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {throw 'NO_PINNED_INNO_COMPILER'}
+          $iscc='C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) {throw 'UNAVAILABLE_INNO_COMPILER'}
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-review-machine-stage'
+          $hostSourceDir=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup').Path
+          $iss=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss').Path
+          & $iscc "/DSourceRoot=$stage" "/DHostSourceRoot=$hostSourceDir" $iss
+          if ($LASTEXITCODE -ne 0) {throw 'REVIEW_MACHINE_INNO_COMPILATION_FAILED'}
+          $exe='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Machine-Review-UNSIGNED.exe'
+          if (!(Test-Path $exe)) {throw 'REVIEW_MACHINE_INSTALLER_MISSING'}
+          if ((Get-AuthenticodeSignature $exe).Status.ToString() -cne 'NotSigned') {
+              throw 'REVIEW_MACHINE_SIGNED_BY_UNAPPROVED_PUBLISHER'
+          }
+          Write-Output ('NF_REVIEW_MACHINE_UNSIGNED_INNO_SHA256='+(Get-FileHash $exe -Algorithm SHA256).Hash)
+          Write-Output 'NF_REVIEW_MACHINE_PUBLISHER_AUTHENTICODE=UNSIGNED_NOT_PRODUCTION'
+      - name: Validate actual machine-wide install contains review source but never registers SCM or operates CORE
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Machine-Review-UNSIGNED.exe').Path
+          $install=Join-Path $env:RUNNER_TEMP 'NFMachineReviewInstall'
+          if (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue) {throw 'SCM_FOREIGN_SERVICE_PRESENT'}
+          $proc=Start-Process -Wait -PassThru -FilePath $exe -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
+          if ($proc.ExitCode -ne 0) {throw 'MACHINE_REVIEW_INSTALL_FAILED'}
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-review-machine-stage'
+          $manifest=Get-Content -LiteralPath "$install\release-manifest.json" -Raw|ConvertFrom-Json
+          if ($manifest.production_signed -or $manifest.os_service_registered -or
+              $manifest.real_host_execution_authorized -or $manifest.independent_reviewer_approved -or
+              $manifest.source_components -ne 15 -or $manifest.source_sha40 -cne $env:GITHUB_SHA) {
+              throw 'MACHINE_REVIEW_PACKAGE_FALSIFIED_RELEASE'
+          }
+          foreach ($entry in $manifest.entries) {
+              $file=Join-Path $install ($entry.path.Replace('/','\'))
+              if (!(Test-Path $file) -or
+                  (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {
+                  throw 'INSTALLED_MACHINE_COMPONENT_HASH_MISMATCH'
+              }
+          }
+          foreach ($entry in $manifest.host_review_entries) {
+              $file=Join-Path "$install\review-host" $entry.path
+              if (!(Test-Path $file) -or
+                  (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {
+                  throw 'INSTALLED_MACHINE_REVIEW_HOST_HASH_MISMATCH'
+              }
+          }
+          if (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue) {
+              throw 'UNAUTHORIZED_MACHINE_REVIEW_SERVICE_CREATED'
+          }
+          if (!(Test-Path "$install\review-host\resident_host_audit_journal.py")) {
+              throw 'INSTALLED_MACHINE_LOCAL_SIGNED_RESULT_JOURNAL_MISSING'
+          }
+          if (!(Test-Path "$install\app\local_workspace.py") -or !(Test-Path "$install\runtime\python.exe")) {
+              throw 'REVIEW_MACHINE_INCOMPLETE_INSTALL'
+          }
+          Write-Output 'NF_REAL_MACHINE_WIDE_UI_CORE_HOST_SOURCE_INSTALL=PASS_REVIEW_ONLY'
+          Write-Output 'NF_REVIEW_MACHINE_SERVICE_INSTALL_AND_AUTO_EXECUTION=BLOCKED'
+          $uninstall=Join-Path $install 'unins000.exe'
+          $u=Start-Process -PassThru -Wait -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($u.ExitCode -ne 0 -or (Test-Path "$install\app\local_workspace.py")) {throw 'REVIEW_MACHINE_UNINSTALL_FAILED'}
+          Write-Output 'NF_REVIEW_MACHINE_UNINSTALL=PASS'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-Machine-Combined-Review-UNSIGNED-NOT-PRODUCTION
+          path: bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Machine-Review-UNSIGNED.exe
+          retention-days: 7
+          if-no-files-found: error

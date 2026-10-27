@@ -187,6 +187,9 @@ def main():
     if CI_ROOT.exists():
         raise RuntimeError("existing test service root; refuse reuse")
     mode=sys.argv[1] if len(sys.argv)==2 else "normal"
+    resident = (os.getenv("NF_ONEPC_RESIDENT_QWEN_JOURNAL_CI") == "1")
+    if resident and (mode != "normal" or os.getenv("NF_ONEPC_FINAL_SIGNED_CI") != "1"):
+        raise RuntimeError("Resident SCM receipt audit only in genuine signed one-run hosted CI")
     if mode not in ("normal","crash-window"):
         raise RuntimeError("only two isolated CI modes accepted")
     username="nfci"+secrets.token_hex(3)
@@ -267,6 +270,18 @@ def main():
         if os.getenv("NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID") != "1":
             raise RuntimeError("restricted per-service SID gate is mandatory in this branch")
         call(["sc.exe","sidtype",SERVICE_NAME,"restricted"])
+        if resident:
+            # Hosted-only: this actual SCM receiver now survives unattended
+            # service process crashes using Windows recovery, not a manual
+            # new sc start. This is still a test-only single-file pilot.
+            call(["sc.exe","config",SERVICE_NAME,"start=","delayed-auto"])
+            call(["sc.exe","failure",SERVICE_NAME,"reset=","3600",
+                  "actions=","restart/6000/restart/15000/none/0"])
+            call(["sc.exe","failureflag",SERVICE_NAME,"1"])
+            scpolicy=call(["sc.exe","qfailure",SERVICE_NAME]).stdout
+            if "RESTART" not in scpolicy or "6000" not in scpolicy:
+                raise RuntimeError("Actual Windows SCM unattended recovery not configured")
+            print("NF_RESIDENT_GENUINE_QWEN_SCM_DELAYED_AUTO_RECOVERY=CONFIGURED_CI_ONLY")
         explicit_service_sid=win32security.ConvertSidToStringSid(
             win32security.LookupAccountName(
                 None,"NT SERVICE\\"+SERVICE_NAME)[0])
@@ -407,6 +422,8 @@ def main():
             print("NF_WINDOWS_LIVE_QUEUE=OFF")
             return
         # Send properly owner-signed exact immutable CORE task.
+        resident_journal=None
+        resident_expected_head=None
         handoff.write_text(json.dumps(packet,sort_keys=True),encoding="ascii")
         response=worker_root/"accepted.json"
         accepted=worker_as_local_account(username,password,
@@ -455,6 +472,43 @@ def main():
             print("NF_ONEPC_REAL_SCM_SIGNED_HOST_RECEIPT=VERIFIED_TEST_ONLY")
             print("NF_ONEPC_CORE_SQLITE_HOST_COMPLETION=HOST_CHECKPOINTED_TEST")
             print("NF_ONEPC_CORE_RESTART_AND_RECEIPT_REPLAY=PASS_TEST_ONLY")
+            if resident:
+                from resident_host_audit_journal import (
+                    append_after_core_checkpoint,inspect,LocalAuditDenied,
+                )
+                proposal_sha=os.getenv("NF_REAL_QWEN_PROPOSAL_SHA256")
+                if not isinstance(proposal_sha,str) or len(proposal_sha)!=64:
+                    raise AssertionError("Real Qwen model digest not bound to local journal")
+                receipt_digest=hashlib.sha256(json.dumps(
+                    receipt,sort_keys=True,separators=(",",":"),
+                    ensure_ascii=True,allow_nan=False).encode("ascii")).hexdigest()
+                # Operator's local journal is separate from actual HOST and
+                # from model workspace, and is updated only AFTER CORE has
+                # validated the restricted-SCM-signed receipt in SQLite.
+                resident_journal=Path(temp.name)/"resident-host-audit.sqlite3"
+                audit_event={
+                    "schema":"nf.onepc.local_host_checkpoint.v1",
+                    "task_id":spec["task_id"],
+                    "source_sha40":spec["source_sha"],
+                    "proposal_sha256":proposal_sha,
+                    "result_sha256":packet["content_sha256"],
+                    "receipt_sha256":receipt_digest,
+                    "operation_id":"pilot-"+spec["task_id"],
+                    "checkpoint_state":status["state"],
+                }
+                first=append_after_core_checkpoint(
+                    resident_journal,audit_event,actual_core_state=status["state"])
+                resident_expected_head=first["head_sha256"]
+                if first["entries"]!=1 or first["external_highwater_attested"] is not False:
+                    raise AssertionError("Local journal falsely claims external antirollback")
+                try:
+                    append_after_core_checkpoint(resident_journal,audit_event,
+                                                 actual_core_state=status["state"])
+                except LocalAuditDenied:
+                    pass
+                else:
+                    raise AssertionError("Same real SCM receipt was journaled twice")
+                print("NF_REAL_QWEN_TO_SCM_SIGNED_CORE_CHECKPOINT_TO_SQLITE_JOURNAL=PASS_CI_ONLY")
         assert not (core.sandbox/_ALLOWED_TARGET).exists()
         print("NF_WINDOWS_REAL_SCM_DIFFERENT_ACCOUNT_ONE_FILE=PASS_TEST_ONLY")
         # Ordinary replay must not overwrite/duplicate protected result.
@@ -476,9 +530,34 @@ def main():
         if not svc_pid.isdigit() or int(svc_pid)<100:
             raise AssertionError("Windows SCM process PID not identified")
         call(["taskkill","/PID",svc_pid,"/F"])
-        wait_service(SERVICE_STOPPED)
-        call(["sc.exe","start",SERVICE_NAME],timeout=22)
-        wait_service(SERVICE_RUNNING)
+        if resident:
+            # No caller-initiated service start; Windows SCM must do this.
+            # Fresh PROCESS PID is essential: mere stored recovery policy
+            # does not prove successful unattended restart.
+            cutoff=time.monotonic()+42
+            recovered=False
+            while time.monotonic()<cutoff:
+                observation=call([
+                    "powershell.exe","-NoProfile","-NonInteractive",
+                    "-Command","$p=Get-CimInstance Win32_Service -Filter "
+                    "\"Name='"+SERVICE_NAME+"'\"; "
+                    "Write-Output ($p.State+':'+$p.ProcessId)",
+                ],timeout=15).stdout.strip()
+                if observation=="Running:"+svc_pid:
+                    raise AssertionError("SCM reported old crashed process PID")
+                if observation.startswith("Running:") and observation.split(":")[-1].isdigit():
+                    newpid=int(observation.split(":")[-1])
+                    if newpid>0 and newpid!=int(svc_pid):
+                        recovered=True
+                        break
+                time.sleep(.4)
+            if not recovered:
+                raise AssertionError("Windows SCM failed unattended recovery with a new PID")
+            print("NF_REAL_QWEN_PROTECTED_SCM_AUTOMATIC_NEW_PROCESS_AFTER_CRASH=PASS_CI_ONLY")
+        else:
+            wait_service(SERVICE_STOPPED)
+            call(["sc.exe","start",SERVICE_NAME],timeout=22)
+            wait_service(SERVICE_RUNNING)
         response=worker_root/"after_crash.json"
         post=worker_as_local_account(username,password,
             worker_root/"windows_scm_ci_worker.py",handoff,response)
@@ -487,6 +566,21 @@ def main():
         assert len(list(output.iterdir()))==2
         assert target.read_text(encoding="utf8")==expected
         print("NF_WINDOWS_SCM_CRASH_RESTART_NO_REPLAY=PASS_TEST_ONLY")
+        if resident:
+            if resident_journal is None or resident_expected_head is None:
+                raise AssertionError("Required CORE-signed journal absent after restart")
+            journal_report=inspect(resident_journal)
+            if journal_report["entries"]!=1 or journal_report["head_sha256"]!=resident_expected_head:
+                raise AssertionError("Protected Windows crash/recovery changed signed audit history")
+            persisted=module.OneTaskCore(
+                core.root,core.repo,host_output_dir=output,
+                host_receipt_public_raw=host_public_raw)
+            if persisted.snapshot()["state"]!="HOST_CHECKPOINTED_TEST" or (
+                persisted.snapshot()["result_sha256"]!=packet["content_sha256"]):
+                raise AssertionError("Real CORE durable checkpoint lost after auto SCM recovery")
+            print("NF_QWEN_CORE_RESTRICTED_RESIDENT_SCM_RESULT_AND_PERSISTENT_JOURNAL=PASS_CI_ONLY")
+            print("NF_REAL_PRODUCTION_OWNER_MACHINE_INSTALL=FALSE")
+            print("NF_EXTERNAL_MONOTONIC_WITNESS=NOT_CONFIGURED")
         print("NF_WINDOWS_TWO_DIFFERENT_ACCOUNTS_AND_CLAIM=PASS_TEST_ONLY")
         print("NF_WINDOWS_WORKER_SID_AND_PROTECTED_FOLDER_DENIAL=PASS")
         print("NF_WINDOWS_LIVE_QUEUE=OFF")
