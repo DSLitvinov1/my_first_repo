@@ -1,0 +1,27 @@
+name: Neurofactory production-guard remote highwater mTLS wire refusal and signature cases
+on:
+  push:
+    branches: [neurofactory-onepc-physical-trust-boundary-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/remote_highwater_client.py
+      - bridge/neurofactory/one_pc_candidate/test_remote_highwater_client.py
+      - .github/workflows/neurofactory-onepc-remote-highwater-transport-ci.yml
+permissions:
+  contents: read
+jobs:
+  remote-trust-guard-with-temporary-keys:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test fresh witness claim and signed reply refusal, no deployment or real keys
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_external_guard"
+          "$RUNNER_TEMP/nf_external_guard/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_external_guard/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_remote_highwater_client.py -v
+          git diff --exit-code
+          echo 'NF_SIGNED_EXTERNAL_MTLS_PROTOCOL_BOUNDARY=CI_SIMULATED_ONLY'
+          echo 'NF_REAL_EXTERNAL_HIGHWATER_SERVER=NOT_PROVISIONED'
+          echo 'NF_REAL_PRODUCTION_HOST_EXECUTION=BLOCKED'
