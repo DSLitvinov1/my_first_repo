@@ -188,6 +188,9 @@ jobs:
           if ($LASTEXITCODE -eq 0 -or $output -notmatch 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE') {
               throw 'PHYSICAL_HOST_RUNNING_ON_CI_GAINED_FALSE_AUTHORITY'
           }
+          # The intentional negative pwsh subprocess leaves LASTEXITCODE=1.
+          # Reset only after verifying its specific fail-closed response.
+          $global:LASTEXITCODE=0
           Write-Output 'NF_PHYSICAL_HOST_PUBLIC_PINS_SCM_PRECHECK=FAIL_CLOSED_NO_CI_IMPERSONATION'
           Write-Output 'NF_REAL_MACHINE_WIDE_UI_CORE_HOST_SOURCE_INSTALL=PASS_REVIEW_ONLY'
           Write-Output 'NF_REVIEW_MACHINE_SERVICE_INSTALL_AND_AUTO_EXECUTION=BLOCKED'
