@@ -47,6 +47,7 @@ Source: "{#HostSourceRoot}\audit_protected_host_readonly.ps1"; DestDir: "{app}\r
 Source: "{#HostSourceRoot}\audit_windows_operator_public_pins.ps1"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\inspect_dormant_review_bundle.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\resident_host_audit_journal.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\release-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
