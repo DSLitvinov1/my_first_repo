@@ -1,10 +1,12 @@
 name: Neurofactory machine-wide unsigned combined installer — review and staging only
 on:
   push:
-    branches: [neurofactory-onepc-resident-scm-release-factory-20261027]
+    branches: [neurofactory-onepc-resident-scm-release-factory-20261027, neurofactory-onepc-physical-trust-boundary-20261027]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - .github/workflows/neurofactory-onepc-machine-review-installer-ci.yml
+      - bridge/neurofactory/one_pc_candidate/remote_highwater_client.py
+      - bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
 permissions:
   contents: read
 jobs:
