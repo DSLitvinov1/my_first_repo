@@ -16,6 +16,9 @@ param(
   [Parameter(Mandatory=$true)][string]$ExpectedOwnerPublicSha256,
   [Parameter(Mandatory=$true)][string]$ExpectedReviewerPublicSha256,
   [Parameter(Mandatory=$true)][string]$ExpectedWitnessPublicSha256,
+  [Parameter(Mandatory=$true)][string]$ExpectedHostPublicSha256,
+  [Parameter(Mandatory=$true)][string]$ExpectedOperatorPublicSha256,
+  [Parameter(Mandatory=$true)][string]$ExpectedPublicPinsFileSha256,
   [Parameter(Mandatory=$true)][string]$PinnedPublisherThumbprint
 )
 Set-StrictMode -Version Latest
@@ -25,21 +28,29 @@ if ($env:OS -cne 'Windows_NT') {Deny 'WINDOWS_REQUIRED'}
 if ($env:GITHUB_ACTIONS -ceq 'true') {Deny 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE'}
 foreach($pin in @($ExpectedHostBinarySha256,$ExpectedHostSourceSha256,
                    $ExpectedOwnerPublicSha256,$ExpectedReviewerPublicSha256,
-                   $ExpectedWitnessPublicSha256)) {
+                   $ExpectedWitnessPublicSha256,$ExpectedHostPublicSha256,
+                   $ExpectedOperatorPublicSha256,$ExpectedPublicPinsFileSha256)) {
     if ($pin -cnotmatch '^[0-9a-fA-F]{64}$') {Deny 'EXTERNAL_SHA256_PINS_REQUIRED'}
 }
 $rolePinHashes=@($ExpectedOwnerPublicSha256.ToLowerInvariant(),
      $ExpectedReviewerPublicSha256.ToLowerInvariant(),
-     $ExpectedWitnessPublicSha256.ToLowerInvariant())
-if (@($rolePinHashes|Select-Object -Unique).Count -ne 3) {
-    Deny 'OWNER_REVIEWER_WITNESS_MUST_HAVE_THREE_DISTINCT_KEYS'
+     $ExpectedWitnessPublicSha256.ToLowerInvariant(),
+     $ExpectedHostPublicSha256.ToLowerInvariant(),
+     $ExpectedOperatorPublicSha256.ToLowerInvariant())
+if (@($rolePinHashes|Select-Object -Unique).Count -ne 5) {
+    Deny 'ALL_FIVE_EXTERNAL_TRUST_ROOT_HASH_PINS_MUST_BE_DISTINCT'
 }
 if ($PinnedPublisherThumbprint -cnotmatch '^[0-9A-Fa-f]{40}$') {
     Deny 'EXTERNAL_REAL_PUBLISHER_CERTIFICATE_PIN_REQUIRED'
 }
 $name='NeurofactoryCoreHost'
 $root=Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'NeurofactoryProtectedHost'
-$trust=Join-Path $root 'trust'
+# Independently provisioned fixed ROOT: same public pins as
+# audit_windows_operator_public_pins.ps1. Do NOT fabricate a second root
+# under NeurofactoryProtectedHost with different keys.
+$operatorRoot=Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'Neurofactory'
+$trust=Join-Path $operatorRoot 'trust'
+$publicPins=Join-Path $trust 'four-party-public-pins.json'
 $service=Get-CimInstance Win32_Service -Filter "Name='$name'" -ErrorAction Stop
 if ($null -eq $service) {Deny 'ACTUAL_WINDOWS_SERVICE_MISSING'}
 if ($service.StartName -cnotmatch '^NT AUTHORITY\\LocalService$' -or
@@ -113,7 +124,8 @@ if ($signer.Status.ToString() -cne 'Valid' -or
         $PinnedPublisherThumbprint.ToUpperInvariant()) {
     Deny 'SERVICE_RUNTIME_NOT_SIGNED_BY_INDEPENDENTLY_PINNED_PUBLISHER'
 }
-foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),$trust)) {
+foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),
+                 $operatorRoot,$trust)) {
     if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
         Deny 'OS_PROTECTED_TRUST_DIRECTORY_ABSENT'
     }
@@ -123,22 +135,96 @@ foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),$tr
     }
     DenyUnsafeWriteAcl $dir
 }
-$roots=@{
-  owner=@{path=(Join-Path $trust 'owner-public.bin');pin=$ExpectedOwnerPublicSha256}
-  reviewer=@{path=(Join-Path $trust 'reviewer-public.bin');pin=$ExpectedReviewerPublicSha256}
-  witness=@{path=(Join-Path $trust 'witness-public.bin');pin=$ExpectedWitnessPublicSha256}
+# A single immutable four-party PUBLIC trust root shared with the separate
+# Windows operator auditor. No second self-provided owner/reviewer key store.
+if (-not (Test-Path -LiteralPath $publicPins -PathType Leaf)) {
+    Deny 'FOUR_PARTY_FIXED_OS_PUBLIC_TRUST_ROOT_NOT_ENROLLED'
 }
-foreach($entry in $roots.Values) {
-    $file=Get-Item -LiteralPath $entry.path -Force -ErrorAction Stop
-    if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
-         $file.Length -ne 32) {
-        Deny 'NOT_AN_UNLINKED_ED25519_PUBLIC_ROOT'
+$rootFile=Get-Item -LiteralPath $publicPins -Force -ErrorAction Stop
+if (($rootFile.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+    $rootFile.Length -lt 220 -or $rootFile.Length -gt 8192) {
+    Deny 'UNSAFE_FOUR_PARTY_OS_PUBLIC_PIN_FILE'
+}
+DenyUnsafeWriteAcl $publicPins
+$observedPins=(Get-FileHash -LiteralPath $publicPins -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($observedPins -cne $ExpectedPublicPinsFileSha256.ToLowerInvariant()) {
+    Deny 'EXTERNAL_ROOT_MANIFEST_SHA256_NOT_APPROVED'
+}
+try {
+    $doc=Get-Content -LiteralPath $publicPins -Raw -Encoding UTF8 |
+         ConvertFrom-Json -AsHashtable -ErrorAction Stop
+} catch {
+    Deny 'OS_OPERATOR_PUBLIC_ROOT_JSON_INVALID'
+}
+$keys=@('schema','repository','github_user_id','repository_id',
+  'key_valid_from_unix','key_valid_until_unix',
+  'operator_public_base64','owner_public_base64',
+  'host_public_base64','witness_public_base64',
+  'operator_public_sha256','mtls_witness_cert_sha256')
+if ($doc -isnot [System.Collections.IDictionary] -or
+    @($doc.Keys).Count -ne $keys.Count) {
+    Deny 'FOUR_PARTY_TRUST_ROOT_WRONG_FIELDS'
+}
+foreach($key in $keys) {
+    if (-not $doc.Contains($key)) {
+        Deny 'FOUR_PARTY_TRUST_ROOT_MISSING_FIELD'
     }
-    if ((Get-FileHash -LiteralPath $entry.path -Algorithm SHA256).Hash.ToLowerInvariant() -cne
-        $entry.pin.ToLowerInvariant()) {
-        Deny 'PUBLIC_ROOT_NOT_INDEPENDENTLY_PINNED'
+}
+if ($doc.schema -cne 'neurofactory.operator.public_pins.v1' -or
+    $doc.repository -cne 'DSLitvinov1/my_first_repo' -or
+    $doc.github_user_id -cne '151650108' -or
+    $doc.repository_id -cne '723328237' -or
+    $doc.operator_public_sha256 -cne $ExpectedOperatorPublicSha256.ToLowerInvariant() -or
+    $doc.mtls_witness_cert_sha256 -cnotmatch '^[a-f0-9]{64}$') {
+    Deny 'ACTUAL_PROJECT_OR_OPERATOR_TRUST_IDENTITY_NOT_PINNED'
+}
+$now=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+if ($doc.key_valid_from_unix -isnot [long] -and $doc.key_valid_from_unix -isnot [int]) {
+    Deny 'INVALID_ROOT_START_TIME'
+}
+if ($doc.key_valid_until_unix -isnot [long] -and $doc.key_valid_until_unix -isnot [int]) {
+    Deny 'INVALID_ROOT_EXPIRY_TIME'
+}
+if ([long]$doc.key_valid_from_unix -gt $now -or
+    [long]$doc.key_valid_until_unix -le $now -or
+    [long]$doc.key_valid_until_unix -gt ($now+90*86400)) {
+    Deny 'PUBLIC_OPERATOR_TRUST_ROOT_EXPIRED'
+}
+$expectedRoleHashes=@{
+    operator=$ExpectedOperatorPublicSha256
+    owner=$ExpectedOwnerPublicSha256
+    host=$ExpectedHostPublicSha256
+    witness=$ExpectedWitnessPublicSha256
+}
+foreach($role in $expectedRoleHashes.Keys) {
+    $encoded=$doc[($role+'_public_base64')]
+    if ($encoded -isnot [string] -or $encoded.Length -ne 44) {
+        Deny 'WRONG_ED25519_PUBLIC_LENGTH_IN_OS_TRUST_ROOT'
     }
-    DenyUnsafeWriteAcl $entry.path
+    try { $public=[Convert]::FromBase64String($encoded) }
+    catch { Deny 'INVALID_ED25519_PUBLIC_BASE64_IN_OS_TRUST_ROOT' }
+    if ($public.Length -ne 32) {Deny 'INVALID_ED25519_PUBLIC_BYTES_IN_OS_TRUST_ROOT'}
+    $fingerprint=([Convert]::ToHexString(
+      [Security.Cryptography.SHA256]::HashData($public))).ToLowerInvariant()
+    if ($fingerprint -cne $expectedRoleHashes[$role].ToLowerInvariant()) {
+        Deny 'REAL_OS_PUBLIC_ROOT_DIFFERS_FROM_INDEPENDENTLY_APPROVED_ROLE'
+    }
+}
+# Release-review key is separately pinned to the same immutable binary.
+# This document cannot self-appoint a reviewer or approve the host.
+$reviewerFile=Join-Path $trust 'independent-reviewer-public.bin'
+if (-not (Test-Path -LiteralPath $reviewerFile -PathType Leaf)) {
+    Deny 'SEPARATE_REVIEWER_PUBLIC_ROOT_NOT_PROVISIONED'
+}
+$reviewer=Get-Item -LiteralPath $reviewerFile -Force
+if ($reviewer.Length -ne 32 -or
+    ($reviewer.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+    Deny 'REVIEWER_ROOT_FILE_INVALID'
+}
+DenyUnsafeWriteAcl $reviewerFile
+if ((Get-FileHash -LiteralPath $reviewerFile -Algorithm SHA256).Hash.ToLowerInvariant() -cne
+    $ExpectedReviewerPublicSha256.ToLowerInvariant()) {
+    Deny 'INDEPENDENT_REVIEWER_PUBLIC_ROOT_NOT_PINNED'
 }
 # Presence/ACL alone does not attest owner/reviewer private key control
 # or remote highwater; intentionally block production even on true result.
@@ -152,6 +238,10 @@ foreach($entry in $roots.Values) {
     owner_public_root_hash_matched=$true
     reviewer_public_root_hash_matched=$true
     witness_public_root_hash_matched=$true
+    host_public_root_hash_matched=$true
+    operator_public_root_hash_matched=$true
+    reviewer_public_root_hash_matched=$true
+    four_party_public_root_file_sha256=$observedPins
     observed_scm_running_and_restricted=$true
     physically_independent_review_verdict_proven=$false
     owner_per_task_signature_verified=$false
