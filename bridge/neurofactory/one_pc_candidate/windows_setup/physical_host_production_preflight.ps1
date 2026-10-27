@@ -77,20 +77,6 @@ function CheckFile([string]$path,[string]$expectedSha,[long]$maxBytes) {
         Deny 'ACTUAL_SERVICE_FILE_HASH_NOT_APPROVED'
     }
 }
-CheckFile $expectedSource $ExpectedHostSourceSha256 250000
-CheckFile $expectedRuntime $ExpectedHostBinarySha256 20000000
-DenyUnsafeWriteAcl $expectedSource
-DenyUnsafeWriteAcl $expectedRuntime
-$cmd=$service.PathName.Trim()
-$want=('"'+$expectedRuntime+'" -B "'+$expectedSource+'" --scm')
-if ($cmd -ine $want) {Deny 'ACTUAL_SCM_BINARY_NOT_PINNED_TO_SERVICE_ROOT'}
-$signer=Get-AuthenticodeSignature -LiteralPath $expectedRuntime -ErrorAction Stop
-if ($signer.Status.ToString() -cne 'Valid' -or
-    $null -eq $signer.SignerCertificate -or
-    $signer.SignerCertificate.Thumbprint.ToUpperInvariant() -cne
-        $PinnedPublisherThumbprint.ToUpperInvariant()) {
-    Deny 'SERVICE_RUNTIME_NOT_SIGNED_BY_INDEPENDENTLY_PINNED_PUBLISHER'
-}
 function DenyUnsafeWriteAcl([string]$path) {
     $acl=Get-Acl -LiteralPath $path -ErrorAction Stop
     if (-not $acl.AreAccessRulesProtected) {Deny 'TRUST_FILE_INHERITED_UNVERIFIED_ACL'}
@@ -112,6 +98,20 @@ function DenyUnsafeWriteAcl([string]$path) {
             Deny 'UNTRUSTED_CLIENT_OR_HOST_SID_CAN_REPLACE_TRUST_ROOT'
         }
     }
+}
+CheckFile $expectedSource $ExpectedHostSourceSha256 250000
+CheckFile $expectedRuntime $ExpectedHostBinarySha256 20000000
+DenyUnsafeWriteAcl $expectedSource
+DenyUnsafeWriteAcl $expectedRuntime
+$cmd=$service.PathName.Trim()
+$want=('"'+$expectedRuntime+'" -B "'+$expectedSource+'" --scm')
+if ($cmd -ine $want) {Deny 'ACTUAL_SCM_BINARY_NOT_PINNED_TO_SERVICE_ROOT'}
+$signer=Get-AuthenticodeSignature -LiteralPath $expectedRuntime -ErrorAction Stop
+if ($signer.Status.ToString() -cne 'Valid' -or
+    $null -eq $signer.SignerCertificate -or
+    $signer.SignerCertificate.Thumbprint.ToUpperInvariant() -cne
+        $PinnedPublisherThumbprint.ToUpperInvariant()) {
+    Deny 'SERVICE_RUNTIME_NOT_SIGNED_BY_INDEPENDENTLY_PINNED_PUBLISHER'
 }
 foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),$trust)) {
     if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
