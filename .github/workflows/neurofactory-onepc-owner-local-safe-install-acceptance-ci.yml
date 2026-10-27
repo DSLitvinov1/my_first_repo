@@ -113,6 +113,9 @@ jobs:
             $file=Join-Path (Join-Path "$install\components" $entry.role) $entry.file
             if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
           }
+          # Independent expected pin comes from pre-install staging, not from
+          # the installed manifest being evaluated.
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
           $manifestSha=(Get-FileHash "$stage\components\manifest.json" -Algorithm SHA256).Hash.ToLowerInvariant()
           Write-Output ('NF_OWNER_PC_REVIEW_COMPONENTS_MANIFEST_SHA256='+$manifestSha)
           $ownerPreflight=Join-Path $install 'acceptance\owner_pc_readonly_acceptance.ps1'
