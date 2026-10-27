@@ -25,6 +25,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/nf-persistent-remote-witness"
           "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
           "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_daemon.py -v
+          "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_verify_witness_source_archive.py -v
           if "$RUNNER_TEMP/nf-persistent-remote-witness/bin/python" -B bridge/neurofactory/one_pc_candidate/external_highwater_daemon.py --audit; then
             echo 'UNPROVISIONED_REMOTE_WITNESS_MUST_FAIL_CLOSED'
             exit 1
@@ -49,6 +50,7 @@ jobs:
             "vps_witness_systemd/production.json.example",
             "vps_witness_systemd/requirements-witness.txt",
             "vps_witness_systemd/OPERATOR_VPS_INSTALLATION_RU.md",
+            "vps_witness_systemd/verify_witness_source_archive.py",
             "WITNESS_REMOTE_NODE_DEPLOYMENT_BLOCKERS_20261027_RU.md",
           )
           dest=Path("Neurofactory-VPS-Witness-OPERATOR-STAGING-NO-KEYS.zip")
@@ -75,6 +77,13 @@ jobs:
               assert hashlib.sha256(z.read(item["path"])).hexdigest()==item["sha256"]
             invalid=json.loads(z.read("vps_witness_systemd/production.json.example"))
             assert invalid["listen_address"]=="SET_OPERATOR_PRIVATE_VPN_IPV4"
+          from sys import path as pythonpath
+          pythonpath.insert(0,str(root))
+          from vps_witness_systemd.verify_witness_source_archive import verify_archive
+          result=verify_archive(path=dest.resolve(),
+            operator_approved_archive_sha256=hashlib.sha256(dest.read_bytes()).hexdigest())
+          assert not result["may_install_or_activate"]
+          assert result["verified_files"]==len(names)
           print("NF_VPS_WITNESS_OPERATOR_SOURCE_FILES_SHA_VERIFIED="+str(len(names)))
           print("NF_VPS_WITNESS_NO_REAL_KEY_ENROLLMENT_OR_PAYMENT=TRUE")
           print("NF_VPS_WITNESS_SOURCE_BUNDLE_SHA256="+hashlib.sha256(dest.read_bytes()).hexdigest())
