@@ -1,10 +1,12 @@
 name: Neurofactory machine-wide unsigned combined installer — review and staging only
 on:
   push:
-    branches: [neurofactory-onepc-resident-scm-release-factory-20261027]
+    branches: [neurofactory-onepc-resident-scm-release-factory-20261027, neurofactory-onepc-physical-trust-boundary-20261027]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - .github/workflows/neurofactory-onepc-machine-review-installer-ci.yml
+      - bridge/neurofactory/one_pc_candidate/remote_highwater_client.py
+      - bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
 permissions:
   contents: read
 jobs:
@@ -63,6 +65,11 @@ jobs:
           Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
           New-Item -ItemType Directory -Force "$stage\review-host" | Out-Null
           Copy-Item 'bridge/neurofactory/one_pc_candidate/resident_host_audit_journal.py' "$stage\review-host\resident_host_audit_journal.py"
+          foreach ($name in @('remote_highwater_client.py','independent_witness_receipt.py',
+              'combined_release_review_gate.py','secure_release_preflight.py',
+              'windows_package_preflight.py')) {
+              Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/$name" -Destination "$stage\review-host\$name"
+          }
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'PINNED_COMPONENT_STAGING_REJECTED'}
           $components=Get-Content "$stage\components\manifest.json" -Raw|ConvertFrom-Json
@@ -150,6 +157,13 @@ jobs:
           }
           if (!(Test-Path "$install\review-host\resident_host_audit_journal.py")) {
               throw 'INSTALLED_MACHINE_LOCAL_SIGNED_RESULT_JOURNAL_MISSING'
+          }
+          foreach ($name in @('remote_highwater_client.py','independent_witness_receipt.py',
+              'combined_release_review_gate.py','secure_release_preflight.py',
+              'windows_package_preflight.py')) {
+              if (!(Test-Path "$install\review-host\$name")) {
+                  throw "REMOTE_WITNESS_OR_RELEASE_GUARD_NOT_INSTALLED: $name"
+              }
           }
           if (!(Test-Path "$install\app\local_workspace.py") -or !(Test-Path "$install\runtime\python.exe")) {
               throw 'REVIEW_MACHINE_INCOMPLETE_INSTALL'
