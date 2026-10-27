@@ -1,0 +1,12 @@
+{
+  "schema": "nf.witness.vps.operator_config.v1",
+  "listen_address": "SET_OPERATOR_PRIVATE_VPN_IPV4",
+  "port": 17443,
+  "witness_id": "SET_INDEPENDENT_OPERATOR_NODE_ID",
+  "client_der_sha256": "SET_CLIENT_CERT_DER_SHA256",
+  "server_der_sha256": "SET_SERVER_CERT_DER_SHA256",
+  "witness_public_sha256": "SET_ED25519_PUBLIC_KEY_SHA256",
+  "machine_sha256": "SET_APPROVED_OWNER_MACHINE_SHA256",
+  "package_sha256": "SET_PUBLISHER_SIGNED_INSTALLER_SHA256",
+  "source_sha40": "SET_REVIEWED_SOURCE_GIT_SHA40"
+}

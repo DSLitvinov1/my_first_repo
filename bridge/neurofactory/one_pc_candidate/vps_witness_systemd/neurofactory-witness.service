@@ -1,0 +1,54 @@
+# REVIEW-ONLY template; must be independently audited before host enrollment.
+# Dedicated Linux VPS with private VPN IP, not on the owner's Windows disk.
+# Private signing/TLS keys must be provisioned separately by the operator.
+[Unit]
+Description=Neurofactory independent monotonic witness (mTLS, restricted, NO HOST effects)
+Documentation=https://github.com/DSLitvinov1/my_first_repo/issues/11
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/neurofactory/witness/production.json
+ConditionPathExists=/var/lib/neurofactory-witness/remote-ledger.sqlite3
+
+[Service]
+Type=simple
+User=neurofactory-witness
+Group=neurofactory-witness
+WorkingDirectory=/opt/neurofactory-witness/app
+ExecStartPre=/opt/neurofactory-witness/.venv/bin/python -B /opt/neurofactory-witness/app/external_highwater_daemon.py --audit
+ExecStart=/opt/neurofactory-witness/.venv/bin/python -B /opt/neurofactory-witness/app/external_highwater_daemon.py --serve
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=15s
+KillSignal=SIGTERM
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectHostname=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RemoveIPC=yes
+MemoryDenyWriteExecute=no
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_UNIX
+StateDirectory=neurofactory-witness
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/neurofactory-witness
+ReadOnlyPaths=/etc/neurofactory/witness /opt/neurofactory-witness
+# A separate host firewall must permit only the owner's pinned client VPN IP.
+# In production the operator should narrow IPAddressAllow further.
+IPAddressDeny=any
+IPAddressAllow=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16
+LimitNOFILE=128
+TasksMax=24
+
+[Install]
+WantedBy=multi-user.target

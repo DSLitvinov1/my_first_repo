@@ -1,0 +1,2 @@
+# Pin only; operator must approve full SHA-256 wheel lock before production.
+cryptography==46.0.3
