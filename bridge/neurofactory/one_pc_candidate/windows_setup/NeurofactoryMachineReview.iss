@@ -44,6 +44,7 @@ Source: "{#SourceRoot}\start_neurofactory.cmd"; DestDir: "{app}"; Flags: ignorev
 Source: "{#SourceRoot}\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\neurofactory_dormant_service.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\audit_protected_host_readonly.ps1"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#HostSourceRoot}\physical_host_production_preflight.ps1"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\audit_windows_operator_public_pins.ps1"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\inspect_dormant_review_bundle.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#HostSourceRoot}\PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt"; DestDir: "{app}\review-host"; Flags: ignoreversion

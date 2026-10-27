@@ -1,9 +1,10 @@
 name: Neurofactory machine-wide unsigned combined installer — review and staging only
 on:
   push:
-    branches: [neurofactory-onepc-resident-scm-release-factory-20261027, neurofactory-onepc-physical-trust-boundary-20261027]
+    branches: [neurofactory-host-owner-review-physical-preflight-20261027]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
+      - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
       - .github/workflows/neurofactory-onepc-machine-review-installer-ci.yml
       - bridge/neurofactory/one_pc_candidate/remote_highwater_client.py
       - bridge/neurofactory/one_pc_candidate/independent_witness_receipt.py
@@ -77,7 +78,7 @@ jobs:
               throw 'COMPONENT_SOURCE_INTEGRITY_GATES_CHANGED'
           }
           $hostSourceDir=Join-Path $PWD 'bridge/neurofactory/one_pc_candidate/windows_setup'
-          $reviewHost=@('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1','audit_windows_operator_public_pins.ps1','inspect_dormant_review_bundle.py','PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt')
+          $reviewHost=@('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1','audit_windows_operator_public_pins.ps1','inspect_dormant_review_bundle.py','PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt','physical_host_production_preflight.ps1')
           $hostManifest=@($reviewHost|ForEach-Object {
               $source=Join-Path $hostSourceDir $_
               [ordered]@{path=$_;sha256=(Get-FileHash $source -Algorithm SHA256).Hash.ToLowerInvariant()}
@@ -86,7 +87,7 @@ jobs:
               $rel=$_.FullName.Substring($stage.Length+1).Replace('\','/')
               [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
           })
-          if ($packageEntries.Count -lt 35 -or $hostManifest.Count -ne 5) {
+          if ($packageEntries.Count -lt 35 -or $hostManifest.Count -ne 6) {
               throw 'COMBINED_MACHINE_REVIEW_PAYLOAD_INCOMPLETE'
           }
           [ordered]@{
@@ -168,6 +169,43 @@ jobs:
           if (!(Test-Path "$install\app\local_workspace.py") -or !(Test-Path "$install\runtime\python.exe")) {
               throw 'REVIEW_MACHINE_INCOMPLETE_INSTALL'
           }
+          $physicalAudit=Join-Path $install 'review-host\physical_host_production_preflight.ps1'
+          if (!(Test-Path $physicalAudit)) {throw 'PHYSICAL_HOST_REQUIRED_PREFLIGHT_NOT_INSTALLED'}
+          $text=Get-Content -LiteralPath $physicalAudit -Raw -Encoding UTF8
+          $tokens=$null
+          $parseErrors=$null
+          $null=[System.Management.Automation.Language.Parser]::ParseInput($text,[ref]$tokens,[ref]$parseErrors)
+          if (@($parseErrors).Count -ne 0) {
+              foreach ($parseIssue in $parseErrors) {
+                  Write-Output ('NF_HOST_PRECHECK_PARSER_ERROR_LINE='+$parseIssue.Extent.StartLineNumber+' DETAIL='+$parseIssue.Message)
+              }
+              throw 'PHYSICAL_SCM_PREFLIGHT_POWERSHELL_NOT_PARSEABLE'
+          }
+          $pins=@{
+              ExpectedHostBinarySha256=('a'*64)
+              ExpectedHostSourceSha256=('b'*64)
+              ExpectedOwnerPublicSha256=('c'*64)
+              ExpectedReviewerPublicSha256=('d'*64)
+              ExpectedWitnessPublicSha256=('e'*64)
+              ExpectedHostPublicSha256=('f'*64)
+              ExpectedOperatorPublicSha256=('1'*64)
+              ExpectedPublicPinsFileSha256=('2'*64)
+              PinnedPublisherThumbprint=('F'*40)
+          }
+          $output=(& pwsh -NoProfile -NonInteractive -File $physicalAudit @pins 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0 -or $output -notmatch 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE') {
+              throw 'PHYSICAL_HOST_RUNNING_ON_CI_GAINED_FALSE_AUTHORITY'
+          }
+          $wrongRole=@{}+$pins
+          $wrongRole.ExpectedHostPublicSha256=$pins.ExpectedOwnerPublicSha256
+          $conflicting=(& pwsh -NoProfile -NonInteractive -File $physicalAudit @wrongRole 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0) {throw 'FOUR_PARTY_PUBLIC_ROLE_CONFLICT_GAINED_AUTHORITY'}
+          $global:LASTEXITCODE=0
+          Write-Output 'NF_PHYSICAL_WINDOWS_HOST_CI_NO_ROLE_SUBSTITUTION=DENIED'
+          # The intentional negative pwsh subprocess leaves LASTEXITCODE=1.
+          # Reset only after verifying its specific fail-closed response.
+          $global:LASTEXITCODE=0
+          Write-Output 'NF_PHYSICAL_HOST_PUBLIC_PINS_SCM_PRECHECK=FAIL_CLOSED_NO_CI_IMPERSONATION'
           Write-Output 'NF_REAL_MACHINE_WIDE_UI_CORE_HOST_SOURCE_INSTALL=PASS_REVIEW_ONLY'
           Write-Output 'NF_REVIEW_MACHINE_SERVICE_INSTALL_AND_AUTO_EXECUTION=BLOCKED'
           $uninstall=Join-Path $install 'unins000.exe'
