@@ -94,7 +94,7 @@ def verify_archive(*,path:Path,operator_approved_archive_sha256:str):
                 data=z.read(name)
                 if len(data)!=listed["bytes"] or sha256(data).hexdigest()!=listed["sha256"]:
                     _deny("actual ZIP source mismatches internal file digest")
-                if b"-----BEGIN PRIVATE KEY-----" in data:
+                if (b"-----BEGIN"+b" PRIVATE KEY-----") in data:
                     _deny("private signer included in source staging")
     except (zipfile.BadZipFile,RuntimeError,OSError,ValueError) as e:
         if isinstance(e,OperatorArchiveDenied):raise
