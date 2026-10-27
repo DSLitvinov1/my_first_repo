@@ -12,6 +12,8 @@ client identity, immutable reviewed binary and signed reviewer approval.
 """
 from __future__ import annotations
 from hashlib import sha256
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 import ipaddress
 import json
 import os
@@ -46,7 +48,8 @@ HEX64=re.compile(r"[0-9a-f]{64}\Z")
 ID=re.compile(r"[A-Za-z0-9_.:-]{3,96}\Z")
 FIELDS=frozenset((
     "schema","listen_address","port","witness_id",
-    "client_der_sha256","machine_sha256","package_sha256","source_sha40",
+    "client_der_sha256","server_der_sha256","witness_public_sha256",
+    "machine_sha256","package_sha256","source_sha40",
 ))
 class DaemonDenied(ValueError): pass
 def _deny(why): raise DaemonDenied("NF independent witness NOT READY: "+why)
@@ -70,7 +73,8 @@ def parse_operator_config(raw:bytes,*,enforce_private_bind:bool=True):
     if (type(info["port"]) is not int or not 1024<=info["port"]<=65535
         or type(info["witness_id"]) is not str or not ID.fullmatch(info["witness_id"])
         or any(type(info[k]) is not str or not (HEX40 if k=="source_sha40" else HEX64).fullmatch(info[k])
-                for k in ("client_der_sha256","machine_sha256","package_sha256","source_sha40"))):
+                for k in ("client_der_sha256","server_der_sha256","witness_public_sha256",
+                          "machine_sha256","package_sha256","source_sha40"))):
         _deny("invalid pinned identities, port or release")
     try:
         if type(info["listen_address"]) is not str: _deny("IP literal required")
@@ -163,6 +167,17 @@ def main(argv=None):
     info=read_locked_operator_config()
     check_witness_files()
     signer=_load_private_witness_signer(SIGNER)
+    public_raw=signer.public_key().public_bytes(
+        serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+    if sha256(public_raw).hexdigest()!=info["witness_public_sha256"]:
+        _deny("private signer does not match independently pinned public root")
+    try:
+        server_cert=x509.load_pem_x509_certificate(TLS_CERT.read_bytes())
+        cert_der=server_cert.public_bytes(serialization.Encoding.DER)
+    except (OSError,ValueError) as exc:
+        raise DaemonDenied("NF independent witness NOT READY: invalid server TLS certificate") from exc
+    if sha256(cert_der).hexdigest()!=info["server_der_sha256"]:
+        _deny("server TLS certificate not bound to root-owned operator pins")
     observation=inspect_external_highwater(DB)
     if observation["highest_committed_epoch"]<0: _deny("invalid durable highwater")
     if argv==["--audit"]:
