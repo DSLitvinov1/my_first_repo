@@ -54,6 +54,13 @@ if ($LASTEXITCODE -ne 0 -or $sidResult -notmatch 'RESTRICTED') {
 $serviceSid=([Security.Principal.NTAccount]"NT SERVICE\$name").Translate(
     [Security.Principal.SecurityIdentifier]).Value
 if ($serviceSid -notmatch '^S-1-5-80-') {Deny 'NO_UNIQUE_WINDOWS_SERVICE_ID'}
+$processOwner=Get-CimInstance Win32_Process -Filter "ProcessId=$($service.ProcessId)" |
+    Invoke-CimMethod -MethodName GetOwner
+if ($processOwner.ReturnValue -ne 0 -or
+    $processOwner.User -cne 'LOCAL SERVICE' -or
+    $processOwner.Domain -cne 'NT AUTHORITY') {
+    Deny 'SCM_PROCESS_TOKEN_IDENTITY_NOT_REAL_LOCALSERVICE'
+}
 $expectedSource=Join-Path $root 'host\protected_scm_host.py'
 $expectedRuntime=Join-Path $root 'runtime\python.exe'
 function CheckFile([string]$path,[string]$expectedSha,[long]$maxBytes) {
@@ -72,6 +79,8 @@ function CheckFile([string]$path,[string]$expectedSha,[long]$maxBytes) {
 }
 CheckFile $expectedSource $ExpectedHostSourceSha256 250000
 CheckFile $expectedRuntime $ExpectedHostBinarySha256 20000000
+DenyUnsafeWriteAcl $expectedSource
+DenyUnsafeWriteAcl $expectedRuntime
 $cmd=$service.PathName.Trim()
 $want=('"'+$expectedRuntime+'" -B "'+$expectedSource+'" --scm')
 if ($cmd -ine $want) {Deny 'ACTUAL_SCM_BINARY_NOT_PINNED_TO_SERVICE_ROOT'}
@@ -82,6 +91,28 @@ if ($signer.Status.ToString() -cne 'Valid' -or
         $PinnedPublisherThumbprint.ToUpperInvariant()) {
     Deny 'SERVICE_RUNTIME_NOT_SIGNED_BY_INDEPENDENTLY_PINNED_PUBLISHER'
 }
+function DenyUnsafeWriteAcl([string]$path) {
+    $acl=Get-Acl -LiteralPath $path -ErrorAction Stop
+    if (-not $acl.AreAccessRulesProtected) {Deny 'TRUST_FILE_INHERITED_UNVERIFIED_ACL'}
+    foreach($ace in $acl.Access) {
+        if ($ace.AccessControlType -cne 'Allow') {continue}
+        $sid=$ace.IdentityReference.Translate(
+            [Security.Principal.SecurityIdentifier]).Value
+        # 0x00116 = write data/append/EA/attributes; 0xD0000 =
+        # delete, change permissions, take ownership.
+        $writes=(([int64]$ace.FileSystemRights -band 0x00116) -ne 0 -or
+                 ([int64]$ace.FileSystemRights -band 0xD0000) -ne 0)
+        if ($writes -and $sid -in @(
+            'S-1-1-0',  # Everyone
+            'S-1-5-11', # Authenticated users
+            'S-1-5-32-545', # Builtin Users
+            'S-1-5-19', # Shared LocalService
+            $serviceSid  # Per-service host may READ but NEVER modify trust
+        )) {
+            Deny 'UNTRUSTED_CLIENT_OR_HOST_SID_CAN_REPLACE_TRUST_ROOT'
+        }
+    }
+}
 foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),$trust)) {
     if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
         Deny 'OS_PROTECTED_TRUST_DIRECTORY_ABSENT'
@@ -90,17 +121,7 @@ foreach($dir in @($root,(Join-Path $root 'host'),(Join-Path $root 'runtime'),$tr
     if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
         Deny 'OS_TRUST_DIRECTORY_LINKED'
     }
-    $acl=Get-Acl -LiteralPath $dir
-    if (-not $acl.AreAccessRulesProtected) {Deny 'TRUST_ROOT_INHERITS_UNREVIEWED_ACL'}
-    foreach($ace in $acl.Access) {
-        if ($ace.AccessControlType -cne 'Allow') {continue}
-        $sid=$ace.IdentityReference.Translate(
-            [Security.Principal.SecurityIdentifier]).Value
-        if ($sid -in @('S-1-1-0','S-1-5-11','S-1-5-32-545','S-1-5-19') -and
-            (([int]$ace.FileSystemRights -band 0x116) -ne 0)) {
-            Deny 'UNTRUSTED_OR_SHARED_SERVICE_PRINCIPAL_CAN_WRITE_CONFIG'
-        }
-    }
+    DenyUnsafeWriteAcl $dir
 }
 $roots=@{
   owner=@{path=(Join-Path $trust 'owner-public.bin');pin=$ExpectedOwnerPublicSha256}
@@ -117,8 +138,7 @@ foreach($entry in $roots.Values) {
         $entry.pin.ToLowerInvariant()) {
         Deny 'PUBLIC_ROOT_NOT_INDEPENDENTLY_PINNED'
     }
-    $acl=Get-Acl -LiteralPath $entry.path
-    if (-not $acl.AreAccessRulesProtected) {Deny 'PUBLIC_SIGNER_ROOT_ACL_INHERITED'}
+    DenyUnsafeWriteAcl $entry.path
 }
 # Presence/ACL alone does not attest owner/reviewer private key control
 # or remote highwater; intentionally block production even on true result.
