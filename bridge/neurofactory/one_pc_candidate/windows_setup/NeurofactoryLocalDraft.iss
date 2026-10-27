@@ -39,6 +39,7 @@ Source: "{#SourceRoot}\components\*"; DestDir: "{app}\components"; Flags: recurs
 Source: "{#SourceRoot}\start_neurofactory.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\README.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceRoot}\owner_pc_readonly_acceptance.ps1"; DestDir: "{app}\acceptance"; Flags: ignoreversion
+Source: "{#SourceRoot}\package-integrity.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{userdesktop}\НЕЙРОЗАВОД — Локальная база"; Filename: "{app}\start_neurofactory.cmd"

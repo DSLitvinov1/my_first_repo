@@ -12,6 +12,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$InstallDir,
     [Parameter(Mandatory=$true)][string]$ExpectedComponentsManifestSha256,
+    [Parameter(Mandatory=$true)][string]$ExpectedPackageManifestSha256,
     [switch]$ObserveLocalOllama,
     [ValidateSet('Review','Production')][string]$AcceptanceMode='Review'
 )
@@ -22,6 +23,9 @@ if ($env:OS -cne 'Windows_NT') {Deny 'WINDOWS_ONLY'}
 if ($AcceptanceMode -cne 'Review') {Deny 'PRODUCTION_REQUIRES_INDEPENDENT_PHYSICAL_AUTHORITY'}
 if ($ExpectedComponentsManifestSha256 -cnotmatch '^[a-fA-F0-9]{64}$') {
     Deny 'EXTERNALLY_PINNED_MANIFEST_SHA256_REQUIRED'
+}
+if ($ExpectedPackageManifestSha256 -cnotmatch '^[a-fA-F0-9]{64}$') {
+    Deny 'EXTERNALLY_PINNED_ENTIRE_PACKAGE_MANIFEST_SHA256_REQUIRED'
 }
 if (-not [IO.Path]::IsPathFullyQualified($InstallDir)) {
     Deny 'INSTALL_ROOT_MUST_BE_ABSOLUTE'
@@ -102,10 +106,71 @@ foreach($entry in $manifest.entries) {
         Deny 'COMPONENT_SHA256_DIVERGED'
     }
 }
-foreach($name in @('runtime\python.exe','app\local_workspace.py','ui\index.html',
-                 'ui\app.js','start_neurofactory.cmd','README.txt')) {
-    [void](StrictFile $name 12000000)
+# Verify full runtime, UI, launcher, acceptance script against a hash
+# independently delivered from the pre-install CI stage.
+$packageFile=StrictFile 'package-integrity.json' 65000
+$actualPackage=(Get-FileHash -LiteralPath $packageFile -Algorithm SHA256).Hash
+if ($actualPackage.ToUpperInvariant() -cne $ExpectedPackageManifestSha256.ToUpperInvariant()) {
+    Deny 'INSTALLED_ENTIRE_PACKAGE_MANIFEST_NOT_INDEPENDENTLY_PINNED'
 }
+$packageManifest=Get-Content -LiteralPath $packageFile -Raw -Encoding UTF8 |
+    ConvertFrom-Json -ErrorAction Stop
+if (@(Compare-Object @($packageManifest.PSObject.Properties.Name) @(
+    'schema','source_sha40','status','production_signed',
+    'host_effects_allowed','files')).Count -ne 0 -or
+    $packageManifest.schema -cne 'nf.owner.local_review_all_installed_files.v1' -or
+    $packageManifest.source_sha40 -cnotmatch '^[a-f0-9]{40}$' -or
+    $packageManifest.status -cne 'INERT_REVIEW_ONLY_NEVER_RELEASE_AUTHORITY' -or
+    $packageManifest.production_signed -cne $false -or
+    $packageManifest.host_effects_allowed -cne $false -or
+    @($packageManifest.files).Count -lt 35 -or
+    @($packageManifest.files).Count -gt 90) {
+    Deny 'INERT_ENTIRE_PACKAGE_MANIFEST_INVALID'
+}
+$allPaths=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach($part in $packageManifest.files) {
+    if (@(Compare-Object @($part.PSObject.Properties.Name) @(
+       'path','bytes','sha256')).Count -ne 0 -or
+        $part.path -isnot [string] -or
+        $part.path -cnotmatch '^((runtime|app|ui|components|acceptance)/[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+){0,4}|start_neurofactory[.]cmd|README[.]txt)$' -or
+        $part.sha256 -isnot [string] -or
+        $part.sha256 -cnotmatch '^[a-f0-9]{64}$' -or
+        ($part.bytes -isnot [int] -and $part.bytes -isnot [long]) -or
+        $part.bytes -le 0 -or $part.bytes -gt 20000000) {
+        Deny 'INERT_PACKAGE_INVENTORY_ENTRY_INVALID'
+    }
+    if (-not $allPaths.Add($part.path)) {Deny 'DUPLICATE_PATH_IN_ENTIRE_PACKAGE'}
+    $absolute=StrictFile ($part.path.Replace('/','\')) 20000000
+    $info=Get-Item -LiteralPath $absolute -Force
+    if ($info.Length -ne [long]$part.bytes -or
+        (Get-FileHash -LiteralPath $absolute -Algorithm SHA256).Hash.ToLowerInvariant() -cne
+         $part.sha256) {
+        Deny 'INSTALLED_EXECUTABLE_UI_OR_RUNTIME_FILE_MODIFIED'
+    }
+}
+if (-not $allPaths.Contains('acceptance/owner_pc_readonly_acceptance.ps1') -or
+    -not $allPaths.Contains('app/local_workspace.py') -or
+    -not $allPaths.Contains('runtime/python.exe') -or
+    -not $allPaths.Contains('components/manifest.json')) {
+    Deny 'CRITICAL_RUNTIME_OR_AUDITOR_NOT_PINNED'
+}
+$extraUninstallers=0
+foreach($file in (Get-ChildItem -LiteralPath $root -Recurse -Force -File)) {
+    if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Deny 'LINKED_FILE_IN_INSTALLED_APPLICATION'
+    }
+    $relative=$file.FullName.Substring($root.Length).TrimStart('\').Replace('\','/')
+    if ($relative -ceq 'package-integrity.json' -or $allPaths.Contains($relative)) {
+        continue
+    }
+    if ($relative -match '^unins[0-9]{3}[.](exe|dat)$') {
+        $extraUninstallers++
+        continue
+    }
+    Deny 'UNACCOUNTED_EXECUTABLE_OR_SIDELOADED_FILE_IN_INSTALL'
+}
+if ($extraUninstallers -gt 2) {Deny 'SURPLUS_UNINSTALLER_FILES'}
+
 $service=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction Stop
 if ($null -ne $service -and $service.State -ceq 'Running') {
     # An already active foreign service cannot receive a review-only pass.
@@ -132,6 +197,8 @@ $report=[ordered]@{
     status='REVIEW_COMPONENTS_MATCH_PIN_NO_PRODUCTION_AUTHORITY'
     source_manifest_sha256=$observed.ToLowerInvariant()
     pinned_components_verified=$seen.Count
+    entire_package_files_verified=$allPaths.Count
+    package_manifest_sha256=$actualPackage.ToLowerInvariant()
     windows_platform='Windows'
     package_is_independently_publisher_signed=$false
     production_release_authorized=$false

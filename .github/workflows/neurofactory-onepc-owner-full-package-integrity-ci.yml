@@ -1,0 +1,278 @@
+name: Neurofactory owner local full app runtime integrity and no-exec accept CI
+on:
+  push:
+    branches: [neurofactory-owner-full-package-integrity-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/**
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
+      - bridge/neurofactory/one_pc_candidate/installed_integrity.py
+      - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/core_readonly_observer.py
+      - bridge/neurofactory/one_pc_candidate/signed_owner_admission.py
+      - bridge/neurofactory/one_pc_candidate/restore_offline.py
+      - bridge/neurofactory/one_pc_candidate/test_draft_provider_workspace.py
+      - bridge/neurofactory/one_pc_candidate/test_installed_integrity.py
+      - bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py
+      - bridge/neurofactory/control_ui/**
+      - bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py
+      - bridge/neurofactory/one_pc_candidate/build_owner_review_package_manifest.py
+      - .github/workflows/neurofactory-onepc-owner-full-package-integrity-ci.yml
+permissions:
+  contents: read
+jobs:
+  package-and-install-isolated:
+    runs-on: windows-2025
+    timeout-minutes: 22
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          path: .nf_pin_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 2c92e102efed49e62eac1bc0e434b3d412d62e40
+          path: .nf_pin_host
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 827b654d9f7c6a10a9b90a9c97802e63116711b9
+          path: .nf_pin_providers
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ad82e853d9db2a0567c61e8d9a3f1e5f62905271
+          path: .nf_pin_coordinator
+          persist-credentials: false
+      - name: Stage exact existing app and official offline Python runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stage = Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          New-Item -ItemType Directory -Force "$stage\runtime","$stage\app","$stage\ui" | Out-Null
+          $url='https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip'
+          $archive=Join-Path $env:RUNNER_TEMP 'python-3.12.10-embed-amd64.zip'
+          Invoke-WebRequest -Uri $url -OutFile $archive -MaximumRedirection 2
+          if ((Get-Item $archive).Length -ne 11133606) {throw 'VENDOR_RUNTIME_UNEXPECTED_LENGTH'}
+          $runtimeHash=(Get-FileHash $archive -Algorithm SHA256).Hash.ToUpperInvariant()
+          if ($runtimeHash -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'VENDOR_RUNTIME_SHA256_NOT_PINNED'}
+          Write-Output ('NF_VENDOR_RUNTIME_SHA256_PINNED='+$runtimeHash)
+          Expand-Archive -LiteralPath $archive -DestinationPath "$stage\runtime" -Force
+          if (!(Test-Path "$stage\runtime\python.exe")) {throw 'NO_EMBEDDED_PYTHON'}
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/local_workspace.py' "$stage\app\local_workspace.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/installed_integrity.py' "$stage\app\installed_integrity.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/draft_provider.py' "$stage\app\draft_provider.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/codex_sites_bridge.py' "$stage\app\codex_sites_bridge.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py' "$stage\app\core_readonly_observer.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py' "$stage\app\signed_owner_admission.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/test_installed_provider_import.py' "$stage\app\test_installed_provider_import.py"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/restore_offline.py' "$stage\app\restore_offline.py"
+          Copy-Item 'bridge/neurofactory/control_ui/index.html','bridge/neurofactory/control_ui/styles.css','bridge/neurofactory/control_ui/demo-data.js','bridge/neurofactory/control_ui/app.js','bridge/neurofactory/control_ui/workspace.js','bridge/neurofactory/control_ui/integrations.js' "$stage\ui"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/start_neurofactory.cmd' "$stage\start_neurofactory.cmd"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/README.txt' "$stage\README.txt"
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/owner_pc_readonly_acceptance.ps1' "$stage\owner_pc_readonly_acceptance.ps1"
+          & "$stage\runtime\python.exe" -B -c "import sqlite3,http.server,json,uuid;print('NF_VENDOR_RUNTIME_EMBEDDED_READY')"
+          if ($LASTEXITCODE -ne 0) {throw 'EMBEDDED_RUNTIME_UNUSABLE'}
+          python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
+          if ($LASTEXITCODE -ne 0) {throw 'COMPONENT_SOURCE_PROVENANCE_FAILED'}
+          $manifest=Get-Content "$stage\components\manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.entries.Count -ne 15 -or $manifest.host_service_enrolled -or $manifest.core_queue_wired -or $manifest.release_approved) {throw 'STAGED_COMPONENT_GATES_INVALID'}
+          python -B bridge/neurofactory/one_pc_candidate/build_owner_review_package_manifest.py --stage "$stage" --source-sha40 $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0 -or !(Test-Path "$stage\package-integrity.json")) {throw 'NO_EXTERNAL_PACKAGE_MANIFEST'}
+          $stagedInventory=Get-Content "$stage\package-integrity.json" -Raw|ConvertFrom-Json
+          if ($stagedInventory.production_signed -or $stagedInventory.host_effects_allowed -or
+              @($stagedInventory.files).Count -lt 35) {throw 'INVALID_STAGED_ENTIRE_PACKAGE'}
+          Write-Output 'NF_STAGED_ENTIRE_INSTALLER_SOURCE_MANIFEST=PINNED_REVIEW_ONLY'
+          Write-Output 'NF_INSTALLER_IMMUTABLE_CORE_HOST_PROVIDERS_COORDINATOR_STAGED=PASS_NOT_ACTIVE'
+      - name: Install Inno Setup compiler on disposable GitHub Windows only
+        run: |
+          choco install innosetup --version=6.7.1 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {throw 'INNO_INSTALL_FAILED'}
+          if (!(Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" -PathType Leaf)) {throw 'INNO_COMPILER_UNAVAILABLE'}
+          Write-Output 'NF_INNO_COMPILER_PRESENT=YES'
+      - name: Compile per-user installer including pinned inert CORE/HOST/PROVIDERS/COORDINATOR source
+        run: |
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          $source=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryLocalDraft.iss').Path
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DSourceRoot=$stage" $source
+          if ($LASTEXITCODE -ne 0) {throw 'INNO_COMPILE_FAILURE'}
+          $file='bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe'
+          if (!(Test-Path $file)) {throw 'INSTALLER_ABSENT'}
+          $digest=Get-FileHash $file -Algorithm SHA256
+          Write-Output ('NF_INSTALLER_SHA256='+$digest.Hash)
+      - name: Actual isolated install, embedded Python SQLite HTTP and uninstall without deleting user data
+        run: |
+          $ErrorActionPreference='Stop'
+          $installer=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe').Path
+          $install=Join-Path $env:RUNNER_TEMP 'NFInstalled'
+          $data=Join-Path $env:RUNNER_TEMP 'NFUserData'
+          $p=Start-Process -Wait -PassThru -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$install")
+          if ($p.ExitCode -ne 0 -or !(Test-Path "$install\runtime\python.exe")) {throw 'INSTALL_FAILED'}
+          $manifest=Get-Content "$install\components\manifest.json" -Raw | ConvertFrom-Json
+          if ($manifest.entries.Count -ne 15 -or $manifest.core_queue_wired -or $manifest.host_service_enrolled -or $manifest.release_approved) {throw 'INSTALLED_COMPONENT_MANIFEST_INVALID'}
+          foreach($entry in $manifest.entries) {
+            $file=Join-Path (Join-Path "$install\components" $entry.role) $entry.file
+            if (!(Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry.sha256) {throw 'INSTALLED_COMPONENT_PROVENANCE_MISMATCH'}
+          }
+          # Independent expected pin comes from pre-install staging, not from
+          # the installed manifest being evaluated.
+          $stage=Join-Path $env:RUNNER_TEMP 'nf-local-stage'
+          $manifestSha=(Get-FileHash "$stage\components\manifest.json" -Algorithm SHA256).Hash.ToLowerInvariant()
+          $packageSha=(Get-FileHash "$stage\package-integrity.json" -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Output ('NF_OWNER_PC_REVIEW_ENTIRE_PACKAGE_MANIFEST_SHA256='+$packageSha)
+          Write-Output ('NF_OWNER_PC_REVIEW_COMPONENTS_MANIFEST_SHA256='+$manifestSha)
+          $ownerPreflight=Join-Path $install 'acceptance\owner_pc_readonly_acceptance.ps1'
+          if (!(Test-Path $ownerPreflight)) {throw 'OWNER_LOCAL_PREACCEPTANCE_SCRIPT_NOT_INSTALLED'}
+          $audit=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 $manifestSha -ExpectedPackageManifestSha256 $packageSha -ObserveLocalOllama)
+          if ($LASTEXITCODE -ne 0) {throw 'OWNER_PC_READONLY_AUDIT_FAILED'}
+          $report=$audit|ConvertFrom-Json
+          if ($report.status -cne 'REVIEW_COMPONENTS_MATCH_PIN_NO_PRODUCTION_AUTHORITY' -or
+              $report.pinned_components_verified -ne 15 -or $report.entire_package_files_verified -lt 35 -or
+              $report.service_running -cne $false -or
+              $report.production_release_authorized -cne $false -or
+              $report.changes_to_user_system -ne 0) {throw 'OWNER_PC_READONLY_AUDIT_OUTPUT_INVALID'}
+          Write-Output 'NF_OWNER_ENTIRE_INSTALLED_APP_UI_PYTHON_RUNTIME_AND_AUDITOR_SHA=PASS_READONLY'
+          Write-Output 'NF_OWNER_LOCAL_INSTALLED_FULL_SOURCE_VERIFY=PASS_READONLY'
+          $wrongPackage=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 $manifestSha -ExpectedPackageManifestSha256 ('0'*64) 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0 -or $wrongPackage -notmatch 'INSTALLED_ENTIRE_PACKAGE_MANIFEST_NOT_INDEPENDENTLY_PINNED') {
+              throw 'OWNER_FOREIGN_ENTIRE_PACKAGE_SHA_NOT_DENIED'
+          }
+          Write-Output 'NF_OWNER_FOREIGN_PACKAGE_MANIFEST_SHA=DENIED'
+          $tamperPath=Join-Path $install 'ui\app.js'
+          $original=[IO.File]::ReadAllBytes($tamperPath)
+          try {
+              [IO.File]::AppendAllText($tamperPath,"\n/* unapproved tamper CI */\n")
+              $tamperProof=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 $manifestSha -ExpectedPackageManifestSha256 $packageSha 2>&1 | Out-String)
+              if ($LASTEXITCODE -eq 0 -or $tamperProof -notmatch 'INSTALLED_EXECUTABLE_UI_OR_RUNTIME_FILE_MODIFIED') {
+                  throw 'OWNER_UI_SOURCE_MODIFICATION_WAS_NOT_DENIED'
+              }
+          } finally {
+              [IO.File]::WriteAllBytes($tamperPath,$original)
+          }
+          Write-Output 'NF_OWNER_INSTALLED_UI_JS_SOURCE_MODIFICATION=DENIED'
+          $unexpected=Join-Path $install 'app\sidecar.py'
+          try {
+              [IO.File]::WriteAllText($unexpected,'untrusted code')
+              $foreignProof=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 $manifestSha -ExpectedPackageManifestSha256 $packageSha 2>&1 | Out-String)
+              if ($LASTEXITCODE -eq 0 -or $foreignProof -notmatch 'UNACCOUNTED_EXECUTABLE_OR_SIDELOADED_FILE_IN_INSTALL') {
+                  throw 'OWNER_UNPINNED_SIDECAR_NOT_DENIED'
+              }
+          } finally {
+              Remove-Item $unexpected -ErrorAction SilentlyContinue
+          }
+          Write-Output 'NF_OWNER_INSTALL_SIDECAR_INJECTION=DENIED'
+          $negative=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 ('0'*64) -ExpectedPackageManifestSha256 $packageSha 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0 -or $negative -notmatch 'INSTALLED_MANIFEST_NOT_INDEPENDENTLY_PINNED') {
+              throw 'OWNER_PC_FOREIGN_MANIFEST_PIN_NOT_DENIED'
+          }
+          $production=(& pwsh -NoProfile -NonInteractive -File $ownerPreflight -InstallDir $install -ExpectedComponentsManifestSha256 $manifestSha -ExpectedPackageManifestSha256 $packageSha -AcceptanceMode Production 2>&1 | Out-String)
+          if ($LASTEXITCODE -eq 0 -or $production -notmatch 'PRODUCTION_REQUIRES_INDEPENDENT_PHYSICAL_AUTHORITY') {
+              throw 'OWNER_PC_PREACCEPTANCE_MINTED_PRODUCTION_AUTHORITY'
+          }
+          Write-Output 'NF_OWNER_LOCAL_UNAPPROVED_PRODUCTION_AND_WRONG_PIN=DENIED'
+          Write-Output 'NF_INSTALLER_REAL_CORE_HOST_PROVIDER_SOURCE_SHA256_IN_PACKAGE=PASS_NOT_ACTIVE'
+          if (!(Test-Path "$install\app\draft_provider.py")) {throw 'INSTALLED_DRAFT_PROVIDER_MODULE_MISSING'}
+          & "$install\runtime\python.exe" -B "$install\app\test_installed_provider_import.py" --components "$install\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_PROVIDER_CORE_IMPORT_FAILED'}
+          python -B bridge/neurofactory/one_pc_candidate/test_installed_integrity.py --app "$install\app" --components "$install\components"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_RUNTIME_TAMPER_NOT_DENIED'}
+          $port=18766
+          $serverOut=Join-Path $env:RUNNER_TEMP 'nf-installed-app-stdout.log'
+          $serverErr=Join-Path $env:RUNNER_TEMP 'nf-installed-app-stderr.log'
+          $server=Start-Process -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr -FilePath "$install\runtime\python.exe" -ArgumentList @(
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--components-dir',"$install\components",'--port',"$port")
+          try {
+            $url="http://127.0.0.1:$port"
+            $ready=$false
+            for ($i=0;$i -lt 50;$i++) {
+              Start-Sleep -Milliseconds 200
+              if ($server.HasExited) {break}
+              try {
+                $bootstrap=Invoke-RestMethod "$url/api/bootstrap" -TimeoutSec 2
+                $ready=$true
+                break
+              } catch {}
+            }
+            if (!$ready -or $bootstrap.mode -ne 'LOCAL_DRAFT_ONLY') {
+              if (Test-Path $serverErr) {Get-Content $serverErr | Select-Object -Last 12}
+              throw 'INSTALLED_APP_NOT_RUNNING'
+            }
+            $headers=@{'X-NF-Local-Token'=$bootstrap.csrf_token}
+            $body=@{name='Windows persisted project';description='single local PC verified'}|ConvertTo-Json -Compress
+            $created=Invoke-RestMethod "$url/api/projects" -Method Post -Headers $headers -ContentType 'application/json' -Body $body
+            if (!$created.id) {throw 'PROJECT_NOT_WRITTEN'}
+            $task=@{project_id=$created.id;objective='Create one text draft with no system actions';model_preference='auto'}|ConvertTo-Json -Compress
+            $createdTask=Invoke-RestMethod "$url/api/tasks" -Method Post -Headers $headers -ContentType 'application/json' -Body $task
+            if ($createdTask.state -ne 'DRAFT_PENDING_OWNER_AUTH') {throw 'TASK_NOT_DRAFT'}
+            $backup=Invoke-RestMethod "$url/api/backup" -Method Post -Headers $headers -ContentType 'application/json' -Body '{}'
+            if (!(Test-Path (Join-Path "$data\backups" $backup.filename))) {throw 'NO_BACKUP'}
+            $recovered=Join-Path $env:RUNNER_TEMP 'NFRestoredData'
+            & "$install\runtime\python.exe" -B "$install\app\restore_offline.py" --backup (Join-Path "$data\backups" $backup.filename) --new-data-dir $recovered
+            if ($LASTEXITCODE -ne 0 -or !(Test-Path "$recovered\workspace.sqlite3")) {throw 'VERIFIED_OFFLINE_RESTORE_FAILED'}
+            Write-Output 'NF_INSTALLER_OFFLINE_VERIFIED_SQLITE_RESTORE=PASS_DRAFT_ONLY'
+            $diag=Invoke-RestMethod "$url/api/status"
+            if ($diag.real_core_dispatch_enabled -or $diag.model_inference_enabled) {throw 'UNSAFE_PERMISSION'}
+            if (!(Test-Path "$install\app\core_readonly_observer.py") -or !(Test-Path "$install\app\signed_owner_admission.py")) {throw 'MISSING_SIGNED_READONLY_COMPONENTS'}
+            $coreObserve=Invoke-RestMethod "$url/api/core/status"
+            if ($coreObserve.configured -ne $false -or $coreObserve.queue_mutation_allowed -ne $false -or $coreObserve.execution_allowed -ne $false) {throw 'CORE_STATUS_EXPOSED_LIVE_ACCESS'}
+            $admission=Invoke-RestMethod "$url/api/tasks/$($createdTask.id)/admission-request"
+            if ($admission.owner_signed -ne $false -or $admission.queue_mutation_allowed -ne $false -or
+                $admission.execution_allowed -ne $false -or $admission.draft_id -ne $createdTask.id -or
+                $admission.draft_sha256 -notmatch '^[a-f0-9]{64}$') {throw 'UI_DRAFT_UNSIGNED_BOUNDARY_FAILED'}
+            Write-Output 'NF_INSTALLED_APP_QWEN_CORE_READONLY_OWNER_REQUEST=PASS_NO_EXECUTION'
+            Write-Output 'NF_INSTALLED_CORE_QUEUE_AND_HOST_SERVICE=OFF'
+            Write-Output 'NF_INSTALLER_REAL_LOCAL_SQLITE_HTTP_PROJECT_TASK_BACKUP=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server.HasExited) {Stop-Process -Id $server.Id -Force}
+          }
+          $secondPort=18767
+          $secondOut=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-out.log'
+          $secondErr=Join-Path $env:RUNNER_TEMP 'nf-restarted-app-err.log'
+          $server2=Start-Process -PassThru -WindowStyle Hidden -RedirectStandardOutput $secondOut -RedirectStandardError $secondErr -FilePath "$install\runtime\python.exe" -ArgumentList @(
+            '-B',"$install\app\local_workspace.py",'--data-dir',$data,'--ui-dir',"$install\ui",'--components-dir',"$install\components",'--port',"$secondPort")
+          try {
+            $url2="http://127.0.0.1:$secondPort"
+            $again=$false
+            for($k=0;$k -lt 40;$k++) {
+              Start-Sleep -Milliseconds 200
+              if ($server2.HasExited) {break}
+              try { $bootstrapAgain=Invoke-RestMethod "$url2/api/bootstrap" -TimeoutSec 2; $again=$true; break } catch {}
+            }
+            if (!$again -or $bootstrapAgain.mode -ne 'LOCAL_DRAFT_ONLY') {
+              if (Test-Path $secondErr) {Get-Content $secondErr | Select-Object -Last 12}
+              throw 'INSTALLED_RESTART_FAILED'
+            }
+            $savedProjects=Invoke-RestMethod "$url2/api/projects"
+            $savedTasks=Invoke-RestMethod "$url2/api/tasks"
+            if (@($savedProjects.projects | Where-Object {$_.id -eq $created.id}).Count -ne 1) {throw 'PROJECT_LOST_ON_RESTART'}
+            if (@($savedTasks.tasks | Where-Object {$_.id -eq $createdTask.id -and $_.state -eq 'DRAFT_PENDING_OWNER_AUTH'}).Count -ne 1) {throw 'TASK_LOST_ON_RESTART'}
+            $health=Invoke-RestMethod "$url2/api/status"
+            if ($health.real_core_dispatch_enabled -or $health.model_inference_enabled) {throw 'UNEXPECTED_EXECUTION_ON_RESTART'}
+            Write-Output 'NF_INSTALLED_WINDOWS_APPLICATION_PROCESS_RESTART_DURABLE_DATA=PASS_DRAFT_ONLY'
+          }
+          finally {
+            if (!$server2.HasExited) {Stop-Process -Id $server2.Id -Force}
+          }
+          $uninstall="$install\unins000.exe"
+          if (!(Test-Path $uninstall)) {throw 'UNINSTALLER_MISSING'}
+          $u=Start-Process -Wait -PassThru -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
+          if ($u.ExitCode -ne 0) {throw 'UNINSTALL_FAILED'}
+          if (Test-Path "$install\app\local_workspace.py") {throw 'APP_NOT_REMOVED'}
+          if (!(Test-Path "$data\workspace.sqlite3")) {throw 'USER_DATABASE_DELETED_ON_UNINSTALL'}
+          Write-Output 'NF_INSTALLER_UNINSTALL_DATA_PRESERVED=PASS'
+          Write-Output 'NF_INSTALLER_FULL_CORE_HOST_QWEN=SOURCE_INCLUDED_NOT_WIRED_NOT_RELEASED'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-Local-Draft-Windows-Installer-UNRELEASED
+          path: bridge/neurofactory/one_pc_candidate/windows_setup/output/Neurofactory-Local-Draft-Setup.exe
+          retention-days: 7
+          if-no-files-found: error
+      - name: Verify repository unchanged
+        run: git diff --exit-code
