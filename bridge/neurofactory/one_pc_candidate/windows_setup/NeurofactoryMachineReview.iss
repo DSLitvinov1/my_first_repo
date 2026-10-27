@@ -51,6 +51,7 @@ Source: "{#HostSourceRoot}\PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt"; DestDir: 
 Source: "{#SourceRoot}\review-host\resident_host_audit_journal.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\remote_highwater_client.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\independent_witness_receipt.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\protected_host_task_authority.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\combined_release_review_gate.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\secure_release_preflight.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\windows_package_preflight.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
