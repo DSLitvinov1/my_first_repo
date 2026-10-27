@@ -77,6 +77,9 @@ jobs:
               $rel=$_.FullName.Substring($stage.Length+1).Replace('\','/')
               [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
           })
+          if ($packageEntries.Count -lt 35 -or $hostManifest.Count -ne 5) {
+              throw 'COMBINED_MACHINE_REVIEW_PAYLOAD_INCOMPLETE'
+          }
           [ordered]@{
               schema='nf.onepc.machine_review_combined_package.v1'
               source_sha40=$env:GITHUB_SHA
