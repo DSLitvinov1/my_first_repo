@@ -1,0 +1,114 @@
+name: Neurofactory resident Windows SCM autostart and crash recovery — new targeted hosted acceptance
+on:
+  push:
+    branches: [neurofactory-onepc-resident-scm-release-factory-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/configure_resident_scm_ci.ps1
+      - .github/workflows/neurofactory-onepc-resident-scm-recovery-ci.yml
+permissions:
+  contents: read
+jobs:
+  real-windows-resident-scm-recovery-no-authority:
+    runs-on: windows-2025
+    timeout-minutes: 13
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      NF_CI_REVIEW_INSTALLER_ONLY: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Stage immutable previously-tested inert Windows HOST bundle
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:GITHUB_ACTIONS -cne 'true' -or $env:RUNNER_ENVIRONMENT -cne 'github-hosted') {throw 'NO_HOSTED_DISPOSABLE_RUNNER'}
+          $zip=Join-Path $env:RUNNER_TEMP 'python-embedded-review.zip'
+          Invoke-WebRequest 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $zip -MaximumRedirection 2
+          if ((Get-Item $zip).Length -ne 11133606 -or
+              (Get-FileHash $zip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'PINNED_VENDOR_PYTHON_MISMATCH'}
+          $root=Join-Path $env:RUNNER_TEMP 'NeurofactoryProtectedHost-REVIEW-ONLY'
+          if (Test-Path $root) {throw 'PREEXISTING_STAGING_ROOT_NO_OVERWRITE'}
+          New-Item -ItemType Directory -Force "$root\runtime","$root\status" | Out-Null
+          Expand-Archive -LiteralPath $zip -DestinationPath "$root\runtime"
+          foreach($name in @('neurofactory_dormant_service.py','audit_protected_host_readonly.ps1')) {
+              Copy-Item "bridge/neurofactory/one_pc_candidate/windows_setup/$name" (Join-Path $root $name)
+          }
+          Copy-Item 'bridge/neurofactory/one_pc_candidate/windows_setup/PROTECTED_HOST_OPERATOR_ACCEPTANCE_RU.txt' "$root\README-ACCEPTANCE-RU.txt"
+          [ordered]@{
+              schema='nf.windows.dormant_host_provision.v1'; service_name='NeurofactoryCoreHost'
+              source_sha40=$env:GITHUB_SHA; mode='REVIEW_BLOCKED_NOT_PRODUCTION'
+              real_host_execution_allowed=$false; core_queue_allowed=$false
+              network_listener_allowed=$false; production_release_approved=$false
+              independent_review_approved=$false; owner_key_installed=$false
+              external_witness_verified=$false
+          }|ConvertTo-Json -Compress|Set-Content "$root\dormant-config.json" -Encoding ascii
+          $entries=@(Get-ChildItem -LiteralPath $root -Recurse -File|Sort-Object FullName|ForEach-Object {
+              $rel=$_.FullName.Substring($root.Length+1).Replace('\','/')
+              [ordered]@{path=$rel;sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant();bytes=$_.Length}
+          })
+          [ordered]@{
+              schema='nf.windows.protected_host_review_bundle.v1'
+              source_sha=$env:GITHUB_SHA
+              vendor_python_sha256='4acbed6dd1c744b0376e3b1cf57ce906f9dc9e95e68824584c8099a63025a3c3'
+              service_sha256=(Get-FileHash "$root\neurofactory_dormant_service.py" -Algorithm SHA256).Hash.ToLowerInvariant()
+              status='UNSIGNED_REVIEW_ONLY'; production_release_approved=$false
+              host_effect_allowed=$false; windows_service_installed=$false
+              independent_reviewer_approved=$false; entries=$entries
+          }|ConvertTo-Json -Depth 6|Set-Content "$root\bundle-manifest.json" -Encoding utf8
+          Write-Output ('NF_RESIDENT_CI_STAGED_COUNT='+$entries.Count)
+      - name: Reuse tested strict installation and prove NEW automatic residence with crash restart
+        run: |
+          $ErrorActionPreference='Stop'
+          $installer='bridge/neurofactory/one_pc_candidate/windows_setup/install_dormant_host_acceptance_ci.ps1'
+          $resident='bridge/neurofactory/one_pc_candidate/windows_setup/configure_resident_scm_ci.ps1'
+          & pwsh -NoProfile -NonInteractive -File $installer -Operation Install
+          if ($LASTEXITCODE -ne 0) {throw 'RESIDENT_TEST_BASE_INSTALL_FAILED'}
+          $svc=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'"
+          if ($svc.StartMode -cne 'Manual' -or $svc.State -cne 'Running') {throw 'RESIDENT_TEST_EXPECTED_MANUAL_BASE'}
+          & pwsh -NoProfile -NonInteractive -File $resident -Operation Configure
+          if ($LASTEXITCODE -ne 0) {throw 'AUTOSTART_AND_RECOVERY_CONFIGURATION_FAILED'}
+          $svc=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'"
+          $before=$svc.ProcessId
+          if (!$before -or $before -lt 4) {throw 'NO_ACTUAL_SCM_PROCESS'}
+          Stop-Process -Id $before -Force -ErrorAction Stop
+          $recovered=$false
+          for($i=0;$i -lt 130;$i++) {
+              Start-Sleep -Milliseconds 250
+              $service=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue
+              if ($null -ne $service -and $service.State -cne 'Running' -and $service.ProcessId -and $service.ProcessId -ne $before) {
+                  $recovered=$true;break
+              }
+          }
+          if (!$recovered) {throw 'SCM_AUTOMATIC_RECOVERY_NOT_OBSERVED'}
+          $root=Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'NeurofactoryDormantAcceptanceCI'
+          $status=Get-Content -LiteralPath "$root\status\dormant-status.json" -Raw|ConvertFrom-Json
+          if ($status.status -cne 'REVIEW_BLOCKED_NOT_PRODUCTION' -or
+              $status.core_queue_allowed -cne $false -or
+              $status.host_execution_allowed -cne $false -or
+              $status.immutable_install_root_write_denied -cne $true) {
+              throw 'RESIDENT_SERVICE_RESTARTED_WITH_UNAUTHORIZED_EFFECT'
+          }
+          & pwsh -NoProfile -NonInteractive -File $resident -Operation Audit
+          if ($LASTEXITCODE -ne 0) {throw 'RECOVERED_AUTO_SCHEME_AUDIT_FAILED'}
+          Write-Output 'NF_ACTUAL_WINDOWS_SERVICE_AUTOSTART_AND_RESTART_AFTER_PROCESS_FAILURE=PASS_CI_ONLY'
+          Write-Output 'NF_ACTUAL_RESIDENT_CORE_HOST_TASK_EXECUTION=BLOCKED'
+      - name: Always clean up only operator-owned service and test root on hosted Windows
+        if: always()
+        run: |
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted') {throw 'CLEANUP_ONLY_ON_DISPOSABLE_CI'}
+          $root=Join-Path ([Environment]::GetFolderPath('CommonApplicationData')) 'NeurofactoryDormantAcceptanceCI'
+          if (Test-Path (Join-Path $root 'review-ci-install-marker.json')) {
+              & sc.exe stop NeurofactoryCoreHost | Out-Null
+              for($i=0;$i -lt 50;$i++) {
+                  $svc=Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue
+                  if ($svc -and $svc.State -eq 'Stopped') {break}
+                  Start-Sleep -Milliseconds 100
+              }
+              & sc.exe delete NeurofactoryCoreHost | Out-Null
+              Start-Sleep -Milliseconds 300
+              Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+          }
