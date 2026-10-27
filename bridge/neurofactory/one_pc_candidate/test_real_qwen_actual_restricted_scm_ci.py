@@ -81,6 +81,10 @@ def run():
                 proposal["content_sha256"]):
         raise RuntimeError("Untrusted, mismatched or non-durable actual Qwen proposal")
     proposal_sha = proposal["content_sha256"]
+    if os.getenv("NF_ONEPC_RESIDENT_QWEN_JOURNAL_CI") == "1":
+        # Test fixture receives ONLY the independently verified model digest,
+        # never model text or the private owner approval key.
+        os.environ["NF_REAL_QWEN_PROPOSAL_SHA256"] = proposal_sha
     draft_sha = unsigned["draft_sha256"]
     # No model text in logs, privileged config, HOST request, or executable.
     # A synthetic separate owner chooses to sign ONLY these two digests.
