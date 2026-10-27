@@ -91,6 +91,11 @@ function CheckFile([string]$path,[string]$expectedSha,[long]$maxBytes) {
 function DenyUnsafeWriteAcl([string]$path) {
     $acl=Get-Acl -LiteralPath $path -ErrorAction Stop
     if (-not $acl.AreAccessRulesProtected) {Deny 'TRUST_FILE_INHERITED_UNVERIFIED_ACL'}
+    $owner=$acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($owner -notin @('S-1-5-18','S-1-5-32-544')) {
+        # The NTFS owner may rewrite DACL even with no explicit Allow ACE.
+        Deny 'UNTRUSTED_TRUST_ROOT_OWNER_CAN_REPLACE_DACL'
+    }
     foreach($ace in $acl.Access) {
         if ($ace.AccessControlType -cne 'Allow') {continue}
         $sid=$ace.IdentityReference.Translate(
@@ -99,14 +104,10 @@ function DenyUnsafeWriteAcl([string]$path) {
         # delete, change permissions, take ownership.
         $writes=(([int64]$ace.FileSystemRights -band 0x00116) -ne 0 -or
                  ([int64]$ace.FileSystemRights -band 0xD0000) -ne 0)
-        if ($writes -and $sid -in @(
-            'S-1-1-0',  # Everyone
-            'S-1-5-11', # Authenticated users
-            'S-1-5-32-545', # Builtin Users
-            'S-1-5-19', # Shared LocalService
-            $serviceSid  # Per-service host may READ but NEVER modify trust
-        )) {
-            Deny 'UNTRUSTED_CLIENT_OR_HOST_SID_CAN_REPLACE_TRUST_ROOT'
+        if ($writes -and $sid -notin @('S-1-5-18','S-1-5-32-544')) {
+            # No unknown domain SID, new local account, UI, LocalService or
+            # per-service SID may write the installed executable or trust root.
+            Deny 'ANY_NON_ADMINISTRATIVE_PRINCIPAL_CAN_CHANGE_PROTECTED_HOST'
         }
     }
 }
