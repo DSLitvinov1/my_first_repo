@@ -33,3 +33,55 @@ jobs:
           echo 'NF_PERSISTENT_VPS_PRIVATE_VPN_MTLS_MULTI_REQUEST_REPLAY=PASS_CI_ONLY'
           echo 'NF_REAL_EXTERNAL_VPS_ACTUALLY_PROVISIONED=FALSE'
           echo 'NF_PRODUCTION_EXTERNAL_OWNER_KEYS_INSTALLED=FALSE'
+      - name: Bundle operator-review VPS daemon source and exact SHA manifest WITHOUT SECRET KEYS
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,zipfile
+          from pathlib import Path
+          root=Path("bridge/neurofactory/one_pc_candidate")
+          names=(
+            "external_highwater_daemon.py",
+            "external_highwater_store.py",
+            "external_highwater_mtls_server.py",
+            "independent_witness_receipt.py",
+            "remote_highwater_client.py",
+            "vps_witness_systemd/neurofactory-witness.service",
+            "vps_witness_systemd/production.json.example",
+            "vps_witness_systemd/requirements-witness.txt",
+            "vps_witness_systemd/OPERATOR_VPS_INSTALLATION_RU.md",
+            "WITNESS_REMOTE_NODE_DEPLOYMENT_BLOCKERS_20261027_RU.md",
+          )
+          dest=Path("Neurofactory-VPS-Witness-OPERATOR-STAGING-NO-KEYS.zip")
+          manifest={"schema":"nf.vps_witness.source_review_bundle.v1",
+                    "source_sha40":os.environ["GITHUB_SHA"],
+                    "mode":"UNSIGNED_OPERATOR_REVIEW_NO_KEYS_NO_PRODUCTION",
+                    "files":[]}
+          with zipfile.ZipFile(dest,"w",zipfile.ZIP_DEFLATED) as z:
+            for name in names:
+              data=(root/name).read_bytes()
+              assert not any(marker in data for marker in (
+                b"-----BEGIN PRIVATE KEY-----",
+                b"-----BEGIN RSA PRIVATE KEY-----",
+                b"-----BEGIN OPENSSH PRIVATE KEY-----",
+              )),name
+              z.writestr(name,data)
+              manifest["files"].append({
+                "path":name,"sha256":hashlib.sha256(data).hexdigest(),"bytes":len(data)})
+            z.writestr("source-manifest.json",
+                       json.dumps(manifest,sort_keys=True,ensure_ascii=True))
+          with zipfile.ZipFile(dest) as z:
+            assert len(z.namelist())==len(names)+1
+            for item in manifest["files"]:
+              assert hashlib.sha256(z.read(item["path"])).hexdigest()==item["sha256"]
+            invalid=json.loads(z.read("vps_witness_systemd/production.json.example"))
+            assert invalid["listen_address"]=="SET_OPERATOR_PRIVATE_VPN_IPV4"
+          print("NF_VPS_WITNESS_OPERATOR_SOURCE_FILES_SHA_VERIFIED="+str(len(names)))
+          print("NF_VPS_WITNESS_NO_REAL_KEY_ENROLLMENT_OR_PAYMENT=TRUE")
+          print("NF_VPS_WITNESS_SOURCE_BUNDLE_SHA256="+hashlib.sha256(dest.read_bytes()).hexdigest())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Neurofactory-VPS-Witness-OPERATOR-STAGING-NO-KEYS
+          path: Neurofactory-VPS-Witness-OPERATOR-STAGING-NO-KEYS.zip
+          retention-days: 7
+          if-no-files-found: error
