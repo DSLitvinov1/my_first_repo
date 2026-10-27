@@ -110,9 +110,16 @@ def inspect(path):
     path=_location(path)
     if not path.is_file():
         _deny("existing journal required")
-    db=_connect(path)
+    # Immutable/read-only observation: never initialize or repair a damaged
+    # journal as a side effect of reading it.
+    try:
+        db=sqlite3.connect(path.as_uri()+"?mode=ro",uri=True,timeout=5)
+    except sqlite3.Error as exc:
+        raise LocalAuditDenied("Local HOST audit journal inaccessible") from exc
     try:
         return _verify(_rows(db))
+    except sqlite3.DatabaseError as exc:
+        raise LocalAuditDenied("Local HOST audit journal schema corrupt") from exc
     finally:
         db.close()
 
