@@ -1,0 +1,28 @@
+name: Neurofactory independent highwater durable epoch backend — TEST ONLY
+on:
+  push:
+    branches: [neurofactory-onepc-physical-trust-boundary-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/external_highwater_store.py
+      - bridge/neurofactory/one_pc_candidate/test_external_highwater_store.py
+      - .github/workflows/neurofactory-onepc-external-highwater-store-ci.yml
+permissions:
+  contents: read
+jobs:
+  durable-monotonic-single-node-simulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run real transactional SQLite highwater and signed evidence tests with temp keys
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_witness_store"
+          "$RUNNER_TEMP/nf_witness_store/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_witness_store/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_store.py -v
+          git diff --exit-code
+          echo 'NF_EXTERNAL_WITNESS_MONOTONIC_DURABLE_RESERVATION_BACKEND=PASS_CI_SIMULATOR_ONLY'
+          echo 'NF_PHYSICALLY_INDEPENDENT_WITNESS_NODE=NOT_PROVISIONED'
+          echo 'NF_REAL_WITNESS_SIGNING_KEY=NOT_ENROLLED'
+          echo 'NF_PRODUCTION_TASK_EFFECTS=BLOCKED'
