@@ -1,0 +1,27 @@
+name: Neurofactory real signed owner reviewer witness task-scope independent denial
+on:
+  push:
+    branches: [neurofactory-host-real-owner-task-permits-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/protected_host_task_authority.py
+      - bridge/neurofactory/one_pc_candidate/test_protected_host_task_authority.py
+      - .github/workflows/neurofactory-host-real-four-party-owner-task-permit-ci.yml
+permissions:
+  contents: read
+jobs:
+  independently-pinned-signature-verification-test-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify genuine Ed25519 domain-separated owner + reviewer + remote ACK tests
+        run: |
+          python -m venv "$RUNNER_TEMP/nf_host_scope"
+          "$RUNNER_TEMP/nf_host_scope/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf_host_scope/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_task_authority.py -v
+          git diff --exit-code
+          echo 'NF_HOST_SIGNED_OWNER_REVIEWER_WITNESS_ONE_OPERATION_SCOPE=PASS_CI_ONLY'
+          echo 'NF_HOST_REAL_PRODUCTION_SIGNERS_ON_OWNER_PC=NOT_ENROLLED'
+          echo 'NF_HOST_PRODUCTION_EFFECTS=BLOCKED'

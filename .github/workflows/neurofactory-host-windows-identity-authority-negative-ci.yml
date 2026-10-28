@@ -1,0 +1,61 @@
+name: Neurofactory owner reviewer witness real Ed25519 Windows denial and no CI physical trust
+on:
+  push:
+    branches: [neurofactory-host-real-owner-task-permits-20261027]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/protected_host_task_authority.py
+      - bridge/neurofactory/one_pc_candidate/test_protected_host_task_authority.py
+      - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
+      - .github/workflows/neurofactory-host-windows-identity-authority-negative-ci.yml
+permissions:
+  contents: read
+jobs:
+  real-crypto-fake-physical-owner-must-be-denied:
+    runs-on: windows-2025
+    timeout-minutes: 7
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Cryptographic signature verification negative cases actually run on Windows
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:RUNNER_ENVIRONMENT -cne 'github-hosted' -or $env:RUNNER_OS -cne 'Windows') {
+              throw 'NOT_DISPOSABLE_WINDOWS_TEST'
+          }
+          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          if ($LASTEXITCODE -ne 0) {throw 'TEST_CRYPTO_SETUP_FAILED'}
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_task_authority.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'SIGNED_HOST_OWNER_REVIEW_WITNESS_SCOPE_FAILED'}
+          Write-Output 'NF_HOST_REAL_ED25519_OWNER_AND_REVIEWER_SCOPE=PASS_WINDOWS_CI_ONLY'
+      - name: Verify physical HOST signer/sid audit refuses a hosted test machine without real authority
+        run: |
+          $ErrorActionPreference='Stop'
+          $script=(Resolve-Path 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1').Path
+          $tokens=$null;$errors=$null
+          $null=[Management.Automation.Language.Parser]::ParseFile($script,[ref]$tokens,[ref]$errors)
+          if (@($errors).Count -ne 0) {throw 'PHYSICAL_HOST_PREFLIGHT_SOURCE_INVALID'}
+          $argsPin=@{
+              ExpectedHostBinarySha256=('a'*64)
+              ExpectedHostSourceSha256=('b'*64)
+              ExpectedOwnerPublicSha256=('c'*64)
+              ExpectedReviewerPublicSha256=('d'*64)
+              ExpectedWitnessPublicSha256=('e'*64)
+              PinnedPublisherThumbprint=('F'*40)
+          }
+          $result=(& pwsh -NoProfile -NonInteractive -File $script @argsPin 2>&1|Out-String)
+          if ($LASTEXITCODE -eq 0 -or $result -notmatch 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE') {
+              throw 'TEST_MACHINE_INCORRECTLY_IMPERSONATED_PHYSICAL_OWNER'
+          }
+          $global:LASTEXITCODE=0
+          if (Get-CimInstance Win32_Service -Filter "Name='NeurofactoryCoreHost'" -ErrorAction SilentlyContinue) {
+              throw 'UNAUTHORIZED_PRODUCTION_HOST_REGISTERED_BY_CRYPTO_TEST'
+          }
+          Write-Output 'NF_HOST_PHYSICAL_WINDOWS_AUTHENTICODE_AND_OWNER_ENROLLMENT=DENIED_ON_CI'
+          Write-Output 'NF_REAL_SIGNER_PUBLIC_ROOTS_ON_USER_PC=NOT_ENROLLED'
+          Write-Output 'NF_INDEPENDENT_REVIEWER_SIGNED_PRODUCTION_VERDICT=NOT_AVAILABLE'
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'CI_CHANGED_REPOSITORY'}
