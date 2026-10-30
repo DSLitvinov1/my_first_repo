@@ -80,22 +80,27 @@ function CheckFile([string]$path,[string]$expectedSha,[long]$maxBytes) {
 function DenyUnsafeWriteAcl([string]$path) {
     $acl=Get-Acl -LiteralPath $path -ErrorAction Stop
     if (-not $acl.AreAccessRulesProtected) {Deny 'TRUST_FILE_INHERITED_UNVERIFIED_ACL'}
+    # Only the OS root and Administrators may own or MODIFY the physical
+    # public trust roots, executable, service source or their ancestors.
+    # A per-service SID or an arbitrary local/domain account must not.
+    $trustedOwnerSids=@('S-1-5-18','S-1-5-32-544')
+    $ownerSid=([Security.Principal.NTAccount]$acl.Owner).Translate(
+        [Security.Principal.SecurityIdentifier]).Value
+    if ($ownerSid -notin $trustedOwnerSids) {
+        Deny 'TRUST_FILE_OWNER_NOT_SYSTEM_OR_ADMINISTRATORS'
+    }
     foreach($ace in $acl.Access) {
         if ($ace.AccessControlType -cne 'Allow') {continue}
         $sid=$ace.IdentityReference.Translate(
             [Security.Principal.SecurityIdentifier]).Value
-        # 0x00116 = write data/append/EA/attributes; 0xD0000 =
-        # delete, change permissions, take ownership.
-        $writes=(([int64]$ace.FileSystemRights -band 0x00116) -ne 0 -or
+        # 0x00156: data/append/EA/attributes PLUS DELETE_CHILD on parent
+        # directories; 0xD0000: DELETE, WRITE_DAC, WRITE_OWNER.
+        # This is an allowlist, not a blacklist of a few well-known SIDs.
+        # Unknown domain/local service identities are always untrusted.
+        $writes=(([int64]$ace.FileSystemRights -band 0x00156) -ne 0 -or
                  ([int64]$ace.FileSystemRights -band 0xD0000) -ne 0)
-        if ($writes -and $sid -in @(
-            'S-1-1-0',  # Everyone
-            'S-1-5-11', # Authenticated users
-            'S-1-5-32-545', # Builtin Users
-            'S-1-5-19', # Shared LocalService
-            $serviceSid  # Per-service host may READ but NEVER modify trust
-        )) {
-            Deny 'UNTRUSTED_CLIENT_OR_HOST_SID_CAN_REPLACE_TRUST_ROOT'
+        if ($writes -and $sid -notin $trustedOwnerSids) {
+            Deny 'NON_SYSTEM_PRINCIPAL_CAN_REPLACE_TRUST_ROOT'
         }
     }
 }
