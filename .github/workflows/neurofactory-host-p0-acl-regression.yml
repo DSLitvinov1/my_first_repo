@@ -1,0 +1,25 @@
+name: Neurofactory HOST P0 trust ACL security regression (no deployment)
+on:
+  push:
+    branches: [neurofactory-p0-host-trust-acl-fix-20261030]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
+      - bridge/neurofactory/one_pc_candidate/windows_setup/test_physical_acl_guard_ci.ps1
+      - .github/workflows/neurofactory-host-p0-acl-regression.yml
+permissions:
+  contents: read
+jobs:
+  verify_acl_fail_closed:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exercise original physical preflight ACL logic against synthetic Windows ACLs
+        shell: pwsh
+        run: |
+          ./bridge/neurofactory/one_pc_candidate/windows_setup/test_physical_acl_guard_ci.ps1
+      - name: Preserve source checkout
+        shell: pwsh
+        run: git diff --exit-code
