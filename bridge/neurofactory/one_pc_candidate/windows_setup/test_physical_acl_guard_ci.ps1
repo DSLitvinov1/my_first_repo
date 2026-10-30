@@ -28,7 +28,7 @@ function AccessEntry([string]$sid, [string]$rights) {
     [pscustomobject]@{
         AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
         IdentityReference = [System.Security.Principal.SecurityIdentifier]::new($sid)
-        FileSystemRights = [System.Security.AccessControl.FileSystemRights]::$rights
+        FileSystemRights = [System.Enum]::Parse([System.Security.AccessControl.FileSystemRights], $rights)
     }
 }
 function Fixture([string]$owner,[bool]$protected,[object[]]$aces) {
