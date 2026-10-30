@@ -1,7 +1,7 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
