@@ -1,0 +1,30 @@
+name: Neurofactory P0 signed HOST to remote witness bridge (no effect)
+on:
+  push:
+    branches: [neurofactory-p0-signed-remote-service-bridge-20261030]
+    paths:
+      - bridge/neurofactory/one_pc_candidate/protected_host_remote_bridge.py
+      - bridge/neurofactory/one_pc_candidate/test_protected_host_remote_bridge.py
+      - .github/workflows/neurofactory-p0-signed-host-remote-witness-ci.yml
+permissions:
+  contents: read
+jobs:
+  strict_single_attempt:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install pinned crypto for offline test keys
+        run: |
+          python3 -m venv .nf-bridge-ci
+          .nf-bridge-ci/bin/python -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Validate one-time Ed25519 owner/reviewer/witness binding, no network write
+        run: |
+          .nf-bridge-ci/bin/python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_remote_bridge.py -v
+      - name: No tracked source altered
+        run: git diff --exit-code
