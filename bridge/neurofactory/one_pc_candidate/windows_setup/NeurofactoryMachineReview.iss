@@ -53,6 +53,7 @@ Source: "{#SourceRoot}\review-host\remote_highwater_client.py"; DestDir: "{app}\
 Source: "{#SourceRoot}\review-host\independent_witness_receipt.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\protected_host_task_authority.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\protected_host_remote_bridge.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\protected_host_attempt_ledger.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\combined_release_review_gate.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\secure_release_preflight.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\windows_package_preflight.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
