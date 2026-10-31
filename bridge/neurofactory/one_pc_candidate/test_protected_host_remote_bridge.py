@@ -7,6 +7,7 @@ TLS 1.3 server/client was previously verified in the existing dedicated E2E.
 from pathlib import Path
 import tempfile
 import sqlite3
+from contextlib import closing
 import os
 import unittest
 from unittest.mock import patch
@@ -145,7 +146,7 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
             with self.assertRaises(BridgeUnknown):
                 self.call(self.client())  # distinct process-like Python instance
             self.assertEqual(net.call_count,1)
-        with sqlite3.connect(str(self.attempt_dir/"signed-witness-attempts.sqlite3")) as db:
+        with closing(sqlite3.connect(str(self.attempt_dir/"signed-witness-attempts.sqlite3"))) as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM attempts").fetchone()[0],1)
 
     def test_lost_ack_durable_across_new_instance(self):
@@ -163,7 +164,7 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
             self.assertEqual(net.call_count,0)
 
     def test_corrupted_journal_schema_never_releases_remote_request(self):
-        with sqlite3.connect(str(self.attempt_dir/"signed-witness-attempts.sqlite3")) as db:
+        with closing(sqlite3.connect(str(self.attempt_dir/"signed-witness-attempts.sqlite3"))) as db:
             db.execute("CREATE TABLE attempts (fake TEXT)")
         with patch("protected_host_remote_bridge._wire_exchange") as net:
             with self.assertRaises(BridgeUnknown):self.call(self.client())
