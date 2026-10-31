@@ -173,12 +173,17 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
         with patch("protected_host_remote_bridge._wire_exchange",
                    return_value=self.fx.ack()) as net:
             self.call(self.client())
-            altered=dict(self.fx.claim,task_id="nf-new-task-approved")
-            expected=dict(self.fx.expected,task_id=altered["task_id"])
-            witness=dict(self.fx.remote)
-            # First bridge retains a stable separately pinned operator scope;
-            # this second instance could have another signed task, but the
-            # same remote epoch must be rejected by its LOCAL durability fence.
+            from hashlib import sha256
+            import secrets
+            altered=dict(self.fx.claim,task_id="nf-new-task-approved",
+                         operation_sha256=sha256(b"other-approved-action").hexdigest(),
+                         nonce=secrets.token_hex(32))
+            expected=dict(self.fx.expected,task_id=altered["task_id"],
+                          operation_sha256=altered["operation_sha256"])
+            witness=dict(self.fx.remote,operation_sha256=altered["operation_sha256"],
+                         nonce=altered["nonce"])
+            # Different correctly signed task+nonce+operation BUT the SAME
+            # external epoch; persisted fence prevents a new network reserve.
             second=self.client(operator_expected=expected)
             with self.assertRaises(BridgeUnknown):
                 self.call(second,claim=altered,
