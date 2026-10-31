@@ -24,6 +24,7 @@ from protected_host_task_authority import (
     verify_one_host_operation,
 )
 from remote_highwater_client import _wire_exchange, RemoteHighwaterDenied
+from protected_host_attempt_ledger import reserve_attempt_once, AttemptLedgerDenied
 
 
 class BridgeDenied(ValueError):
@@ -56,7 +57,8 @@ class OneShotHostWitnessBridge:
                  pinned_witness_public, pinned_witness_id,
                  operator_expected, trusted_minimum_remote_epoch,
                  tls_hostname, tls_port, tls_ca, tls_client_cert,
-                 tls_client_key, pinned_tls_server_der_sha256):
+                 tls_client_key, pinned_tls_server_der_sha256,
+                 operator_protected_attempt_dir: Path):
         _same_keys_distinct(
             pinned_owner_public,pinned_reviewer_public,pinned_witness_public)
         if (type(operator_expected) is not dict or
@@ -83,6 +85,10 @@ class OneShotHostWitnessBridge:
         self._cert=tls_client_cert
         self._key=tls_client_key
         self._tls_pin=pinned_tls_server_der_sha256
+        if (not isinstance(operator_protected_attempt_dir, Path) or
+                not operator_protected_attempt_dir.is_absolute()):
+            _deny()
+        self._attempt_dir=operator_protected_attempt_dir
         self._spent=False
 
     def reserve_and_verify_once(self, *, claim, owner_signature,
@@ -122,8 +128,16 @@ class OneShotHostWitnessBridge:
                     _deny()
         except (ProtectedHostTaskDenied, IndependentWitnessDenied) as exc:
             raise BridgeDenied("HOST signed task / witness scope invalid") from exc
-        # Single irreversible network attempt. Mark spent before any I/O.
+        # Mark the caller spent first. A FULL-synced reservation must persist
+        # across process/SCM restart BEFORE the network can reserve remotely.
+        # Uncertain local SQLite COMMIT also means UNKNOWN, never retry.
         self._spent=True
+        try:
+            durable=reserve_attempt_once(self._attempt_dir,claim=claim)
+            if durable["status"]!="DURABLY_MARKED_UNKNOWN_NO_AUTO_RETRY":
+                raise BridgeUnknown("unexpected durable status; NO RETRY")
+        except AttemptLedgerDenied as exc:
+            raise BridgeUnknown("durable state missing or replayed; NO RETRY") from exc
         try:
             receipt=_wire_exchange(
                 hostname=self._hostname,port=self._port,claim=witness_claim,

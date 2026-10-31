@@ -1,0 +1,34 @@
+name: Neurofactory HOST durable single-shot remote witness attempts Windows
+on:
+  push:
+    branches: [neurofactory-p0-host-durable-attempts-20261031]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/protected_host_attempt_ledger.py'
+      - 'bridge/neurofactory/one_pc_candidate/protected_host_remote_bridge.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_protected_host_remote_bridge.py'
+      - '.github/workflows/neurofactory-p0-host-durable-attempts-ci.yml'
+permissions:
+  contents: read
+jobs:
+  verify_durable_unknown_after_restart:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install isolated pinned crypto
+        shell: pwsh
+        run: |
+          python -m venv .nf-durable-v
+          .nf-durable-v/Scripts/python.exe -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Check full-synced SQLite UNKNOWN before remote and cross-instance no replay
+        shell: pwsh
+        run: |
+          .nf-durable-v/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_remote_bridge.py -v
+      - name: No tracked files modified
+        shell: pwsh
+        run: git diff --exit-code
