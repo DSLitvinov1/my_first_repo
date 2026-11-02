@@ -475,6 +475,7 @@ def main():
             if resident:
                 from resident_host_audit_journal import (
                     append_after_core_checkpoint,inspect,LocalAuditDenied,
+                    provision_empty_local_audit_offline,
                 )
                 proposal_sha=os.getenv("NF_REAL_QWEN_PROPOSAL_SHA256")
                 if not isinstance(proposal_sha,str) or len(proposal_sha)!=64:
@@ -486,6 +487,7 @@ def main():
                 # from model workspace, and is updated only AFTER CORE has
                 # validated the restricted-SCM-signed receipt in SQLite.
                 resident_journal=Path(temp.name)/"resident-host-audit.sqlite3"
+                provision_empty_local_audit_offline(resident_journal)
                 audit_event={
                     "schema":"nf.onepc.local_host_checkpoint.v1",
                     "task_id":spec["task_id"],
