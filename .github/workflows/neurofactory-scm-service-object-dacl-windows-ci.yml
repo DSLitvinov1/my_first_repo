@@ -1,0 +1,35 @@
+name: Neurofactory SCM service object DACL negative Windows guard
+on:
+  push:
+    branches: [neurofactory-p0-scm-service-object-dacl-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_service_object_dacl_ci.ps1'
+      - '.github/workflows/neurofactory-scm-service-object-dacl-windows-ci.yml'
+permissions:
+  contents: read
+jobs:
+  windows_scm_dacl_negative:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse and test actual preflight function against synthetic service DACL
+        shell: pwsh
+        run: |
+          & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_service_object_dacl_ci.ps1
+      - name: Inspect real Windows SCM SDDL output shape without modifying services
+        shell: pwsh
+        run: |
+          $s=(& $env:SystemRoot/System32/sc.exe sdshow EventLog | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $s -notmatch 'D:') { throw 'NF_CI_SCM_SDDL_QUERY_UNAVAILABLE' }
+          Write-Output ('NF_REAL_SC_SDSHOW_OWNER_PRESENT=' + [bool]($s -match 'O:'))
+          $svc=Get-CimInstance Win32_Service -Filter "Name='EventLog'"
+          $sd=Invoke-CimMethod -InputObject $svc -MethodName GetSecurityDescriptor -ErrorAction Stop
+          if ($sd.ReturnValue -ne 0 -or !$sd.Descriptor.Owner.SIDString) { throw 'NF_CI_SCM_OWNER_QUERY_UNAVAILABLE' }
+          Write-Output 'NF_REAL_SCM_CIM_OWNER_QUERY=PASS_READ_ONLY'
+      - name: Confirm source remains unchanged
+        shell: pwsh
+        run: git diff --exit-code
