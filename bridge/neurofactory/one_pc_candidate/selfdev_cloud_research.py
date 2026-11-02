@@ -131,8 +131,12 @@ def run_one(*, repo: Path, lab: Path, model: Path, executable: Path,
         _checked(folder, directory=True)
     _checked(model)
     _checked(executable, executable=True)
-    if repo.resolve().is_relative_to(lab.resolve()):
-        _deny("Git checkout must not be inside writable evidence directory")
+    if (repo.resolve().is_relative_to(lab.resolve()) or
+            lab.resolve().is_relative_to(repo.resolve())):
+        _deny("Git checkout and writable evidence directory must be disjoint")
+    if (lab.stat().st_uid != os.geteuid() or
+            stat.S_IMODE(lab.stat().st_mode) & 0o077):
+        _deny("evidence folder must be private to the lab user")
     if _digest_file(model) != QWEN_MODEL_SHA256:
         _deny("Qwen model checksum not independently pinned")
     if _digest_file(executable) != LLAMA_CLI_SHA256:
