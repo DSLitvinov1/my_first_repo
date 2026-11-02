@@ -113,6 +113,38 @@ function Assert-NfActualScmServiceDacl([string]$ServiceName, $Service) {
     }
     [void](Assert-NfScmServiceDacl $actualSddl)
 }
+# Verify the real SCM restricted service SID type using the OS-owned sc.exe.
+# An unqualified sc.exe resolves through caller-controlled PATH and may forge
+# SERVICE_SID_TYPE: RESTRICTED even for an unrestricted service.
+function Assert-NfActualRestrictedServiceSidType([string]$ServiceName) {
+    if ($ServiceName -cne 'NeurofactoryCoreHost') {
+        Deny 'UNPINNED_SCM_SERVICE_NAME'
+    }
+    $windowsDirectory=[Environment]::GetFolderPath([Environment+SpecialFolder]::Windows)
+    if ([string]::IsNullOrWhiteSpace($windowsDirectory)) {
+        Deny 'TRUSTED_WINDOWS_DIRECTORY_UNAVAILABLE'
+    }
+    $sc=Join-Path $windowsDirectory 'System32\sc.exe'
+    try {
+        $sidResult=(& $sc qsidtype $ServiceName 2>&1 | Out-String).Trim()
+        $exitCode=$LASTEXITCODE
+    } catch {
+        Deny 'SCM_SERVICE_SID_TYPE_QUERY_FAILED'
+    }
+    if ($exitCode -ne 0 -or $sidResult.Length -gt 8192) {
+        Deny 'SCM_SERVICE_SID_TYPE_QUERY_FAILED'
+    }
+    # Reject a forged RESTRICTED substring in errors, comments or extra lines.
+    # Exactly one native SERVICE_SID_TYPE field must be present and restricted.
+    $sidLines=@($sidResult -split "[\r\n]+" | Where-Object {
+        $_ -match '^\s*SERVICE_SID_TYPE\s*:'
+    })
+    if ($sidLines.Count -ne 1 -or
+        $sidLines[0] -cnotmatch '^\s*SERVICE_SID_TYPE\s*:\s*RESTRICTED\s*$') {
+        Deny 'NO_RESTRICTED_WINDOWS_SERVICE_SID'
+    }
+    return $true
+}
 # Also audit OS Registry config key, separate from SCM service-object DACL.
 function Assert-NfServiceRegistrySddl([string]$Sddl) {
     if ([string]::IsNullOrWhiteSpace($Sddl) -or $Sddl.Length -gt 16384) {
@@ -186,10 +218,7 @@ if ($service.StartName -cnotmatch '^NT AUTHORITY\\LocalService$' -or
     $service.ProcessId -le 0) {
     Deny 'REAL_SERVICE_NOT_RESTRICTED_RESIDENT_LOCALSERVICE'
 }
-$sidResult=(& sc.exe qsidtype $name | Out-String)
-if ($LASTEXITCODE -ne 0 -or $sidResult -notmatch 'RESTRICTED') {
-    Deny 'NO_RESTRICTED_WINDOWS_SERVICE_SID'
-}
+[void](Assert-NfActualRestrictedServiceSidType $name)
 $serviceSid=([Security.Principal.NTAccount]"NT SERVICE\$name").Translate(
     [Security.Principal.SecurityIdentifier]).Value
 if ($serviceSid -notmatch '^S-1-5-80-') {Deny 'NO_UNIQUE_WINDOWS_SERVICE_ID'}
