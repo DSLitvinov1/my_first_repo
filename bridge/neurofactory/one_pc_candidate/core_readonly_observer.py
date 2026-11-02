@@ -170,6 +170,10 @@ def observe_core(state_dir):
             "task_id": task_id,
             "project_id": spec["project_id"],
             "source_sha40": spec["source_sha"],
+            # Commitment to the FULL verified CORE canonical spec, including
+            # target, objective, source_sha256, model and approval_commit.
+            # It exposes no objective, private token, paths or model output.
+            "core_spec_sha256": spec_hash,
             "model": spec["model"],
             "attempts": attempts,
             "lease_until": lease,
