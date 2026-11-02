@@ -93,9 +93,12 @@ class CloudResearchSafetyTests(unittest.TestCase):
     def test_llama_console_truncated_echo_parsed_as_only_untrusted_answer(self):
         def shortened(cmd,**kw):
             return SimpleNamespace(returncode=0,
-                stdout="model banner\\n> /no_think\\nPrompt partly shown ... (truncated)\\n" +
-                    "Риск: потеря журнала. Тест: удалить базу. PASS: отказ без создания.\\n" +
-                    "[ Prompt: stats ]",stderr="")
+                stdout=chr(10).join((
+                    "model banner","> /no_think",
+                    "Prompt partly shown ... (truncated)",
+                    "Риск: потеря журнала. Тест: удалить базу. PASS: отказ без создания.",
+                    "[ Prompt: stats ]"
+                )),stderr="")
         path,proof=self.generate(runner=shortened)
         self.assertIn("Тест: удалить базу",proof["proposal"])
         self.assertNotIn("Prompt partly shown",proof["proposal"])
