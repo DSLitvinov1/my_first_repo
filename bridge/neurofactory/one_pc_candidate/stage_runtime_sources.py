@@ -13,7 +13,7 @@ import re
 import subprocess
 
 SOURCES = {
-    "core": ("1c4ccd7d64e87e284a3796b3432f13910a48679c",
+    "core": ("f4c424a5544749668fd2eb5657207e7873a6039a",
         "bridge/neurofactory/development/core_owned/",
         ("one_task_core.py",)),
     "host": ("2c92e102efed49e62eac1bc0e434b3d412d62e40",
