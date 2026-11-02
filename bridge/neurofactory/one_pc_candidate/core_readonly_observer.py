@@ -169,6 +169,7 @@ def observe_core(state_dir):
         "task": {
             "task_id": task_id,
             "project_id": spec["project_id"],
+            "source_sha40": spec["source_sha"],
             "model": spec["model"],
             "attempts": attempts,
             "lease_until": lease,
