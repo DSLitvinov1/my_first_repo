@@ -1,6 +1,7 @@
 """Targeted negative checks for recipient-side CORE scope, no Windows SCM install."""
 from __future__ import annotations
 import hashlib
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -42,7 +43,7 @@ class RecipientClaimGateTest(unittest.TestCase):
             "target":self.spec["target"],
             "content_sha256":"c"*64,
         }
-        with sqlite3.connect(self.db) as con:
+        with closing(sqlite3.connect(self.db)) as con, con:
             con.execute("""CREATE TABLE single_job(
                 singleton INTEGER PRIMARY KEY CHECK(singleton=1),
                 task_id TEXT, spec TEXT, spec_sha256 TEXT, state TEXT,
@@ -75,7 +76,7 @@ class RecipientClaimGateTest(unittest.TestCase):
             now_unix=kwargs.pop("now",self.now),**kwargs)
 
     def update(self,sql,params=()):
-        with sqlite3.connect(self.db) as con:
+        with closing(sqlite3.connect(self.db)) as con, con:
             con.execute(sql,params)
 
     def test_real_claimed_queue_matches_only_ci(self):
