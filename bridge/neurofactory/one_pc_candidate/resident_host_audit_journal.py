@@ -11,6 +11,8 @@ HOST result, and only for a limited inert CI test on one disposable machine.
 """
 from __future__ import annotations
 from hashlib import sha256
+from contextlib import closing
+import stat
 import json
 import os
 from pathlib import Path
@@ -26,6 +28,13 @@ _EVENT_FIELDS=frozenset({
 })
 _ZERO="0"*64
 _DOMAIN=b"NF_ONEPC_LOCAL_SCM_AUDIT_CHAIN_V1\x00"
+_JOURNAL_TABLE_SQL = """CREATE TABLE checkpoints (
+        seq INTEGER PRIMARY KEY NOT NULL,
+        task_id TEXT NOT NULL UNIQUE,
+        previous_sha256 TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        record_sha256 TEXT NOT NULL UNIQUE
+    )"""
 
 class LocalAuditDenied(ValueError):
     pass
@@ -64,19 +73,52 @@ def _location(path):
         _deny("unsafe journal filesystem location")
     return path
 
+def provision_empty_local_audit_offline(path):
+    """Explicit operator-only first provisioning, not append/SCM startup.
+
+    A missing historical journal must never look like a valid empty journal.
+    This does not make a local SQLite/hash chain externally rollback-proof.
+    """
+    path=_location(path)
+    if path.exists() or path.is_symlink() or not path.parent.is_dir() or path.parent.is_symlink():
+        _deny("existing, linked or unmanaged journal cannot be reprovisioned")
+    if os.name=="posix" and path.parent.stat().st_mode & 0o077:
+        _deny("journal operator directory must be private")
+    try:
+        flags=os.O_CREAT|os.O_EXCL|os.O_WRONLY
+        if hasattr(os,"O_NOFOLLOW"):
+            flags|=os.O_NOFOLLOW
+        fd=os.open(path,flags,0o600)
+        os.close(fd)
+        with closing(sqlite3.connect(path.as_uri()+"?mode=rw",
+                                     uri=True,timeout=5,isolation_level=None)) as db:
+            db.execute("PRAGMA journal_mode=WAL")
+            db.execute("PRAGMA synchronous=FULL")
+            db.execute(_JOURNAL_TABLE_SQL)
+    except (OSError,sqlite3.Error) as exc:
+        raise LocalAuditDenied("initial journal provisioning ambiguous; operator audit required") from exc
+    return {"status":"EMPTY_LOCAL_AUDIT_PROVISIONED_NO_EXTERNAL_TRUST",
+            "production_released":False}
+
+
 def _connect(path):
-    db=sqlite3.connect(str(_location(path)),timeout=5,isolation_level=None)
-    db.execute("PRAGMA busy_timeout=5000")
-    db.execute("PRAGMA journal_mode=WAL")
-    db.execute("PRAGMA synchronous=FULL")
-    db.execute("""CREATE TABLE IF NOT EXISTS checkpoints (
-        seq INTEGER PRIMARY KEY NOT NULL,
-        task_id TEXT NOT NULL UNIQUE,
-        previous_sha256 TEXT NOT NULL,
-        record_json TEXT NOT NULL,
-        record_sha256 TEXT NOT NULL UNIQUE
-    )""")
-    return db
+    path=_location(path)
+    if not path.is_file() or path.stat().st_size<512:
+        _deny("local signed HOST journal lost or truncated; no reset")
+    try:
+        db=sqlite3.connect(path.as_uri()+"?mode=rw",
+                           uri=True,timeout=5,isolation_level=None)
+        db.execute("PRAGMA busy_timeout=5000")
+        db.execute("PRAGMA synchronous=FULL")
+        row=db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'").fetchone()
+        if row is None or row[0]!=_JOURNAL_TABLE_SQL:
+            _deny("signed HOST audit schema missing or changed")
+        if db.execute("PRAGMA quick_check").fetchall()!=[("ok",)]:
+            _deny("signed HOST audit corrupted")
+        return db
+    except (sqlite3.Error,LocalAuditDenied) as exc:
+        if 'db' in locals(): db.close()
+        raise LocalAuditDenied("signed HOST journal unavailable; NO AUTO REPAIR") from exc
 
 def _rows(conn):
     return list(conn.execute("SELECT seq,task_id,previous_sha256,record_json,record_sha256 FROM checkpoints ORDER BY seq"))

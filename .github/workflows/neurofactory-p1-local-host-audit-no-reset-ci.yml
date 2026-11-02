@@ -1,0 +1,30 @@
+name: Neurofactory local signed HOST journal no silent reset
+on:
+  push:
+    branches: [neurofactory-p1-host-audit-no-silent-reset-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/resident_host_audit_journal.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_resident_host_audit_journal.py'
+      - '.github/workflows/neurofactory-p1-local-host-audit-no-reset-ci.yml'
+permissions:
+  contents: read
+jobs:
+  local_journal_denies_reset:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test real SQLite chained journal with denied reset
+        shell: bash
+        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_resident_host_audit_journal.py -v
+      - name: Tracked sources unchanged
+        shell: bash
+        run: git diff --exit-code

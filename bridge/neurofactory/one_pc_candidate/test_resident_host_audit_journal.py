@@ -7,7 +7,8 @@ import tempfile
 import unittest
 
 from resident_host_audit_journal import (
-    append_after_core_checkpoint,inspect,LocalAuditDenied
+    append_after_core_checkpoint,inspect,LocalAuditDenied,
+    provision_empty_local_audit_offline
 )
 
 def event(n=951):
@@ -27,13 +28,14 @@ class ResidentSignedResultJournalTest(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
         self.path=Path(self.temp.name).resolve()/"receipt-audit.sqlite3"
+        provision_empty_local_audit_offline(self.path)
     def tearDown(self):
         self.temp.cleanup()
     def test_complete_signed_host_receipt_only_once_and_reopen(self):
         with self.assertRaises(LocalAuditDenied):
             append_after_core_checkpoint(self.path,event(),
                                         actual_core_state="CLAIMED")
-        self.assertFalse(self.path.exists())
+        self.assertTrue(self.path.exists())
         first=append_after_core_checkpoint(self.path,event(),
                                            actual_core_state="HOST_CHECKPOINTED_TEST")
         self.assertEqual(first["entries"],1)
@@ -49,8 +51,12 @@ class ResidentSignedResultJournalTest(unittest.TestCase):
         self.assertEqual(step["entries"],2)
         self.assertNotEqual(step["head_sha256"],first["head_sha256"])
     def test_read_only_missing_file_cannot_regenerate_forged_audit(self):
+        self.path.unlink()
         with self.assertRaises(LocalAuditDenied):
             inspect(self.path)
+        self.assertFalse(self.path.exists())
+        with self.assertRaises(LocalAuditDenied):
+            append_after_core_checkpoint(self.path,event(),actual_core_state="HOST_CHECKPOINTED_TEST")
         self.assertFalse(self.path.exists())
     def test_reject_model_text_and_arbitrary_states(self):
         altered=event()
@@ -75,6 +81,17 @@ class ResidentSignedResultJournalTest(unittest.TestCase):
         with self.assertRaises(LocalAuditDenied):
             append_after_core_checkpoint(self.path,event(952),
                                          actual_core_state="HOST_CHECKPOINTED_TEST")
+    def test_reprovision_existing_or_erased_journal_is_denied(self):
+        with self.assertRaises(LocalAuditDenied):
+            provision_empty_local_audit_offline(self.path)
+        append_after_core_checkpoint(self.path,event(),actual_core_state="HOST_CHECKPOINTED_TEST")
+        self.path.unlink()
+        with self.assertRaises(LocalAuditDenied):
+            append_after_core_checkpoint(self.path,event(952),actual_core_state="HOST_CHECKPOINTED_TEST")
+        # Explicit provision on an erased root still cannot be authorized
+        # from local data alone: a physically separate witness is required.
+        self.assertFalse(self.path.exists())
+
     def test_detect_missing_table(self):
         append_after_core_checkpoint(self.path,event(),actual_core_state="HOST_CHECKPOINTED_TEST")
         db=sqlite3.connect(self.path)
