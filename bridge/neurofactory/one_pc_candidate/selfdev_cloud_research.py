@@ -83,7 +83,7 @@ def _git_head(repo):
             ["/usr/bin/git", "-C", str(repo), "rev-parse", "HEAD"],
             stdin=subprocess.DEVNULL, capture_output=True, timeout=8, check=True)
         status = subprocess.run(
-            ["/usr/bin/git", "-C", str(repo), "status", "--porcelain", "--untracked-files=no"],
+            ["/usr/bin/git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all"],
             stdin=subprocess.DEVNULL, capture_output=True, timeout=8, check=True)
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         raise ResearchDenied("immutable local source not verified") from exc
