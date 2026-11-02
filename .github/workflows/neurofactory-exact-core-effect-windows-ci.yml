@@ -1,0 +1,35 @@
+name: Neurofactory exact full CORE signed effect Windows guard
+on:
+  push:
+    branches: [neurofactory-p0-exact-core-signed-effect-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py'
+      - 'bridge/neurofactory/one_pc_candidate/protected_host_core_witness_binding.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_protected_host_core_witness_binding.py'
+      - '.github/workflows/neurofactory-exact-core-effect-windows-ci.yml'
+permissions:
+  contents: read
+jobs:
+  windows_exact_signed_core_effect:
+    runs-on: windows-2025
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      GIT_AUTHOR_NAME: 'NF Test'
+      GIT_AUTHOR_EMAIL: 'ci@example.invalid'
+      GIT_COMMITTER_NAME: 'NF Test'
+      GIT_COMMITTER_EMAIL: 'ci@example.invalid'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exact CORE signed scope unit tests on disposable Windows
+        shell: pwsh
+        run: |
+          python -m venv .nf-signed-effect-venv
+          .nf-signed-effect-venv/Scripts/python.exe -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+          .nf-signed-effect-venv/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_core_witness_binding.py -v
+      - name: No tracked code changed by the test runner
+        shell: pwsh
+        run: git diff --exit-code
