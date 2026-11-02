@@ -20,7 +20,7 @@ import stat
 import subprocess
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 
 TASK = re.compile(r"NF-DEV-05-Q[0-9]{3}\Z")
 PROJECT = re.compile(r"[a-z][a-z0-9-]{2,39}\Z")
@@ -184,8 +184,9 @@ def provision_empty_core_queue_offline(root):
             flags |= os.O_NOFOLLOW
         fd = os.open(db, flags, 0o600)
         os.close(fd)
-        with sqlite3.connect(db.as_uri() + "?mode=rw", uri=True,
-                             isolation_level=None, timeout=5) as con:
+        # Connection context manager alone does NOT close Windows file handles.
+        with closing(sqlite3.connect(db.as_uri() + "?mode=rw", uri=True,
+                                     isolation_level=None, timeout=5)) as con:
             con.execute("PRAGMA journal_mode=DELETE")
             con.execute("PRAGMA synchronous=FULL")
             con.execute(_CORE_TABLE_SQL)
