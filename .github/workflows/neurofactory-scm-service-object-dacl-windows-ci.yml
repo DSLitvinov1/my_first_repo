@@ -1,0 +1,26 @@
+name: Neurofactory SCM service object DACL negative Windows guard
+on:
+  push:
+    branches: [neurofactory-p0-scm-service-object-dacl-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_service_object_dacl_ci.ps1'
+      - '.github/workflows/neurofactory-scm-service-object-dacl-windows-ci.yml'
+permissions:
+  contents: read
+jobs:
+  windows_scm_dacl_negative:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Parse and test actual preflight function against synthetic service DACL
+        shell: pwsh
+        run: |
+          & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_service_object_dacl_ci.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Confirm source remains unchanged
+        shell: pwsh
+        run: git diff --exit-code
