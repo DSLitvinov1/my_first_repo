@@ -252,3 +252,71 @@ class OneShotScmRecipientFence:
             "distributed_atomic_transaction_attested": False,
             "automatic_retry_allowed": False,
         }
+
+
+    def execute_fixed_ci_file_once(self, *, file_root: Path, payload: bytes,
+                                   body, claim, owner_signature,
+                                   reviewer_signature, witness_claim,
+                                   after_ack_test_hook=None):
+        """One *real* inert CREATE_NEW file following verified signed witness.
+
+        Only executable on disposable GitHub-hosted CI, never owner computer.
+        This test proves order of local intent -> signed remote ACK ->
+        CORE recheck -> fixed file. It does NOT grant a general SCM permission
+        or production file effect. Crash after ACK burns the reservation.
+        """
+        runner = os.environ.get("RUNNER_TEMP")
+        if (os.environ.get("GITHUB_ACTIONS") != "true"
+                or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+                or not runner or not isinstance(file_root, Path)
+                or type(payload) is not bytes or not 1 <= len(payload) <= 2048
+                or sha256(payload).hexdigest() != self._payload
+                or body.get("content_sha256") != self._payload
+                or body.get("target") !=
+                   "bridge/neurofactory/development/core_owned/windows_pilot.txt"):
+            _deny("no production or arbitrary file operation")
+        trusted_temp = Path(runner).resolve(strict=True)
+        safe = _root(file_root)
+        try:
+            if (safe.resolve(strict=True) == trusted_temp or
+                    not safe.resolve(strict=True).is_relative_to(trusted_temp)):
+                _deny("fixture output must be isolated under disposable runner temp")
+        except (OSError, ValueError) as exc:
+            raise RecipientFenceDenied("disposable CI fixture unavailable") from exc
+        # This irreversible local intent is committed before first TLS byte.
+        proof = self.reserve_once(
+            body=body, claim=claim, owner_signature=owner_signature,
+            reviewer_signature=reviewer_signature, witness_claim=witness_claim)
+        try:
+            self._live_claim(body)
+            if after_ack_test_hook is not None:
+                # Adversarial fixture hook only; no on-disk config or worker
+                # message may request a crash mode.
+                after_ack_test_hook()
+            target = safe / "windows_pilot.txt"
+            if target.is_symlink() or target.exists():
+                raise RecipientFenceUnknown("destination already exists; NO REPLAY")
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(target, flags, 0o600)
+            try:
+                with os.fdopen(descriptor, "wb") as out:
+                    out.write(payload)
+                    out.flush()
+                    os.fsync(out.fileno())
+            except BaseException:
+                raise
+            if sha256(target.read_bytes()).hexdigest() != self._payload:
+                raise RecipientFenceUnknown("file readback mismatch; manual review")
+        except Exception as exc:
+            raise RecipientFenceUnknown(
+                "post-ACK FILE UNKNOWN; NO AUTOMATIC RETRY") from exc
+        return {
+            "status": "ONE_INERT_CI_FILE_AFTER_SIGNED_REMOTE_ACK",
+            "payload_sha256": self._payload,
+            "operator_signed_external_epoch": proof["external_epoch"],
+            "production_execution_allowed": False,
+            "distributed_atomic_transaction_attested": False,
+            "automatic_retry_allowed": False,
+        }
