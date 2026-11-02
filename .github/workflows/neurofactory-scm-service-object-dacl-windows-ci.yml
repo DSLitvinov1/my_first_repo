@@ -20,7 +20,12 @@ jobs:
         shell: pwsh
         run: |
           & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_service_object_dacl_ci.ps1
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Inspect real Windows SCM SDDL output shape without modifying services
+        shell: pwsh
+        run: |
+          $s=(& $env:SystemRoot/System32/sc.exe sdshow EventLog | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $s -notmatch 'D:') { throw 'NF_CI_SCM_SDDL_QUERY_UNAVAILABLE' }
+          Write-Output ('NF_REAL_SC_SDSHOW_OWNER_PRESENT=' + [bool]($s -match 'O:'))
       - name: Confirm source remains unchanged
         shell: pwsh
         run: git diff --exit-code
