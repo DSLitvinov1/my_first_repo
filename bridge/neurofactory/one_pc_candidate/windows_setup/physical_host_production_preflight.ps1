@@ -107,6 +107,53 @@ function Assert-NfActualScmServiceDacl([string]$ServiceName, $Service) {
     }
     [void](Assert-NfScmServiceDacl $actualSddl)
 }
+# Also audit OS Registry config key, separate from SCM service-object DACL.
+function Assert-NfServiceRegistrySddl([string]$Sddl) {
+    if ([string]::IsNullOrWhiteSpace($Sddl) -or $Sddl.Length -gt 16384) {
+        Deny 'REGISTRY_SDDL_MISSING_OR_OVERSIZED'
+    }
+    try {
+        $sd=[System.Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+    } catch {Deny 'REGISTRY_SDDL_INVALID'}
+    $trusted=@('S-1-5-18','S-1-5-32-544')
+    if ($null -eq $sd.Owner -or $sd.Owner.Value -notin $trusted -or
+        $null -eq $sd.DiscretionaryAcl -or $sd.DiscretionaryAcl.Count -eq 0) {
+        Deny 'REGISTRY_OWNER_OR_DACL_UNTRUSTED'
+    }
+    # SET_VALUE, CREATE_SUB_KEY, CREATE_LINK, DELETE, WRITE_DAC/OWNER,
+    # SYSTEM_SECURITY, MAXIMUM_ALLOWED, GENERIC_ALL/EXECUTE/WRITE.
+    [long]$dangerous=0x730D0026
+    foreach ($ace in $sd.DiscretionaryAcl) {
+        if ($ace -isnot [System.Security.AccessControl.CommonAce]) {
+            Deny 'REGISTRY_UNKNOWN_ACE'
+        }
+        if ($ace.AceQualifier -eq [System.Security.AccessControl.AceQualifier]::AccessAllowed) {
+            if ($null -eq $ace.SecurityIdentifier -or
+                ($ace.SecurityIdentifier.Value -notin $trusted -and
+                 (([long]$ace.AccessMask -band $dangerous) -ne 0))) {
+                Deny 'UNTRUSTED_SERVICE_REGISTRY_WRITER'
+            }
+        } elseif ($ace.AceQualifier -ne [System.Security.AccessControl.AceQualifier]::AccessDenied) {
+            Deny 'REGISTRY_UNEXPECTED_ACE'
+        }
+    }
+    return $true
+}
+function Assert-NfActualServiceRegistryAcl([string]$ServiceName) {
+    if ($ServiceName -cne 'NeurofactoryCoreHost') {Deny 'REGISTRY_UNPINNED_SERVICE'}
+    foreach($key in @(
+        'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services',
+        'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NeurofactoryCoreHost'
+    )) {
+        try {
+            $acl=Get-Acl -LiteralPath $key -ErrorAction Stop
+            $sections=([System.Security.AccessControl.AccessControlSections]::Owner -bor
+                [System.Security.AccessControl.AccessControlSections]::Access)
+            $sddl=$acl.GetSecurityDescriptorSddlForm($sections)
+        } catch {Deny 'REGISTRY_SECURITY_NOT_VERIFIABLE'}
+        [void](Assert-NfServiceRegistrySddl $sddl)
+    }
+}
 if ($env:OS -cne 'Windows_NT') {Deny 'WINDOWS_REQUIRED'}
 if ($env:GITHUB_ACTIONS -ceq 'true') {Deny 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE'}
 foreach($pin in @($ExpectedHostBinarySha256,$ExpectedHostSourceSha256,
@@ -141,6 +188,7 @@ $serviceSid=([Security.Principal.NTAccount]"NT SERVICE\$name").Translate(
     [Security.Principal.SecurityIdentifier]).Value
 if ($serviceSid -notmatch '^S-1-5-80-') {Deny 'NO_UNIQUE_WINDOWS_SERVICE_ID'}
 Assert-NfActualScmServiceDacl $name $service
+Assert-NfActualServiceRegistryAcl $name
 $processOwner=Get-CimInstance Win32_Process -Filter "ProcessId=$($service.ProcessId)" |
     Invoke-CimMethod -MethodName GetOwner
 if ($processOwner.ReturnValue -ne 0 -or
