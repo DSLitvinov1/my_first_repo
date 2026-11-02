@@ -147,7 +147,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None,host_receipt_signer=None):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None,host_receipt_signer=None,recipient_core_guard=None):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -192,6 +192,13 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown
                 _deny()
             req=json.loads(data.decode("ascii"))
             body,payload=validate_owner_signature(req,owner_public)
+            # Service-side operator-pinned CORE scope (not supplied by the
+            # worker). The legacy disposable local pilot can omit this only
+            # when NOT running inside the restricted SCM integration.
+            if recipient_core_guard is not None:
+                if not callable(recipient_core_guard):
+                    _deny()
+                recipient_core_guard(body)
             # Pilot name is fixed and derived from the exact signed target.
             # Store only under isolated root. No arbitrary user-supplied path.
             destination=safe/"windows_pilot.txt"
@@ -208,6 +215,10 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown
             # SCM test. Never allow a worker request to name a failure mode.
             if ci_after_unknown_hook is not None:
                 ci_after_unknown_hook()
+            if recipient_core_guard is not None:
+                # Close the preventable stale-read window between preflight
+                # and CREATE_NEW. Not an atomic recipient-side lease.
+                recipient_core_guard(body)
             with open(destination,"xb") as f:
                 f.write(payload);f.flush();os.fsync(f.fileno())
             response={"status":"ONE_INERT_WINDOWS_FILE_TEST_ONLY",
