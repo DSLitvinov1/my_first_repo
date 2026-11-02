@@ -91,6 +91,92 @@ class SignedRecipientWitnessFenceTests(RecipientClaimGateTest):
                 uri=True)) as db:
             return db.execute("SELECT disposition,ack_observation_sha256 FROM one_effect_intents").fetchall()
 
+    def _fixed_ci_output(self):
+        import os
+        import shutil
+        runner=os.environ.get("RUNNER_TEMP")
+        self.assertTrue(runner,"only disposable GitHub CI may create output")
+        path=Path(tempfile.mkdtemp(prefix="nf-fenced-file-",dir=runner)).resolve()
+        self.addCleanup(lambda: shutil.rmtree(path))
+        return path
+
+    def _approved_ci_file(self):
+        self.payload=b"NEUROFACTORY_ONE_APPROVED_INERT_SIGNED_WITNESS_CI_FILE\\n"
+        self.body["content_sha256"]=sha256(self.payload).hexdigest()
+        self.fx.claim["payload_sha256"]=self.body["content_sha256"]
+        self.fx.expected["payload_sha256"]=self.body["content_sha256"]
+        new_operation=exact_core_effect_sha256(
+            self.digest,self.body["content_sha256"])
+        self.fx.claim["operation_sha256"]=new_operation
+        self.fx.expected["operation_sha256"]=new_operation
+        self.fx.remote["operation_sha256"]=new_operation
+        self.fx.evidence["claim_sha256"]=sha256(_canon(self.fx.remote)).hexdigest()
+
+    def _file(self,gate,folder,**changes):
+        args=dict(
+            file_root=folder,payload=self.payload,body=self.body,
+            claim=self.fx.claim,owner_signature=self.fx.role("owner"),
+            reviewer_signature=self.fx.role("reviewer"),
+            witness_claim=self.fx.remote)
+        args.update(changes)
+        return gate.execute_fixed_ci_file_once(**args)
+
+    def test_real_inert_ci_file_only_after_signed_ack_and_no_replay(self):
+        self._approved_ci_file()
+        folder=self._fixed_ci_output()
+        with patch("protected_host_remote_bridge._wire_exchange",
+                   return_value=self.fx.ack()) as remote:
+            result=self._file(self.fence(),folder)
+            self.assertEqual(result["status"],
+                             "ONE_INERT_CI_FILE_AFTER_SIGNED_REMOTE_ACK")
+            self.assertFalse(result["production_execution_allowed"])
+            self.assertEqual((folder/"windows_pilot.txt").read_bytes(),self.payload)
+            self.assertEqual(remote.call_count,1)
+            with self.assertRaises(RecipientFenceUnknown):
+                self._file(self.fence(),folder)
+            self.assertEqual(remote.call_count,1)
+        print("NF_REAL_CI_FILE_AFTER_SIGNED_WITNESS_ACK_ONCE=PASS_NOT_PRODUCTION")
+
+    def test_missing_remote_ack_never_creates_file(self):
+        self._approved_ci_file()
+        folder=self._fixed_ci_output()
+        with patch("protected_host_remote_bridge._wire_exchange",
+                   side_effect=RemoteHighwaterDenied("lost ACK")) as remote:
+            with self.assertRaises(RecipientFenceUnknown):
+                self._file(self.fence(),folder)
+            self.assertFalse((folder/"windows_pilot.txt").exists())
+            with self.assertRaises(RecipientFenceUnknown):
+                self._file(self.fence(),folder)
+            self.assertEqual(remote.call_count,1)
+        print("NF_FILE_ABSENT_AFTER_UNKNOWN_REMOTE_ACK=PASS_NO_RETRY")
+
+    def test_crash_after_verified_ack_blocks_second_file_attempt(self):
+        self._approved_ci_file()
+        folder=self._fixed_ci_output()
+        def simulated_crash():
+            raise RuntimeError("test crash immediately after signed remote ACK")
+        with patch("protected_host_remote_bridge._wire_exchange",
+                   return_value=self.fx.ack()) as remote:
+            with self.assertRaises(RecipientFenceUnknown):
+                self._file(self.fence(),folder,after_ack_test_hook=simulated_crash)
+            self.assertFalse((folder/"windows_pilot.txt").exists())
+            with self.assertRaises(RecipientFenceUnknown):
+                self._file(self.fence(),folder)
+            self.assertEqual(remote.call_count,1)
+        print("NF_AFTER_ACK_BEFORE_FILE_CRASH_UNKNOWN_REPLAY_DENIED=PASS")
+
+    def test_non_hosted_machine_cannot_execute_ci_fixture_file(self):
+        import os
+        self._approved_ci_file()
+        folder=self._fixed_ci_output()
+        with patch.dict(os.environ,{"GITHUB_ACTIONS":"false"}), patch(
+                "protected_host_remote_bridge._wire_exchange") as remote:
+            with self.assertRaises(RecipientFenceDenied):
+                self._file(self.fence(),folder)
+            self.assertEqual(self.stage(),[])
+            self.assertFalse((folder/"windows_pilot.txt").exists())
+            remote.assert_not_called()
+
     def test_exact_live_claim_three_signatures_witness_once_durable(self):
         with patch("protected_host_remote_bridge._wire_exchange",
                    return_value=self.fx.ack()) as remote:
