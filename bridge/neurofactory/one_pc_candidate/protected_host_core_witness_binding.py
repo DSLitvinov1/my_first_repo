@@ -25,8 +25,8 @@ from protected_host_remote_bridge import OneShotHostWitnessBridge, BridgeUnknown
 # Binds the complete immutable CORE task specification and the separately
 # approved output payload to exactly ONE signed HOST operation identifier.
 # Signed role envelopes and operator-pinned operation_sha256 already exist.
-_CORE_EFFECT_DOMAIN = b"NF_CORE_FULL_SPEC_AND_PAYLOAD_OPERATION_V1\\x00"
-_HEX64 = re.compile(r"[0-9a-f]{64}\\Z")
+_CORE_EFFECT_DOMAIN = b"NF_CORE_FULL_SPEC_AND_PAYLOAD_OPERATION_V1\x00"
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 
 def exact_core_effect_sha256(core_spec_sha256, payload_sha256):
     """Stable domain-separated commitment: verified full CORE spec + payload.
