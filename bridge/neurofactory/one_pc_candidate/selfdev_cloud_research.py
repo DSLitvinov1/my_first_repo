@@ -20,6 +20,15 @@ import time
 QWEN_MODEL_SHA256 = "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031"
 LLAMA_CLI_SHA256 = "094d4c5499543584e8d253cb1c8b9a2e4bc6d15b71b299befd54184210db5bc0"
 MODEL_NAME = "Qwen/Qwen3-0.6B-GGUF:Q8_0"
+MODEL_OPTIONS = {
+    "Qwen3-0.6B-Q8_0.gguf": (
+        QWEN_MODEL_SHA256, MODEL_NAME,
+    ),
+    "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf": (
+        "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046",
+        "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF:Q4_K_M",
+    ),
+}
 SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 TASKS = {
     "host_recovery": (
@@ -137,8 +146,9 @@ def run_one(*, repo: Path, lab: Path, model: Path, executable: Path,
     if (lab.stat().st_uid != os.geteuid() or
             stat.S_IMODE(lab.stat().st_mode) & 0o077):
         _deny("evidence folder must be private to the lab user")
-    if _digest_file(model) != QWEN_MODEL_SHA256:
-        _deny("Qwen model checksum not independently pinned")
+    model_config = MODEL_OPTIONS.get(model.name)
+    if model_config is None or _digest_file(model) != model_config[0]:
+        _deny("Qwen model identity or checksum not independently pinned")
     if _digest_file(executable) != LLAMA_CLI_SHA256:
         _deny("CPU runtime checksum not independently pinned")
     head = _git_head(repo)
@@ -173,8 +183,8 @@ def run_one(*, repo: Path, lab: Path, model: Path, executable: Path,
         "schema": "nf.selfdev.cloud_qwen_research_proposal.v1",
         "status": "UNTRUSTED_QWEN_RESEARCH_NO_APPLY",
         "task": task, "source_sha40": head, "created_unix": when,
-        "model": MODEL_NAME,
-        "model_sha256": QWEN_MODEL_SHA256,
+        "model": model_config[1],
+        "model_sha256": model_config[0],
         "runtime_sha256": LLAMA_CLI_SHA256,
         "prompt_sha256": sha256(prompt.encode("utf-8")).hexdigest(),
         "proposal": proposal,
