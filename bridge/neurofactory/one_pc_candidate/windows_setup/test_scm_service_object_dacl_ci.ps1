@@ -36,6 +36,8 @@ function MustReject([string]$name,[string]$sddl) {
 # All service-control rights only for SYSTEM and Administrators. Others may query.
 $allowed='O:SYG:SYD:(A;;0x000F01FF;;;SY)(A;;0x000F01FF;;;BA)(A;;0x00000005;;;AU)'
 MustAllow 'admin_only_mutation_readonly_authenticated_users' $allowed
+MustAllow 'numeric_owner_sid_from_real_cim' ('O:S-1-5-18G:SYD:(A;;0x000F01FF;;;SY)(A;;0x00000005;;;AU)')
+MustReject 'sc_sdshow_owner_missing_without_independent_cim' 'D:(A;;0x000F01FF;;;SY)'
 $rights=@(
     @{label='change_config';value='0x00000002'},
     @{label='start';value='0x00000010'},
