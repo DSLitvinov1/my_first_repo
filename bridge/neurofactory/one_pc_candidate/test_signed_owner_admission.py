@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives import serialization
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "bridge/neurofactory/development/core_owned"))
-from one_task_core import OneTaskCore, EMPTY_SHA
+from one_task_core import OneTaskCore, EMPTY_SHA, provision_empty_core_queue_offline
 from local_workspace import WorkspaceStore, handler
 from signed_owner_admission import (
     prepare_draft_request, admit_signed_draft, AdmissionDenied, _canon,
@@ -59,6 +59,7 @@ class SignedRealCoreAdmission(unittest.TestCase):
         self.preview = prepare_draft_request(self.workspace, self.draft["id"])
         core_root = self.root / "core"
         core_root.mkdir(mode=0o700)
+        provision_empty_core_queue_offline(core_root)
         self.core = OneTaskCore(core_root, self.git)
         self.owner = Ed25519PrivateKey.generate()
         self.owner_public_raw = self.owner.public_key().public_bytes(
