@@ -62,9 +62,23 @@ function Assert-NfScmServiceDacl([string]$Sddl) {
     }
     return $true
 }
-function Assert-NfActualScmServiceDacl([string]$ServiceName) {
-    if ($ServiceName -cne 'NeurofactoryCoreHost') {
+function Assert-NfActualScmServiceDacl([string]$ServiceName, $Service) {
+    if ($ServiceName -cne 'NeurofactoryCoreHost' -or
+        $null -eq $Service -or $Service.Name -cne $ServiceName) {
         Deny 'UNPINNED_SCM_SERVICE_NAME'
+    }
+    # sc.exe sdshow returns DACL but (on real Windows 2025) omits OWNER.
+    # Query owner from the OS service SECURITY_DESCRIPTOR via read-only CIM;
+    # never mistake the NTFS registry-key owner for the SCM object owner.
+    try {
+        $security=Invoke-CimMethod -InputObject $Service -MethodName GetSecurityDescriptor -ErrorAction Stop
+        $ownerSid=[string]$security.Descriptor.Owner.SIDString
+    } catch {
+        Deny 'SCM_SERVICE_OWNER_QUERY_FAILED'
+    }
+    if ($security.ReturnValue -ne 0 -or
+        $ownerSid -notin @('S-1-5-18','S-1-5-32-544')) {
+        Deny 'SCM_SERVICE_OWNER_NOT_SYSTEM_OR_ADMINISTRATORS'
     }
     $sc=Join-Path $env:SystemRoot 'System32\sc.exe'
     $result=(& $sc sdshow $ServiceName 2>&1 | Out-String).Trim()
@@ -77,7 +91,21 @@ function Assert-NfActualScmServiceDacl([string]$ServiceName) {
     if ($lines.Count -ne 1) {
         Deny 'SCM_SERVICE_SDDL_NOT_UNAMBIGUOUS'
     }
-    [void](Assert-NfScmServiceDacl $lines[0].Trim())
+    $actualSddl=$lines[0].Trim()
+    if ($actualSddl -match 'O:') {
+        try {
+            $reportedOwner=[System.Security.AccessControl.RawSecurityDescriptor]::new(
+                $actualSddl).Owner.Value
+        } catch {
+            Deny 'SCM_SERVICE_SDDL_OWNER_INVALID'
+        }
+        if ($reportedOwner -cne $ownerSid) {
+            Deny 'SCM_SERVICE_OWNER_QUERIES_DISAGREE'
+        }
+    } else {
+        $actualSddl='O:'+$ownerSid+$actualSddl
+    }
+    [void](Assert-NfScmServiceDacl $actualSddl)
 }
 if ($env:OS -cne 'Windows_NT') {Deny 'WINDOWS_REQUIRED'}
 if ($env:GITHUB_ACTIONS -ceq 'true') {Deny 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE'}
@@ -112,7 +140,7 @@ if ($LASTEXITCODE -ne 0 -or $sidResult -notmatch 'RESTRICTED') {
 $serviceSid=([Security.Principal.NTAccount]"NT SERVICE\$name").Translate(
     [Security.Principal.SecurityIdentifier]).Value
 if ($serviceSid -notmatch '^S-1-5-80-') {Deny 'NO_UNIQUE_WINDOWS_SERVICE_ID'}
-Assert-NfActualScmServiceDacl $name
+Assert-NfActualScmServiceDacl $name $service
 $processOwner=Get-CimInstance Win32_Process -Filter "ProcessId=$($service.ProcessId)" |
     Invoke-CimMethod -MethodName GetOwner
 if ($processOwner.ReturnValue -ne 0 -or
