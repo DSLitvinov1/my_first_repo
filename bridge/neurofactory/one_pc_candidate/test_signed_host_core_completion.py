@@ -19,7 +19,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent / "development" / "core_owned"))
-from one_task_core import OneTaskCore,CoreSafetyError,EMPTY_SHA
+from one_task_core import OneTaskCore,CoreSafetyError,EMPTY_SHA, provision_empty_core_queue_offline
 
 def git(folder,*arguments):
     r=subprocess.run(["git","-C",str(folder),*arguments],capture_output=True,
@@ -55,6 +55,7 @@ class SignedHostCloseTest(unittest.TestCase):
             "approval_commit":commit,"model":"qwen2.5-coder:1.5b",
             "reserved_units":10,
         }
+        provision_empty_core_queue_offline(self.state)
         self.core=OneTaskCore(self.state,self.repo,host_output_dir=self.out,
                               host_receipt_public_raw=self.pub)
         self.core.enqueue(self.spec,trusted_approval_check=lambda x:x==self.spec)

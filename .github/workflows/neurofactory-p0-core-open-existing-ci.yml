@@ -1,0 +1,48 @@
+name: Neurofactory CORE durable queue open existing P0
+on:
+  push:
+    branches: [neurofactory-p0-core-no-silent-queue-recreate-20261102]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/one_task_core.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_core_readonly_observer.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_protected_host_core_witness_binding.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_signed_owner_admission.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_signed_host_core_completion.py'
+      - '.github/workflows/neurofactory-p0-core-open-existing-ci.yml'
+permissions:
+  contents: read
+jobs:
+  core_queue_never_recreate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 9
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+      GIT_AUTHOR_NAME: 'NF Test'
+      GIT_AUTHOR_EMAIL: 'ci@example.invalid'
+      GIT_COMMITTER_NAME: 'NF Test'
+      GIT_COMMITTER_EMAIL: 'ci@example.invalid'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Isolated scoped crypto plus real CORE SQLite recovery regression
+        shell: bash
+        run: |
+          python -m venv .nf-p0-core-venv
+          if [ -x .nf-p0-core-venv/bin/python ]; then
+            PY=.nf-p0-core-venv/bin/python
+          else
+            PY=.nf-p0-core-venv/Scripts/python.exe
+          fi
+          "$PY" -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+          "$PY" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_core_readonly_observer.py -v
+          "$PY" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_core_witness_binding.py -v
+          "$PY" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_signed_owner_admission.py -v
+      - name: No changes to tracked files
+        shell: bash
+        run: git diff --exit-code

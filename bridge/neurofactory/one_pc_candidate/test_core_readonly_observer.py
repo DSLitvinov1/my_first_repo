@@ -17,7 +17,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "bridge/neurofactory/development/core_owned"))
-from one_task_core import OneTaskCore, EMPTY_SHA
+from one_task_core import OneTaskCore, EMPTY_SHA, CoreSafetyError, provision_empty_core_queue_offline
 from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
 from local_workspace import WorkspaceStore, handler
 
@@ -44,6 +44,7 @@ class CoreReadOnlyIntegration(unittest.TestCase):
             ["git", "-C", str(self.repo), "rev-parse", "HEAD"], text=True).strip()
         core_root = self.root / "core"
         core_root.mkdir(mode=0o700)
+        provision_empty_core_queue_offline(core_root)
         self.core = OneTaskCore(core_root, self.repo)
         self.state = core_root / "state"
         self.spec = {
@@ -114,6 +115,48 @@ class CoreReadOnlyIntegration(unittest.TestCase):
             with self.assertRaises(CoreObservationDenied):
                 observe_core(linked)
         self.assertEqual(list(self.state.glob("*")), [self.state / "queue.sqlite3"])
+
+    def test_missing_claimed_core_db_denied_instead_of_empty_restart(self):
+        self.enqueue()
+        self.core.claim("observer-worker",now=1000,lease_seconds=100)
+        db=self.state / "queue.sqlite3"
+        db.unlink()
+        with self.assertRaises(CoreSafetyError):
+            OneTaskCore(self.root / "core",self.repo)
+        self.assertFalse(db.exists())
+        with self.assertRaises(CoreSafetyError):
+            self.core.snapshot()
+        self.assertFalse(db.exists())
+        # The offline operator initializer cannot reset an existing root.
+        with self.assertRaises(CoreSafetyError):
+            provision_empty_core_queue_offline(self.root / "core")
+        self.assertFalse(db.exists())
+
+    def test_missing_core_state_directory_denied_on_restart(self):
+        self.enqueue()
+        (self.state / "queue.sqlite3").unlink()
+        self.state.rmdir()
+        with self.assertRaises(CoreSafetyError):
+            OneTaskCore(self.root / "core",self.repo)
+        self.assertFalse(self.state.exists())
+        with self.assertRaises(CoreSafetyError):
+            provision_empty_core_queue_offline(self.root / "core")
+
+    def test_core_schema_tamper_denied_without_autorepair(self):
+        db=self.state / "queue.sqlite3"
+        with self.core._connect() as con:
+            con.execute("DROP TABLE single_job")
+        damaged=db.read_bytes()
+        with self.assertRaises(CoreSafetyError):
+            OneTaskCore(self.root / "core",self.repo)
+        self.assertEqual(db.read_bytes(),damaged)
+
+    def test_clean_restart_uses_existing_provisioned_core_queue(self):
+        self.enqueue()
+        reopened=OneTaskCore(self.root / "core",self.repo)
+        self.assertEqual(reopened.snapshot()["state"],"QUEUED")
+        with self.assertRaises(CoreSafetyError):
+            provision_empty_core_queue_offline(self.root / "core")
 
     def test_local_http_reflects_genuine_core_without_writer(self):
         self.enqueue()

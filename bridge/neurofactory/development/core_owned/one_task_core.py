@@ -20,7 +20,7 @@ import stat
 import subprocess
 import tempfile
 import time
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 
 TASK = re.compile(r"NF-DEV-05-Q[0-9]{3}\Z")
 PROJECT = re.compile(r"[a-z][a-z0-9-]{2,39}\Z")
@@ -33,6 +33,22 @@ SPEC_KEYS = frozenset(("schema", "task_id", "project_id", "target", "objective",
                        "approval_commit"))
 PROPOSAL_KEYS = frozenset(("schema", "target", "content", "content_sha256", "mode"))
 EMPTY_SHA = hashlib.sha256(b"").hexdigest()
+
+# Provisioning is a separate offline operator action. Ordinary CORE startup
+# must NEVER create a new empty queue after the trusted checkpoint vanishes.
+_CORE_TABLE_SQL = """CREATE TABLE single_job (
+                singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
+                task_id TEXT NOT NULL UNIQUE,
+                spec TEXT NOT NULL,
+                spec_sha256 TEXT NOT NULL,
+                state TEXT NOT NULL,
+                owner TEXT,
+                token_sha256 TEXT,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                lease_until INTEGER,
+                result_sha256 TEXT,
+                receipt TEXT
+            )"""
 
 
 class CoreSafetyError(ValueError):
@@ -146,6 +162,41 @@ def _validate_spec(spec):
     _safe_target(spec["target"])
 
 
+def provision_empty_core_queue_offline(root):
+    """One-time, explicitly invoked operator provisioning; NEVER call in SCM runtime.
+
+    Refuse reuse and recovery from missing SQLite or half-initialized state.
+    The operator must independently establish directory/ACL ownership first.
+    A privileged actor able to roll back the whole root still requires an
+    independent monotonic external witness; this is only a local fail-closed
+    barrier, not physical anti-rollback attestation.
+    """
+    root = _safe_directory(root)
+    if (root / "state").exists() or (root / "state").is_symlink() or (
+            root / "sandbox").exists() or (root / "sandbox").is_symlink():
+        raise CoreSafetyError("CORE already provisioned or ambiguous; no reset")
+    state = _safe_directory(root / "state", create=True)
+    _safe_directory(root / "sandbox", create=True)
+    db = state / "queue.sqlite3"
+    try:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(db, flags, 0o600)
+        os.close(fd)
+        # Connection context manager alone does NOT close Windows file handles.
+        with closing(sqlite3.connect(db.as_uri() + "?mode=rw", uri=True,
+                                     isolation_level=None, timeout=5)) as con:
+            con.execute("PRAGMA journal_mode=DELETE")
+            con.execute("PRAGMA synchronous=FULL")
+            con.execute(_CORE_TABLE_SQL)
+        return {"status": "CORE_EMPTY_QUEUE_PROVISIONED_OFFLINE_NO_EXECUTION",
+                "production_release_approved": False}
+    except (OSError, sqlite3.Error) as exc:
+        # Leave ambiguous partial state in place; do not try again silently.
+        raise CoreSafetyError("CORE initial provisioning ambiguous; manual audit required") from exc
+
+
 class OneTaskCore:
     """Trusted single-host coordinator; NEVER give its DB, source repo or API to a model."""
 
@@ -163,44 +214,36 @@ class OneTaskCore:
         self.repo = pathlib.Path(source_repo)
         if self.repo.is_symlink() or not self.repo.is_dir():
             raise CoreSafetyError("Trusted Git checkout missing")
-        self.state = _safe_directory(self.root / "state", create=True)
-        self.sandbox = _safe_directory(self.root / "sandbox", create=True)
+        self.state = _safe_directory(self.root / "state")
+        self.sandbox = _safe_directory(self.root / "sandbox")
         sandbox_stat = self.sandbox.lstat()
         self._sandbox_identity = (sandbox_stat.st_dev, sandbox_stat.st_ino)
         self.db = self.state / "queue.sqlite3"
-        if self.db.is_symlink():
-            raise CoreSafetyError("Database symlink refused")
-        if not self.db.exists():
-            try:
-                fd = os.open(self.db, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            except FileExistsError:
-                pass
-            else:
-                os.close(fd)
-        if not self.db.is_file() or self.db.is_symlink():
-            raise CoreSafetyError("Unsafe queue database")
+        if self.db.is_symlink() or not self.db.is_file():
+            raise CoreSafetyError("CORE queue missing, never silently recreate; operator review required")
+        if self.db.stat().st_size < 512:
+            raise CoreSafetyError("CORE queue truncated; manual recovery required")
         if os.name != "nt" and self.db.stat().st_mode & 0o077:
             raise CoreSafetyError("Queue database must be private")
         with self._connect() as con:
-            con.execute("""CREATE TABLE IF NOT EXISTS single_job (
-                singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
-                task_id TEXT NOT NULL UNIQUE,
-                spec TEXT NOT NULL,
-                spec_sha256 TEXT NOT NULL,
-                state TEXT NOT NULL,
-                owner TEXT,
-                token_sha256 TEXT,
-                attempts INTEGER NOT NULL DEFAULT 0,
-                lease_until INTEGER,
-                result_sha256 TEXT,
-                receipt TEXT
-            )""")
+            row = con.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' "
+                "AND name='single_job'").fetchone()
+            if row is None or row[0] != _CORE_TABLE_SQL:
+                raise CoreSafetyError("CORE durable queue schema missing or replaced")
+            if con.execute("PRAGMA quick_check").fetchall() != [("ok",)]:
+                raise CoreSafetyError("CORE durable queue corrupted")
 
     @contextmanager
     def _connect(self):
         # sqlite3.Connection.__exit__ commits/rolls back but DOES NOT close.
         # A leaked Windows file handle can prevent crash recovery and cleanup.
-        con = sqlite3.connect(str(self.db), timeout=10, isolation_level=None)
+        # URI mode=rw refuses missing DB at *every* operation, not only init.
+        # A concurrent deletion/restart must never create a replacement file.
+        if self.db.is_symlink() or not self.db.is_file():
+            raise CoreSafetyError("CORE durable queue lost; do not recreate")
+        con = sqlite3.connect(self.db.as_uri() + "?mode=rw",
+                              uri=True, timeout=10, isolation_level=None)
         try:
             con.execute("PRAGMA busy_timeout=10000")
             con.execute("PRAGMA synchronous=FULL")
