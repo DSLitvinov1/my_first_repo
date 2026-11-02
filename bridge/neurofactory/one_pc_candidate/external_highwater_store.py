@@ -35,8 +35,8 @@ def _file(path):
     if not path.exists() or not path.is_file():
         _deny("database must already be provisioned by an independent administrator")
     st=path.lstat()
-    if not stat.S_ISREG(st.st_mode):
-        _deny("nonregular witness database")
+    if not stat.S_ISREG(st.st_mode) or st.st_size < 512:
+        _deny("witness database missing, truncated or nonregular; NO REPAIR")
     if os.name=="posix" and (st.st_uid!=os.geteuid() or st.st_mode&0o077):
         _deny("untrusted ownership or broad permissions on witness state")
     if os.name=="nt" and st.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
