@@ -21,6 +21,64 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 function Deny([string]$why) {throw ('NF_REAL_WINDOWS_HOST_PRECHECK_DENIED: '+$why)}
+# Service OBJECT DACL is distinct from NTFS file ACLs. An attacker with
+# SERVICE_CHANGE_CONFIG can swap ImagePath AFTER file hashes were checked.
+# This read-only check must fail even if current SCM PathName is correct.
+function Assert-NfScmServiceDacl([string]$Sddl) {
+    if ([string]::IsNullOrWhiteSpace($Sddl) -or $Sddl.Length -gt 16384) {
+        Deny 'SERVICE_OBJECT_SDDL_MISSING_OR_OVERSIZED'
+    }
+    try {
+        $descriptor=[System.Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+    } catch {
+        Deny 'SERVICE_OBJECT_SDDL_INVALID'
+    }
+    $trusted=@('S-1-5-18','S-1-5-32-544') # SYSTEM / BUILTIN Administrators
+    if ($null -eq $descriptor.Owner -or
+        $descriptor.Owner.Value -notin $trusted -or
+        $null -eq $descriptor.DiscretionaryAcl -or
+        $descriptor.DiscretionaryAcl.Count -eq 0) {
+        Deny 'SERVICE_OBJECT_OWNER_OR_DACL_NOT_PROTECTED'
+    }
+    # Service rights: CHANGE_CONFIG, START, STOP, PAUSE, USER_CONTROL,
+    # DELETE, WRITE_DAC, WRITE_OWNER, GENERIC_ALL/WRITE/EXECUTE,
+    # MAXIMUM_ALLOWED. Read/query-only grants may be public.
+    [long]$dangerous=0x720D0172
+    foreach ($ace in $descriptor.DiscretionaryAcl) {
+        if ($ace -isnot [System.Security.AccessControl.CommonAce]) {
+            Deny 'SERVICE_OBJECT_UNKNOWN_ACE_TYPE'
+        }
+        if ($ace.AceQualifier -eq [System.Security.AccessControl.AceQualifier]::AccessAllowed) {
+            if ($null -eq $ace.SecurityIdentifier) {
+                Deny 'SERVICE_OBJECT_ACE_WITHOUT_SID'
+            }
+            if ($ace.SecurityIdentifier.Value -notin $trusted -and
+                (([long]$ace.AccessMask -band $dangerous) -ne 0)) {
+                Deny 'UNTRUSTED_PRINCIPAL_CAN_CONTROL_WINDOWS_SERVICE'
+            }
+        } elseif ($ace.AceQualifier -ne [System.Security.AccessControl.AceQualifier]::AccessDenied) {
+            Deny 'SERVICE_OBJECT_UNEXPECTED_ACE_QUALIFIER'
+        }
+    }
+    return $true
+}
+function Assert-NfActualScmServiceDacl([string]$ServiceName) {
+    if ($ServiceName -cne 'NeurofactoryCoreHost') {
+        Deny 'UNPINNED_SCM_SERVICE_NAME'
+    }
+    $sc=Join-Path $env:SystemRoot 'System32\\sc.exe'
+    $result=(& $sc sdshow $ServiceName 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $result.Length -gt 16384) {
+        Deny 'SCM_SERVICE_SECURITY_QUERY_FAILED'
+    }
+    # sc.exe prints a header on some OS versions; require exactly one
+    # recognizable SDDL line, never infer permission from a textual summary.
+    $lines=@($result -split "[\\r\\n]+" | Where-Object { $_.Trim() -match '^([OGDS]:)' })
+    if ($lines.Count -ne 1) {
+        Deny 'SCM_SERVICE_SDDL_NOT_UNAMBIGUOUS'
+    }
+    [void](Assert-NfScmServiceDacl $lines[0].Trim())
+}
 if ($env:OS -cne 'Windows_NT') {Deny 'WINDOWS_REQUIRED'}
 if ($env:GITHUB_ACTIONS -ceq 'true') {Deny 'NO_TEST_RUNNER_COUNTS_AS_PHYSICAL_RELEASE'}
 foreach($pin in @($ExpectedHostBinarySha256,$ExpectedHostSourceSha256,
@@ -54,6 +112,7 @@ if ($LASTEXITCODE -ne 0 -or $sidResult -notmatch 'RESTRICTED') {
 $serviceSid=([Security.Principal.NTAccount]"NT SERVICE\$name").Translate(
     [Security.Principal.SecurityIdentifier]).Value
 if ($serviceSid -notmatch '^S-1-5-80-') {Deny 'NO_UNIQUE_WINDOWS_SERVICE_ID'}
+Assert-NfActualScmServiceDacl $name
 $processOwner=Get-CimInstance Win32_Process -Filter "ProcessId=$($service.ProcessId)" |
     Invoke-CimMethod -MethodName GetOwner
 if ($processOwner.ReturnValue -ne 0 -or
