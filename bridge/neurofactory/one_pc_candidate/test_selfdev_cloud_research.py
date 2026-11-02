@@ -124,6 +124,19 @@ class CloudResearchSafetyTests(unittest.TestCase):
             self.generate(repo=inside)
         self.assertEqual(self.calls,[])
 
+    def test_evidence_cannot_reside_inside_source_tree(self):
+        inside=self.repo/"lab-output"
+        inside.mkdir(mode=0o700)
+        with self.assertRaises(target.ResearchDenied):
+            self.generate(lab=inside)
+        self.assertEqual(self.calls,[])
+
+    def test_evidence_must_have_private_directory_permissions(self):
+        self.lab.chmod(0o755)
+        with self.assertRaises(target.ResearchDenied):
+            self.generate()
+        self.assertEqual(self.calls,[])
+
     def test_second_proposal_never_overwrites_first(self):
         first,_=self.generate()
         second,_=self.generate()
