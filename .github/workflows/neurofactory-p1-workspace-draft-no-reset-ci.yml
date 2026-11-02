@@ -1,0 +1,33 @@
+name: Neurofactory draft workspace never silently reset
+on:
+  push:
+    branches: [neurofactory-p1-workspace-draft-state-no-reset-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/local_workspace.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_local_workspace.py'
+      - '.github/workflows/neurofactory-p1-workspace-draft-no-reset-ci.yml'
+permissions:
+  contents: read
+jobs:
+  draft_workspace_recovery:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check persisted draft projects, deletion, backups and old schema
+        shell: bash
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_local_workspace.py -v
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_restore_offline.py -v
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_local_qwen_probe.py -v
+      - name: Verify no source files modified
+        shell: bash
+        run: git diff --exit-code
