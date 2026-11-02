@@ -97,8 +97,7 @@ def extract_answer(stdout, prompt):
         _deny("invalid model response size")
     # llama-cli prints the exact user prompt followed by output and the
     # independent performance footer. This is data, NEVER a shell command.
-    marker = "\\n> /no_think"
-    marker = marker.replace("\\\\n", "\\n")
+    marker = chr(10) + "> /no_think"
     start = stdout.rfind(marker)
     if start < 0:
         _deny("model request boundary not observed")
@@ -109,7 +108,7 @@ def extract_answer(stdout, prompt):
     else:
         # llama.cpp's interactive console abbreviates long ECHOED prompts
         # with a fixed literal; never treat truncated prompt as an answer.
-        delim = " ... (truncated)\\n".replace("\\\\n", "\\n")
+        delim = " ... (truncated)" + chr(10)
         cut = tail.find(delim)
         if cut < 0:
             _deny("model request echo not verifiable")
