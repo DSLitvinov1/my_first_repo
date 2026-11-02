@@ -24,13 +24,15 @@ import win32service
 import win32serviceutil
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey,Ed25519PrivateKey
 from windows_named_pipe_pilot_receiver import serve_one_pilot
+from scm_recipient_core_claim_guard import assert_recipient_core_claim
 
 SERVICE_NAME = "NeurofactorySandboxReceiverCI"
 CI_ROOT = Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "NeurofactoryCIReceiver"
 CI_CONFIG = CI_ROOT / "receiver-config.json"
 CI_PIPE = r"\\.\pipe\neurofactory-pilot-101010101010101010101010"
 CONFIG_FIELDS = {"schema", "worker_sid", "owner_public_raw_base64",
-                 "host_receipt_private_raw_base64"}
+                 "host_receipt_private_raw_base64", "core_state_path",
+                 "core_spec_sha256", "core_payload_sha256", "core_claim_owner"}
 SID_PATTERN = re.compile(r"S-1-(?:\d+-){2,14}\d+\Z")
 SERVICE_MODE_ONLY_CI = True  # Not a production daemon.
 
@@ -47,7 +49,14 @@ def load_ci_config():
             type(config["owner_public_raw_base64"]) is not str or \
             len(config["owner_public_raw_base64"]) != 44 or \
             type(config["host_receipt_private_raw_base64"]) is not str or \
-            len(config["host_receipt_private_raw_base64"]) != 44:
+            len(config["host_receipt_private_raw_base64"]) != 44 or \
+            type(config["core_state_path"]) is not str or \
+            type(config["core_spec_sha256"]) is not str or \
+            not re.fullmatch(r"[a-f0-9]{64}",config["core_spec_sha256"]) or \
+            type(config["core_payload_sha256"]) is not str or \
+            not re.fullmatch(r"[a-f0-9]{64}",config["core_payload_sha256"]) or \
+            type(config["core_claim_owner"]) is not str or \
+            not re.fullmatch(r"[A-Za-z0-9_-]{1,50}",config["core_claim_owner"]):
         raise ValueError("invalid externally pinned CI owner or worker")
     raw=base64.b64decode(config["owner_public_raw_base64"],validate=True)
     if len(raw)!=32:
@@ -57,8 +66,15 @@ def load_ci_config():
     host_raw=base64.b64decode(config["host_receipt_private_raw_base64"],validate=True)
     if len(host_raw)!=32:
         raise ValueError("Invalid ephemeral HOST signing key")
+    state=Path(config["core_state_path"])
+    if (not state.is_absolute() or state.is_symlink()
+            or state.name != "state"
+            or not (state / "queue.sqlite3").is_file()):
+        raise ValueError("Missing separately operator-pinned CORE persistent state")
     return (config["worker_sid"],Ed25519PublicKey.from_public_bytes(raw),
-            Ed25519PrivateKey.from_private_bytes(host_raw))
+            Ed25519PrivateKey.from_private_bytes(host_raw),
+            state,config["core_spec_sha256"],
+            config["core_payload_sha256"],config["core_claim_owner"])
 
 
 class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
@@ -78,14 +94,14 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop)
 
     def SvcDoRun(self):
-        sid,owner_public,host_signer=load_ci_config()
+        sid,owner_public,host_signer,state,spec_sha,payload_sha,claim_owner=load_ci_config()
         root=CI_ROOT / "protected_output"
         if not root.is_dir() or root.is_symlink():
             raise RuntimeError("operator-provisioned protected output missing")
         # Worker runs with a different OS account. Service's LocalService
         # identity and ACLs are imposed via SCM + operator install script.
         self.handler=threading.Thread(
-            target=self._serve_forever,args=(sid,owner_public,root,host_signer),daemon=True)
+            target=self._serve_forever,args=(sid,owner_public,root,host_signer,state,spec_sha,payload_sha,claim_owner),daemon=True)
         self.handler.start()
         # Graceful stop never waits on a pending adversarial pipe client.
         win32event.WaitForSingleObject(self.stop,win32event.INFINITE)
@@ -97,12 +113,20 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         if marker.is_file():
             os._exit(87)
 
-    def _serve_forever(self,sid,owner_public,root,host_signer):
+    def _serve_forever(self,sid,owner_public,root,host_signer,
+                       state,spec_sha,payload_sha,claim_owner):
+        def core_guard(signed_body):
+            return assert_recipient_core_claim(
+                core_state=state, body=signed_body,
+                expected_spec_sha256=spec_sha,
+                expected_payload_sha256=payload_sha,
+                expected_owner=claim_owner)
         while not self.is_stopping.is_set():
             try:
                 serve_one_pilot(CI_PIPE,root,owner_public,sid,
                                 ci_after_unknown_hook=self._ci_crash_after_unknown,
-                                host_receipt_signer=host_signer)
+                                host_receipt_signer=host_signer,
+                                recipient_core_guard=core_guard)
             except Exception:
                 # Fail closed; no exception must promote to a new write mode.
                 if self.is_stopping.is_set():
