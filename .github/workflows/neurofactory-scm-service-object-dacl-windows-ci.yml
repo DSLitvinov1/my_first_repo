@@ -28,7 +28,8 @@ jobs:
           Write-Output ('NF_REAL_SC_SDSHOW_OWNER_PRESENT=' + [bool]($s -match 'O:'))
           $svc=Get-CimInstance Win32_Service -Filter "Name='EventLog'"
           $sd=Invoke-CimMethod -InputObject $svc -MethodName GetSecurityDescriptor -ErrorAction Stop
-          Write-Output ('NF_REAL_SCM_CIM_OWNER_QUERY=' + $sd.ReturnValue + ':' + [bool]($sd.Descriptor.Owner.SIDString))
+          if ($sd.ReturnValue -ne 0 -or !$sd.Descriptor.Owner.SIDString) { throw 'NF_CI_SCM_OWNER_QUERY_UNAVAILABLE' }
+          Write-Output 'NF_REAL_SCM_CIM_OWNER_QUERY=PASS_READ_ONLY'
       - name: Confirm source remains unchanged
         shell: pwsh
         run: git diff --exit-code
