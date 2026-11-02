@@ -24,6 +24,12 @@ import win32service
 import win32serviceutil
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey,Ed25519PrivateKey
 from windows_named_pipe_pilot_receiver import serve_one_pilot
+# In the source tree the guard belongs to one_pc_candidate. During the
+# disposable SCM install the operator copies it into the service's own bin.
+import sys
+_candidate=Path(__file__).resolve().parents[1]/"one_pc_candidate"
+if _candidate.is_dir() and str(_candidate) not in sys.path:
+    sys.path.insert(0,str(_candidate))
 from scm_recipient_core_claim_guard import assert_recipient_core_claim
 
 SERVICE_NAME = "NeurofactorySandboxReceiverCI"
