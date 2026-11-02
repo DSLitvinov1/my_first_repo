@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "development" / "core_owned"))
-from one_task_core import OneTaskCore, CoreSafetyError, EMPTY_SHA
+from one_task_core import OneTaskCore, CoreSafetyError, EMPTY_SHA, provision_empty_core_queue_offline
 from local_workspace import WorkspaceStore, WorkspaceDenied
 from signed_owner_admission import (
     prepare_draft_request, admit_signed_draft, AdmissionDenied, _canon,
@@ -73,6 +73,7 @@ class OneInstalledFlowContract(unittest.TestCase):
         self.state.mkdir(mode=0o700)
         self.out = self.root / "host"
         self.out.mkdir(mode=0o700)
+        provision_empty_core_queue_offline(self.state)
         self.core = self._new_core()
         self.preview = prepare_draft_request(self.workspace, self.draft["id"])
         self.spec = {
