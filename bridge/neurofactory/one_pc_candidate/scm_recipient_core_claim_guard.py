@@ -46,7 +46,7 @@ def assert_recipient_core_claim(*, core_state: Path, body: dict,
     """
     if (os.name != "nt" and os.environ.get("NF_RECIPIENT_CORE_GUARD_UNIT_TEST") != "1"):
         _deny()
-    if (type(body) is not dict or type(core_state) is not Path
+    if (type(body) is not dict or not isinstance(core_state, Path)
             or not core_state.is_absolute() or core_state.is_symlink()
             or type(expected_spec_sha256) is not str
             or not _SHA64.fullmatch(expected_spec_sha256)
