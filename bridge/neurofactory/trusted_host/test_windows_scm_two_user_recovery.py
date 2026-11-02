@@ -32,7 +32,7 @@ from windows_named_pipe_pilot_receiver import _ALLOWED_TARGET
 REPO = Path(__file__).resolve().parents[3]
 CORE = REPO/".nf_pinned_core"/"bridge"/"neurofactory"/"development"/"core_owned"
 sys.path.insert(0,str(CORE))
-from one_task_core import OneTaskCore,EMPTY_SHA
+from one_task_core import OneTaskCore,EMPTY_SHA,provision_empty_core_queue_offline
 
 def call(args, *, required=True, env=None,timeout=35):
     p=subprocess.run(args,text=True,capture_output=True,env=env,timeout=timeout)
@@ -72,6 +72,7 @@ def prepare_core_fixture(tmp, owner_key):
     sha=call(["git","-C",str(repo),"rev-parse","HEAD"]).stdout.strip()
     work=tmp/"core"
     work.mkdir()
+    provision_empty_core_queue_offline(work)
     core=OneTaskCore(work,repo)
     spec={
       "schema":"neurofactory.core.task.v1","task_id":"NF-DEV-05-Q901",
@@ -218,6 +219,9 @@ def main():
         if os.getenv("NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY") == "1":
             call(["icacls",str(output),"/setowner","*S-1-5-32-544"])
         icacls(binfolder,service_sid,"RX")
+        source=Path(__file__).resolve().parents[1]/"one_pc_candidate"
+        for name in ("scm_recipient_core_claim_guard.py","core_readonly_observer.py"):
+            shutil.copy2(source/name,binfolder/name)
         icacls(worker_root,worker_sid,"M")
         # Admin provisions pin and never exposes owner PRIVATE to receiver.
         owner=Ed25519PrivateKey.generate()
@@ -229,12 +233,33 @@ def main():
         host_private_raw=host_receipt_signer.private_bytes(
             serialization.Encoding.Raw,serialization.PrivateFormat.Raw,
             serialization.NoEncryption())
+        # Only the administrator creates this live CORE claim and independently
+        # binds its exact digest to the protected SCM config before starting it.
+        temp=tempfile.TemporaryDirectory()
+        core,spec,claim,packet,expected=prepare_core_fixture(Path(temp.name),owner)
+        with core._connect() as con:
+            core_claim_owner=core._row(con)["owner"]
+        spec_digest=hashlib.sha256(json.dumps(
+            spec,sort_keys=True,separators=(",",":"),
+            ensure_ascii=False,allow_nan=False).encode("utf8")).hexdigest()
+        # The owner also signs a different *validly signed* payload; the
+        # protected recipient must reject it because the operator pinned
+        # exactly one output hash, regardless of the signature's validity.
+        bad_payload=dict(packet)
+        bad_payload["content_sha256"]="a"*64
+        bad_body={k:v for k,v in bad_payload.items() if k!="approved_owner_signature"}
+        bad_payload["approved_owner_signature"]=base64.b64encode(owner.sign(
+            b"NF_WINDOWS_PILOT_V1\x00"+canon(bad_body))).decode("ascii")
         CI_CONFIG.write_text(json.dumps({
             "schema":"neurofactory.windows.ci_service.v1",
             "worker_sid":worker_sid,
             "owner_public_raw_base64":base64.b64encode(pub).decode("ascii"),
             "host_receipt_private_raw_base64":
                 base64.b64encode(host_private_raw).decode("ascii"),
+            "core_state_path":str(core.state),
+            "core_spec_sha256":spec_digest,
+            "core_payload_sha256":packet["content_sha256"],
+            "core_claim_owner":core_claim_owner,
         }),encoding="ascii")
         # Discard the operator-side test signer handle: actual signing only
         # occurs within restricted SCM process, never within worker/CORE.
@@ -246,13 +271,15 @@ def main():
         source_dir=Path(__file__).parent
         for name in ("windows_scm_sandbox_receiver.py",
                      "windows_named_pipe_pilot_receiver.py"):
+
             shutil.copy2(source_dir/name,binfolder/name)
         shutil.copy2(source_dir/"windows_scm_ci_worker.py",
                      worker_root/"windows_scm_ci_worker.py")
         shutil.copy2(source_dir/"windows_named_pipe_pilot_receiver.py",
                      worker_root/"windows_named_pipe_pilot_receiver.py")
-        temp=tempfile.TemporaryDirectory()
-        core,spec,claim,packet,expected=prepare_core_fixture(Path(temp.name),owner)
+        # The LocalService recipient requires only READ on current CORE;
+        # unprivileged worker receives no such access. NEVER write to CORE
+        # from the service; this is a read-only, nontransactional CI guard.
         owner=None # Never hand private signer handle to worker/service.
         handoff=worker_root/"handoff.json"
         handoff.write_text(json.dumps(packet,sort_keys=True),encoding="ascii")
@@ -298,6 +325,11 @@ def main():
         call(["icacls",str(output),"/grant:r",
               "*"+explicit_service_sid+":(OI)(CI)M"])
         call(["icacls",str(output),"/remove:g","*S-1-5-19"])
+        # Read access only to the sealed queue and its containing directory;
+        # OS service SID cannot mutate task, lease, or owner identity.
+        call(["icacls",str(core.state),"/inheritance:r","/grant:r",
+              "*"+explicit_service_sid+":(OI)(CI)R",
+              "*S-1-5-18:(OI)(CI)F","*S-1-5-32-544:(OI)(CI)F"])
         call(["sc.exe","start",SERVICE_NAME],timeout=22)
         wait_service(SERVICE_RUNNING)
         # Actual least-privilege service account is NT AUTHORITY\LocalService.
@@ -383,6 +415,34 @@ def main():
         assert denied["protected_directory_write_denied"] is True
         assert ensure_no_unauthorised_client(output)==(False,False)
         print("NF_WINDOWS_REAL_DIFFERENT_SIDS_FORGED_SIGNATURE=DENIED")
+        # Valid OWNER signature is insufficient: payload must match the
+        # independently administrator-pinned immutable expected result.
+        handoff.write_text(json.dumps(bad_payload,sort_keys=True),encoding="ascii")
+        rejected=worker_as_local_account(username,password,
+            worker_root/"windows_scm_ci_worker.py",handoff,
+            worker_root/"wrong_approved_payload.json")
+        assert rejected["status"] in (
+            "WORKER_STOPPED_OR_SERVER_DENIED","DENIED_OR_UNKNOWN_MANUAL_STOP")
+        assert ensure_no_unauthorised_client(output)==(False,False)
+        print("NF_WINDOWS_SCM_VALID_OWNER_SIGNATURE_WRONG_PINNED_PAYLOAD=DENIED")
+        # Expire the actual persisted CORE lease. The receiver must refuse
+        # before UNKNOWN marker or file creation and must not silently renew.
+        with core._connect() as con:
+            old_lease=con.execute(
+                "SELECT lease_until FROM single_job WHERE singleton=1").fetchone()[0]
+            con.execute("UPDATE single_job SET lease_until=? WHERE singleton=1",
+                        (int(time.time())-1,))
+        handoff.write_text(json.dumps(packet,sort_keys=True),encoding="ascii")
+        expired=worker_as_local_account(username,password,
+            worker_root/"windows_scm_ci_worker.py",handoff,
+            worker_root/"expired_core_lease.json")
+        assert expired["status"] in (
+            "WORKER_STOPPED_OR_SERVER_DENIED","DENIED_OR_UNKNOWN_MANUAL_STOP")
+        assert ensure_no_unauthorised_client(output)==(False,False)
+        with core._connect() as con:
+            con.execute("UPDATE single_job SET lease_until=? WHERE singleton=1",
+                        (old_lease,))
+        print("NF_WINDOWS_SCM_RECIPIENT_EXPIRED_CORE_LEASE=DENIED_BEFORE_FILE")
         # For crash-window test, create a root-owned operator-controlled
         # failpoint. The receiver will os._exit right AFTER fsync UNKNOWN
         # and BEFORE CREATE_NEW. No worker can select this condition.
