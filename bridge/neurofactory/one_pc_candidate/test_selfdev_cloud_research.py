@@ -52,6 +52,8 @@ class CloudResearchSafetyTests(unittest.TestCase):
         params.update(changes)
         def fake_hash(path):
             if path==self.model:return target.QWEN_MODEL_SHA256
+            if path.name=="qwen2.5-coder-1.5b-instruct-q4_k_m.gguf":
+                return target.MODEL_OPTIONS[path.name][0]
             if path==self.exe:return target.LLAMA_CLI_SHA256
             self.fail("unexpected digest target")
         with patch.object(target,"_digest_file",side_effect=fake_hash), \
@@ -122,6 +124,22 @@ class CloudResearchSafetyTests(unittest.TestCase):
         inside.mkdir()
         with self.assertRaises(target.ResearchDenied):
             self.generate(repo=inside)
+        self.assertEqual(self.calls,[])
+
+    def test_official_qwen_coder_pin_allowed_but_no_auto_apply(self):
+        coder=self.models/"qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+        coder.write_bytes(b"synthetic tiny coder")
+        path,record=self.generate(model=coder)
+        self.assertIn("Qwen2.5-Coder",record["model"])
+        self.assertFalse(record["code_executed_from_model"])
+        self.assertFalse(record["automatic_pr_created"])
+        self.assertTrue(path.exists())
+
+    def test_unknown_model_name_denied_without_inference(self):
+        strange=self.models/"not-approved.gguf"
+        strange.write_bytes(b"not official")
+        with self.assertRaises(target.ResearchDenied):
+            self.generate(model=strange)
         self.assertEqual(self.calls,[])
 
     def test_evidence_cannot_reside_inside_source_tree(self):
