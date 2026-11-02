@@ -1,0 +1,25 @@
+name: Neurofactory Qwen cloud selfdev no-apply security boundary
+on:
+  push:
+    branches: [neurofactory-cloud-qwen-safe-selfdev-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/selfdev_cloud_research.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_selfdev_cloud_research.py'
+      - '.github/workflows/neurofactory-cloud-qwen-selfdev-review-ci.yml'
+permissions:
+  contents: read
+jobs:
+  check_readonly_proposals:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify no-apply Qwen research isolation without loading model
+        run: python3 -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_selfdev_cloud_research.py -v
+      - name: Verify tracked checkout unchanged
+        run: git diff --exit-code
