@@ -66,14 +66,14 @@ function Assert-NfActualScmServiceDacl([string]$ServiceName) {
     if ($ServiceName -cne 'NeurofactoryCoreHost') {
         Deny 'UNPINNED_SCM_SERVICE_NAME'
     }
-    $sc=Join-Path $env:SystemRoot 'System32\\sc.exe'
+    $sc=Join-Path $env:SystemRoot 'System32\sc.exe'
     $result=(& $sc sdshow $ServiceName 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or $result.Length -gt 16384) {
         Deny 'SCM_SERVICE_SECURITY_QUERY_FAILED'
     }
     # sc.exe prints a header on some OS versions; require exactly one
     # recognizable SDDL line, never infer permission from a textual summary.
-    $lines=@($result -split "[\\r\\n]+" | Where-Object { $_.Trim() -match '^([OGDS]:)' })
+    $lines=@($result -split "[\r\n]+" | Where-Object { $_.Trim() -match '^([OGDS]:)' })
     if ($lines.Count -ne 1) {
         Deny 'SCM_SERVICE_SDDL_NOT_UNAMBIGUOUS'
     }
