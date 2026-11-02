@@ -32,7 +32,7 @@ from local_workspace import WorkspaceStore
 from signed_owner_admission import (
     prepare_draft_request, admit_signed_draft, AdmissionDenied, _canon,
 )
-from one_task_core import OneTaskCore, EMPTY_SHA
+from one_task_core import OneTaskCore, EMPTY_SHA, provision_empty_core_queue_offline
 
 def _public(owner):
     return owner.public_key().public_bytes(
@@ -110,6 +110,7 @@ def run():
         source_sha = call(["git","-C",str(repo),"rev-parse","HEAD"]).stdout.strip()
         core_root = directory / "core"
         core_root.mkdir()
+        provision_empty_core_queue_offline(core_root)
         core = OneTaskCore(core_root,repo)
         spec = {
             "schema":"neurofactory.core.task.v1",
