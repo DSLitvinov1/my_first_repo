@@ -1,0 +1,37 @@
+name: Neurofactory signed three-party live TLS witness to one inert CI file exact-once negatives
+on:
+  push:
+    branches: [neurofactory-p0-real-tls-recipient-effect-e2e-20261103]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/test_scm_real_tls_witness_to_ci_file.py'
+      - 'bridge/neurofactory/one_pc_candidate/scm_one_effect_witness_fence.py'
+      - 'bridge/neurofactory/one_pc_candidate/remote_highwater_client.py'
+      - 'bridge/neurofactory/one_pc_candidate/external_highwater_mtls_server.py'
+      - '.github/workflows/neurofactory-p0-real-wire-to-file-and-recovery-ci.yml'
+permissions:
+  contents: read
+jobs:
+  live-ephemeral-localhost-witness-full-transaction:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Guard isolated non-root runner and create disposable dependency env
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTIONS" != "true" ] || [ "$RUNNER_ENVIRONMENT" != "github-hosted" ] || [ "$(id -u)" -eq 0 ]; then
+            echo "WITNESS_FILE_TEST_OWNER_HOST_OR_PRIVILEGED_RUN=DENIED"; exit 1
+          fi
+          python -m venv "$RUNNER_TEMP/nf-full-wire"
+          "$RUNNER_TEMP/nf-full-wire/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+      - name: Real TLS1.3 certificate-pinned separate socket Ed25519 witness and CORE to file
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/nf-full-wire/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_scm_real_tls_witness_to_ci_file.py -v
+          git diff --exit-code
+          echo "NF_REAL_WIRE_ALL_STAGES_CI_ONLY_NO_HARDWARE_INDEPENDENCE=PASS"
