@@ -1,9 +1,10 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
+      - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
       - .github/workflows/neurofactory-host-four-party-review-installer-ci.yml
       - bridge/neurofactory/one_pc_candidate/protected_host_task_authority.py
@@ -31,7 +32,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          ref: f4c424a5544749668fd2eb5657207e7873a6039a
           path: .nf_pin_core
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -79,6 +80,19 @@ jobs:
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'PINNED_COMPONENT_STAGING_REJECTED'}
           $components=Get-Content "$stage\components\manifest.json" -Raw|ConvertFrom-Json
+          $currentCore=@($components.entries | Where-Object {$_.role -ceq 'core' -and $_.file -ceq 'one_task_core.py'})
+          if ($currentCore.Count -ne 1 -or $currentCore[0].source_commit -cne 'f4c424a5544749668fd2eb5657207e7873a6039a') {
+              throw 'REVIEW_INSTALLER_CORE_SOURCE_PIN_IS_OLD_OR_INCONSISTENT'
+          }
+          $stagedCore=Join-Path $stage 'components\core\one_task_core.py'
+          if (!(Test-Path -LiteralPath $stagedCore) -or
+              (Get-FileHash -LiteralPath $stagedCore -Algorithm SHA256).Hash.ToLowerInvariant() -cne $currentCore[0].sha256) {
+              throw 'REVIEW_INSTALLER_CORE_SOURCE_HASH_DIFFERENT_FROM_MANIFEST'
+          }
+          $sourceText=Get-Content -LiteralPath $stagedCore -Raw
+          if ($sourceText -notmatch 'def provision_empty_core_queue_offline' -or $sourceText -notmatch 'mode=rw') {
+              throw 'REVIEW_INSTALLER_DOES_NOT_CONTAIN_CURRENT_SAFE_CORE'
+          }
           if ($components.entries.Count -ne 15 -or $components.host_service_enrolled -or $components.core_queue_wired -or $components.release_approved) {
               throw 'COMPONENT_SOURCE_INTEGRITY_GATES_CHANGED'
           }
