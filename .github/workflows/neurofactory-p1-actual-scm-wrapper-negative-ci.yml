@@ -1,0 +1,25 @@
+name: Neurofactory Windows actual SCM wrapper negative integration
+on:
+  push:
+    branches: [neurofactory-p1-scm-wrapper-env-root-negative-20261103]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_wrapper_negative_ci.ps1'
+      - '.github/workflows/neurofactory-p1-actual-scm-wrapper-negative-ci.yml'
+permissions:
+  contents: read
+jobs:
+  windows_actual_scm_wrapper_negative:
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Exercise real SCM wrapper with fake native output, CIM failures and spoofed process SystemRoot
+        shell: pwsh
+        run: |
+          & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_wrapper_negative_ci.ps1
+      - name: Tracked source unchanged
+        shell: pwsh
+        run: git diff --exit-code
