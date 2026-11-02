@@ -1,10 +1,11 @@
 name: Neurofactory Windows actual SCM wrapper negative integration
 on:
   push:
-    branches: [neurofactory-p1-scm-wrapper-env-root-negative-20261103, neurofactory-p1-combined-core-scm-review-20261103]
+    branches: [neurofactory-p1-scm-wrapper-env-root-negative-20261103, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p1-scm-sidtype-path-negative-20261103]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1'
       - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_wrapper_negative_ci.ps1'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_sidtype_path_negative_ci.ps1'
       - '.github/workflows/neurofactory-p1-actual-scm-wrapper-negative-ci.yml'
       - '.github/workflows/neurofactory-host-four-party-review-installer-ci.yml'
       - 'bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py'
@@ -22,6 +23,10 @@ jobs:
         shell: pwsh
         run: |
           & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_wrapper_negative_ci.ps1
+      - name: Reject PATH-spoofed SCM restricted service SID type using real preflight function
+        shell: pwsh
+        run: |
+          & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_actual_scm_sidtype_path_negative_ci.ps1
       - name: Tracked source unchanged
         shell: pwsh
         run: git diff --exit-code
