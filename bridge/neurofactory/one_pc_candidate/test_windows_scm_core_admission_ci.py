@@ -27,7 +27,7 @@ import unittest
 from test_windows_owner_controller_candidate import OwnerControllerWindowsCI
 from windows_scm_core_admission_ci import SERVICE_NAME, ROOT, CONFIG, SCHEMA
 from windows_core_admission_ipc_ci import PREFIX
-from one_task_core import OneTaskCore
+from one_task_core import OneTaskCore, provision_empty_core_queue_offline
 from core_readonly_observer import observe_core
 
 if os.name == "nt":
@@ -193,6 +193,7 @@ class ThreeRealWindowsPrincipals(unittest.TestCase):
         with self.fixture.workspace.connect() as old:
             with sqlite3.connect(str(ROOT / "workspace" / "workspace.sqlite3")) as new:
                 old.backup(new)
+        provision_empty_core_queue_offline(ROOT / "core")
         OneTaskCore(ROOT / "core", ROOT / "git")  # empty; no task admitted
         self.owner_sid = operator_sid()
         self.client_sid = self.operator.ui_sid
