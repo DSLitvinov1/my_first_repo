@@ -8,6 +8,8 @@ service, lost TLS ACK or duplicate caller may never repeat the remote request.
 IMPORTANT: the directory MUST be owned/ACL-sealed independently by a Windows
 operator. This code alone does not attest SID, ACL, trusted directory,
 physical witness independence, protected highwater, or service release.
+The runtime NEVER creates or repairs a missing DB; an authorized operator
+must explicitly provision it before running any bridge request.
 """
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ from pathlib import Path
 import re
 import sqlite3
 import stat
+from contextlib import closing
 
 class AttemptLedgerDenied(ValueError):
     pass
@@ -29,6 +32,16 @@ HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 MAX_DB_BYTES = 32 * 1024 * 1024
 FILENAME = "signed-witness-attempts.sqlite3"
+_SCHEMA_SQL = """CREATE TABLE attempts (
+            task_id TEXT NOT NULL UNIQUE,
+            operation_sha256 TEXT NOT NULL UNIQUE,
+            nonce TEXT NOT NULL UNIQUE,
+            source_sha40 TEXT NOT NULL,
+            external_epoch INTEGER NOT NULL,
+            scope_sha256 TEXT NOT NULL,
+            disposition TEXT NOT NULL CHECK(disposition='UNKNOWN_NO_AUTO_RETRY'),
+            UNIQUE(source_sha40,external_epoch)
+        )"""
 
 def _regular_unlinked(path, *, directory=False):
     try:
@@ -55,45 +68,74 @@ def _check_folder(root):
         _deny()
     return root / FILENAME
 
-def _connect(db_path):
+def provision_empty_attempt_ledger_offline(operator_folder):
+    """Operator-only, explicit one-time provisioning; NEVER call from HOST.
+
+    An absent database is NOT automatically recreated by the service. An
+    independently authorized operator must separately verify source, owner,
+    ACL/DACL, and restore policy before calling this in a protected directory.
+    After creation Windows operator must verify sealed DACL for the SQLite
+    database and parent directory. This code does not grant OS privileges.
+    """
+    path = _check_folder(operator_folder)
+    if path.exists() or path.is_symlink():
+        _deny()
     try:
-        if db_path.exists() or db_path.is_symlink():
-            _regular_unlinked(db_path)
-        else:
-            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            fd = os.open(db_path, flags, 0o600)
-            os.close(fd)
-        conn = sqlite3.connect(
-            str(db_path), isolation_level=None, timeout=4.0)
-        conn.execute("PRAGMA journal_mode=DELETE")
-        conn.execute("PRAGMA synchronous=FULL")
+        flags=os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os,"O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd=os.open(path,flags,0o600)
+        os.close(fd)
+        # The data file was created exclusively. On an ambiguous failure
+        # leave it in place and refuse a second automatic provisioning.
+        with closing(sqlite3.connect(path.as_uri()+"?mode=rw",uri=True,
+                                     isolation_level=None,timeout=4.0)) as conn:
+            conn.execute("PRAGMA journal_mode=DELETE")
+            conn.execute("PRAGMA synchronous=FULL")
+            conn.execute(_SCHEMA_SQL)
+        _regular_unlinked(path)
+        return {"status":"OPERATOR_LEDGER_CREATED_NO_EXECUTION_AUTHORITY",
+                "production_release_allowed":False}
+    except (sqlite3.Error,OSError) as exc:
+        raise AttemptLedgerDenied(
+            "HOST ledger provisioning ambiguous; operator inspection required") from exc
+
+def _connect(db_path):
+    # Absolute fail-closed: a removed, truncated or reset SQLite file is
+    # never silently recreated, even after a real Windows SCM restart.
+    if not db_path.exists() or db_path.is_symlink():
+        _deny()
+    _regular_unlinked(db_path)
+    if db_path.stat().st_size < 512:
+        _deny()
+    conn=None
+    try:
+        conn=sqlite3.connect(db_path.as_uri()+"?mode=rw",uri=True,
+                             isolation_level=None,timeout=4.0)
         conn.execute("PRAGMA busy_timeout=4000")
-        conn.execute("""CREATE TABLE IF NOT EXISTS attempts (
-            task_id TEXT NOT NULL UNIQUE,
-            operation_sha256 TEXT NOT NULL UNIQUE,
-            nonce TEXT NOT NULL UNIQUE,
-            source_sha40 TEXT NOT NULL,
-            external_epoch INTEGER NOT NULL,
-            scope_sha256 TEXT NOT NULL,
-            disposition TEXT NOT NULL CHECK(disposition='UNKNOWN_NO_AUTO_RETRY'),
-            UNIQUE(source_sha40,external_epoch)
-        )""")
-        actual=conn.execute("PRAGMA table_info('attempts')").fetchall()
-        columns=tuple(row[1] for row in actual)
-        if columns!=(
-            "task_id","operation_sha256","nonce","source_sha40",
-            "external_epoch","scope_sha256","disposition",
-        ):
-            conn.close()
+        if conn.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
             _deny()
-        if conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'").fetchone()[0]:
-            conn.close()
+        conn.execute("PRAGMA synchronous=FULL")
+        definition=conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='attempts'"
+        ).fetchone()
+        if definition is None or definition[0] != _SCHEMA_SQL:
+            _deny()
+        extra=conn.execute(
+            "SELECT type,name FROM sqlite_master "
+            "WHERE type IN ('table','view','trigger') AND name!='attempts'"
+        ).fetchall()
+        if extra:
+            _deny()
+        status=conn.execute("PRAGMA quick_check").fetchall()
+        if status!=[("ok",)]:
             _deny()
         return conn
-    except (sqlite3.Error, OSError) as exc:
-        raise AttemptLedgerDenied("HOST durable journal missing or corrupt") from exc
+    except (sqlite3.Error,OSError,AttemptLedgerDenied) as exc:
+        if conn is not None:
+            conn.close()
+        raise AttemptLedgerDenied(
+            "HOST durable journal absent, damaged, or not operator provisioned") from exc
 
 def reserve_attempt_once(folder, *, claim):
     """Return digest of one persistently recorded attempt, never permission."""
