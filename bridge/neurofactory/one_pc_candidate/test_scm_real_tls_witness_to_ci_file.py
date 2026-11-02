@@ -107,6 +107,13 @@ class FullWireAndOneFileLab(unittest.TestCase):
                     ready_callback=ready.set)
             except Exception as e:
                 result["error"]=repr(e)
+        # Test-only loopback authorization must be in scope BEFORE the
+        # independent server thread validates its bind address.
+        previous=os.environ.get("NF_EXTERNAL_WITNESS_EPHEMERAL_CI")
+        os.environ["NF_EXTERNAL_WITNESS_EPHEMERAL_CI"]="1"
+        self.addCleanup(lambda: os.environ.pop("NF_EXTERNAL_WITNESS_EPHEMERAL_CI",None)
+                        if previous is None else
+                        os.environ.__setitem__("NF_EXTERNAL_WITNESS_EPHEMERAL_CI",previous))
         t=threading.Thread(target=server,daemon=True)
         t.start()
         self.assertTrue(ready.wait(6),"TLS witness not listening")
