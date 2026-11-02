@@ -1,0 +1,33 @@
+name: Neurofactory Windows SCM registry ACL fail-closed
+on:
+  push:
+    branches: [neurofactory-p1-windows-service-registry-acl-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_registry_acl_ci.ps1'
+      - '.github/workflows/neurofactory-service-registry-acl-windows-ci.yml'
+permissions:
+  contents: read
+jobs:
+  windows_registry_acl_negative:
+    runs-on: windows-2025
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run isolated registry SDDL and real-wrapper negative tests
+        shell: pwsh
+        run: |
+          & ./bridge/neurofactory/one_pc_candidate/windows_setup/test_scm_registry_acl_ci.ps1
+      - name: Read real OS Registry ACL API only on built-in EventLog
+        shell: pwsh
+        run: |
+          $security=Get-Acl -LiteralPath 'Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\EventLog' -ErrorAction Stop
+          $sections=[System.Security.AccessControl.AccessControlSections]::Owner -bor [System.Security.AccessControl.AccessControlSections]::Access
+          $sddl=$security.GetSecurityDescriptorSddlForm($sections)
+          if ($sddl -notmatch 'O:' -or $sddl -notmatch 'D:') {throw 'NF_REAL_WIN_REGISTRY_OWNER_OR_DACL_UNAVAILABLE'}
+          Write-Output 'NF_ACTUAL_WINDOWS_REGISTRY_READONLY_API=PASS'
+      - name: No tracked changes
+        shell: pwsh
+        run: git diff --exit-code
