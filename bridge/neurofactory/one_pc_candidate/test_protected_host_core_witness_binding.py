@@ -4,6 +4,7 @@ No paid model/production SCM/hardware permissions. Real OneTaskCore enqueue+
 claim and SQLite DB, distinct ephemeral signing keys, mock NETWORK ONLY.
 """
 import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -16,7 +17,7 @@ from protected_host_attempt_ledger import provision_empty_attempt_ledger_offline
 from protected_host_remote_bridge import OneShotHostWitnessBridge,BridgeDenied
 from protected_host_core_witness_binding import (
     bind_core_and_reserve_witness_once,CoreWitnessBindingDenied,
-    CoreWitnessBindingUnknown,
+    CoreWitnessBindingUnknown,exact_core_effect_sha256,
 )
 
 class ProtectedHostRealCoreWitnessTests(CoreReadOnlyIntegration):
@@ -37,6 +38,16 @@ class ProtectedHostRealCoreWitnessTests(CoreReadOnlyIntegration):
             if key=="source_sha40":
                 self.fx.remote[key]=value
                 self.fx.evidence[key]=value
+        # OWNER, independent REVIEWER and WITNESS all sign exactly the
+        # same deterministic immutable full CORE spec + payload commitment.
+        spec_sha=hashlib.sha256(json.dumps(
+            self.spec,sort_keys=True,ensure_ascii=False,
+            separators=(",",":"),allow_nan=False).encode("utf-8")).hexdigest()
+        effect_sha=exact_core_effect_sha256(
+            spec_sha,self.fx.claim["payload_sha256"])
+        self.fx.claim["operation_sha256"]=effect_sha
+        self.fx.expected["operation_sha256"]=effect_sha
+        self.fx.remote["operation_sha256"]=effect_sha
         self.fx.evidence["claim_sha256"]=hashlib.sha256(
             _canon(self.fx.remote)).hexdigest()
         self.operator=tempfile.TemporaryDirectory(prefix="nf-real-core-signed-")
@@ -133,6 +144,62 @@ class ProtectedHostRealCoreWitnessTests(CoreReadOnlyIntegration):
             with self.assertRaises(CoreWitnessBindingUnknown):self.invoke()
             self.assertEqual(net.call_count,1)
         self.assertNotIn("production",str(self.core.snapshot().get("state")))
+
+    def test_signed_operation_binds_full_core_target_before_network(self):
+        # Prior audit repro: target could differ with same task ID + source.
+        self.spec["target"]="bridge/neurofactory/development/core_owned/changed-target.txt"
+        self.spec["objective"]="Change an otherwise valid task target for negative witness preflight."
+        self._claim()
+        with patch("protected_host_remote_bridge._wire_exchange") as net:
+            with self.assertRaises(CoreWitnessBindingDenied):
+                self.invoke()
+            net.assert_not_called()
+
+    def test_altered_valid_canonical_core_spec_after_claim_denied(self):
+        self._claim()
+        # Simulate local attacker rewriting both spec bytes and the locally
+        # stored spec digest; signature/op SHA remains pinned to the ORIGINAL.
+        for changed in ({"objective":"New distinct objective that must not inherit old role signatures."},
+                        {"model":"qwen3:4b"},
+                        {"approval_commit":"d"*40},
+                        {"source_sha256":"a"*64}):
+            with self.subTest(changed=tuple(changed)):
+                original=dict(self.spec)
+                record=dict(self.spec,**changed)
+                raw=json.dumps(record,sort_keys=True,ensure_ascii=False,
+                               separators=(",",":"),allow_nan=False)
+                digest=hashlib.sha256(raw.encode("utf-8")).hexdigest()
+                with self.core._connect() as db:
+                    db.execute("UPDATE single_job SET spec=?,spec_sha256=? "
+                               "WHERE singleton=1",(raw,digest))
+                with patch("protected_host_remote_bridge._wire_exchange") as net:
+                    with self.assertRaises(CoreWitnessBindingDenied):
+                        self.invoke()
+                    net.assert_not_called()
+                # Restore verified CORE fixture between the negative cases.
+                old_raw=json.dumps(original,sort_keys=True,ensure_ascii=False,
+                                   separators=(",",":"),allow_nan=False)
+                with self.core._connect() as db:
+                    db.execute("UPDATE single_job SET spec=?,spec_sha256=? "
+                               "WHERE singleton=1",(old_raw,hashlib.sha256(
+                                   old_raw.encode("utf-8")).hexdigest()))
+
+    def test_altered_signed_payload_without_derived_operation_denied(self):
+        self._claim()
+        different=dict(self.fx.claim,payload_sha256="b"*64)
+        with patch("protected_host_remote_bridge._wire_exchange") as net:
+            with self.assertRaises(CoreWitnessBindingDenied):
+                self.invoke(claim=different)
+            net.assert_not_called()
+
+    def test_bad_or_uncommitted_operation_rejected_before_network(self):
+        self._claim()
+        for bad in ("f"*64,"not-a-sha",None):
+            with self.subTest(operation=bad):
+                with patch("protected_host_remote_bridge._wire_exchange") as net:
+                    with self.assertRaises(CoreWitnessBindingDenied):
+                        self.invoke(claim={**self.fx.claim,"operation_sha256":bad})
+                    net.assert_not_called()
 
     def test_stale_caller_clock_denied_before_remote_reservation(self):
         self._claim()
