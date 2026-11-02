@@ -134,5 +134,32 @@ class ProtectedHostRealCoreWitnessTests(CoreReadOnlyIntegration):
             self.assertEqual(net.call_count,1)
         self.assertNotIn("production",str(self.core.snapshot().get("state")))
 
+    def test_stale_caller_clock_denied_before_remote_reservation(self):
+        self._claim()
+        # A caller can present a formerly valid timestamp after CORE expires.
+        # The local OS clock is observed independently of that parameter.
+        with patch("protected_host_core_witness_binding.time.time",
+                   return_value=self.fx.now+90), patch(
+                   "protected_host_remote_bridge._wire_exchange") as net:
+            with self.assertRaises(CoreWitnessBindingDenied):
+                self.invoke(now_unix=self.fx.now)
+            net.assert_not_called()
+        self.assertEqual(self.core.snapshot()["state"], "CLAIMED")
+
+    def test_local_clock_jump_after_ack_unknown_no_retry(self):
+        self._claim()
+        clock=[self.fx.now]
+        def advance_clock_on_remote_ack(**kw):
+            clock[0]+=12
+            return self.fx.ack()
+        with patch("protected_host_core_witness_binding.time.time",
+                   side_effect=lambda: clock[0]), patch(
+                   "protected_host_remote_bridge._wire_exchange",
+                   side_effect=advance_clock_on_remote_ack) as net:
+            with self.assertRaises(CoreWitnessBindingUnknown):
+                self.invoke()
+            self.assertEqual(net.call_count,1)
+        self.assertEqual(self.core.snapshot()["state"], "CLAIMED")
+
 if __name__=="__main__":
     unittest.main()

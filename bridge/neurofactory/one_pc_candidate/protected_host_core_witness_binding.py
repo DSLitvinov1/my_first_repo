@@ -15,6 +15,7 @@ OS-trusted transactional lease or independently attested machine identity.
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 from core_readonly_observer import observe_core, CoreObservationDenied
 from protected_host_remote_bridge import OneShotHostWitnessBridge, BridgeUnknown
@@ -27,6 +28,21 @@ class CoreWitnessBindingUnknown(RuntimeError):
 
 def _deny(why):
     raise CoreWitnessBindingDenied("CORE signed witness boundary refused: "+why)
+
+def _observed_local_time(requested_now):
+    """Reject a caller-supplied stale clock before any remote reservation.
+
+    The local OS clock is NOT a remotely attested clock or production authority.
+    This guard only closes the avoidable caller-time substitution in this
+    no-effect preflight; independent witness epoch/fencing is still required.
+    """
+    if type(requested_now) is not int or requested_now <= 0:
+        _deny("invalid caller clock")
+    observed_now = int(time.time())
+    if observed_now <= 0 or abs(requested_now - observed_now) > 5:
+        _deny("caller clock differs from locally observed OS time")
+    return observed_now
+
 
 def _validate_observation(obs, claim, now_unix):
     if (type(claim) is not dict or
@@ -64,8 +80,9 @@ def bind_core_and_reserve_witness_once(*, core_state_dir: Path,
         _deny("independently provisioned absolute CORE state and signed bridge required")
     # No network, and no durable reservation, until local claim/state check.
     try:
+        observed_before=_observed_local_time(now_unix)
         before=observe_core(core_state_dir)
-        task=_validate_observation(before,claim,now_unix)
+        task=_validate_observation(before,claim,observed_before)
     except CoreObservationDenied as exc:
         raise CoreWitnessBindingDenied("CORE state unavailable before reservation") from exc
 
@@ -73,15 +90,20 @@ def bind_core_and_reserve_witness_once(*, core_state_dir: Path,
     verified=bridge.reserve_and_verify_once(
         claim=claim, owner_signature=owner_signature,
         reviewer_signature=reviewer_signature, witness_claim=witness_claim,
-        now_unix=now_unix)
+        now_unix=observed_before)
     if (verified.get("status") != "SIGNED_TASK_AND_REMOTE_ACK_VERIFIED_TEST_NO_EFFECT" or
         verified.get("production_release_approved") is not False or
         verified.get("production_task_effect_allowed") is not False or
         verified.get("actual_core_lease_attested") is not False):
         raise CoreWitnessBindingUnknown("remote reservation scope unexpected; NO RETRY")
     try:
+        observed_after=_observed_local_time(now_unix)
+        if (observed_after < observed_before or
+            type(claim.get("expires_unix")) is not int or
+            observed_after >= claim["expires_unix"]):
+            _deny("local time moved backwards or signed scope expired after ACK")
         after=observe_core(core_state_dir)
-        updated=_validate_observation(after,claim,now_unix)
+        updated=_validate_observation(after,claim,observed_after)
     except (CoreObservationDenied,CoreWitnessBindingDenied) as exc:
         raise CoreWitnessBindingUnknown(
             "CORE changed after signed witness reservation; NO RETRY") from exc
