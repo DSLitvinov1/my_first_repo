@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from test_protected_host_task_authority import SignedTaskBoundToActualExternalClaim
 from remote_highwater_client import RemoteHighwaterDenied
+from protected_host_attempt_ledger import provision_empty_attempt_ledger_offline
 from protected_host_remote_bridge import (
     OneShotHostWitnessBridge,BridgeDenied,BridgeUnknown,
 )
@@ -25,6 +26,9 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory(prefix="nf-host-attempt-test-")
         self.addCleanup(self.temp.cleanup)
         self.attempt_dir=Path(self.temp.name).resolve()
+        # An administrator separately provisions an immutable base before
+        # any HOST witness request. This is a disposable CI fixture ONLY.
+        provision_empty_attempt_ledger_offline(self.attempt_dir)
         self.fx=SignedTaskBoundToActualExternalClaim(
             "test_all_real_signatures_match_never_grants_execution")
         self.fx.setUp()
@@ -165,6 +169,7 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
 
     def test_corrupted_journal_schema_never_releases_remote_request(self):
         with closing(sqlite3.connect(str(self.attempt_dir/"signed-witness-attempts.sqlite3"))) as db:
+            db.execute("DROP TABLE attempts")
             db.execute("CREATE TABLE attempts (fake TEXT)")
         with patch("protected_host_remote_bridge._wire_exchange") as net:
             with self.assertRaises(BridgeUnknown):self.call(self.client())
@@ -192,6 +197,28 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
                           reviewer_signature=self.fx.role("reviewer",claim=altered),
                           witness_claim=witness)
             self.assertEqual(net.call_count,1)
+
+    def test_deleted_ledger_denied_without_recreation_or_remote_request(self):
+        self.attempt_dir.joinpath("signed-witness-attempts.sqlite3").unlink()
+        with patch("protected_host_remote_bridge._wire_exchange") as net:
+            with self.assertRaises(BridgeUnknown):
+                self.call(self.client())
+            self.assertEqual(net.call_count,0)
+        self.assertFalse(
+            (self.attempt_dir/"signed-witness-attempts.sqlite3").exists())
+
+    def test_empty_ledger_denied_without_repair_or_network(self):
+        path=self.attempt_dir/"signed-witness-attempts.sqlite3"
+        path.write_bytes(b"")
+        with patch("protected_host_remote_bridge._wire_exchange") as net:
+            with self.assertRaises(BridgeUnknown):
+                self.call(self.client())
+            self.assertEqual(net.call_count,0)
+        self.assertEqual(path.stat().st_size,0)
+
+    def test_offline_provision_cannot_overwrite_existing_operator_database(self):
+        with self.assertRaises(ValueError):
+            provision_empty_attempt_ledger_offline(self.attempt_dir)
 
     def test_same_key_owner_and_reviewer_cannot_form_host_bridge(self):
         with self.assertRaises(BridgeDenied):

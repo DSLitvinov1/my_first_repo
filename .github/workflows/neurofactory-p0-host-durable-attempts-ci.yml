@@ -1,11 +1,12 @@
 name: Neurofactory HOST durable single-shot remote witness attempts Windows
 on:
   push:
-    branches: [neurofactory-p0-host-durable-attempts-20261031]
+    branches: [neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/protected_host_attempt_ledger.py'
       - 'bridge/neurofactory/one_pc_candidate/protected_host_remote_bridge.py'
       - 'bridge/neurofactory/one_pc_candidate/test_protected_host_remote_bridge.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_host_attempt_process_boundary.py'
       - '.github/workflows/neurofactory-p0-host-durable-attempts-ci.yml'
 permissions:
   contents: read
@@ -29,6 +30,7 @@ jobs:
         shell: pwsh
         run: |
           .nf-durable-v/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_remote_bridge.py -v
+          .nf-durable-v/Scripts/python.exe -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_host_attempt_process_boundary.py -v
       - name: No tracked files modified
         shell: pwsh
         run: git diff --exit-code
