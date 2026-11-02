@@ -246,7 +246,9 @@ def main():
         # protected recipient must reject it because the operator pinned
         # exactly one output hash, regardless of the signature's validity.
         bad_payload=dict(packet)
-        bad_payload["content_sha256"]="a"*64
+        alternative=b"NF_VALIDLY_OWNER_SIGNED_BUT_WRONG_OPERATOR_PINNED_CONTENT\\n"
+        bad_payload["content_base64"]=base64.b64encode(alternative).decode("ascii")
+        bad_payload["content_sha256"]=hashlib.sha256(alternative).hexdigest()
         bad_body={k:v for k,v in bad_payload.items() if k!="approved_owner_signature"}
         bad_payload["approved_owner_signature"]=base64.b64encode(owner.sign(
             b"NF_WINDOWS_PILOT_V1\x00"+canon(bad_body))).decode("ascii")
