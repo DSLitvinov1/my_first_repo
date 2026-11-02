@@ -171,5 +171,49 @@ class FullWireAndOneFileLab(unittest.TestCase):
         print("NF_REAL_MTLS_ACK_COMMITTED_CRASH_BEFORE_FILE_NO_AUTO_RETRY=PASS_CI_ONLY")
 
 
+    def test_valid_local_sqlite_snapshot_rollback_denied_by_remote_epoch(self):
+        """A privileged local-only snapshot rollback cannot reset live remote epoch.
+
+        This is NOT immunity against simultaneous remote key/ledger rollback.
+        Only the OS-local CORE/fence/attempt journals are reverted in CI;
+        the independently running witness ledger retains its committed epoch.
+        """
+        import shutil
+        local_fence=self.fixture.fence_dir/"recipient-one-effect-intents.sqlite3"
+        host_attempt=self.fixture.attempt_dir/"signed-witness-attempts.sqlite3"
+        snap_fence=self.root/"fence-prior.sqlite3"
+        snap_attempt=self.root/"attempt-prior.sqlite3"
+        shutil.copy2(local_fence,snap_fence)
+        shutil.copy2(host_attempt,snap_attempt)
+
+        first,server=self.serve()
+        patches=self._connect_scope()
+        with patches[0],patches[1],patches[2]:
+            initial=self.fixture._file(self.fixture.fence(),self.folder)
+        server.join(timeout=8)
+        self.assertNotIn("error",first)
+        self.assertEqual(initial["status"],"ONE_INERT_CI_FILE_AFTER_SIGNED_REMOTE_ACK")
+        self.assertEqual(inspect_external_highwater(self.db)["highest_committed_epoch"],1)
+
+        # Simulate local elevated actor restoring only rollback-prone storage.
+        # A real independently administered witness remains at epoch 1.
+        shutil.copy2(snap_fence,local_fence)
+        shutil.copy2(snap_attempt,host_attempt)
+        self.assertEqual(self.fixture.stage(),[])
+        other=self.fixture._fixed_ci_output()
+        second,second_server=self.serve()
+        patches=self._connect_scope()
+        with patches[0],patches[1],patches[2]:
+            with self.assertRaises(RecipientFenceUnknown):
+                self.fixture._file(self.fixture.fence(),other)
+        second_server.join(timeout=8)
+        self.assertFalse(second_server.is_alive())
+        self.assertFalse((other/"windows_pilot.txt").exists())
+        self.assertEqual(inspect_external_highwater(self.db)["highest_committed_epoch"],1)
+        self.assertEqual(inspect_external_highwater(self.db)["reserved_operations"],1)
+        self.assertNotIn("value",second)
+        print("NF_LOCAL_SNAPSHOT_ROLLBACK_WITH_REMOTE_HIGHWATER_RETAINED=DENIED_CI_ONLY")
+
+
 if __name__=="__main__":
     unittest.main(verbosity=2)
