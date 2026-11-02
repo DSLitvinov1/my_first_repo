@@ -142,6 +142,44 @@ class RealLocalWorkspace(unittest.TestCase):
         self.assertEqual(name,("Локальный проект",))
         print("NF_LOCAL_SQLITE_BACKUP_RESTORE=PASS_TEST_ONLY")
 
+    def test_erase_existing_draft_db_denies_restart_and_stale_store(self):
+        project=self.project()
+        db=self.data/"workspace.sqlite3"
+        self.assertTrue(db.is_file())
+        db.unlink()
+        with self.assertRaises(WorkspaceDenied):
+            WorkspaceStore(self.data)
+        with self.assertRaises(WorkspaceDenied):
+            self.store.list_projects()
+        self.assertFalse(db.exists(), "no DB recreation after loss")
+        self.assertTrue(project["id"])
+
+    def test_preexisting_empty_directory_does_not_auto_create_workspace(self):
+        existing=self.dir/"older-workspace"
+        existing.mkdir(mode=0o700)
+        with self.assertRaises(WorkspaceDenied):
+            WorkspaceStore(existing)
+        self.assertFalse((existing/"workspace.sqlite3").exists())
+
+    def test_existing_v3_dropped_table_does_not_auto_repair(self):
+        self.project()
+        with self.store.connect() as db:
+            db.execute("DROP TABLE model_checks")
+        with self.assertRaises(WorkspaceDenied):
+            WorkspaceStore(self.data)
+        with self.store.connect() as db:
+            present={name for (name,) in db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+        self.assertNotIn("model_checks",present)
+        self.assertIn("projects",present)
+
+    def test_truncated_workspace_never_recreated(self):
+        db=self.data/"workspace.sqlite3"
+        db.write_bytes(b"")
+        with self.assertRaises(WorkspaceDenied):
+            WorkspaceStore(self.data)
+        self.assertEqual(db.stat().st_size,0)
+
     def test_backup_rejects_injected_paths(self):
         self.project()
         self.assertEqual(self.authorized("/api/backup",{"path":"../bad"})[0],400)
