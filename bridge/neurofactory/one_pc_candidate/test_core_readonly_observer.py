@@ -17,7 +17,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "bridge/neurofactory/development/core_owned"))
-from one_task_core import OneTaskCore, EMPTY_SHA
+from one_task_core import OneTaskCore, EMPTY_SHA, provision_empty_core_queue_offline
 from core_readonly_observer import observe_core, unavailable_core, CoreObservationDenied
 from local_workspace import WorkspaceStore, handler
 
@@ -44,6 +44,7 @@ class CoreReadOnlyIntegration(unittest.TestCase):
             ["git", "-C", str(self.repo), "rev-parse", "HEAD"], text=True).strip()
         core_root = self.root / "core"
         core_root.mkdir(mode=0o700)
+        provision_empty_core_queue_offline(core_root)
         self.core = OneTaskCore(core_root, self.repo)
         self.state = core_root / "state"
         self.spec = {
