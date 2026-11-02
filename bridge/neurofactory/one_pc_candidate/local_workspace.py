@@ -87,18 +87,8 @@ def _json_unique(pairs):
         data[key]=val
     return data
 
-class WorkspaceStore:
-    def __init__(self, directory: Path):
-        self.directory=_safe_dir(directory,create=True)
-        self.database=self.directory/"workspace.sqlite3"
-        if self.database.is_symlink():
-            raise WorkspaceDenied("Linked database refused")
-        with self.connect() as conn:
-            conn.execute("PRAGMA journal_mode=WAL")
-            version=conn.execute("PRAGMA user_version").fetchone()[0]
-            if version not in (0,1,2,3):
-                raise WorkspaceDenied("Unknown newer database version")
-            conn.executescript("""
+_WORKSPACE_TABLES=frozenset(("projects","tasks","history","model_checks","task_proposals"))
+_WORKSPACE_INITIAL_SQL="""
             CREATE TABLE IF NOT EXISTS projects(
               id TEXT PRIMARY KEY, name TEXT NOT NULL,
               description TEXT NOT NULL, created_utc TEXT NOT NULL);
@@ -123,14 +113,74 @@ class WorkspaceStore:
               created_utc TEXT NOT NULL, completed_utc TEXT,
               response_sha256 TEXT, content_sha256 TEXT,
               proposal_text TEXT, error_code TEXT);
-            """)
-            if version in (0,1,2):
-                conn.execute("PRAGMA user_version=3")
-            conn.commit()
+"""
+
+class WorkspaceStore:
+    def __init__(self, directory: Path):
+        # A truly NEW directory may be initialized on the very first start.
+        # An existing directory which lost its SQLite file must fail closed:
+        # never display an empty dashboard after projects/drafts were lost.
+        requested=Path(directory)
+        first_start=not requested.exists() and not requested.is_symlink()
+        self.directory=_safe_dir(requested,create=first_start)
+        self.database=self.directory/"workspace.sqlite3"
+        if self.database.is_symlink():
+            raise WorkspaceDenied("Linked database refused")
+        if first_start:
+            try:
+                flags=os.O_CREAT | os.O_EXCL | os.O_WRONLY
+                if hasattr(os,"O_NOFOLLOW"):flags|=os.O_NOFOLLOW
+                fd=os.open(self.database,flags,0o600)
+                os.close(fd)
+            except OSError as exc:
+                raise WorkspaceDenied("Workspace initial creation uncertain; inspect manually") from exc
+        elif not self.database.is_file() or self.database.stat().st_size<512:
+            raise WorkspaceDenied("Existing workspace SQLite lost or truncated; restore, never reset")
+        try:
+            # In particular, 'mode=rw' must not create a new SQLite DB.
+            with closing(sqlite3.connect(self.database.as_uri()+"?mode=rw",
+                                         uri=True,timeout=8)) as conn:
+                conn.execute("PRAGMA busy_timeout=8000")
+                conn.execute("PRAGMA foreign_keys=ON")
+                conn.execute("PRAGMA synchronous=FULL")
+                if not first_start:
+                    if conn.execute("PRAGMA quick_check").fetchall()!=[("ok",)]:
+                        raise WorkspaceDenied("Workspace storage corrupted; restore required")
+                version=conn.execute("PRAGMA user_version").fetchone()[0]
+                if version not in (0,1,2,3):
+                    raise WorkspaceDenied("Unknown newer database version")
+                tables={name for (name,) in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'")}
+                if first_start:
+                    if tables:
+                        raise WorkspaceDenied("Unexpected objects in newly initialized workspace")
+                elif version==3:
+                    if not _WORKSPACE_TABLES.issubset(tables):
+                        raise WorkspaceDenied("Existing workspace schema lost; never recreate tables")
+                else:
+                    # Backward-compatible v0-v2 upgrade may add *new* tables,
+                    # but never replace the essential existing projects,
+                    # tasks or historical activity with empty tables.
+                    if not {"projects","tasks","history"}.issubset(tables):
+                        raise WorkspaceDenied("Legacy workspace core tables missing; cannot upgrade")
+                conn.execute("PRAGMA journal_mode=WAL")
+                if first_start or version<3:
+                    conn.executescript(_WORKSPACE_INITIAL_SQL)
+                    conn.execute("PRAGMA user_version=3")
+                    conn.commit()
+        except sqlite3.Error as exc:
+            raise WorkspaceDenied("Workspace SQLite unavailable or damaged; no automatic reset") from exc
 
     @contextmanager
     def connect(self):
-        conn=sqlite3.connect(str(self.database),timeout=8)
+        if (self.database.is_symlink() or not self.database.is_file()
+                or self.database.stat().st_size<512):
+            raise WorkspaceDenied("Durable workspace DB lost; refuse to create replacement")
+        try:
+            conn=sqlite3.connect(self.database.as_uri()+"?mode=rw",
+                                 uri=True,timeout=8)
+        except sqlite3.Error as exc:
+            raise WorkspaceDenied("Durable workspace DB not accessible") from exc
         try:
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute("PRAGMA busy_timeout=8000")
