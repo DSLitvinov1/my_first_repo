@@ -80,7 +80,13 @@ function Assert-NfActualScmServiceDacl([string]$ServiceName, $Service) {
         $ownerSid -notin @('S-1-5-18','S-1-5-32-544')) {
         Deny 'SCM_SERVICE_OWNER_NOT_SYSTEM_OR_ADMINISTRATORS'
     }
-    $sc=Join-Path $env:SystemRoot 'System32\sc.exe'
+    # Process-level SystemRoot is caller-controlled. Never use it to locate the
+    # native SCM security query: a forged sc.exe could report a safe DACL.
+    $windowsDirectory=[Environment]::GetFolderPath([Environment+SpecialFolder]::Windows)
+    if ([string]::IsNullOrWhiteSpace($windowsDirectory)) {
+        Deny 'TRUSTED_WINDOWS_DIRECTORY_UNAVAILABLE'
+    }
+    $sc=Join-Path $windowsDirectory 'System32\sc.exe'
     $result=(& $sc sdshow $ServiceName 2>&1 | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or $result.Length -gt 16384) {
         Deny 'SCM_SERVICE_SECURITY_QUERY_FAILED'
