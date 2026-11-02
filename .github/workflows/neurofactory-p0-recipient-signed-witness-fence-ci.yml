@@ -27,12 +27,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Disposable ephemeral-only crypto
-        shell: bash
-        run: python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
       - name: Exact CORE, owner, reviewer, witness, rollback and no-retry
-        shell: bash
-        run: python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_scm_one_effect_witness_fence.py -v
+        shell: pwsh
+        run: |
+          python -m venv (Join-Path $env:RUNNER_TEMP 'nf-fence-venv')
+          $python=Join-Path $env:RUNNER_TEMP 'nf-fence-venv/Scripts/python.exe'
+          if (!(Test-Path $python)) {$python=Join-Path $env:RUNNER_TEMP 'nf-fence-venv/bin/python'}
+          & $python -m pip install --disable-pip-version-check --no-input 'cryptography==46.0.3'
+          if ($LASTEXITCODE -ne 0) {throw 'VENV_CRYPTO_INSTALL_FAILED'}
+          & $python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_scm_one_effect_witness_fence.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'FENCE_TESTS_FAILED'}
       - name: Source untouched
         shell: bash
         run: git diff --exit-code
@@ -50,7 +54,8 @@ jobs:
         shell: bash
         run: |
           if [ "$GITHUB_ACTIONS" != "true" ] || [ "$(id -u)" -eq 0 ]; then exit 1; fi
-          python -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
-          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_mtls_server.py -v
+          python -m venv "$RUNNER_TEMP/nf-witness-venv"
+          "$RUNNER_TEMP/nf-witness-venv/bin/python" -m pip install --disable-pip-version-check --no-input "cryptography==46.0.3"
+          "$RUNNER_TEMP/nf-witness-venv/bin/python" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_mtls_server.py -v
           git diff --exit-code
           echo "NF_REAL_MTLS_LAB_WITH_EXTERNAL_SQLITE=PASS_IF_TESTS_PASS_NOT_PHYSICAL_ATTESTATION"
