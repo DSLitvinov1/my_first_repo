@@ -85,6 +85,7 @@ def _validate_observation(obs, claim, now_unix):
     if (type(task) is not dict or
         task.get("task_id") != claim.get("task_id") or
         task.get("project_id") != claim.get("project_id") or
+        task.get("source_sha40") != claim.get("source_sha40") or
         type(task.get("lease_until")) is not int or
         task["lease_until"] <= now_unix or
         task["lease_until"] - now_unix > 3600 or
