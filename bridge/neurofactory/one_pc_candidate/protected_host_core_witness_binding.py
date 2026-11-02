@@ -15,10 +15,35 @@ OS-trusted transactional lease or independently attested machine identity.
 from __future__ import annotations
 
 from pathlib import Path
+from hashlib import sha256
+import re
 import time
 
 from core_readonly_observer import observe_core, CoreObservationDenied
 from protected_host_remote_bridge import OneShotHostWitnessBridge, BridgeUnknown
+
+# Binds the complete immutable CORE task specification and the separately
+# approved output payload to exactly ONE signed HOST operation identifier.
+# Signed role envelopes and operator-pinned operation_sha256 already exist.
+_CORE_EFFECT_DOMAIN = b"NF_CORE_FULL_SPEC_AND_PAYLOAD_OPERATION_V1\x00"
+_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
+
+def exact_core_effect_sha256(core_spec_sha256, payload_sha256):
+    """Stable domain-separated commitment: verified full CORE spec + payload.
+
+    Only sha256 digests enter this function. The CORE observer checks the
+    canonical task spec hash against the durable queue; OWNER/REVIEWER must
+    independently sign the derived operation hash and pinned payload hash.
+    This helper never grants execution authority.
+    """
+    if (type(core_spec_sha256) is not str or
+        type(payload_sha256) is not str or
+        not _HEX64.fullmatch(core_spec_sha256) or
+        not _HEX64.fullmatch(payload_sha256)):
+        _deny("invalid full CORE spec or payload SHA")
+    return sha256(_CORE_EFFECT_DOMAIN +
+                  bytes.fromhex(core_spec_sha256) +
+                  bytes.fromhex(payload_sha256)).hexdigest()
 
 class CoreWitnessBindingDenied(ValueError):
     pass
@@ -69,6 +94,14 @@ def _validate_observation(obs, claim, now_unix):
         task.get("has_local_result_digest") is not False or
         task.get("has_local_receipt") is not False):
         _deny("CORE source/task/project lease or claimed state do not match signed scope")
+    # Critically bind *all* CORE spec bytes (already canonical-hashed from
+    # SQLite) and the approved payload to the Ed25519-signed operation hash.
+    # An alternate target, objective, model, source blob or approval commit
+    # MUST fail before the network or reservation ledger is touched.
+    expected_operation = exact_core_effect_sha256(
+        task.get("core_spec_sha256"), claim.get("payload_sha256"))
+    if claim.get("operation_sha256") != expected_operation:
+        _deny("signed operation not bound to full CORE spec and payload")
     return task
 
 def bind_core_and_reserve_witness_once(*, core_state_dir: Path,
