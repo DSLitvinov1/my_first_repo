@@ -6,6 +6,7 @@ import sqlite3
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from independent_witness_receipt import verify_external_witness_receipt
 from external_highwater_store import (
@@ -105,6 +106,25 @@ class RealDurableWitnessCAS(unittest.TestCase):
             inspect_external_highwater(self.path)
         with self.assertRaises(HighwaterStoreDenied):
             self.reserve(self.claim(1))
+    def test_deletion_between_path_validation_and_db_open_refuses_recreation(self):
+        # Reproduce true TOCTOU: _file checks the valid operator DB, then
+        # a privileged local actor removes it before SQLite can open it.
+        from external_highwater_store import _file
+        def delete_after_validation(path):
+            checked=_file(path)
+            checked.unlink()
+            return checked
+        with patch("external_highwater_store._file",side_effect=delete_after_validation):
+            with self.assertRaises(HighwaterStoreDenied):
+                self.reserve(self.claim())
+        self.assertFalse(self.path.exists(), "witness reservation must not recreate deleted DB")
+
+    def test_truncated_witness_ledger_denied_without_repair(self):
+        self.path.write_bytes(b"")
+        with self.assertRaises(HighwaterStoreDenied):
+            self.reserve(self.claim())
+        self.assertEqual(self.path.stat().st_size,0)
+
     def test_private_witness_disk_state_never_claims_hardware_attestation(self):
         report=inspect_external_highwater(self.path)
         self.assertFalse(report["remote_physical_independence_attested"])
