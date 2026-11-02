@@ -101,3 +101,6 @@ try {
     $env:SystemRoot=$originalRoot
     [IO.Directory]::Delete($script:tempRoot,$true)
 }
+# The deliberate native exit-code=5 negative case must not leak into the
+# workflow shell after all assertions have passed.
+$global:LASTEXITCODE=0
