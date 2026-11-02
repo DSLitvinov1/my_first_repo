@@ -186,7 +186,7 @@ class SignedRecipientWitnessFenceTests(RecipientClaimGateTest):
             remote.assert_not_called()
 
     def test_corrupt_fence_schema_denies_before_network(self):
-        with sqlite3.connect(self.fence_dir/"recipient-one-effect-intents.sqlite3") as db:
+        with closing(sqlite3.connect(self.fence_dir/"recipient-one-effect-intents.sqlite3")) as db, db:
             db.execute("DROP TABLE one_effect_intents")
             db.execute("CREATE TABLE one_effect_intents (invalid TEXT)")
         with patch("protected_host_remote_bridge._wire_exchange") as remote:
