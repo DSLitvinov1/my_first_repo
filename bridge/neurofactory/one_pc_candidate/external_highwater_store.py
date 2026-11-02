@@ -35,8 +35,8 @@ def _file(path):
     if not path.exists() or not path.is_file():
         _deny("database must already be provisioned by an independent administrator")
     st=path.lstat()
-    if not stat.S_ISREG(st.st_mode):
-        _deny("nonregular witness database")
+    if not stat.S_ISREG(st.st_mode) or st.st_size < 512:
+        _deny("witness database missing, truncated or nonregular; NO REPAIR")
     if os.name=="posix" and (st.st_uid!=os.geteuid() or st.st_mode&0o077):
         _deny("untrusted ownership or broad permissions on witness state")
     if os.name=="nt" and st.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
@@ -58,7 +58,12 @@ def provision_empty_database(path):
     _parent(path)
     fd=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     os.close(fd)
-    db=sqlite3.connect(path)
+    # The exclusive operator-created file may itself disappear after os.open.
+    # Provisioning cannot silently re-create it via SQLite's default mode.
+    try:
+        db=sqlite3.connect(path.as_uri()+"?mode=rw",uri=True,timeout=3)
+    except sqlite3.Error as exc:
+        raise HighwaterStoreDenied("Witness operator provisioning lost its file") from exc
     try:
         db.execute("PRAGMA journal_mode=DELETE")
         db.execute("PRAGMA synchronous=FULL")
@@ -108,7 +113,14 @@ def reserve_external_epoch(*, database:Path, claim:dict,
         _deny("operator-provisioned release or machine identity mismatch")
     database=_file(database)
     _parent(database)
-    con=sqlite3.connect(str(database),timeout=3,isolation_level=None)
+    # A state-file deletion between _file() validation and sqlite3.connect
+    # must NEVER silently create a new empty witness epoch ledger.
+    # An ambiguous missing/locked DB is fail-closed, never auto-retry.
+    try:
+        con=sqlite3.connect(database.as_uri()+"?mode=rw",
+                            uri=True,timeout=3,isolation_level=None)
+    except sqlite3.Error as exc:
+        raise HighwaterStoreDenied("Witness ledger disappeared or could not open; NO RETRY") from exc
     try:
         con.execute("PRAGMA busy_timeout=3000")
         con.execute("PRAGMA synchronous=FULL")

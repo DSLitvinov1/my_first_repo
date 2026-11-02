@@ -1,0 +1,34 @@
+name: Neurofactory witness durable ledger no silent recreation
+on:
+  push:
+    branches: [neurofactory-p0-witness-db-open-existing-20261102]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/external_highwater_store.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_external_highwater_store.py'
+      - '.github/workflows/neurofactory-p0-witness-no-recreate-ci.yml'
+permissions:
+  contents: read
+jobs:
+  linux_witness_store_and_actual_mtls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up isolated cryptographic test environment
+        shell: bash
+        run: |
+          python -m venv .nf-witness-venv
+          .nf-witness-venv/bin/python -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+      - name: Witness SQLite missing state must not recreate, and signed TLS remote path
+        shell: bash
+        run: |
+          .nf-witness-venv/bin/python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_store.py -v
+          .nf-witness-venv/bin/python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_external_highwater_mtls_server.py -v
+      - name: Verify source repository unchanged
+        shell: bash
+        run: git diff --exit-code
