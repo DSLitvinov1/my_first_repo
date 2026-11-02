@@ -28,14 +28,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Isolated real Ed25519 crypto
+      - name: Isolated crypto and actual CORE SQLite signed witness regression
         shell: bash
         run: |
-          python -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
-      - name: Test actual CORE SQLite CLAIMED lease scope + signed external ACK fail-closed
-        shell: bash
-        run: |
-          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_core_witness_binding.py -v
+          python -m venv .nf-witness-test-env
+          if [ -x .nf-witness-test-env/bin/python ]; then
+            PY=.nf-witness-test-env/bin/python
+          else
+            PY=.nf-witness-test-env/Scripts/python.exe
+          fi
+          "$PY" -m pip install --no-input --disable-pip-version-check 'cryptography==46.0.3'
+          "$PY" -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_protected_host_core_witness_binding.py -v
       - name: Assert no changes outside disposable test directories
         shell: bash
         run: git diff --exit-code
