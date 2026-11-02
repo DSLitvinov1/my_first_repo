@@ -140,7 +140,13 @@ function Assert-NfActualRestrictedServiceSidType([string]$ServiceName) {
         $_ -match '^\s*SERVICE_SID_TYPE\s*:'
     })
     if ($sidLines.Count -ne 1 -or
-        $sidLines[0] -cnotmatch '^\s*SERVICE_SID_TYPE\s*:\s*RESTRICTED\s*([string]$Sddl) {
+        $sidLines[0] -cnotmatch '^\s*SERVICE_SID_TYPE\s*:\s*RESTRICTED\s*$') {
+        Deny 'NO_RESTRICTED_WINDOWS_SERVICE_SID'
+    }
+    return $true
+}
+# Also audit OS Registry config key, separate from SCM service-object DACL.
+function Assert-NfServiceRegistrySddl([string]$Sddl) {
     if ([string]::IsNullOrWhiteSpace($Sddl) -or $Sddl.Length -gt 16384) {
         Deny 'REGISTRY_SDDL_MISSING_OR_OVERSIZED'
     }
