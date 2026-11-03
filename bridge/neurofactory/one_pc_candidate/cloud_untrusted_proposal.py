@@ -45,7 +45,8 @@ def verify_cloud_untrusted_proposal(obj, *, pinned_model_sha256):
             not _SHA.fullmatch(obj["prompt_sha256"]) or
             type(obj.get("output_sha256")) is not str or
             not _SHA.fullmatch(obj["output_sha256"]) or
-            obj.get("actual_inference_exit_code") != 0 or
+            type(obj.get("actual_inference_exit_code")) is not int or
+            obj["actual_inference_exit_code"] != 0 or
             obj.get("model_text_is_untrusted") is not True or
             obj.get("execution_allowed") is not False or
             obj.get("owner_signed") is not False or
