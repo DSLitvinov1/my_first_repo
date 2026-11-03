@@ -29,7 +29,9 @@ sys.path.insert(0,str(TRUSTED))
 import test_windows_scm_two_user_recovery as host_fixture
 from windows_named_pipe_pilot_receiver import _ALLOWED_TARGET,canon
 
-from cloud_untrusted_proposal import read_cloud_untrusted_proposal,CloudProposalDenied
+from cloud_untrusted_proposal import (
+    read_cloud_untrusted_proposal,stage_untrusted_cloud_draft_once,CloudProposalDenied,
+)
 from local_workspace import WorkspaceStore, WorkspaceDenied
 from signed_owner_admission import prepare_draft_request,admit_signed_draft,AdmissionDenied,_canon
 from one_task_core import OneTaskCore,EMPTY_SHA,provision_empty_core_queue_offline
@@ -70,16 +72,18 @@ def main():
             "objective":"Inspect this harmless cloud Qwen explanation as DATA ONLY; "+
                 "never execute model text, modify source or authorize effects.",
             "model_preference":"qwen2.5-coder:1.5b"})
-        workspace.reserve_task_proposal(task["id"],"qwen2.5-coder:1.5b")
-        result=workspace.finalize_task_proposal(task["id"],{
-            "status":"PROPOSED_UNVERIFIED",
-            "model":"qwen2.5-coder:1.5b",
-            "text":model_output,
-            "response_sha256":proposal_sha,
-            "content_sha256":proposal_sha})
+        # Exercise the actual reusable cloud-to-durable-workspace adapter,
+        # not a duplicate fixture-only direct DB writing path.
+        result=stage_untrusted_cloud_draft_once(
+            store=workspace,task_id=task["id"],
+            artifact_path=CLOUD_EVIDENCE.resolve(strict=True),
+            pinned_model_sha256=MODEL_SHA)
+        assert result["status"]=="CLOUD_QWEN_DURABLE_DRAFT_PENDING_OWNER_AUTH"
+        assert result["proposal_sha256"]==proposal_sha
         assert result["core_enqueued"] is False
         assert result["host_write_allowed"] is False
-        assert result["review_approved"] is False
+        assert result["remote_witness_verified"] is False
+        assert result["production_release_approved"] is False
         before=workspace.list_task_proposals()
         unsigned=prepare_draft_request(workspace,task["id"])
         assert unsigned["owner_signed"] is False
