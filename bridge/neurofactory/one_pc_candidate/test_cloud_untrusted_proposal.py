@@ -9,8 +9,9 @@ import unittest
 
 from cloud_untrusted_proposal import (
     CloudProposalDenied, read_cloud_untrusted_proposal,
-    verify_cloud_untrusted_proposal,
+    verify_cloud_untrusted_proposal,stage_untrusted_cloud_draft_once,
 )
+from local_workspace import WorkspaceStore, WorkspaceDenied
 
 ROOT=Path(__file__).resolve().parent
 PIN="cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"
@@ -94,6 +95,60 @@ class TestUntrustedCloudQwenHandoff(unittest.TestCase):
             p.symlink_to(EVIDENCE)
             with self.assertRaises(CloudProposalDenied):
                 read_cloud_untrusted_proposal(p,pinned_model_sha256=PIN)
+
+
+    def workspace(self,root,model="qwen2.5-coder:1.5b"):
+        store=WorkspaceStore(root/"workspace")
+        project=store.create_project({"name":"Cloud model data-only review","description":"No privileged operation"})
+        task=store.create_task({
+            "project_id":project["id"],
+            "objective":"Review inert cloud text only; no approval or execution.",
+            "model_preference":model})
+        return store,task
+
+    def test_reusable_import_persists_only_draft_and_refuses_replay(self):
+        with tempfile.TemporaryDirectory() as root:
+            store,task=self.workspace(Path(root))
+            first=stage_untrusted_cloud_draft_once(
+                store=store,task_id=task["id"],
+                artifact_path=EVIDENCE.resolve(strict=True),pinned_model_sha256=PIN)
+            self.assertEqual(first["status"],"CLOUD_QWEN_DURABLE_DRAFT_PENDING_OWNER_AUTH")
+            self.assertFalse(first["owner_signed"])
+            self.assertFalse(first["core_enqueued"])
+            self.assertFalse(first["host_write_allowed"])
+            self.assertFalse(first["automatic_retry_allowed"])
+            self.assertEqual(store.list_task_proposals()[0]["text"],self.artifact["output_text"])
+            self.assertEqual(WorkspaceStore(store.directory).list_tasks()[0]["state"],
+                             "DRAFT_PENDING_OWNER_AUTH")
+            with self.assertRaises(WorkspaceDenied):
+                stage_untrusted_cloud_draft_once(
+                    store=store,task_id=task["id"],
+                    artifact_path=EVIDENCE.resolve(strict=True),pinned_model_sha256=PIN)
+            self.assertEqual(len(store.list_task_proposals()),1)
+
+    def test_wrong_user_selected_model_never_reserves(self):
+        with tempfile.TemporaryDirectory() as root:
+            store,task=self.workspace(Path(root),model="qwen3:0.6b")
+            with self.assertRaises(CloudProposalDenied):
+                stage_untrusted_cloud_draft_once(
+                    store=store,task_id=task["id"],
+                    artifact_path=EVIDENCE.resolve(strict=True),pinned_model_sha256=PIN)
+            self.assertEqual(store.list_task_proposals(),[])
+            self.assertEqual(store.list_tasks()[0]["state"],"DRAFT_PENDING_OWNER_AUTH")
+
+    def test_tampered_cloud_file_does_not_consume_workspace_attempt(self):
+        with tempfile.TemporaryDirectory() as root:
+            folder=Path(root)
+            store,task=self.workspace(folder)
+            corrupted=folder/"untrusted.json"
+            tamper=deepcopy(self.artifact)
+            tamper["output_text"]="UNAPPROVED EDIT"
+            corrupted.write_text(json.dumps(tamper,ensure_ascii=False),"utf-8")
+            with self.assertRaises(CloudProposalDenied):
+                stage_untrusted_cloud_draft_once(
+                    store=store,task_id=task["id"],artifact_path=corrupted,
+                    pinned_model_sha256=PIN)
+            self.assertEqual(store.list_task_proposals(),[])
 
 if __name__=="__main__":
     unittest.main()
