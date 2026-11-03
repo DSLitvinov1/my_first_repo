@@ -110,7 +110,7 @@ def main():
             core=OneTaskCore(root,repo)
             spec={
                 "schema":"neurofactory.core.task.v1",
-                "task_id":"NF-DEV-05-CLOUD",
+                "task_id":"NF-DEV-05-Q976",
                 "project_id":unsigned["core_project_id"],
                 "target":_ALLOWED_TARGET,
                 "objective":unsigned["objective"],
