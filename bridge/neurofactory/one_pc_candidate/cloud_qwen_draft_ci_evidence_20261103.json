@@ -1,0 +1,15 @@
+{
+  "schema": "nf.onepc.cloud_untrusted_qwen_draft.ci.v1",
+  "model": "qwen2.5-coder:1.5b",
+  "model_file_sha256": "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046",
+  "model_runtime": "llama.cpp b12040",
+  "prompt_sha256": "025dadaadce00236c062cb96790e21b0bef4263ad9c627eda1775c89c2df88c6",
+  "output_text": "Если подтверждение защищённой операции потерялось, нужно проверить состояние системы и восстановить доступ к защищённой информации.",
+  "output_sha256": "cdcfd8e05e61f2ddfd87da3f252464d4fad3f646f24b60a6fc333a42a168d50f",
+  "source": "cloudagent isolated already-existing Linux GGUF inference, 2026-11-03",
+  "actual_inference_exit_code": 0,
+  "model_text_is_untrusted": true,
+  "execution_allowed": false,
+  "owner_signed": false,
+  "independent_provenance_attested": false
+}

@@ -1,9 +1,10 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
+      - bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
       - bridge/neurofactory/one_pc_candidate/windows_setup/test_physical_host_acl_generic_rights_negative_ci.ps1
@@ -66,7 +67,7 @@ jobs:
           if ((Get-Item $vendorZip).Length -ne 11133606 -or
               (Get-FileHash $vendorZip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'REVIEW_VENDOR_RUNTIME_HASH_MISMATCH'}
           Expand-Archive -LiteralPath $vendorZip -DestinationPath "$stage\runtime"
-          foreach ($file in @('local_workspace.py','installed_integrity.py','draft_provider.py','codex_sites_bridge.py','core_readonly_observer.py','signed_owner_admission.py','test_installed_provider_import.py','restore_offline.py')) {
+          foreach ($file in @('local_workspace.py','installed_integrity.py','draft_provider.py','codex_sites_bridge.py','core_readonly_observer.py','signed_owner_admission.py','cloud_untrusted_proposal.py','test_installed_provider_import.py','restore_offline.py')) {
               Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/$file" -Destination "$stage\app\$file"
           }
           foreach ($file in @('index.html','styles.css','demo-data.js','app.js','workspace.js','integrations.js')) {
@@ -202,6 +203,12 @@ jobs:
           if (!(Test-Path "$install\app\local_workspace.py") -or !(Test-Path "$install\runtime\python.exe")) {
               throw 'REVIEW_MACHINE_INCOMPLETE_INSTALL'
           }
+          if (!(Test-Path "$install\app\cloud_untrusted_proposal.py")) {
+              throw 'CLOUD_QWEN_DRAFT_IMPORTER_NOT_INSTALLED'
+          }
+          $appDir=Join-Path $install 'app'
+          & "$install\runtime\python.exe" -B -c "import sys;sys.path.insert(0,sys.argv[1]);import cloud_untrusted_proposal as c;assert callable(c.stage_untrusted_cloud_draft_once);assert c._SCHEMA=='nf.onepc.cloud_untrusted_qwen_draft.ci.v1';print('NF_INSTALLED_CLOUD_QWEN_DRAFT_IMPORT=PASS_DATA_ONLY')" "$appDir"
+          if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_CLOUD_QWEN_IMPORT_FAILED'}
           $physicalAudit=Join-Path $install 'review-host\physical_host_production_preflight.ps1'
           if (!(Test-Path $physicalAudit)) {throw 'PHYSICAL_HOST_REQUIRED_PREFLIGHT_NOT_INSTALLED'}
           $text=Get-Content -LiteralPath $physicalAudit -Raw -Encoding UTF8
