@@ -263,12 +263,17 @@ function DenyUnsafeWriteAcl([string]$path) {
         if ($ace.AccessControlType -cne 'Allow') {continue}
         $sid=$ace.IdentityReference.Translate(
             [Security.Principal.SecurityIdentifier]).Value
-        # 0x00156: data/append/EA/attributes PLUS DELETE_CHILD on parent
-        # directories; 0xD0000: DELETE, WRITE_DAC, WRITE_OWNER.
-        # This is an allowlist, not a blacklist of a few well-known SIDs.
-        # Unknown domain/local service identities are always untrusted.
-        $writes=(([int64]$ace.FileSystemRights -band 0x00156) -ne 0 -or
-                 ([int64]$ace.FileSystemRights -band 0xD0000) -ne 0)
+        # 0x00156: data/append/EA/attributes and DELETE_CHILD on parents.
+        # 0xD0000: DELETE, WRITE_DAC, WRITE_OWNER.
+        # 0x53000000: GENERIC_ALL, GENERIC_WRITE, MAXIMUM_ALLOWED and
+        # ACCESS_SYSTEM_SECURITY. Raw generic ACE masks must be rejected even
+        # if a provider has not expanded them to concrete FileSystemRights.
+        # GENERIC_READ/EXECUTE alone do not grant mutation rights.
+        # This is an allowlist: unknown domain/local SIDs cannot modify roots.
+        [int64]$rights=$ace.FileSystemRights
+        $writes=(($rights -band 0x00156) -ne 0 -or
+                 ($rights -band 0xD0000) -ne 0 -or
+                 ($rights -band 0x53000000) -ne 0)
         if ($writes -and $sid -notin $trustedOwnerSids) {
             Deny 'NON_SYSTEM_PRINCIPAL_CAN_REPLACE_TRUST_ROOT'
         }
