@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
-          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          ref: f4c424a5544749668fd2eb5657207e7873a6039a
           path: .nf_pinned_core
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -51,7 +51,7 @@ jobs:
         shell: pwsh
         run: |
           if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') { throw 'OWNER_WINDOWS_PC_DENIED' }
-          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne '1c4ccd7d64e87e284a3796b3432f13910a48679c') { throw 'PINNED_CORE_SHA_MISMATCH' }
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne 'f4c424a5544749668fd2eb5657207e7873a6039a') { throw 'PINNED_CORE_SHA_MISMATCH' }
           if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'PINNED_HOST_ACL_SHA_MISMATCH' }
           Write-Output 'NF_CLOUD_DRAFT_TO_WINDOWS_TEST_HOST=ISOLATED_GITHUB_HOSTED_ONLY'
       - name: Only transient test libraries on disposable runner
