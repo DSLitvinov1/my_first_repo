@@ -84,3 +84,46 @@ def read_cloud_untrusted_proposal(path: Path, *, pinned_model_sha256: str):
         raise CloudProposalDenied("Bad cloud proposal JSON") from exc
     return obj,verify_cloud_untrusted_proposal(
         obj,pinned_model_sha256=pinned_model_sha256)
+
+def stage_untrusted_cloud_draft_once(*, store, task_id: str,
+                                   artifact_path: Path, pinned_model_sha256: str):
+    """Persist data-only cloud output as an immutable DRAFT, never as a CORE job.
+
+    An operator/authorized UI handler must independently authenticate the
+    caller and pin artifact source. If interrupted after reserve, durable
+    REQUESTED remains ambiguous; NEVER automatically replay the same attempt.
+    """
+    from local_workspace import WorkspaceStore
+    if not isinstance(store, WorkspaceStore) or type(task_id) is not str:
+        raise CloudProposalDenied("Typed existing workspace and task required")
+    obj, evidence=read_cloud_untrusted_proposal(
+        artifact_path,pinned_model_sha256=pinned_model_sha256)
+    task=store.find_task(task_id)
+    if task["model_preference"]!=obj["model"]:
+        raise CloudProposalDenied("Cloud model not equal to original user draft preference")
+    store.reserve_task_proposal(task_id,obj["model"])
+    result=store.finalize_task_proposal(task_id,{
+        "model":obj["model"],
+        "status":"PROPOSED_UNVERIFIED",
+        "text":obj["output_text"],
+        "response_sha256":obj["output_sha256"],
+        "content_sha256":obj["output_sha256"],
+    })
+    if (result["status"]!="PROPOSED_UNVERIFIED" or
+        result["content_sha256"]!=evidence["proposal_sha256"] or
+        result["core_enqueued"] is not False or
+        result["host_write_allowed"] is not False or
+        result["review_approved"] is not False):
+        raise CloudProposalDenied("Untrusted cloud import state ambiguous; NO RETRY")
+    return {
+        "status":"CLOUD_QWEN_DURABLE_DRAFT_PENDING_OWNER_AUTH",
+        "task_id":task_id,
+        "model":obj["model"],
+        "proposal_sha256":result["content_sha256"],
+        "owner_signed":False,
+        "core_enqueued":False,
+        "host_write_allowed":False,
+        "remote_witness_verified":False,
+        "automatic_retry_allowed":False,
+        "production_release_approved":False,
+    }
