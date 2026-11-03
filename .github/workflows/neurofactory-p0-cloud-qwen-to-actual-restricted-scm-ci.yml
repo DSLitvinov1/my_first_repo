@@ -1,0 +1,69 @@
+name: Neurofactory real cloud Linux Qwen draft to OWNER signed CORE and real Windows restricted SCM
+on:
+  push:
+    branches: [neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/cloud_qwen_draft_ci_evidence_20261103.json'
+      - 'bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_cloud_untrusted_proposal.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_cloud_qwen_to_real_restricted_scm_ci.py'
+      - '.github/workflows/neurofactory-p0-cloud-qwen-to-actual-restricted-scm-ci.yml'
+permissions:
+  contents: read
+jobs:
+  untrusted_cloud_data_negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Actual cloud-generated proposal tamper/authority negative cases
+        shell: bash
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_cloud_untrusted_proposal.py -v
+          git diff --exit-code
+  windows_actual_restricted_scm_with_cloud_draft:
+    runs-on: windows-2025
+    timeout-minutes: 14
+    env:
+      NF_WINDOWS_SCM_DISPOSABLE_ONLY: '1'
+      NF_WINDOWS_CROSS_BRANCH_ACL_VERIFY: '1'
+      NF_WINDOWS_REQUIRE_RESTRICTED_SERVICE_SID: '1'
+      NF_ONEPC_FINAL_SIGNED_CI: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONNOUSERSITE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 1c4ccd7d64e87e284a3796b3432f13910a48679c
+          path: .nf_pinned_core
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 681375ce0b959812fc836bf4d14abc107b58e9ca
+          path: .nf_pinned_acl
+          persist-credentials: false
+      - name: Prove hosted Windows only, original immutable CORE pin
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted' -or $env:RUNNER_OS -ne 'Windows') { throw 'OWNER_WINDOWS_PC_DENIED' }
+          if ((git -C .nf_pinned_core rev-parse HEAD).Trim() -cne '1c4ccd7d64e87e284a3796b3432f13910a48679c') { throw 'PINNED_CORE_SHA_MISMATCH' }
+          if ((git -C .nf_pinned_acl rev-parse HEAD).Trim() -cne '681375ce0b959812fc836bf4d14abc107b58e9ca') { throw 'PINNED_HOST_ACL_SHA_MISMATCH' }
+          Write-Output 'NF_CLOUD_DRAFT_TO_WINDOWS_TEST_HOST=ISOLATED_GITHUB_HOSTED_ONLY'
+      - name: Only transient test libraries on disposable runner
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-input 'cryptography==46.0.3' 'pywin32==311'
+          if ($LASTEXITCODE -ne 0) {throw 'TEST_DEPENDENCIES_FAILED'}
+      - name: Real cloud Qwen draft to owner Ed25519 CORE admission and real restricted SCM
+        shell: pwsh
+        run: |
+          python -B bridge/neurofactory/one_pc_candidate/test_cloud_qwen_to_real_restricted_scm_ci.py
+          if ($LASTEXITCODE -ne 0) {throw 'CLOUD_QWEN_TO_REAL_RESTRICTED_SCM_FAILED'}
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) {throw 'TRACKED_SOURCE_MUTATION'}
+          Write-Output 'NF_CLOUD_QWEN_TO_ACTUAL_WINDOWS_SCM=PASS_CI_ONLY_NOT_OWNER_INSTALL'
