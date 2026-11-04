@@ -63,6 +63,7 @@ class SignedScmPolicyToRealCoreTest(unittest.TestCase):
             expected_owner="worker-one",
             actual_worker_sid=self.fx.claim["worker_sid"],
             actual_service_sid=self.fx.claim["service_sid"],
+            recipient_owner_public=self.fx.owner.public_key(),
         )
 
     @staticmethod
@@ -137,6 +138,15 @@ class SignedScmPolicyToRealCoreTest(unittest.TestCase):
             with self.assertRaises(RecipientFenceUnknown):
                 load_scm_witness_guard(**self.args)(self.fixture.body)
             self.assertEqual(self.fixture.stage()[0][0],"UNKNOWN_NO_AUTO_RETRY")
+            remote.assert_not_called()
+
+    def test_independent_witness_owner_must_equal_actual_scm_pilot_owner(self):
+        self.write()
+        with patch("protected_host_remote_bridge._wire_exchange") as remote:
+            with self.assertRaises(ScmWitnessPolicyDenied):
+                load_scm_witness_guard(**{**self.args,
+                    "recipient_owner_public":Ed25519PrivateKey.generate().public_key()})
+            self.assertEqual(self.fixture.stage(),[])
             remote.assert_not_called()
 
     def test_extra_keys_never_grant_service_permission(self):
