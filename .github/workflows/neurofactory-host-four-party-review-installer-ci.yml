@@ -1,10 +1,13 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py
+      - bridge/neurofactory/one_pc_candidate/scm_witness_service_policy.py
+      - bridge/neurofactory/trusted_host/windows_scm_sandbox_receiver.py
+      - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
       - bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py
       - bridge/neurofactory/one_pc_candidate/windows_setup/physical_host_production_preflight.ps1
       - bridge/neurofactory/one_pc_candidate/windows_setup/test_physical_host_acl_generic_rights_negative_ci.ps1
@@ -82,6 +85,10 @@ jobs:
               'windows_package_preflight.py')) {
               Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/$name" -Destination "$stage\review-host\$name"
           }
+          foreach ($name in @('windows_scm_sandbox_receiver.py','windows_named_pipe_pilot_receiver.py')) {
+              Copy-Item -LiteralPath "bridge/neurofactory/trusted_host/$name" -Destination "$stage\review-host\$name"
+          }
+          Copy-Item -LiteralPath 'bridge/neurofactory/one_pc_candidate/scm_witness_service_policy.py' -Destination "$stage\review-host\scm_witness_service_policy.py"
           python -B bridge/neurofactory/one_pc_candidate/stage_runtime_sources.py --core .nf_pin_core --host .nf_pin_host --providers .nf_pin_providers --coordinator .nf_pin_coordinator --stage "$stage"
           if ($LASTEXITCODE -ne 0) {throw 'PINNED_COMPONENT_STAGING_REJECTED'}
           $components=Get-Content "$stage\components\manifest.json" -Raw|ConvertFrom-Json
@@ -187,6 +194,10 @@ jobs:
           if (!(Test-Path "$install\review-host\protected_host_attempt_ledger.py")) {throw 'HOST_DURABLE_ATTEMPT_LEDGER_NOT_INSTALLED'}
           if (!(Test-Path "$install\review-host\protected_host_core_witness_binding.py")) {throw 'CORE_REMOTE_SCOPE_BINDING_NOT_INSTALLED'}
           if (!(Test-Path "$install\review-host\core_readonly_observer.py")) {throw 'CORE_READONLY_OBSERVER_NOT_INSTALLED'}
+          foreach ($name in @('scm_witness_service_policy.py',
+              'windows_scm_sandbox_receiver.py','windows_named_pipe_pilot_receiver.py')) {
+              if (!(Test-Path "$install\review-host\$name")) {throw "MISSING_REAL_SCM_REMOTE_POLICY_SOURCE: $name"}
+          }
           foreach ($name in @('scm_one_effect_witness_fence.py','scm_recipient_core_claim_guard.py')) {
               if (!(Test-Path "$install\review-host\$name")) {throw "RECIPIENT_CORE_WITNESS_FENCE_SOURCE_MISSING: $name"}
           }
