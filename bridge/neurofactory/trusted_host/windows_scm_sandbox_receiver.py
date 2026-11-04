@@ -48,8 +48,11 @@ def load_ci_config():
     if os.name != "nt" or not CI_ROOT.is_dir() or CI_ROOT.is_symlink():
         raise ValueError("Windows service root unavailable")
     config = json.loads(CI_CONFIG.read_text(encoding="ascii"))
+    remote_required=(type(config) is dict and
+                     config.get("schema")=="neurofactory.windows.ci_service.remote_required.v1")
     if type(config) is not dict or set(config) != CONFIG_FIELDS or \
-            config["schema"] != "neurofactory.windows.ci_service.v1" or \
+            config["schema"] not in ("neurofactory.windows.ci_service.v1",
+                                     "neurofactory.windows.ci_service.remote_required.v1") or \
             type(config["worker_sid"]) is not str or \
             not SID_PATTERN.fullmatch(config["worker_sid"]) or \
             type(config["owner_public_raw_base64"]) is not str or \
@@ -80,7 +83,8 @@ def load_ci_config():
     return (config["worker_sid"],Ed25519PublicKey.from_public_bytes(raw),
             Ed25519PrivateKey.from_private_bytes(host_raw),
             state,config["core_spec_sha256"],
-            config["core_payload_sha256"],config["core_claim_owner"])
+            config["core_payload_sha256"],config["core_claim_owner"],
+            remote_required)
 
 
 class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
@@ -100,14 +104,35 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop)
 
     def SvcDoRun(self):
-        sid,owner_public,host_signer,state,spec_sha,payload_sha,claim_owner=load_ci_config()
+        (sid,owner_public,host_signer,state,spec_sha,
+         payload_sha,claim_owner,remote_required)=load_ci_config()
+        # Only an operator-installed exact service config opts into this mode.
+        # In that mode missing sealed witness policy is fatal during startup;
+        # never fall back to CORE-only file execution.
+        witness_guard=None
+        if remote_required:
+            import win32security
+            from scm_witness_service_policy import load_scm_witness_guard
+            live_service_sid=win32security.ConvertSidToStringSid(
+                win32security.LookupAccountName(
+                    None,"NT SERVICE\\"+SERVICE_NAME)[0])
+            if not live_service_sid.startswith("S-1-5-80-"):
+                raise RuntimeError("actual SCM service identity invalid")
+            witness_guard=load_scm_witness_guard(
+                operator_service_root=CI_ROOT, core_state=state,
+                expected_spec_sha256=spec_sha,
+                expected_payload_sha256=payload_sha,
+                expected_owner=claim_owner,
+                actual_worker_sid=sid,
+                actual_service_sid=live_service_sid,
+                recipient_owner_public=owner_public)
         root=CI_ROOT / "protected_output"
         if not root.is_dir() or root.is_symlink():
             raise RuntimeError("operator-provisioned protected output missing")
         # Worker runs with a different OS account. Service's LocalService
         # identity and ACLs are imposed via SCM + operator install script.
         self.handler=threading.Thread(
-            target=self._serve_forever,args=(sid,owner_public,root,host_signer,state,spec_sha,payload_sha,claim_owner),daemon=True)
+            target=self._serve_forever,args=(sid,owner_public,root,host_signer,state,spec_sha,payload_sha,claim_owner,witness_guard,remote_required),daemon=True)
         self.handler.start()
         # Graceful stop never waits on a pending adversarial pipe client.
         win32event.WaitForSingleObject(self.stop,win32event.INFINITE)
@@ -120,7 +145,8 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
             os._exit(87)
 
     def _serve_forever(self,sid,owner_public,root,host_signer,
-                       state,spec_sha,payload_sha,claim_owner):
+                       state,spec_sha,payload_sha,claim_owner,
+                       witness_guard,remote_required):
         def core_guard(signed_body):
             return assert_recipient_core_claim(
                 core_state=state, body=signed_body,
@@ -132,7 +158,9 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
                 serve_one_pilot(CI_PIPE,root,owner_public,sid,
                                 ci_after_unknown_hook=self._ci_crash_after_unknown,
                                 host_receipt_signer=host_signer,
-                                recipient_core_guard=core_guard)
+                                recipient_core_guard=core_guard,
+                                recipient_signed_witness_guard=witness_guard,
+                                require_signed_external_witness=remote_required)
             except Exception:
                 # Fail closed; no exception must promote to a new write mode.
                 if self.is_stopping.is_set():

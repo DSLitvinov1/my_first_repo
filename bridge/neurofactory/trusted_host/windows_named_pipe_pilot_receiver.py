@@ -147,7 +147,7 @@ def _peer_matches(pipe_handle, pinned_peer_sid_text):
         if not revert():
             _deny()
 
-def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None,host_receipt_signer=None,recipient_core_guard=None):
+def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown_hook=None,host_receipt_signer=None,recipient_core_guard=None,recipient_signed_witness_guard=None,require_signed_external_witness=False):
     """One request. Never a production daemon, no queue activation.
 
     CI tests must supply a fixed user SID pinned outside the worker message.
@@ -162,6 +162,13 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown
     if os.name!="nt" or type(pipe_path) is not str or \
             not pipe_path.startswith(PIPE_PREFIX) or \
             not _SAFE_PIPE.fullmatch(pipe_path.rsplit("\\",1)[-1]):
+        _deny()
+    # A production-like restricted SCM mode MUST NOT silently fall back to
+    # the legacy CI CORE-only file pilot when the external witness is absent.
+    if (type(require_signed_external_witness) is not bool or
+            (require_signed_external_witness and
+             (not callable(recipient_signed_witness_guard)
+              or not callable(recipient_core_guard)))):
         _deny()
     safe=_private_root(root)
     try:
@@ -215,6 +222,19 @@ def serve_one_pilot(pipe_path,root,owner_public,peer_user_sid,*,ci_after_unknown
             # SCM test. Never allow a worker request to name a failure mode.
             if ci_after_unknown_hook is not None:
                 ci_after_unknown_hook()
+            if require_signed_external_witness:
+                # The actual SCM service itself invokes the sealed OWNER +
+                # REVIEWER + mTLS external WITNESS bridge now. This is after
+                # the durable local UNKNOWN and before any fixed file effect.
+                # Missing/expired/forged/lost ACK means no file and NO RETRY.
+                witnessed=recipient_signed_witness_guard(body)
+                if (type(witnessed) is not dict or
+                        witnessed.get("status") !=
+                            "LOCAL_INTENT_AND_SIGNED_WITNESS_ACK_OBSERVED_LAB_ONLY"
+                        or witnessed.get("owner_reviewer_witness_verified_in_bridge") is not True
+                        or witnessed.get("recipient_file_effect_granted_for_production") is not False
+                        or witnessed.get("automatic_retry_allowed") is not False):
+                    _deny()
             if recipient_core_guard is not None:
                 # Close the preventable stale-read window between preflight
                 # and CREATE_NEW. Not an atomic recipient-side lease.
