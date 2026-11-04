@@ -8,6 +8,7 @@ on:
       - 'bridge/neurofactory/trusted_host/test_windows_scm_two_user_recovery.py'
       - 'bridge/neurofactory/one_pc_candidate/scm_witness_service_policy.py'
       - 'bridge/neurofactory/one_pc_candidate/test_scm_signed_witness_service_admission.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_scm_signed_witness_policy_binding_ci.py'
       - '.github/workflows/neurofactory-p0-scm-signed-witness-service-admission-ci.yml'
 permissions:
   contents: read
@@ -51,6 +52,11 @@ jobs:
         run: |
           python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_scm_signed_witness_service_admission.py -v
           if ($LASTEXITCODE -ne 0) {throw 'SCM_WITNESS_POLICY_NEGATIVE_FAILED'}
+      - name: Sealed signed witness permit binds real CORE to one-use receiver fence
+        shell: pwsh
+        run: |
+          python -B -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_scm_signed_witness_policy_binding_ci.py -v
+          if ($LASTEXITCODE -ne 0) {throw 'SEALED_SCM_REAL_CORE_WITNESS_BINDING_FAILED'}
       - name: Real Windows SCM MUST stop without sealed external witness policy
         shell: pwsh
         run: |
