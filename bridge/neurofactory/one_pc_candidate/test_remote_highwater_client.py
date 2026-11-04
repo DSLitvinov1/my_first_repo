@@ -93,6 +93,24 @@ class RemoteHighwaterTrustBoundaryTest(unittest.TestCase):
         self.assertTrue(result["signed_receipt_verified"])
         self.assertFalse(result["host_effect_allowed"])
 
+    def test_signed_remote_clock_ahead_two_seconds_with_postwire_local_timestamp(self):
+        valid={**self.evidence,
+               "recorded_unix":self.now+2,
+               "expires_unix":self.now+40}
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now):
+            value=self.invoke(packet=self.packet(valid))
+        self.assertTrue(value["signed_receipt_verified"])
+        self.assertFalse(value["host_effect_allowed"])
+
+    def test_signed_future_three_seconds_is_denied_without_clock_bypass(self):
+        future={**self.evidence,
+                "recorded_unix":self.now+3,
+                "expires_unix":self.now+40}
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now):
+            self.denied(self.packet(future))
+
     def test_backward_local_clock_after_receipt_fails_closed(self):
         with patch("remote_highwater_client.time.time",
                    return_value=self.now-1):
