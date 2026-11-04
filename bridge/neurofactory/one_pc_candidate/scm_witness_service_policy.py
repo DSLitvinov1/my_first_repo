@@ -16,6 +16,9 @@ import base64
 import json
 from pathlib import Path
 import re
+import os
+import stat
+from cryptography.hazmat.primitives import serialization
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from protected_host_remote_bridge import OneShotHostWitnessBridge
@@ -71,13 +74,19 @@ def _sealed_existing(root, name):
     if (path.is_symlink() or not path.is_file() or
             not 200 <= path.stat().st_size <= 16_384):
         _deny()
+    # A Windows NTFS junction/reparse point can bypass Path.is_symlink().
+    # Policy roots are independently ACL-audited by the physical preflight.
+    if os.name=="nt":
+        if (root.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT or
+                path.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            _deny()
     return path
 
 
 def load_scm_witness_guard(*, operator_service_root:Path, core_state:Path,
                            expected_spec_sha256:str,expected_payload_sha256:str,
                            expected_owner:str,actual_worker_sid:str,
-                           actual_service_sid:str):
+                           actual_service_sid:str,recipient_owner_public):
     """Load exactly one operator-pinned, signed witness permit for real SCM.
 
     The caller is responsible for verifying actual process token, service-SID
@@ -134,6 +143,15 @@ def load_scm_witness_guard(*, operator_service_root:Path, core_state:Path,
             _deny()
         return result
     owner=_ed25519_pub(policy["pinned_owner_public_base64"])
+    # The SAME operator-pinned OWNER must authorize both the Windows named
+    # pipe payload and the separate three-party external witness scope.
+    # Otherwise two valid signatures from unrelated owners could be mixed.
+    if (not isinstance(recipient_owner_public,Ed25519PublicKey)
+            or owner.public_bytes(
+                serialization.Encoding.Raw,serialization.PublicFormat.Raw)
+            != recipient_owner_public.public_bytes(
+                serialization.Encoding.Raw,serialization.PublicFormat.Raw)):
+        _deny()
     reviewer=_ed25519_pub(policy["pinned_reviewer_public_base64"])
     witness=_ed25519_pub(policy["pinned_witness_public_base64"])
     bridge=OneShotHostWitnessBridge(
