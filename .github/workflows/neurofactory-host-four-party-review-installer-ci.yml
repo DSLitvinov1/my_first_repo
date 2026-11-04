@@ -1,7 +1,7 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-two-node-witness-clock-fix-20261105]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py

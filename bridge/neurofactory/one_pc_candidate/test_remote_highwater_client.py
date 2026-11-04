@@ -80,6 +80,48 @@ class RemoteHighwaterTrustBoundaryTest(unittest.TestCase):
         self.assertFalse(v["host_effect_allowed"])
         self.assertFalse(v["production_service_install_allowed"])
         self.assertFalse(v["retry_after_unknown_allowed"])
+    def test_signed_remote_ack_recorded_after_request_start_is_validated_on_receive(self):
+        # This reproduces the actual two-physical-host failure:
+        # local request-start timestamp was BEFORE the remote SQLite commit.
+        later={**self.evidence,
+               "recorded_unix":self.now+1,
+               "expires_unix":self.now+30}
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now+2):
+            result=self.invoke(packet=self.packet(later))
+        self.assertEqual(result["highwater_epoch"],19)
+        self.assertTrue(result["signed_receipt_verified"])
+        self.assertFalse(result["host_effect_allowed"])
+
+    def test_signed_remote_clock_ahead_two_seconds_with_postwire_local_timestamp(self):
+        valid={**self.evidence,
+               "recorded_unix":self.now+2,
+               "expires_unix":self.now+40}
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now):
+            value=self.invoke(packet=self.packet(valid))
+        self.assertTrue(value["signed_receipt_verified"])
+        self.assertFalse(value["host_effect_allowed"])
+
+    def test_signed_future_three_seconds_is_denied_without_clock_bypass(self):
+        future={**self.evidence,
+                "recorded_unix":self.now+3,
+                "expires_unix":self.now+40}
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now):
+            self.denied(self.packet(future))
+
+    def test_backward_local_clock_after_receipt_fails_closed(self):
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now-1):
+            self.denied()
+
+    def test_excessive_network_or_clock_window_fails_closed(self):
+        # Remote ACK may be signed, yet unattended retry is forbidden.
+        with patch("remote_highwater_client.time.time",
+                   return_value=self.now+31):
+            self.denied()
+
     def test_forged_key_refused(self):
         self.denied(self.packet(signer=Ed25519PrivateKey.generate()))
     def test_expired_replay_refused(self):

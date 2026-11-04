@@ -83,6 +83,42 @@ class SignedRemoteServiceBridgeTests(unittest.TestCase):
             with self.assertRaises(BridgeUnknown):self.call(bridge)
             self.assertEqual(network.call_count,1)
 
+    def test_real_network_signed_ack_timestamp_after_request_start(self):
+        # The signed server record is committed AFTER the request begins.
+        # Verify after network completion rather than using that old start.
+        evidence={**self.fx.evidence,
+                  "recorded_unix":self.fx.now+1,
+                  "expires_unix":self.fx.now+40}
+        with patch("protected_host_remote_bridge.time.time",
+                   return_value=self.fx.now+2):
+            with patch("protected_host_remote_bridge._wire_exchange",
+                       return_value=self.fx.ack(evidence)) as network:
+                result=self.call(self.client())
+                self.assertTrue(result["witness_signature_verified"])
+                self.assertEqual(network.call_count,1)
+                self.assertFalse(result["production_task_effect_allowed"])
+
+    def test_clock_rollback_after_remote_ack_is_unknown_not_retry(self):
+        with patch("protected_host_remote_bridge.time.time",
+                   return_value=self.fx.now-1):
+            with patch("protected_host_remote_bridge._wire_exchange",
+                       return_value=self.fx.ack()) as network:
+                client=self.client()
+                with self.assertRaises(BridgeUnknown):
+                    self.call(client)
+                with self.assertRaises(BridgeUnknown):
+                    self.call(client)
+                self.assertEqual(network.call_count,1)
+
+    def test_network_longer_than_safe_receipt_window_is_unknown(self):
+        with patch("protected_host_remote_bridge.time.time",
+                   return_value=self.fx.now+31):
+            with patch("protected_host_remote_bridge._wire_exchange",
+                       return_value=self.fx.ack()) as network:
+                with self.assertRaises(BridgeUnknown):
+                    self.call(self.client())
+                self.assertEqual(network.call_count,1)
+
     def test_fake_owner_denied_before_ever_reserving_remote(self):
         with patch("protected_host_remote_bridge._wire_exchange") as net:
             with self.assertRaises(BridgeDenied):

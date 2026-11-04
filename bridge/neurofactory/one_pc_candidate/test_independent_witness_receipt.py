@@ -66,6 +66,21 @@ class IndependentExternalWitnessReceiptTests(unittest.TestCase):
         self.assertFalse(r["production_install_authorized"])
         self.assertFalse(r["device_separation_independently_attested"])
         self.assertFalse(r["receipt_replay_resistant_without_remote_query"])
+    def test_signed_server_clock_1244ms_lead_within_two_second_bound(self):
+        # Real SSH-tunnel clock probe measured Linux ahead ~1244ms.
+        # A properly signed server receipt remains verification-only.
+        ahead={**self.evidence,"recorded_unix":self.now+2,
+               "expires_unix":self.now+60}
+        result=self.verify(self.packet(ahead))
+        self.assertTrue(result["signature_verified"])
+        self.assertFalse(result["production_install_authorized"])
+
+    def test_future_signed_witness_more_than_two_seconds_rejected(self):
+        self.denied(recorded_unix=self.now+3,expires_unix=self.now+60)
+
+    def test_expired_witness_rejected_despite_two_second_skew(self):
+        self.denied(recorded_unix=self.now-65,expires_unix=self.now)
+
     def test_stale_highwater_denied(self):
         self.denied(highest_committed_epoch=8)
     def test_same_epoch_as_prior_denied(self):

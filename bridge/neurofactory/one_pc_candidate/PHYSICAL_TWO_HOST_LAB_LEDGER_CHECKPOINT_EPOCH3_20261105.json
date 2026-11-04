@@ -1,0 +1,19 @@
+{
+  "signature_base64": "KWcR+4ywzcTMecSMzwy4t3EzVbkYM9ATFALz3iWyqlcZTPF+QbzFb6yy+e3SeOEwQGrEPLhI9EeCR3yPAjn+AA==",
+  "signed": {
+    "all_epochs_consecutive": true,
+    "durable_reservation_count": 3,
+    "highest_committed_epoch": 3,
+    "independent_operator_appointed": false,
+    "logical_entries_sha256": "bf472c17c43c6698981839fdb28e2d3f2664beee688b81b62c5e9e4f1eb0c5a7",
+    "observed_linux_unix": 1793831735,
+    "physical_remote_independence_attested": false,
+    "private_witness_key_remains_on_linux": true,
+    "production_service_effect_allowed": false,
+    "replay_after_unknown_allowed": false,
+    "schema": "nf.lab.physical_two_host_witness_checkpoint.v1",
+    "source_scope_sha40": "36f5835101b4389f9075d5eeedc3e87a2dfd7e75",
+    "sqlite_integrity_check": "ok"
+  },
+  "witness_public_base64": "FGSjldl35Cooc0G4dJX9UPqry6+LNihGXykvdN1Rawo="
+}
