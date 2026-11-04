@@ -6,6 +6,7 @@ created. Positive real Ed25519+mTLS+CORE tests remain in existing modules.
 from __future__ import annotations
 
 from pathlib import Path
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 import json
 import os
 import tempfile
@@ -37,6 +38,7 @@ class ActualScmWitnessPolicyNegatives(unittest.TestCase):
             expected_owner="worker-one",
             actual_worker_sid="S-1-5-21-12345-67890-12345-1101",
             actual_service_sid="S-1-5-80-1-2-3-4-5",
+            recipient_owner_public=Ed25519PrivateKey.generate().public_key(),
         )
 
     def test_missing_operator_remote_policy_is_fatal(self):
