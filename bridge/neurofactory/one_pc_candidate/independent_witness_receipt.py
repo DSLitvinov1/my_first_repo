@@ -33,6 +33,9 @@ _EVIDENCE_FIELDS = frozenset({
 })
 _RECEIPT_FIELDS = frozenset({"evidence", "signature_base64"})
 _DOMAIN = b"NF_ONEPC_EXTERNAL_WITNESS_HIGHWATER_V1\x00"
+# Maximum signed witness clock lead tolerated on real separate hosts.
+# Calibrated two-host lab measured +1244 ms; >2s is a hard reject.
+_MAX_SIGNED_REMOTE_CLOCK_LEAD_SECONDS = 2
 
 
 class IndependentWitnessDenied(ValueError):
@@ -143,7 +146,11 @@ def verify_external_witness_receipt(
     recorded=evidence["recorded_unix"]
     expires=evidence["expires_unix"]
     if (type(recorded) is not int or type(expires) is not int or
-            not recorded <= now_unix < expires or recorded < 1 or
+            # The externally pinned Ed25519 witness may lead the local
+            # Windows clock by <=2 s. Still reject expired evidence using
+            # the *local post-network* time; never extend expires.
+            not recorded <= now_unix + _MAX_SIGNED_REMOTE_CLOCK_LEAD_SECONDS or
+            not now_unix < expires or recorded < 1 or
             expires-recorded > 300):
         _deny("stale or future witness evidence")
     try:
