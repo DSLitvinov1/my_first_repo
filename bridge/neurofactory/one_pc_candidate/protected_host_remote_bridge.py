@@ -13,6 +13,7 @@ identity, actual CORE lease or revocation; a successful result is READ ONLY.
 from __future__ import annotations
 
 import hmac
+import time
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -145,6 +146,12 @@ class OneShotHostWitnessBridge:
                 client_key_path=self._key,
                 independently_pinned_server_der_sha256=self._tls_pin,
             )
+            # The witness commits AFTER request-start. Checking
+            # recorded_unix against pre-wire now_unix rejects real ACKs.
+            # Observe post-wire local OS time, bounded and forward-only.
+            observed_after_tls=int(time.time())
+            if observed_after_tls<now_unix or observed_after_tls-now_unix>30:
+                raise BridgeUnknown("local clock moved or remote ACK stale; NO RETRY")
             checked=verify_one_host_operation(
                 claim=claim,owner_signature=owner_signature,
                 reviewer_signature=reviewer_signature,
@@ -155,7 +162,7 @@ class OneShotHostWitnessBridge:
                 independently_pinned_witness_id=self._witness_id,
                 operator_expected=dict(self._operator_expected),
                 independently_observed_remote_epoch=self._floor,
-                now_unix=now_unix,
+                now_unix=observed_after_tls,
             )
         except (RemoteHighwaterDenied, ProtectedHostTaskDenied,
                 IndependentWitnessDenied, OSError, ValueError) as exc:
