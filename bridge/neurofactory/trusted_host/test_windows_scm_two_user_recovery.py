@@ -191,8 +191,8 @@ def main():
     resident = (os.getenv("NF_ONEPC_RESIDENT_QWEN_JOURNAL_CI") == "1")
     if resident and (mode != "normal" or os.getenv("NF_ONEPC_FINAL_SIGNED_CI") != "1"):
         raise RuntimeError("Resident SCM receipt audit only in genuine signed one-run hosted CI")
-    if mode not in ("normal","crash-window"):
-        raise RuntimeError("only two isolated CI modes accepted")
+    if mode not in ("normal","crash-window","remote-required-missing"):
+        raise RuntimeError("only normal/crash/missing-remote isolated CI modes accepted")
     username="nfci"+secrets.token_hex(3)
     password="T7-"+secrets.token_urlsafe(18)+"-Q!"
     user_created=False
@@ -253,7 +253,9 @@ def main():
         bad_payload["approved_owner_signature"]=base64.b64encode(owner.sign(
             b"NF_WINDOWS_PILOT_V1\x00"+canon(bad_body))).decode("ascii")
         CI_CONFIG.write_text(json.dumps({
-            "schema":"neurofactory.windows.ci_service.v1",
+            "schema":("neurofactory.windows.ci_service.remote_required.v1"
+                      if mode=="remote-required-missing" else
+                      "neurofactory.windows.ci_service.v1"),
             "worker_sid":worker_sid,
             "owner_public_raw_base64":base64.b64encode(pub).decode("ascii"),
             "host_receipt_private_raw_base64":
@@ -332,6 +334,28 @@ def main():
         call(["icacls",str(core.state),"/inheritance:r","/grant:r",
               "*"+explicit_service_sid+":(OI)(CI)R",
               "*S-1-5-18:(OI)(CI)F","*S-1-5-32-544:(OI)(CI)F"])
+        if mode=="remote-required-missing":
+            # Real SCM must never downgrade to CORE-only writer when sealed
+            # external witness policy isn't provisioned. No keys are minted
+            # here; a deliberately incomplete operator configuration MUST
+            # prevent the actual Windows service from running.
+            missing=root/"external-signed-witness-policy.json"
+            if missing.exists():
+                raise AssertionError("No external trust material expected")
+            call(["sc.exe","start",SERVICE_NAME],required=False,timeout=22)
+            deadline=time.monotonic()+16
+            while time.monotonic()<deadline:
+                observed=win32serviceutil.QueryServiceStatus(SERVICE_NAME)[1]
+                if observed==SERVICE_STOPPED:
+                    break
+                time.sleep(.25)
+            else:
+                raise AssertionError("Real Windows SCM ran without signed witness policy")
+            assert ensure_no_unauthorised_client(output)==(False,False)
+            assert not (core.sandbox/_ALLOWED_TARGET).exists()
+            print("NF_REAL_WINDOWS_SCM_MISSING_SIGNED_REMOTE_POLICY=DENIED_NO_FILE")
+            print("NF_REAL_WINDOWS_SCM_CANNOT_FALLBACK_TO_CORE_ONLY=PASS_CI_ONLY")
+            return
         call(["sc.exe","start",SERVICE_NAME],timeout=22)
         wait_service(SERVICE_RUNNING)
         # Actual least-privilege service account is NT AUTHORITY\LocalService.
