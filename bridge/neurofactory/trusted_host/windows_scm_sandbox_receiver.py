@@ -124,7 +124,8 @@ class NeurofactorySandboxReceiverCI(win32serviceutil.ServiceFramework):
                 expected_payload_sha256=payload_sha,
                 expected_owner=claim_owner,
                 actual_worker_sid=sid,
-                actual_service_sid=live_service_sid)
+                actual_service_sid=live_service_sid,
+                recipient_owner_public=owner_public)
         root=CI_ROOT / "protected_output"
         if not root.is_dir() or root.is_symlink():
             raise RuntimeError("operator-provisioned protected output missing")
