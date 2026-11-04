@@ -56,6 +56,9 @@ Source: "{#SourceRoot}\review-host\protected_host_remote_bridge.py"; DestDir: "{
 Source: "{#SourceRoot}\review-host\protected_host_core_witness_binding.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\scm_one_effect_witness_fence.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\scm_recipient_core_claim_guard.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\scm_witness_service_policy.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\windows_scm_sandbox_receiver.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
+Source: "{#SourceRoot}\review-host\windows_named_pipe_pilot_receiver.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\core_readonly_observer.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\protected_host_attempt_ledger.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
 Source: "{#SourceRoot}\review-host\combined_release_review_gate.py"; DestDir: "{app}\review-host"; Flags: ignoreversion
