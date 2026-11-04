@@ -132,17 +132,26 @@ def observe_remote_reservation(*, hostname: str, port: int, claim: dict,
     """Reserve once with live remote witness; no authority/side effect granted."""
     try:
         _claim(claim)
+        if type(now_unix) is not int or now_unix<=0:
+            _deny("trusted request-start time required")
         receipt=_wire_exchange(
             hostname=hostname,port=port,claim=claim,
             ca_path=ca_path,client_cert_path=client_cert_path,
             client_key_path=client_key_path,
             independently_pinned_server_der_sha256=independently_pinned_server_der_sha256)
+        # Real remote signed evidence is recorded AFTER the request starts.
+        # Verifying against request-start time rejects genuine TLS ACKs as
+        # "future". Use a fresh local OS observation AFTER network receipt,
+        # never a timestamp supplied by the remote server or model.
+        received_unix=int(time.time())
+        if received_unix<now_unix or received_unix-now_unix>30:
+            _deny("local clock reversed or network time window ambiguous")
         checked=verify_external_witness_receipt(
             claim=claim,receipt=receipt,
             pinned_witness_public=independently_pinned_witness_public,
             independently_pinned_witness_id=independently_pinned_witness_id,
             independently_observed_minimum_epoch=independently_observed_minimum_epoch,
-            now_unix=now_unix)
+            now_unix=received_unix)
     except (IndependentWitnessDenied,RemoteHighwaterDenied) as exc:
         raise RemoteHighwaterDenied(
             "External monotonic witness UNKNOWN / NO AUTO RETRY: verification denied") from exc
