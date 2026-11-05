@@ -129,13 +129,25 @@ def main():
                 completed = subprocess.run(
                     [str(LLAMA), "-m", str(MODEL), "-p", prompt, "-n", "320",
                      "-c", "2048", "-t", "3", "-ngl", "0", "--temp", "0.15",
-                     "-st", "--no-display-prompt", "--no-warmup", "--log-disable"],
+                     "-st", "--no-display-prompt", "--no-warmup", "--log-disable",
+                     "--color", "off"],
                     capture_output=True, text=True, encoding="utf-8", errors="replace",
                     timeout=90, check=False,
                 )
-                output = completed.stdout.strip().replace("<|im_end|>", "").strip()
-                if (completed.returncode != 0 or
-                        not 2 <= len(output.encode("utf-8")) <= 10000 or
+                # llama-cli prints a spinner, terminal control codes and a
+                # model banner BEFORE the echoed prompt, even with
+                # --no-display-prompt. Those are never model text. Accept
+                # only the span after our exact operator-constructed prompt
+                # and before CLI metrics/footer. If the framing changes,
+                # fail closed rather than accepting terminal escape codes.
+                marker = "\n> " + prompt
+                if completed.returncode != 0 or marker not in completed.stdout:
+                    return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
+                output = completed.stdout.rsplit(marker, 1)[1]
+                output = output.split("\n[ Prompt:", 1)[0]
+                output = output.split("\n\nExiting...", 1)[0]
+                output = output.replace("<|im_end|>", "").strip()
+                if (not 2 <= len(output.encode("utf-8")) <= 10000 or
                         any(ord(c) < 32 and c not in "\n\t" for c in output)):
                     return denied("MODEL_RESULT_UNKNOWN")
                 digest = sha256(output.encode("utf-8")).hexdigest()
