@@ -31,7 +31,9 @@ import win32service
 import win32serviceutil
 
 from personal_ssh_highwater import _canon, REQ_SCHEMA
-from personal_ssh_highwater_client import reserve_personal_epoch,PersonalWitnessUnknown
+from personal_ssh_highwater_client import (
+    reserve_personal_epoch,read_signed_remote_head,PersonalWitnessUnknown,
+)
 
 SERVICE_NAME="NeurofactoryPersonalHost"
 ROOT=Path(os.environ.get("ProgramData",r"C:\ProgramData"))/"NeurofactoryPersonalHost"
@@ -150,6 +152,39 @@ def _connect_existing():
         raise
     return con
 
+def assert_external_head_matches_local_fence():
+    """No work if remote was rolled back OR Windows fence lost a committed row.
+
+    The Linux public signer pin stays outside the model/UI's authority.
+    Only an administrator-reconciled replacement host can recover UNKNOWN.
+    """
+    operator,_,witness=_config()
+    with closing(_connect_existing()) as con:
+        local_epoch=con.execute(
+            "SELECT MAX(external_epoch) FROM intents").fetchone()[0] or 0
+        unknown=con.execute(
+            "SELECT COUNT(*) FROM intents WHERE status='UNKNOWN_NO_AUTO_RETRY'"
+        ).fetchone()[0]
+        tip=con.execute(
+            "SELECT remote_head FROM intents ORDER BY external_epoch DESC LIMIT 1"
+        ).fetchone()
+        local_head=tip[0] if tip else "0"*64
+    if unknown or (tip and (type(local_head) is not str
+                             or len(local_head)!=64)):
+        _deny("unresolved operation or missing local signed remote head")
+    remote=read_signed_remote_head(
+        trusted_service_root=ROOT,
+        pinned_public_raw=witness.public_bytes_raw(),
+        expected_source=operator["source_sha40"],
+        expected_machine=operator["machine_sha256"],
+        expected_package=operator["package_sha256"])
+    if (remote.get("remote_status_signature_verified") is not True or
+            remote.get("epoch")!=local_epoch or
+            remote.get("ledger_head")!=local_head):
+        _deny("Linux or Windows has rolled back, diverged or gained unknown epoch")
+    return remote
+
+
 def _signed_body(packet,operator,owner,now):
     if (type(packet) is not dict or set(packet)!=PERMIT_FIELDS or
         packet.get("schema")!=PERMIT_SCHEMA or
@@ -184,6 +219,11 @@ def _reserve_local_unknown(body,operation_hash):
         con.execute("BEGIN IMMEDIATE")
         last=con.execute("SELECT MAX(external_epoch) FROM intents").fetchone()[0] or 0
         # No success/UNKNOWN retry, gap or epoch reuse, including after crash.
+        unresolved=con.execute(
+            "SELECT COUNT(*) FROM intents WHERE status='UNKNOWN_NO_AUTO_RETRY'"
+        ).fetchone()[0]
+        if unresolved:
+            _deny("unresolved local UNKNOWN: operator reconciliation required")
         if body["external_epoch"]!=last+1:
             _deny("local epoch gap or replay")
         con.execute(
@@ -208,6 +248,9 @@ def perform_approved_safe_note(packet):
     """Single owner-signed permitted note. Never called directly by Qwen."""
     operator,owner,witness=_config()
     body=_signed_body(packet,operator,owner,int(time.time()))
+    # Signed status query consumes NO remote epoch. Deny any divergence
+    # before reserving this new irreversible local intent.
+    assert_external_head_matches_local_fence()
     operation_sha256=sha256(_canon(body)).hexdigest()
     # Durable local UNKNOWN *before* first external network byte.
     _reserve_local_unknown(body,operation_sha256)
@@ -284,6 +327,9 @@ class NeurofactoryPersonalHost(win32serviceutil.ServiceFramework):
         _config()
         with closing(_connect_existing()):
             pass
+        # Require authentic, consistent Linux highwater before ever accepting
+        # an owner-approved task. Offline/rollback/UNKNOWN -> service stops.
+        assert_external_head_matches_local_fence()
         seen=set()
         while not self.stopping.is_set():
             # Both inbox and operator-supplied config must have separately
