@@ -47,14 +47,14 @@ jobs:
               Copy-Item $wheel.FullName $zip
               Expand-Archive -LiteralPath $zip -DestinationPath $site
           }
-          @('python312.zip','.','Lib/site-packages','Lib/site-packages/win32','Lib/site-packages/win32/lib','Lib/site-packages/pywin32_system32','import site') | Set-Content "$root/runtime/python312._pth" -Encoding ascii
+          @('python312.zip','.','../service','Lib/site-packages','Lib/site-packages/win32','Lib/site-packages/win32/lib','Lib/site-packages/pywin32_system32','import site') | Set-Content "$root/runtime/python312._pth" -Encoding ascii
           foreach ($file in @('personal_ssh_highwater.py','personal_ssh_highwater_client.py','personal_windows_host_service.py','personal_approve_safe_note.py')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/$file" "$root/service/$file"
           }
           foreach ($file in @('Prepare-NeurofactoryPersonalHost.ps1','Start-NeurofactoryPersonalHost.ps1')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/windows_setup/$file" "$root/installer/$file"
           }
-          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
+          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography;import personal_ssh_highwater,personal_ssh_highwater_client,personal_windows_host_service,personal_approve_safe_note;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_EMBEDDED_RUNTIME_IMPORT_FAILED'}
           & "$root/runtime/python.exe" -B -m compileall -q "$root/service"
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_CODE_COMPILE_FAILED'}
