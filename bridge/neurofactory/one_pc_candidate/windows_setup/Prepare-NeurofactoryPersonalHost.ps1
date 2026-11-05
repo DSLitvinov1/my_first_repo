@@ -87,7 +87,7 @@ try {
       $hasher.ComputeHash($material))).Replace('-','').ToLowerInvariant()
 } finally { $hasher.Dispose() }
 $ownerKey=Join-Path $ownerFolder 'personal-owner-private.key'
-$pub=& $py -B -c 'import base64,sys;from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey;from cryptography.hazmat.primitives import serialization;k=Ed25519PrivateKey.from_private_bytes(open(sys.argv[1],"rb").read());print(base64.b64encode(k.public_key().public_bytes(serialization.Encoding.Raw,serialization.PublicFormat.Raw)).decode())' $ownerKey
+$pub=& $py -B -c 'import base64,sys;from pathlib import Path;from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey;from cryptography.hazmat.primitives import serialization;k=Ed25519PrivateKey.from_private_bytes(Path(sys.argv[1]).read_bytes());print(base64.b64encode(k.public_key().public_bytes(serialization.Encoding.Raw,serialization.PublicFormat.Raw)).decode())' $ownerKey
 if ($LASTEXITCODE -ne 0) {throw 'PUBLIC_OWNER_IDENTITY_NOT_AVAILABLE'}
 $report=[ordered]@{
   schema='nf.personal.host.prepare.v1'
