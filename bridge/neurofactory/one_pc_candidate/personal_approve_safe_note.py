@@ -18,10 +18,30 @@ import time
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 from personal_ssh_highwater import _canon
-from personal_windows_host_service import (
-    OWNER_DOMAIN,PERMIT_SCHEMA,ALLOWED_ACTION,CONFIG,
-    CONFIG_SCHEMA,INBOX,_unique,_decode_pub,
-)
+# Deliberately no import of the LocalService-only win32 SCM module:
+# user approval works without installing pywin32 or admin privileges.
+OWNER_DOMAIN=b"NF_PERSONAL_OWNER_NOTE_APPROVAL_V1\\x00"
+PERMIT_SCHEMA="nf.personal.owner_signed_note.v1"
+ALLOWED_ACTION="write_note"
+CONFIG_SCHEMA="nf.personal.host.operator_pinned.v1"
+ROOT=Path(os.environ.get("ProgramData",r"C:\\ProgramData"))/"NeurofactoryPersonalHost"
+CONFIG=ROOT/"operator-config.json"
+INBOX=ROOT/"inbox"
+
+def _unique(pairs):
+    out={}
+    for key,value in pairs:
+        if key in out:
+            raise ValueError("Duplicate pinned config key")
+        out[key]=value
+    return out
+
+def _decode_pub(encoded):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    data=base64.b64decode(encoded,validate=True)
+    if len(data)!=32:
+        raise ValueError("Invalid pinned owner public key")
+    return Ed25519PublicKey.from_public_bytes(data)
 
 SHA32=re.compile(r"[a-f0-9]{32}\Z")
 
