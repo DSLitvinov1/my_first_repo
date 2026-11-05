@@ -24,7 +24,7 @@ if ((Get-Service $name -ErrorAction SilentlyContinue) -or
     !(Test-Path $hostScript) -or
     !(Test-Path $ownerKey) -or
     !(Test-Path $py) -or
-    (Test-Path (Join-Path $root 'intent-fence.sqlite3'))) {
+    (Test-Path (Join-Path $root 'state\intent-fence.sqlite3'))) {
   throw 'MISSING_STAGE_OR_EXISTING_SERVICE/FENCE: NO_RESET_OR_OVERWRITE'
 }
 $report=Get-Content $reportPath -Raw -Encoding ascii|ConvertFrom-Json
@@ -95,7 +95,7 @@ print("NF_LINUX_REMOTE_SIGNED_ZERO_HEAD_VERIFIED")
 & $py -B -c $script (Join-Path $bin 'service') $configPath $root
 if ($LASTEXITCODE -ne 0) {throw 'PHYSICAL_LINUX_SIGNED_WITNESS_NOT_READY_STOP_BEFORE_SERVICE_CREATE'}
 # Only now allocate local persistent state. NO service ever creates/reset it.
-New-Item -ItemType Directory (Join-Path $root 'inbox'),(Join-Path $root 'outputs') -Force|Out-Null
+New-Item -ItemType Directory (Join-Path $root 'state'),(Join-Path $root 'inbox'),(Join-Path $root 'outputs') -Force|Out-Null
 & $py -B -c 'import sys;sys.path.insert(0,sys.argv[1]);import personal_windows_host_service as h;print(h.provision_empty_fence_offline())' (Join-Path $bin 'service')
 if ($LASTEXITCODE -ne 0) {throw 'OWNER_WINDOWS_DURABLE_LOCAL_FENCE_NOT_PROVISIONED'}
 $svcBin='"'+$py+'" -u "'+$hostScript+'" --scm'
@@ -107,12 +107,15 @@ $serviceSid=([Security.Principal.NTAccount]("NT SERVICE\"+$name)).
              Translate([Security.Principal.SecurityIdentifier]).Value
 if (!$serviceSid.StartsWith('S-1-5-80-')) {throw 'ACTUAL_WINDOWS_SERVICE_SID_NOT_RESTRICTED'}
 $svc='*'+$serviceSid
+RunNative icacls.exe @($bin,'/grant:r',"${svc}:(OI)(CI)RX")
 RunNative icacls.exe @($root,'/grant:r',"${svc}:(OI)(CI)RX")
 RunNative icacls.exe @($configPath,'/grant:r',"${svc}:R")
 RunNative icacls.exe @((Join-Path $root 'known_hosts'),'/grant:r',"${svc}:R")
 RunNative icacls.exe @((Join-Path $root 'remote-client-id_ed25519'),
     '/grant:r',"${svc}:R")
-RunNative icacls.exe @((Join-Path $root 'intent-fence.sqlite3'),
+RunNative icacls.exe @((Join-Path $root 'state'),'/inheritance:r',
+    '/grant:r',"${system}:(OI)(CI)F","${admin}:(OI)(CI)F","${svc}:(OI)(CI)M")
+RunNative icacls.exe @((Join-Path $root 'state\intent-fence.sqlite3'),
     '/inheritance:r','/grant:r',"${system}:F","${admin}:F","${svc}:M")
 RunNative icacls.exe @((Join-Path $root 'inbox'),'/inheritance:r',
     '/grant:r',"${system}:(OI)(CI)F","${admin}:(OI)(CI)F",
