@@ -24,6 +24,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 REQ_SCHEMA = "nf.personal.highwater.reserve.v1"
 ACK_SCHEMA = "nf.personal.highwater.ack.v1"
+STATUS_REQ_SCHEMA = "nf.personal.highwater.status_request.v1"
+STATUS_ACK_SCHEMA = "nf.personal.highwater.status_ack.v1"
+STATUS_DOMAIN = b"NF_PERSONAL_REMOTE_HIGHWATER_STATUS_V1\x00"
 DOMAIN = b"NF_PERSONAL_REMOTE_HIGHWATER_ACK_V1\x00"
 DB_NAME = "personal-highwater.sqlite3"
 HEAD_ZERO = "0" * 64
@@ -206,14 +209,56 @@ def read_only_status(root):
         count=con.execute("SELECT COUNT(*) FROM reservations").fetchone()[0]
     return {"epoch":epoch,"ledger_head":head,"reservations":count}
 
+def _signed_readonly_status(root, request, *, expected_source,
+                            expected_machine, expected_package):
+    if (type(request) is not dict or
+            set(request)!={"schema","nonce"} or
+            request.get("schema")!=STATUS_REQ_SCHEMA or
+            type(request.get("nonce")) is not str or
+            not HEX32.fullmatch(request["nonce"])):
+        _fail("read-only status request invalid")
+    state=read_only_status(root)
+    signing_bytes=_private_file(
+        root,"ed25519-signing.key",max_size=32).read_bytes()
+    if len(signing_bytes)!=32:
+        _fail("status signing key missing")
+    now=int(time.time())
+    receipt={
+        "schema":STATUS_ACK_SCHEMA,
+        "status":"SIGNED_REMOTE_READ_ONLY_HIGHWATER",
+        "nonce":request["nonce"],
+        "epoch":state["epoch"],
+        "ledger_head":state["ledger_head"],
+        "reservations":state["reservations"],
+        "source_sha40":expected_source,
+        "machine_sha256":expected_machine,
+        "package_sha256":expected_package,
+        "recorded_unix":now,
+        "expires_unix":now+30,
+        "production_release_attested":False,
+    }
+    signer=Ed25519PrivateKey.from_private_bytes(signing_bytes)
+    return {
+        "receipt":receipt,
+        "signature_base64":base64.b64encode(
+            signer.sign(STATUS_DOMAIN+_canon(receipt))
+        ).decode("ascii")
+    }
+
+
 def forced_ssh_main(root,*,expected_source,expected_machine,expected_package):
     if (os.name!="posix" or os.geteuid()==0 or
             os.environ.get("SSH_ORIGINAL_COMMAND")):
         _fail("no shell and no arbitrary SSH commands permitted")
     incoming=sys.stdin.buffer.read(4097)
-    if not 64<=len(incoming)<=4096:
+    if not 60<=len(incoming)<=4096:
         _fail("one bounded request required")
     claim=json.loads(incoming.decode("ascii"),object_pairs_hook=_unique)
+    if type(claim) is dict and claim.get("schema")==STATUS_REQ_SCHEMA:
+        return _signed_readonly_status(
+            root,claim,expected_source=expected_source,
+            expected_machine=expected_machine,
+            expected_package=expected_package)
     return _signed_receipt(root,claim,
                            expected_source=expected_source,
                            expected_machine=expected_machine,
