@@ -14,10 +14,10 @@ import os
 from pathlib import Path
 import re
 import stat
-import subprocess
 import time
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
+from personal_scoped_ssh_transport import exchange_once,ScopedSSHTransportDenied
 
 from personal_ssh_highwater import (
     _canon,REQ_SCHEMA,ACK_SCHEMA,DOMAIN,
@@ -72,42 +72,16 @@ def reserve_personal_epoch(*,trusted_service_root:Path,claim:dict,
             or type(timeout) not in (float,int)
             or not 5<=timeout<=30):
         _unknown("service environment or independently pinned key invalid")
-    key=_file(trusted_service_root/"remote-client-id_ed25519",maximum=5000)
-    known=_file(trusted_service_root/"known_hosts",maximum=500)
-    if (known.read_text("ascii").strip() !=
-            HOST+" ssh-ed25519 "+HOST_KEY):
-        _unknown("SSH host identity not exactly operator pinned")
-    executable=Path(os.environ.get("SystemRoot",r"C:\Windows"))/"System32"/"OpenSSH"/"ssh.exe"
-    if not executable.is_file():
-        _unknown("OS OpenSSH executable absent")
     request=_canon(claim)
     if not 200<=len(request)<=4096:
         _unknown("bounded task reservation invalid")
-    ssh=[
-        str(executable),"-T",
-        "-o","BatchMode=yes",
-        "-o","StrictHostKeyChecking=yes",
-        "-o",f"UserKnownHostsFile={known}",
-        "-o","GlobalKnownHostsFile=NUL",
-        "-o","IdentitiesOnly=yes",
-        "-o","PasswordAuthentication=no",
-        "-o","KbdInteractiveAuthentication=no",
-        "-o","ConnectTimeout=8",
-        "-o","ConnectionAttempts=1",
-        "-o","ClearAllForwardings=yes",
-        "-o","HostKeyAlgorithms=ssh-ed25519",
-        "-o","LogLevel=ERROR",
-        "-i",str(key),f"{USER}@{HOST}",
-    ]
     started=int(time.time())
     try:
-        result=subprocess.run(ssh,input=request,capture_output=True,
-                              check=False,timeout=timeout)
-        if (result.returncode!=0 or
-                not 50<=len(result.stdout)<=3000 or result.stderr and
-                len(result.stderr)>2048):
+        wire=exchange_once(root=trusted_service_root,request=request,
+                           cap=3000,timeout=timeout)
+        if not 50<=len(wire)<=3000:
             _unknown("SSH auth, refused epoch or remote commit ambiguous")
-        response=json.loads(result.stdout.decode("ascii"),
+        response=json.loads(wire.decode("ascii"),
                             object_pairs_hook=_unique)
         if (type(response) is not dict or
                 set(response)!={"receipt","signature_base64"} or
@@ -157,7 +131,7 @@ def reserve_personal_epoch(*,trusted_service_root:Path,claim:dict,
             "automatic_retry_allowed":False,
             "os_effect_authorized_by_receipt_alone":False,
         }
-    except (subprocess.TimeoutExpired,OSError,UnicodeError,ValueError,
+    except (ScopedSSHTransportDenied,OSError,UnicodeError,ValueError,
             json.JSONDecodeError) as exc:
         raise PersonalWitnessUnknown(
             "SSH or remote state ambiguous; NO AUTOMATIC RETRY") from exc
@@ -176,38 +150,15 @@ def read_signed_remote_head(*,trusted_service_root:Path,
     if os.name!="nt" or not trusted_service_root.is_absolute() or (
             type(pinned_public_raw) is not bytes or len(pinned_public_raw)!=32):
         _unknown("Windows pinned status environment unavailable")
-    known=_file(trusted_service_root/"known_hosts",maximum=500)
-    key=_file(trusted_service_root/"remote-client-id_ed25519",maximum=5000)
-    if known.read_text("ascii").strip()!=HOST+" ssh-ed25519 "+HOST_KEY:
-        _unknown("remote host pin changed")
-    ssh=Path(os.environ.get("SystemRoot",r"C:\Windows"))/"System32"/"OpenSSH"/"ssh.exe"
-    if not ssh.is_file():
-        _unknown("Windows OpenSSH missing")
     nonce=secrets.token_hex(16)
     request=_canon({"schema":STATUS_REQ_SCHEMA,"nonce":nonce})
-    cmd=[
-        str(ssh),"-T",
-        "-o","BatchMode=yes",
-        "-o","StrictHostKeyChecking=yes",
-        "-o",f"UserKnownHostsFile={known}",
-        "-o","GlobalKnownHostsFile=NUL",
-        "-o","IdentitiesOnly=yes",
-        "-o","PasswordAuthentication=no",
-        "-o","KbdInteractiveAuthentication=no",
-        "-o","ConnectTimeout=8",
-        "-o","ConnectionAttempts=1",
-        "-o","ClearAllForwardings=yes",
-        "-o","HostKeyAlgorithms=ssh-ed25519",
-        "-o","LogLevel=ERROR",
-        "-i",str(key),f"{USER}@{HOST}",
-    ]
     started=int(time.time())
     try:
-        returned=subprocess.run(
-            cmd,input=request,capture_output=True,timeout=20,check=False)
-        if returned.returncode!=0 or not 150<=len(returned.stdout)<=3000:
+        wire=exchange_once(root=trusted_service_root,request=request,
+                           cap=3000,timeout=20)
+        if not 150<=len(wire)<=3000:
             _unknown("remote signed head inaccessible")
-        doc=json.loads(returned.stdout.decode("ascii"),
+        doc=json.loads(wire.decode("ascii"),
                        object_pairs_hook=_unique)
         if type(doc) is not dict or set(doc)!={"receipt","signature_base64"}:
             _unknown("remote status malformed")
@@ -247,7 +198,7 @@ def read_signed_remote_head(*,trusted_service_root:Path,
                 "ledger_head":ack["ledger_head"],
                 "remote_status_signature_verified":True,
                 "production_effect_authorized_by_status":False}
-    except (OSError,ValueError,UnicodeError,subprocess.TimeoutExpired,
+    except (OSError,ValueError,UnicodeError,ScopedSSHTransportDenied,
             InvalidSignature,TypeError) as exc:
         raise PersonalWitnessUnknown(
             "remote signed head unavailable or false, no effects") from exc
