@@ -38,7 +38,8 @@ from personal_ssh_highwater_client import (
 SERVICE_NAME="NeurofactoryPersonalHost"
 ROOT=Path(os.environ.get("ProgramData",r"C:\ProgramData"))/"NeurofactoryPersonalHost"
 CONFIG=ROOT/"operator-config.json"
-FENCE=ROOT/"intent-fence.sqlite3"
+STATE=ROOT/"state"
+FENCE=STATE/"intent-fence.sqlite3"
 INBOX=ROOT/"inbox"
 OUT=ROOT/"outputs"
 OWNER_DOMAIN=b"NF_PERSONAL_OWNER_NOTE_APPROVAL_V1\x00"
@@ -124,6 +125,7 @@ def _config():
 def provision_empty_fence_offline():
     """Installer only. Never invoked by the running SCM service."""
     _safe_dir(ROOT)
+    _safe_dir(STATE)
     if FENCE.exists() or FENCE.is_symlink():
         _deny("existing durable fence can never be reset")
     fd=os.open(FENCE,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
@@ -136,6 +138,7 @@ def provision_empty_fence_offline():
     return "EMPTY_PERSONAL_HOST_FENCE_PROVISIONED_NO_ACTION"
 
 def _connect_existing():
+    _safe_dir(STATE)
     path=_plain(FENCE,max_size=128_000_000)
     con=sqlite3.connect(path.as_uri()+"?mode=rw",uri=True,
                         timeout=5,isolation_level=None)
