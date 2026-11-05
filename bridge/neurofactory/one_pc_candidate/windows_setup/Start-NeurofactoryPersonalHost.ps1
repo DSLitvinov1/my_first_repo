@@ -92,7 +92,7 @@ assert st["remote_status_signature_verified"] is True
 assert st["epoch"]==0 and st["ledger_head"]=="0"*64
 print("NF_LINUX_REMOTE_SIGNED_ZERO_HEAD_VERIFIED")
 '@
-& $py -B -c $script (Join-Path $bin 'service') $configPath $root
+$script | & $py -B - (Join-Path $bin 'service') $configPath $root
 if ($LASTEXITCODE -ne 0) {throw 'PHYSICAL_LINUX_SIGNED_WITNESS_NOT_READY_STOP_BEFORE_SERVICE_CREATE'}
 # Only now allocate local persistent state. NO service ever creates/reset it.
 New-Item -ItemType Directory (Join-Path $root 'state'),(Join-Path $root 'inbox'),(Join-Path $root 'outputs') -Force|Out-Null
