@@ -140,10 +140,21 @@ def main():
                 # only the span after our exact operator-constructed prompt
                 # and before CLI metrics/footer. If the framing changes,
                 # fail closed rather than accepting terminal escape codes.
-                marker = "\n> " + prompt
-                if completed.returncode != 0 or marker not in completed.stdout:
+                # The CLI prints a ONE-LINE abbreviated prompt with literal
+                # escaped newlines and "... (truncated)" for long inputs.
+                # Matching the whole prompt would ALWAYS fail for user tasks.
+                # Anchor on the first 96 chars of our exact known fixed
+                # prompt, then discard the ENTIRE echoed prompt line.
+                marker = "\n> " + prompt[:96]
+                position = completed.stdout.rfind(marker)
+                if completed.returncode != 0 or position < 0:
                     return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
-                output = completed.stdout.rsplit(marker, 1)[1]
+                line_end = completed.stdout.find("\n", position + len(marker))
+                if line_end < 0:
+                    return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
+                output = completed.stdout[line_end + 1:]
+                if "\n[ Prompt:" not in output:
+                    return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
                 output = output.split("\n[ Prompt:", 1)[0]
                 output = output.split("\n\nExiting...", 1)[0]
                 output = output.replace("<|im_end|>", "").strip()
