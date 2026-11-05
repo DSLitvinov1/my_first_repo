@@ -68,7 +68,7 @@ if ($LASTEXITCODE -ne 0) {throw 'OWNER_ED25519_PROVISIONING_REFUSED'}
 $sshFile=Join-Path $root 'remote-client-id_ed25519'
 if (Test-Path -LiteralPath $sshFile) {throw 'REMOTE_HOST_KEY_PREEXISTS'}
 RunNative (Join-Path $env:SystemRoot 'System32\OpenSSH\ssh-keygen.exe') @(
-  '-q','-t','ed25519','-a','32','-N','','-f',$sshFile,
+  '-q','-t','ed25519','-a','32','-N','""','-f',$sshFile,
   '-C','nf-personal-highwater')
 RunNative icacls.exe @($sshFile,'/inheritance:r','/grant:r',"${system}:F","${admin}:F")
 $hostPin='157.228.118.199 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGkpprqPMxHxDcqY0048vPwxYfXPfbrLWPbKtVmnoo7A'
