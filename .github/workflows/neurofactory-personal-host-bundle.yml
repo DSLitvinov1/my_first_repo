@@ -5,6 +5,7 @@ on:
     paths:
       - 'bridge/neurofactory/one_pc_candidate/personal_ssh_highwater.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_ssh_highwater_client.py'
+      - 'bridge/neurofactory/one_pc_candidate/personal_scoped_ssh_transport.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_windows_host_service.py'
       - 'bridge/neurofactory/one_pc_candidate/provision_personal_linux_witness.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_approve_safe_note.py'
@@ -39,7 +40,7 @@ jobs:
           New-Item -ItemType Directory $site -Force|Out-Null
           $wheels=Join-Path $env:RUNNER_TEMP 'nf-personal-wheels'
           New-Item -ItemType Directory $wheels|Out-Null
-          python -m pip download --disable-pip-version-check --no-input --only-binary=:all: --platform win_amd64 --python-version 312 --implementation cp --abi cp312 -d $wheels 'pywin32==311' 'cryptography==46.0.3'
+          python -m pip download --disable-pip-version-check --no-input --only-binary=:all: --platform win_amd64 --python-version 312 --implementation cp --abi cp312 -d $wheels 'pywin32==311' 'cryptography==46.0.3' 'paramiko==4.0.0' 'bcrypt==5.0.0' 'PyNaCl==1.6.2' 'invoke==3.0.3'
           if ($LASTEXITCODE -ne 0) {throw 'REQUIRED_WINDOWS_CRYPTO_WIN32_WHEELS_NOT_AVAILABLE'}
           foreach ($wheel in @(Get-ChildItem $wheels -File -Filter '*.whl')) {
               $tmp=Join-Path $env:RUNNER_TEMP ("wheel-"+[guid]::NewGuid().ToString('N'))
@@ -48,13 +49,13 @@ jobs:
               Expand-Archive -LiteralPath $zip -DestinationPath $site
           }
           @('python312.zip','.','../service','Lib/site-packages','Lib/site-packages/win32','Lib/site-packages/win32/lib','Lib/site-packages/pywin32_system32','import site') | Set-Content "$root/runtime/python312._pth" -Encoding ascii
-          foreach ($file in @('personal_ssh_highwater.py','personal_ssh_highwater_client.py','personal_windows_host_service.py','personal_approve_safe_note.py')) {
+          foreach ($file in @('personal_ssh_highwater.py','personal_ssh_highwater_client.py','personal_scoped_ssh_transport.py','personal_windows_host_service.py','personal_approve_safe_note.py','personal_approve_workspace_draft.py')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/$file" "$root/service/$file"
           }
           foreach ($file in @('Prepare-NeurofactoryPersonalHost.ps1','Start-NeurofactoryPersonalHost.ps1')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/windows_setup/$file" "$root/installer/$file"
           }
-          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography;import personal_ssh_highwater,personal_ssh_highwater_client,personal_windows_host_service,personal_approve_safe_note;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
+          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography,paramiko,bcrypt,nacl;import personal_ssh_highwater,personal_scoped_ssh_transport,personal_ssh_highwater_client,personal_windows_host_service,personal_approve_safe_note,personal_approve_workspace_draft;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_EMBEDDED_RUNTIME_IMPORT_FAILED'}
           & "$root/runtime/python.exe" -B -m compileall -q "$root/service"
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_CODE_COMPILE_FAILED'}
