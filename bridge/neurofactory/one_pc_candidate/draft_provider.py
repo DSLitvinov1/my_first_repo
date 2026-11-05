@@ -36,10 +36,28 @@ def _module(components: Path):
     import ollama_worker
     return ollama_worker
 
-def preflight(components: Path, model_preference: str):
+def _cloud_provider(workspace_dir: Path):
+    path=Path(__file__).resolve().with_name("cloud_ssh_draft_provider.py")
+    if path.is_symlink() or not path.is_file():
+        raise DraftProviderDenied("Pinned cloud SSH provider missing")
+    spec=importlib.util.spec_from_file_location("_nf_cloud_ssh_draft",path)
+    if spec is None or spec.loader is None:
+        raise DraftProviderDenied("Cloud draft module cannot load")
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def preflight(components: Path, model_preference: str, *, workspace_dir: Path | None = None):
     if type(model_preference) is not str or model_preference not in ("auto",)+SUPPORTED:
         raise DraftProviderDenied("Unsupported local Qwen")
+    # Even with remote model transport, the installed CORE/PROVIDERS source
+    # must pass the same exact pinned Git-blob verification first.
     worker=_module(components)
+    if workspace_dir is not None and model_preference in ("auto","qwen2.5-coder:1.5b"):
+        cloud=_cloud_provider(workspace_dir)
+        if cloud.available(workspace_dir):
+            return cloud,cloud.MODEL
     choices=SUPPORTED if model_preference=="auto" else (model_preference,)
     errors=[]
     for model in choices:
@@ -69,6 +87,13 @@ def generate(components: Path, workspace_dir: Path, task: dict, *, model: str):
         raise DraftProviderDenied("Invalid draft content")
     if type(model) is not str or model not in SUPPORTED:
         raise DraftProviderDenied("Unsupported untrusted draft model")
+    if model=="qwen2.5-coder:1.5b":
+        cloud=_cloud_provider(workspace_dir)
+        if cloud.available(workspace_dir):
+            # No Windows model memory is required: GGUF and inference stay on
+            # the user's existing Linux machine; only a bounded untrusted
+            # proposal comes back, with no command/CORE/HOST authority.
+            return cloud.generate(workspace_dir,task,model=model)
     ledger=workspace_dir/"provider_attempt_ledger"
     ledger.mkdir(mode=0o700,exist_ok=True)
     if ledger.is_symlink() or not ledger.is_dir():
