@@ -220,8 +220,42 @@ def main():
             call(["icacls",str(output),"/setowner","*S-1-5-32-544"])
         icacls(binfolder,service_sid,"RX")
         source=Path(__file__).resolve().parents[1]/"one_pc_candidate"
-        for name in ("scm_recipient_core_claim_guard.py","core_readonly_observer.py"):
+        # Stage the FULL real service dependency closure inside receiver_bin.
+        # Previously remote-required SCM could terminate due to a missing
+        # scm_witness_service_policy import instead of genuinely refusing a
+        # missing signed witness policy, making a negative test misleading.
+        required_receiver_modules=(
+            "scm_recipient_core_claim_guard.py",
+            "core_readonly_observer.py",
+            "scm_witness_service_policy.py",
+            "scm_one_effect_witness_fence.py",
+            "protected_host_core_witness_binding.py",
+            "protected_host_remote_bridge.py",
+            "protected_host_attempt_ledger.py",
+            "protected_host_task_authority.py",
+            "remote_highwater_client.py",
+            "independent_witness_receipt.py",
+        )
+        for name in required_receiver_modules:
             shutil.copy2(source/name,binfolder/name)
+        assert all((binfolder/name).is_file()
+                   for name in required_receiver_modules)
+        # Import all dependencies from the ACTUAL standalone SCM receiver
+        # bin directory, not the source repository Python search path.
+        # The negative missing-policy test must prove the real admission
+        # loader is usable before claiming successful startup refusal.
+        import_result=call([
+            sys.executable,"-B","-c",
+            "import sys;sys.path.insert(0,sys.argv[1]);"
+            "from scm_witness_service_policy import load_scm_witness_guard,"
+            "ScmWitnessPolicyDenied;"
+            "from scm_one_effect_witness_fence import OneShotScmRecipientFence;"
+            "from protected_host_remote_bridge import OneShotHostWitnessBridge;"
+            "print('NF_SCOPED_REMOTE_WITNESS_SERVICE_IMPORT=PASS')",
+            str(binfolder),
+        ])
+        assert "NF_SCOPED_REMOTE_WITNESS_SERVICE_IMPORT=PASS" in import_result.stdout
+        print("NF_ACTUAL_SCM_EXTERNAL_WITNESS_FULL_IMPORT_CLOSURE=PASS_CI_ONLY")
         icacls(worker_root,worker_sid,"M")
         # Admin provisions pin and never exposes owner PRIVATE to receiver.
         owner=Ed25519PrivateKey.generate()
