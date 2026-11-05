@@ -1,6 +1,7 @@
 """Single focused Windows regression: Qwen draft -> OWNER review, never auto-sign."""
 from __future__ import annotations
 
+from contextlib import closing
 from hashlib import sha256
 from pathlib import Path
 import sqlite3
@@ -22,7 +23,7 @@ class PersonalDraftReadOnlyAcceptance(unittest.TestCase):
         self.project_id = "b" * 32
         self.text = "Предложение: разработать сайт, форму заявок и подключить CRM."
         self.digest = sha256(self.text.encode("utf-8")).hexdigest()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn:
             conn.execute("CREATE TABLE projects(id TEXT PRIMARY KEY,name TEXT NOT NULL)")
             conn.execute("CREATE TABLE tasks("
                          "id TEXT PRIMARY KEY,project_id TEXT,"
@@ -42,7 +43,7 @@ class PersonalDraftReadOnlyAcceptance(unittest.TestCase):
             conn.commit()
 
     def alter(self,sql,value):
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn:
             conn.execute(sql,(value,))
             conn.commit()
 
