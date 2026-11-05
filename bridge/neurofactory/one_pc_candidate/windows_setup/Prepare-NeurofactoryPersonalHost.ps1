@@ -47,8 +47,8 @@ foreach($entry in @($man.entries)) {
 $admin='*S-1-5-32-544'
 $system='*S-1-5-18'
 $user='*'+$me.User.Value
-function RunNative([string]$exe,[string[]]$args) {
-  & $exe @args | Out-Null
+function RunNative([string]$exe,[string[]]$argumentVector) {
+  & $exe @argumentVector | Out-Null
   if ($LASTEXITCODE -ne 0) {throw "NATIVE_INSTALL_OPERATION_FAILED: $exe"}
 }
 New-Item -ItemType Directory -Path $target,$root -Force | Out-Null
