@@ -19,7 +19,10 @@ import time
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.exceptions import InvalidSignature
 
-from personal_ssh_highwater import _canon, REQ_SCHEMA, ACK_SCHEMA, DOMAIN
+from personal_ssh_highwater import (
+    _canon,REQ_SCHEMA,ACK_SCHEMA,DOMAIN,
+    STATUS_REQ_SCHEMA,STATUS_ACK_SCHEMA,STATUS_DOMAIN,
+)
 
 HOST="157.228.118.199"
 USER="cloudagent"
@@ -158,3 +161,93 @@ def reserve_personal_epoch(*,trusted_service_root:Path,claim:dict,
             json.JSONDecodeError) as exc:
         raise PersonalWitnessUnknown(
             "SSH or remote state ambiguous; NO AUTOMATIC RETRY") from exc
+
+
+def read_signed_remote_head(*,trusted_service_root:Path,
+                            pinned_public_raw:bytes,
+                            expected_source:str,expected_machine:str,
+                            expected_package:str):
+    """Read signed remote epoch without changing it; used at SCM startup.
+
+    An outage or forged head makes the SCM fail closed. No change to the
+    Linux SQLite counters occurs for this request.
+    """
+    import secrets
+    if os.name!="nt" or not trusted_service_root.is_absolute() or (
+            type(pinned_public_raw) is not bytes or len(pinned_public_raw)!=32):
+        _unknown("Windows pinned status environment unavailable")
+    known=_file(trusted_service_root/"known_hosts",maximum=500)
+    key=_file(trusted_service_root/"remote-client-id_ed25519",maximum=5000)
+    if known.read_text("ascii").strip()!=HOST+" ssh-ed25519 "+HOST_KEY:
+        _unknown("remote host pin changed")
+    ssh=Path(os.environ.get("SystemRoot",r"C:\Windows"))/"System32"/"OpenSSH"/"ssh.exe"
+    if not ssh.is_file():
+        _unknown("Windows OpenSSH missing")
+    nonce=secrets.token_hex(16)
+    request=_canon({"schema":STATUS_REQ_SCHEMA,"nonce":nonce})
+    cmd=[
+        str(ssh),"-T",
+        "-o","BatchMode=yes",
+        "-o","StrictHostKeyChecking=yes",
+        "-o",f"UserKnownHostsFile={known}",
+        "-o","GlobalKnownHostsFile=NUL",
+        "-o","IdentitiesOnly=yes",
+        "-o","PasswordAuthentication=no",
+        "-o","KbdInteractiveAuthentication=no",
+        "-o","ConnectTimeout=8",
+        "-o","ConnectionAttempts=1",
+        "-o","ClearAllForwardings=yes",
+        "-o","HostKeyAlgorithms=ssh-ed25519",
+        "-o","LogLevel=ERROR",
+        "-i",str(key),f"{USER}@{HOST}",
+    ]
+    started=int(time.time())
+    try:
+        returned=subprocess.run(
+            cmd,input=request,capture_output=True,timeout=20,check=False)
+        if returned.returncode!=0 or not 150<=len(returned.stdout)<=3000:
+            _unknown("remote signed head inaccessible")
+        doc=json.loads(returned.stdout.decode("ascii"),
+                       object_pairs_hook=_unique)
+        if type(doc) is not dict or set(doc)!={"receipt","signature_base64"}:
+            _unknown("remote status malformed")
+        ack=doc["receipt"]
+        if (type(ack) is not dict or
+                set(ack)!={"schema","status","nonce","epoch","ledger_head",
+                           "reservations","source_sha40","machine_sha256",
+                           "package_sha256","recorded_unix","expires_unix",
+                           "production_release_attested"} or
+                ack.get("schema")!=STATUS_ACK_SCHEMA or
+                ack.get("status")!="SIGNED_REMOTE_READ_ONLY_HIGHWATER" or
+                ack.get("nonce")!=nonce or
+                ack.get("source_sha40")!=expected_source or
+                ack.get("machine_sha256")!=expected_machine or
+                ack.get("package_sha256")!=expected_package or
+                type(ack.get("epoch")) is not int or
+                type(ack.get("reservations")) is not int or
+                ack["epoch"]!=ack["reservations"] or
+                type(ack.get("ledger_head")) is not str or
+                not HEX64.fullmatch(ack["ledger_head"]) or
+                ack.get("production_release_attested") is not False):
+            _unknown("remote head not exact operator scope")
+        signature=base64.b64decode(doc["signature_base64"],validate=True)
+        if len(signature)!=64:
+            _unknown("wrong signed status size")
+        Ed25519PublicKey.from_public_bytes(pinned_public_raw).verify(
+            signature,STATUS_DOMAIN+_canon(ack))
+        now=int(time.time())
+        if (type(ack.get("recorded_unix")) is not int or
+                type(ack.get("expires_unix")) is not int or
+                ack["recorded_unix"]>now+2 or
+                ack["recorded_unix"]<started-3 or
+                not now<ack["expires_unix"]<=now+32 or
+                not started<=now<=started+22):
+            _unknown("signed remote status expired or clocks drifted")
+        return {"epoch":ack["epoch"],
+                "ledger_head":ack["ledger_head"],
+                "remote_status_signature_verified":True,
+                "production_effect_authorized_by_status":False}
+    except (OSError,ValueError,UnicodeError,subprocess.TimeoutExpired,
+            InvalidSignature,TypeError) as exc:
+        raise PersonalWitnessUnknown(
+            "remote signed head unavailable or false, no effects") from exc
