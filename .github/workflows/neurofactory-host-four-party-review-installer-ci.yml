@@ -1,10 +1,15 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-two-node-witness-clock-fix-20261105]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-two-node-witness-clock-fix-20261105, neurofactory-p0-fix-installed-ui-startup-20261105, neurofactory-p0-usable-cloud-qwen-workspace-20261105]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py
+      - bridge/neurofactory/one_pc_candidate/installed_integrity.py
+      - bridge/neurofactory/one_pc_candidate/cloud_ssh_draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/local_workspace.py
+      - bridge/neurofactory/control_ui/workspace.js
       - bridge/neurofactory/one_pc_candidate/scm_witness_service_policy.py
       - bridge/neurofactory/trusted_host/windows_scm_sandbox_receiver.py
       - bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py
@@ -70,7 +75,7 @@ jobs:
           if ((Get-Item $vendorZip).Length -ne 11133606 -or
               (Get-FileHash $vendorZip -Algorithm SHA256).Hash.ToUpperInvariant() -cne '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3') {throw 'REVIEW_VENDOR_RUNTIME_HASH_MISMATCH'}
           Expand-Archive -LiteralPath $vendorZip -DestinationPath "$stage\runtime"
-          foreach ($file in @('local_workspace.py','installed_integrity.py','draft_provider.py','codex_sites_bridge.py','core_readonly_observer.py','signed_owner_admission.py','cloud_untrusted_proposal.py','test_installed_provider_import.py','restore_offline.py')) {
+          foreach ($file in @('local_workspace.py','installed_integrity.py','draft_provider.py','codex_sites_bridge.py','core_readonly_observer.py','signed_owner_admission.py','cloud_untrusted_proposal.py','cloud_ssh_draft_provider.py','test_installed_provider_import.py','restore_offline.py')) {
               Copy-Item -LiteralPath "bridge/neurofactory/one_pc_candidate/$file" -Destination "$stage\app\$file"
           }
           foreach ($file in @('index.html','styles.css','demo-data.js','app.js','workspace.js','integrations.js')) {
@@ -214,6 +219,9 @@ jobs:
           if (!(Test-Path "$install\app\local_workspace.py") -or !(Test-Path "$install\runtime\python.exe")) {
               throw 'REVIEW_MACHINE_INCOMPLETE_INSTALL'
           }
+          if (!(Test-Path "$install\app\cloud_ssh_draft_provider.py")) {
+              throw 'REAL_CLOUD_QWEN_WORKSPACE_PROVIDER_NOT_INSTALLED'
+          }
           if (!(Test-Path "$install\app\cloud_untrusted_proposal.py")) {
               throw 'CLOUD_QWEN_DRAFT_IMPORTER_NOT_INSTALLED'
           }
@@ -250,6 +258,43 @@ jobs:
           Write-Output 'NF_REAL_WINDOWS_HOST_SIGNED_SCOPE_VERIFIER_STAGED=PASS_NO_LIVE_AUTHORITY'
           Write-Output 'NF_REAL_MACHINE_WIDE_UI_CORE_HOST_SOURCE_INSTALL=PASS_REVIEW_ONLY'
           Write-Output 'NF_REVIEW_MACHINE_SERVICE_INSTALL_AND_AUTO_EXECUTION=BLOCKED'
+          # Acceptance of the actual deliverable, not another isolated
+          # component-only "success": it MUST start its installed UI with
+          # strict component manifest verification still enabled.
+          $proofData=Join-Path $env:RUNNER_TEMP 'nf-review-real-ui-smoke-data'
+          $uiProcess=$null
+          try {
+              $python=Join-Path $install 'runtime\python.exe'
+              $entry=Join-Path $install 'app\local_workspace.py'
+              $ui=Join-Path $install 'ui'
+              $components=Join-Path $install 'components'
+              $args=@('-B',"`"$entry`"",'--data-dir',"`"$proofData`"",
+                      '--ui-dir',"`"$ui`"",'--components-dir',"`"$components`"",
+                      '--port','18766') -join ' '
+              $uiProcess=Start-Process -FilePath $python -ArgumentList $args -PassThru
+              $ready=$false
+              for ($i=0; $i -lt 35; $i++) {
+                  if ($uiProcess.HasExited) {throw 'REAL_INSTALLED_UI_PROCESS_FAILED_AT_START'}
+                  try {
+                      $page=Invoke-WebRequest 'http://127.0.0.1:18766/' -UseBasicParsing -TimeoutSec 1
+                      $bootstrap=Invoke-RestMethod 'http://127.0.0.1:18766/api/bootstrap' -TimeoutSec 1
+                      if ($page.StatusCode -eq 200 -and
+                          $bootstrap.mode -ceq 'LOCAL_DRAFT_ONLY') {
+                          $ready=$true
+                          break
+                      }
+                  } catch {
+                      Start-Sleep -Milliseconds 400
+                  }
+              }
+              if (!$ready) {throw 'REAL_INSTALLED_UI_WITH_COMPONENT_MANIFEST_NOT_RUNNING'}
+              Write-Output 'NF_ACTUAL_INSTALLED_UI_HTTP_200_AND_DRAFT_BOOTSTRAP=PASS'
+              Write-Output 'NF_INSTALLED_COMPONENT_INTEGRITY=PINNED_VERIFIED_NO_BYPASS'
+          } finally {
+              if ($null -ne $uiProcess -and !$uiProcess.HasExited) {
+                  Stop-Process -Id $uiProcess.Id -Force
+              }
+          }
           $uninstall=Join-Path $install 'unins000.exe'
           $u=Start-Process -PassThru -Wait -FilePath $uninstall -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
           if ($u.ExitCode -ne 0 -or (Test-Path "$install\app\local_workspace.py")) {throw 'REVIEW_MACHINE_UNINSTALL_FAILED'}

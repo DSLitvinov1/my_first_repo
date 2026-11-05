@@ -114,6 +114,7 @@
       row(coreBox,"Разрешения","Только чтение; Qwen, браузер и пользовательский токен не могут запускать CORE/HOST.");
       row(summary,"Ollama",models.ollama_reachable?"Доступен локальный интерфейс. Настоящая генерация не проверена.":"Локальный сервер модели недоступен");
       if(models.installed_qwen.length)row(summary,"Установленные Qwen",models.installed_qwen.join(", "));
+      if(models.cloud_qwen_available)row(summary,"Qwen на облачном сервере","Подключена Qwen Coder 1.5B — предложения создаются на нашем Linux, без нагрузки модели на Windows.");
       const probeBox=box("Проверка локальной Qwen","Только явный запрос к установленной модели; никаких операций с файлами или очередью");
       row(probeBox,"Происхождение модели","Ответ Ollama не доказывает подлинность весов Qwen. Подтверждение защищённого HOST не выдаётся.");
       const probe=el("button","Проверить реальный ответ локальной модели","outline-btn");
@@ -181,7 +182,7 @@
         }else if(health.manual_draft_proposal_available){
           const run=el("button","Получить предложение Qwen (без запуска CORE/HOST)","outline-btn");
           run.type="button";
-          run.disabled=!models.installed_qwen.length;
+          run.disabled=!models.installed_qwen.length&&!models.cloud_qwen_available;
           run.addEventListener("click",async()=>{
             run.disabled=true;
             try{
@@ -217,6 +218,7 @@
           ["qwen2.5-coder:1.5b","Qwen Coder 1.5B"]]){
           const option=el("option",label);option.value=value;modelChoice.append(option);
         }
+        if(models.cloud_qwen_available)modelChoice.value="qwen2.5-coder:1.5b";
         append(modelField,el("label","Предпочитаемый ИИ"),modelChoice);
         taskForm.append(modelField);
         const taskButton=el("button","Сохранить задание","primary-btn");

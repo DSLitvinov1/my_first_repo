@@ -549,7 +549,23 @@ def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
                     self._json(404,{"error":"DRAFT_NOT_ELIGIBLE"});return
                 self._json(200,req);return
             if p.path=="/api/models":
-                self._json(200,local_models());return
+                choices=local_models()
+                module_path=Path(__file__).with_name("cloud_ssh_draft_provider.py")
+                online=False
+                if module_path.is_file() and not module_path.is_symlink():
+                    import importlib.util
+                    spec=importlib.util.spec_from_file_location(
+                        "_nf_readonly_cloud_status",module_path)
+                    if spec and spec.loader:
+                        provider=importlib.util.module_from_spec(spec)
+                        try:
+                            spec.loader.exec_module(provider)
+                            online=provider.available(store.directory)
+                        except (OSError,ValueError,ImportError):
+                            online=False
+                choices["cloud_qwen_available"]=bool(online)
+                choices["cloud_qwen_model"]="qwen2.5-coder:1.5b" if online else None
+                self._json(200,choices);return
             if p.path=="/api/model-checks":
                 self._json(200,{"checks":store.model_checks()});return
             if p.path=="/api/task-proposals":
@@ -597,7 +613,9 @@ def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
                     spec.loader.exec_module(provider)
                     task=store.find_task(body["task_id"])
                     try:
-                        worker,model=provider.preflight(components_dir,task["model_preference"])
+                        worker,model=provider.preflight(
+                            components_dir,task["model_preference"],
+                            workspace_dir=store.directory)
                     except provider.DraftProviderDenied:
                         raise WorkspaceDenied("Local model missing or resource guard")
                     store.reserve_task_proposal(task["id"],model)
