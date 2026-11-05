@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives import serialization
 from personal_ssh_highwater import _canon
 # Deliberately no import of the LocalService-only win32 SCM module:
 # user approval works without installing pywin32 or admin privileges.
-OWNER_DOMAIN=b"NF_PERSONAL_OWNER_NOTE_APPROVAL_V1\\x00"
+OWNER_DOMAIN=b"NF_PERSONAL_OWNER_NOTE_APPROVAL_V1\x00"
 PERMIT_SCHEMA="nf.personal.owner_signed_note.v1"
 ALLOWED_ACTION="write_note"
 CONFIG_SCHEMA="nf.personal.host.operator_pinned.v1"
