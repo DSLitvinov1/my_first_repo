@@ -1,7 +1,7 @@
 name: Neurofactory real restricted Windows SCM requires external signed witness before fixed effect (CI ONLY)
 on:
   push:
-    branches: [neurofactory-p0-scm-external-witness-admission-20261105]
+    branches: [neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-scm-remote-runtime-proof-20261105]
     paths:
       - 'bridge/neurofactory/trusted_host/windows_named_pipe_pilot_receiver.py'
       - 'bridge/neurofactory/trusted_host/windows_scm_sandbox_receiver.py'
