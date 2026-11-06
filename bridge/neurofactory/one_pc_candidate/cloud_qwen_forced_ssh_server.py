@@ -170,14 +170,26 @@ def main():
                 # Matching the whole prompt would ALWAYS fail for user tasks.
                 # Anchor on the first 96 chars of our exact known fixed
                 # prompt, then discard the ENTIRE echoed prompt line.
-                marker = "\n> " + prompt[:96]
-                position = completed.stdout.rfind(marker)
-                if completed.returncode != 0 or position < 0:
-                    return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
-                line_end = completed.stdout.find("\n", position + len(marker))
-                if line_end < 0:
-                    return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
-                output = completed.stdout[line_end + 1:]
+                if message["model"] == MODEL_Q35_NAME:
+                    # Verified Qwen3.5 CLI prints the entire multi-line
+                    # prompt. Extract AFTER the full exact trusted prompt,
+                    # never include echoed user objective as model output.
+                    marker = "\n> " + prompt
+                    position = completed.stdout.rfind(marker)
+                    if completed.returncode != 0 or position < 0:
+                        return denied("MODEL_STDOUT_FORMAT_UNKNOWN", message["model"])
+                    output = completed.stdout[position + len(marker):]
+                else:
+                    # Preserve previously verified 1.5B abbreviated-echo
+                    # extraction for compatibility with existing UI tasks.
+                    marker = "\n> " + prompt[:96]
+                    position = completed.stdout.rfind(marker)
+                    if completed.returncode != 0 or position < 0:
+                        return denied("MODEL_STDOUT_FORMAT_UNKNOWN", message["model"])
+                    line_end = completed.stdout.find("\n", position + len(marker))
+                    if line_end < 0:
+                        return denied("MODEL_STDOUT_FORMAT_UNKNOWN", message["model"])
+                    output = completed.stdout[line_end + 1:]
                 if "\n[ Prompt:" not in output:
                     return denied("MODEL_STDOUT_FORMAT_UNKNOWN")
                 output = output.split("\n[ Prompt:", 1)[0]
