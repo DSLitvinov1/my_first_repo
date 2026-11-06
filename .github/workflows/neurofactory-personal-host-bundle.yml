@@ -16,6 +16,7 @@ on:
       - 'bridge/neurofactory/one_pc_candidate/local_workspace.py'
       - 'bridge/neurofactory/development/core_owned/one_task_core.py'
       - 'bridge/neurofactory/one_pc_candidate/test_personal_core9_host_contract.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_personal_core9_full_service_ci.py'
       - 'bridge/neurofactory/one_pc_candidate/windows_setup/Provision-NeurofactoryPersonalCore9.ps1'
       - 'bridge/neurofactory/one_pc_candidate/test_personal_project_file_capability.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_approve_workspace_draft.py'
@@ -79,6 +80,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {throw 'CORE_QWEN_PROJECT_FILE_OWNER_SIGNATURE_REGRESSION'}
           & "$root/runtime/python.exe" -B -m unittest discover -s "bridge/neurofactory/one_pc_candidate" -p "test_personal_core9_host_contract.py" -v
           if ($LASTEXITCODE -ne 0) {throw 'CORE9_SIGNED_OWNER_PERSONAL_HOST_E2E_CONTRACT_REGRESSION'}
+          & "$root/runtime/python.exe" -B -m unittest discover -s "bridge/neurofactory/one_pc_candidate" -p "test_personal_core9_full_service_ci.py" -v
+          if ($LASTEXITCODE -ne 0) {throw 'CORE9_PROTECTED_SCM_DISPATCH_REPLAY_REGRESSION'}
           $records=@(Get-ChildItem $root -File -Recurse | Where-Object {$_.Name -ne 'bundle-manifest.json'} | Sort-Object FullName | ForEach-Object {
               [ordered]@{
                   path=$_.FullName.Substring($root.Length+1).Replace('\','/')
