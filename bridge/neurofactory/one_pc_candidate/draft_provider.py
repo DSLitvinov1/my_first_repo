@@ -14,7 +14,7 @@ import sys
 class DraftProviderDenied(ValueError):
     pass
 
-SUPPORTED=("qwen3:0.6b","qwen2.5-coder:1.5b")
+SUPPORTED=("qwen3:0.6b","qwen2.5-coder:1.5b","qwen3.5:9b")
 
 def _module(components: Path):
     local_verify=Path(__file__).resolve().with_name("installed_integrity.py")
@@ -54,10 +54,10 @@ def preflight(components: Path, model_preference: str, *, workspace_dir: Path | 
     # Even with remote model transport, the installed CORE/PROVIDERS source
     # must pass the same exact pinned Git-blob verification first.
     worker=_module(components)
-    if workspace_dir is not None and model_preference in ("auto","qwen2.5-coder:1.5b"):
+    if workspace_dir is not None and model_preference in ("auto","qwen2.5-coder:1.5b","qwen3.5:9b"):
         cloud=_cloud_provider(workspace_dir)
         if cloud.available(workspace_dir):
-            return cloud,cloud.MODEL
+            return cloud,(cloud.PRIMARY_MODEL if model_preference=="auto" else model_preference)
     choices=SUPPORTED if model_preference=="auto" else (model_preference,)
     errors=[]
     for model in choices:
@@ -87,7 +87,7 @@ def generate(components: Path, workspace_dir: Path, task: dict, *, model: str):
         raise DraftProviderDenied("Invalid draft content")
     if type(model) is not str or model not in SUPPORTED:
         raise DraftProviderDenied("Unsupported untrusted draft model")
-    if model=="qwen2.5-coder:1.5b":
+    if model in ("qwen2.5-coder:1.5b","qwen3.5:9b"):
         cloud=_cloud_provider(workspace_dir)
         if cloud.available(workspace_dir):
             # No Windows model memory is required: GGUF and inference stay on
