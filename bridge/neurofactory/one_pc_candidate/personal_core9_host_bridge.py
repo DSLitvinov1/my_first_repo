@@ -250,7 +250,7 @@ def verify_protected_core9_after_scm_start():
     """Only read existing queue and independently signed Linux HEAD."""
     root=h.ROOT/"core9"
     if not root.exists():
-        return "CORE9_NOT_PROVISIONED_NO_EXECUTION"
+        _deny("mandatory protected CORE9 queue missing; service boot refused")
     core=OneTaskCore(root,root/"git")
     snapshot=core.snapshot()
     state=snapshot["state"]

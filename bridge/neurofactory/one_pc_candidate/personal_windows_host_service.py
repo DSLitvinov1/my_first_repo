@@ -272,6 +272,12 @@ def _mark_executed(body,head):
 
 def perform_approved_safe_note(packet):
     """Only owner-signed fixed effect; CORE9 V2 requires a real claimed queue."""
+    if ((ROOT/"core9").is_dir()
+            and (type(packet) is not dict
+                 or packet.get("schema")!="nf.personal.owner_core9_file_v2")):
+        # Once trusted CORE9 is provisioned, the older direct note/project
+        # signature may NOT bypass durable CORE lease and completion.
+        _deny("strict CORE9 claim required for every new file effect")
     if type(packet) is dict and packet.get("schema")=="nf.personal.owner_core9_file_v2":
         # Do not make CORE admission a bool settable by model/UI. The
         # separate receiver verifies two owner signatures, real CORE

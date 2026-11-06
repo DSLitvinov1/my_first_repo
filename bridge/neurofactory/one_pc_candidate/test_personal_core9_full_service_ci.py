@@ -84,6 +84,11 @@ class FullCore9ServiceDispatchDisposable(unittest.TestCase):
 
     def test_service_dispatch_existing_core_once_and_reboot_readback(self):
         self.assertFalse(self.item.file.exists())
+        # Previous direct-owner note route is intentionally blocked once
+        # the real OneTaskCore queue is installed.
+        from personal_windows_host_service import PersonalHostDenied
+        with self.assertRaises(PersonalHostDenied):
+            h.perform_approved_safe_note({"schema":"nf.personal.owner_signed_note.v1"})
         result=h.perform_approved_safe_note(self.item.packet)
         self.assertEqual(result["status"],
                          "CORE9_OWNER_QWEN_PHYSICAL_HOST_FILE_EXECUTED_ONCE")
