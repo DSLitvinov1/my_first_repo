@@ -1,12 +1,13 @@
 name: Neurofactory HOST signed-permission verifier installed in Windows review bundle CI
 on:
   push:
-    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-two-node-witness-clock-fix-20261105, neurofactory-p0-fix-installed-ui-startup-20261105, neurofactory-p0-usable-cloud-qwen-workspace-20261105]
+    branches: [neurofactory-host-real-owner-task-permits-20261027, neurofactory-p0-host-trust-acl-fix-20261030, neurofactory-p0-signed-remote-service-bridge-20261030, neurofactory-p0-host-durable-attempts-20261031, neurofactory-p0-no-silent-ledger-recreate-20261102, neurofactory-p0-core-lease-signed-witness-bind-20261102, neurofactory-p1-current-core-in-review-installer-20261102, neurofactory-p1-combined-core-scm-review-20261103, neurofactory-p0-recipient-signed-witness-fence-20261103, neurofactory-p0-reconcile-sidtype-tls-review-20261103, neurofactory-p1-physical-acl-generic-rights-20261103, neurofactory-p0-cloud-qwen-real-windows-scm-ci-20261103, neurofactory-p0-scm-external-witness-admission-20261105, neurofactory-p0-real-two-node-witness-clock-fix-20261105, neurofactory-p0-fix-installed-ui-startup-20261105, neurofactory-p0-usable-cloud-qwen-workspace-20261105, neurofactory-qwen35-9b-primary-20261106]
     paths:
       - bridge/neurofactory/one_pc_candidate/windows_setup/NeurofactoryMachineReview.iss
       - bridge/neurofactory/one_pc_candidate/cloud_untrusted_proposal.py
       - bridge/neurofactory/one_pc_candidate/installed_integrity.py
       - bridge/neurofactory/one_pc_candidate/cloud_ssh_draft_provider.py
+      - bridge/neurofactory/one_pc_candidate/cloud_qwen_forced_ssh_server.py
       - bridge/neurofactory/one_pc_candidate/draft_provider.py
       - bridge/neurofactory/one_pc_candidate/local_workspace.py
       - bridge/neurofactory/control_ui/workspace.js
@@ -228,6 +229,10 @@ jobs:
           $appDir=Join-Path $install 'app'
           & "$install\runtime\python.exe" -B -c "import sys;sys.path.insert(0,sys.argv[1]);import cloud_untrusted_proposal as c;assert callable(c.stage_untrusted_cloud_draft_once);assert c._SCHEMA=='nf.onepc.cloud_untrusted_qwen_draft.ci.v1';print('NF_INSTALLED_CLOUD_QWEN_DRAFT_IMPORT=PASS_DATA_ONLY')" "$appDir"
           if ($LASTEXITCODE -ne 0) {throw 'INSTALLED_CLOUD_QWEN_IMPORT_FAILED'}
+          # No model download on CI. Verify the actual deployable Windows app
+          # accepts exactly the new pinned cloud model and retains 1.5B.
+          & "$install\runtime\python.exe" -B -c "import sys;sys.path.insert(0,sys.argv[1]);import cloud_ssh_draft_provider as q;import draft_provider as d;import local_workspace as w;assert q.PRIMARY_MODEL=='qwen3.5:9b';assert q.MODEL_SHA_BY_NAME[q.PRIMARY_MODEL]=='cd76ec205963b3b33350093e6904d9de16c4e666fd104e1f632d25c7f15f2a13';assert q.MODEL=='qwen2.5-coder:1.5b';assert q.PRIMARY_MODEL in d.SUPPORTED and q.PRIMARY_MODEL in w.SUPPORTED_QWEN;assert q.MODEL in d.SUPPORTED and q.MODEL in w.SUPPORTED_QWEN;print('NF_INSTALLED_QWEN35_PINNED_PRIMARY_PLUS_CODER_FALLBACK=PASS_DRAFT_ONLY')" "$appDir"
+          if ($LASTEXITCODE -ne 0) {throw 'PINNED_QWEN35_UI_MODEL_SELECTION_FAILED'}
           $physicalAudit=Join-Path $install 'review-host\physical_host_production_preflight.ps1'
           if (!(Test-Path $physicalAudit)) {throw 'PHYSICAL_HOST_REQUIRED_PREFLIGHT_NOT_INSTALLED'}
           $text=Get-Content -LiteralPath $physicalAudit -Raw -Encoding UTF8
