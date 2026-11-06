@@ -23,6 +23,13 @@ MODEL = Path("/home/cloudagent/neurofactory-lab/models/qwen2.5-coder-1.5b-instru
 LLAMA = Path("/home/cloudagent/neurofactory-lab/bin/llama-b12040/llama-cli")
 MODEL_SHA = "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"
 MODEL_NAME = "qwen2.5-coder:1.5b"
+MODEL_Q35_NAME = "qwen3.5:9b"
+MODEL_Q35 = Path("/home/cloudagent/neurofactory-lab/models/qwen3.5-9b-instruct-q4_k_m.gguf")
+MODEL_Q35_SHA = "cd76ec205963b3b33350093e6904d9de16c4e666fd104e1f632d25c7f15f2a13"
+# The existing 1.5B model remains a selectable, independently hash-checked
+# fallback. No model may be selected by a free-form path from the client.
+MODELS = {MODEL_Q35_NAME: (MODEL_Q35, MODEL_Q35_SHA),
+          MODEL_NAME: (MODEL, MODEL_SHA)}
 REQ_SCHEMA = "nf.cloud.qwen.one_draft_request.v1"
 RES_SCHEMA = "nf.cloud.qwen.one_draft_result.v1"
 HEX32 = re.compile(r"[a-f0-9]{32}\Z")
@@ -33,9 +40,9 @@ def emit(obj):
     print(json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":")), flush=True)
 
 
-def denied(code):
+def denied(code, model=MODEL_NAME):
     emit({"schema": RES_SCHEMA, "status": "UNKNOWN", "error_code": code,
-          "model": MODEL_NAME, "automatic_retry_allowed": False,
+          "model": model, "automatic_retry_allowed": False,
           "execution_allowed": False})
     return 1
 
@@ -53,7 +60,7 @@ def _validate(message):
     if (type(message) is not dict or set(message) !=
             {"schema", "task_id", "project_id", "objective", "model", "nonce"} or
             message["schema"] != REQ_SCHEMA or
-            message["model"] != MODEL_NAME or
+            message["model"] not in MODELS or
             any(type(message[key]) is not str or not HEX32.fullmatch(message[key])
                 for key in ("task_id", "project_id", "nonce")) or
             type(message["objective"]) is not str or
@@ -64,18 +71,20 @@ def _validate(message):
     return message
 
 
-def _hash_model_once():
+def _hash_model_once(model_name):
     hashed = sha256()
-    if not MODEL.is_file() or MODEL.is_symlink() or not LLAMA.is_file():
+    model_path, expected_sha = MODELS[model_name]
+    if not model_path.is_file() or model_path.is_symlink() or not LLAMA.is_file():
         raise RuntimeError("missing model")
-    with MODEL.open("rb") as file:
+    with model_path.open("rb") as file:
         while True:
             chunk = file.read(1 << 20)
             if not chunk:
                 break
             hashed.update(chunk)
-    if hashed.hexdigest() != MODEL_SHA:
+    if hashed.hexdigest() != expected_sha:
         raise RuntimeError("wrong model digest")
+    return model_path, expected_sha
 
 
 def _reserve_exactly_once(message):
@@ -119,20 +128,36 @@ def main():
             except (OSError, sqlite3.Error, RuntimeError):
                 return denied("DUPLICATE_OR_LEDGER_UNAVAILABLE")
             try:
-                _hash_model_once()
+                model_path, model_sha = _hash_model_once(message["model"])
                 prompt = (
                     "Ты помощник разработчика. Создай полезный краткий ЧЕРНОВИК ответа "
                     "на задачу пользователя. Ничего не запускай, не меняй файлы, "
                     "не утверждай, что задача выполнена. Верни только текст предложения.\n"
                     "Задача:\n" + message["objective"] + "\nОтвет:\n"
                 )
+                if message["model"] == MODEL_Q35_NAME:
+                    # New 9B on 8 shared vCPU: capped context, single-request
+                    # lock, no agent/tool authority and no internal reasoning
+                    # spill into a user's saved draft. Existing 1.5B unchanged.
+                    args = [str(LLAMA), "-m", str(model_path), "-p", prompt,
+                            "-n", "160", "-c", "4096", "-t", "5", "-tb", "5",
+                            "-ngl", "0", "--temp", "0.15",
+                            "-st", "--no-display-prompt", "--no-warmup",
+                            "--log-disable", "--color", "off",
+                            "--jinja", "--reasoning", "off",
+                            "--chat-template-kwargs", '{"enable_thinking":false}']
+                    timeout = 180
+                else:
+                    args = [str(LLAMA), "-m", str(model_path), "-p", prompt,
+                            "-n", "320", "-c", "2048", "-t", "3",
+                            "-ngl", "0", "--temp", "0.15",
+                            "-st", "--no-display-prompt", "--no-warmup",
+                            "--log-disable", "--color", "off"]
+                    timeout = 90
                 completed = subprocess.run(
-                    [str(LLAMA), "-m", str(MODEL), "-p", prompt, "-n", "320",
-                     "-c", "2048", "-t", "3", "-ngl", "0", "--temp", "0.15",
-                     "-st", "--no-display-prompt", "--no-warmup", "--log-disable",
-                     "--color", "off"],
+                    args,
                     capture_output=True, text=True, encoding="utf-8", errors="replace",
-                    timeout=90, check=False,
+                    timeout=timeout, check=False,
                 )
                 # llama-cli prints a spinner, terminal control codes and a
                 # model banner BEFORE the echoed prompt, even with
@@ -164,7 +189,7 @@ def main():
                 digest = sha256(output.encode("utf-8")).hexdigest()
                 emit({
                     "schema": RES_SCHEMA, "status": "PROPOSED_UNVERIFIED",
-                    "model": MODEL_NAME, "model_sha256": MODEL_SHA,
+                    "model": message["model"], "model_sha256": model_sha,
                     "task_id": message["task_id"], "nonce": message["nonce"],
                     "text": output, "response_sha256": digest,
                     "execution_allowed": False, "automatic_retry_allowed": False,
