@@ -1,7 +1,7 @@
 name: Neurofactory personal Windows SCM host and remote highwater deployable bundle
 on:
   push:
-    branches: [neurofactory-p0-personal-windows-host-remote-highwater-20261105, neurofactory-personal-core-qwen-host-projectfiles-20261106]
+    branches: [neurofactory-p0-personal-windows-host-remote-highwater-20261105, neurofactory-personal-core-qwen-host-projectfiles-20261106, neurofactory-personal-core9-claimed-receipt-scm-20261106]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/personal_ssh_highwater.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_ssh_highwater_client.py'
@@ -9,6 +9,14 @@ on:
       - 'bridge/neurofactory/one_pc_candidate/personal_windows_host_service.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_project_file_effect.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_core_qwen_file_approval.py'
+      - 'bridge/neurofactory/one_pc_candidate/personal_core9_host_bridge.py'
+      - 'bridge/neurofactory/one_pc_candidate/personal_core9_owner_approval.py'
+      - 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py'
+      - 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py'
+      - 'bridge/neurofactory/one_pc_candidate/local_workspace.py'
+      - 'bridge/neurofactory/development/core_owned/one_task_core.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_personal_core9_host_contract.py'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/Provision-NeurofactoryPersonalCore9.ps1'
       - 'bridge/neurofactory/one_pc_candidate/test_personal_project_file_capability.py'
       - 'bridge/neurofactory/one_pc_candidate/personal_approve_workspace_draft.py'
       - 'bridge/neurofactory/one_pc_candidate/provision_personal_linux_witness.py'
@@ -55,19 +63,22 @@ jobs:
               Expand-Archive -LiteralPath $zip -DestinationPath $site
           }
           @('python312.zip','.','../service','Lib/site-packages','Lib/site-packages/win32','Lib/site-packages/win32/lib','Lib/site-packages/pywin32_system32','import site') | Set-Content "$root/runtime/python312._pth" -Encoding ascii
-          foreach ($file in @('personal_ssh_highwater.py','personal_ssh_highwater_client.py','personal_scoped_ssh_transport.py','personal_windows_host_service.py','personal_approve_safe_note.py','personal_approve_workspace_draft.py','personal_project_file_effect.py','personal_core_qwen_file_approval.py')) {
+          foreach ($file in @('personal_ssh_highwater.py','personal_ssh_highwater_client.py','personal_scoped_ssh_transport.py','personal_windows_host_service.py','personal_approve_safe_note.py','personal_approve_workspace_draft.py','personal_project_file_effect.py','personal_core_qwen_file_approval.py','personal_core9_host_bridge.py','personal_core9_owner_approval.py','signed_owner_admission.py','core_readonly_observer.py','local_workspace.py')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/$file" "$root/service/$file"
           }
-          foreach ($file in @('Prepare-NeurofactoryPersonalHost.ps1','Start-NeurofactoryPersonalHost.ps1','Provision-NeurofactoryPersonalProjectFolder.ps1','Verify-NeurofactoryAfterWindowsReboot.ps1')) {
+          Copy-Item "bridge/neurofactory/development/core_owned/one_task_core.py" "$root/service/one_task_core.py"
+          foreach ($file in @('Prepare-NeurofactoryPersonalHost.ps1','Start-NeurofactoryPersonalHost.ps1','Provision-NeurofactoryPersonalProjectFolder.ps1','Verify-NeurofactoryAfterWindowsReboot.ps1','Provision-NeurofactoryPersonalCore9.ps1')) {
               Copy-Item "bridge/neurofactory/one_pc_candidate/windows_setup/$file" "$root/installer/$file"
           }
-          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography,paramiko,bcrypt,nacl;import personal_ssh_highwater,personal_scoped_ssh_transport,personal_ssh_highwater_client,personal_windows_host_service,personal_approve_safe_note,personal_approve_workspace_draft,personal_project_file_effect,personal_core_qwen_file_approval;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
+          & "$root/runtime/python.exe" -B -c 'import win32service,win32serviceutil,win32event,servicemanager,cryptography,paramiko,bcrypt,nacl;import personal_ssh_highwater,personal_scoped_ssh_transport,personal_ssh_highwater_client,personal_windows_host_service,personal_approve_safe_note,personal_approve_workspace_draft,personal_project_file_effect,personal_core_qwen_file_approval,one_task_core,local_workspace,core_readonly_observer,signed_owner_admission,personal_core9_host_bridge,personal_core9_owner_approval;print("NF_PERSONAL_SEALED_WIN32_SCM_RUNTIME_IMPORT=PASS")'
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_EMBEDDED_RUNTIME_IMPORT_FAILED'}
           & "$root/runtime/python.exe" -B -m compileall -q "$root/service"
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_HOST_CODE_COMPILE_FAILED'}
           # One focused physical-Windows-API compatible regression only.
           & "$root/runtime/python.exe" -B -m unittest discover -s "bridge/neurofactory/one_pc_candidate" -p "test_personal_project_file_capability.py" -v
           if ($LASTEXITCODE -ne 0) {throw 'CORE_QWEN_PROJECT_FILE_OWNER_SIGNATURE_REGRESSION'}
+          & "$root/runtime/python.exe" -B -m unittest discover -s "bridge/neurofactory/one_pc_candidate" -p "test_personal_core9_host_contract.py" -v
+          if ($LASTEXITCODE -ne 0) {throw 'CORE9_SIGNED_OWNER_PERSONAL_HOST_E2E_CONTRACT_REGRESSION'}
           $records=@(Get-ChildItem $root -File -Recurse | Where-Object {$_.Name -ne 'bundle-manifest.json'} | Sort-Object FullName | ForEach-Object {
               [ordered]@{
                   path=$_.FullName.Substring($root.Length+1).Replace('\','/')

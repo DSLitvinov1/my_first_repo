@@ -271,7 +271,13 @@ def _mark_executed(body,head):
         con.execute("COMMIT")
 
 def perform_approved_safe_note(packet):
-    """Single owner-signed permitted note. Never called directly by Qwen."""
+    """Only owner-signed fixed effect; CORE9 V2 requires a real claimed queue."""
+    if type(packet) is dict and packet.get("schema")=="nf.personal.owner_core9_file_v2":
+        # Do not make CORE admission a bool settable by model/UI. The
+        # separate receiver verifies two owner signatures, real CORE
+        # SQLite CLAIMED lease, Linux epoch and durable file completion.
+        from personal_core9_host_bridge import run_signed_core9_project_file
+        return run_signed_core9_project_file(packet)
     operator,owner,witness=_config()
     body=_signed_body(packet,operator,owner,int(time.time()))
     # The project directory is an operator-provisioned service-SID sandbox.
@@ -368,6 +374,10 @@ class NeurofactoryPersonalHost(win32serviceutil.ServiceFramework):
         # Require authentic, consistent Linux highwater before ever accepting
         # an owner-approved task. Offline/rollback/UNKNOWN -> service stops.
         assert_external_head_matches_local_fence()
+        # Fail closed if an existing protected CORE9 checkpoint/file no
+        # longer matches HOST durable ledger and signed Linux witness.
+        from personal_core9_host_bridge import verify_protected_core9_after_scm_start
+        verify_protected_core9_after_scm_start()
         seen=set()
         while not self.stopping.is_set():
             # Both inbox and operator-supplied config must have separately
