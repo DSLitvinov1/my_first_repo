@@ -22,7 +22,7 @@ _CORE_TASK = re.compile(r"NF-DEV-05-Q[0-9]{3}\Z")
 _SHA40 = re.compile(r"[a-f0-9]{40}\Z")
 _SHA64 = re.compile(r"[a-f0-9]{64}\Z")
 _MODELS = frozenset(("qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:7b",
-                     "qwen2.5-coder:1.5b"))
+                     "qwen2.5-coder:1.5b", "qwen3.5:9b"))
 _CORE_SPEC_KEYS = frozenset((
     "schema", "task_id", "project_id", "target", "objective",
     "source_sha", "source_sha256", "model", "reserved_units",
@@ -64,7 +64,7 @@ def _one_draft(store, draft_id):
             row[4] != "DRAFT_PENDING_OWNER_AUTH" or
             type(row[2]) is not str or not 25 <= len(row[2]) <= 320 or
             any(ord(c) < 32 for c in row[2]) or
-            row[3] not in ("auto", "qwen3:0.6b", "qwen2.5-coder:1.5b")):
+            row[3] not in ("auto", "qwen3:0.6b", "qwen2.5-coder:1.5b", "qwen3.5:9b")):
         raise AdmissionDenied("Draft is not eligible for restricted CORE contract")
     # This is a deterministic mapping, not a user-controlled CORE project slug.
     return {"draft_id": row[0], "project_uuid": row[1],

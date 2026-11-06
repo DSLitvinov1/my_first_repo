@@ -26,7 +26,7 @@ _STATES = frozenset({
 })
 _MODELS = frozenset((
     "qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:7b",
-    "qwen2.5-coder:1.5b",
+    "qwen2.5-coder:1.5b", "qwen3.5:9b",
 ))
 _SPEC_FIELDS = frozenset((
     "schema", "task_id", "project_id", "target", "objective",
