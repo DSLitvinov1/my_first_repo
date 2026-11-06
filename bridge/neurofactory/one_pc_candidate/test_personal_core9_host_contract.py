@@ -158,8 +158,9 @@ class OwnerCore9PersonalCompletion(unittest.TestCase):
         (self.projects/self.project).mkdir()
         self.file=self.projects/self.project/"bounded-result.md"
         self.fence=self.root/"intents.sqlite3"
-        with sqlite3.connect(self.fence) as con:
+        with closing(sqlite3.connect(self.fence)) as con:
             con.execute(DDL)
+            con.commit()
 
     def test_real_sqlite_claim_and_anchored_personal_receipt(self):
         body,file_body,spec=_verified_core9_body(
@@ -177,12 +178,13 @@ class OwnerCore9PersonalCompletion(unittest.TestCase):
         self.assertEqual(result["content_sha256"],self.digest)
         self.assertFalse(result["executed_generated_code"])
         head="e"*64
-        with sqlite3.connect(self.fence) as con:
+        with closing(sqlite3.connect(self.fence)) as con:
             con.execute(
                 "INSERT INTO intents (task_id,nonce,external_epoch,"
                 "operation_sha256,status,remote_head) "
                 "VALUES(?,?,? ,?,'EXECUTED',?)",
                 (self.uuid,"c"*32,3,"d"*64,head))
+            con.commit()
         evidence={
             "schema":"nf.personal.core9.host_completion.v1",
             "core_task_id":self.spec["task_id"],
