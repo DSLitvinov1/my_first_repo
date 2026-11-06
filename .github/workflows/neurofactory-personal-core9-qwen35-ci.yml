@@ -1,0 +1,43 @@
+name: Neurofactory personal CORE 9 Qwen 3.5 admission and reboot gating
+on:
+  push:
+    branches: [neurofactory-personal-core9-qwen35-reboot-gate-20261106]
+    paths:
+      - 'bridge/neurofactory/development/core_owned/one_task_core.py'
+      - 'bridge/neurofactory/one_pc_candidate/signed_owner_admission.py'
+      - 'bridge/neurofactory/one_pc_candidate/core_readonly_observer.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_owner_core_host_unified_e2e.py'
+      - 'bridge/neurofactory/one_pc_candidate/owner_core_qwen_claim_binding.py'
+      - 'bridge/neurofactory/one_pc_candidate/test_owner_core_qwen_claim_binding.py'
+      - 'bridge/neurofactory/one_pc_candidate/windows_setup/Verify-NeurofactoryAfterWindowsReboot.ps1'
+      - '.github/workflows/neurofactory-personal-core9-qwen35-ci.yml'
+permissions:
+  contents: read
+jobs:
+  strict_core_real_sqlite:
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python restricted test dependencies
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.3 pywin32==311 paramiko==4.0.0
+      - name: Actual CORE SQLite Qwen 3.5 signed admission, no host effect
+        run: python -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_owner_core_host_unified_e2e.py -k test_real_qwen35_owner_signed_core_queue_no_host_effect -v
+      - name: Verify actual separate owner signatures against live OneTaskCore CLAIMED SQLite
+        run: python -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_owner_core_qwen_claim_binding.py -v
+      - name: Windows reboot verifier requires previous boot baseline
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $target='bridge/neurofactory/one_pc_candidate/windows_setup/Verify-NeurofactoryAfterWindowsReboot.ps1'
+          $tokens=$null
+          $errors=$null
+          [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $target),[ref]$tokens,[ref]$errors)
+          if (@($errors).Count -gt 0) {throw 'Windows reboot checker parser failed'}
+          $before=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+          $rejected=$false
+          try { & $target -PreviousBootTime $before } catch { $rejected=$true }
+          if (-not $rejected) {throw 'No reboot occurred: verifier incorrectly accepted same OS boot'}
+          Write-Output 'NF_REBOOT_MUST_BE_REAL_OS_RESTART=PASS'

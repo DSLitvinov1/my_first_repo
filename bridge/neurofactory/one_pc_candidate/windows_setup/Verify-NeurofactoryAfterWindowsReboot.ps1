@@ -2,7 +2,17 @@
 # Read-only full-boot acceptance. Run AFTER real Windows restart; this
 # script does not simulate, initiate, schedule or force an OS reboot.
 [CmdletBinding()]
-param()
+param(
+  [Parameter(Mandatory=$true)]
+  [datetime]$PreviousBootTime
+)
+# The operator captures LastBootUpTime BEFORE reboot (not while testing).
+# A normal stop/start of only the Windows service must never pass this gate.
+$currentBoot=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+if ($PreviousBootTime -ge $currentBoot.AddSeconds(-15)) {
+ throw 'FULL_WINDOWS_OS_REBOOT_NOT_CONFIRMED: service restart is insufficient'
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $serviceName='NeurofactoryPersonalHost'

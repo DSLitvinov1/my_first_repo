@@ -27,7 +27,7 @@ PROJECT = re.compile(r"[a-z][a-z0-9-]{2,39}\Z")
 SHA40 = re.compile(r"[a-f0-9]{40}\Z")
 SHA64 = re.compile(r"[a-f0-9]{64}\Z")
 TARGET = re.compile(r"bridge/neurofactory/development/core_owned/[A-Za-z0-9_./-]{1,110}\Z")
-MODELS = frozenset(("qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:7b", "qwen2.5-coder:1.5b"))
+MODELS = frozenset(("qwen3:0.6b", "qwen3:4b", "qwen2.5-coder:7b", "qwen2.5-coder:1.5b", "qwen3.5:9b"))
 SPEC_KEYS = frozenset(("schema", "task_id", "project_id", "target", "objective",
                        "source_sha", "source_sha256", "model", "reserved_units",
                        "approval_commit"))

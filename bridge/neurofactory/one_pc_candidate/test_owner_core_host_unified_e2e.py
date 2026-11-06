@@ -170,6 +170,50 @@ class OneInstalledFlowContract(unittest.TestCase):
         self.assertEqual(self.workspace.list_task_proposals()[0]["status"], "PROPOSED_UNVERIFIED")
         print("NF_UI_DRAFT_OWNER_CORE_HOST_RESTART=PASS_DISPOSABLE_SIGNED_TEST_ONLY")
 
+    def test_real_qwen35_owner_signed_core_queue_no_host_effect(self):
+        """Real OneTaskCore SQLite admission for Qwen3.5, never an OS effect."""
+        project = self.workspace.create_project({
+            "name": "Qwen 9B strict CORE test project", "description": ""})
+        draft = self.workspace.create_task({
+            "project_id": project["id"],
+            "objective": "Prepare a bounded non-executable Qwen 9B file proposal for strict CORE admission.",
+            "model_preference": "qwen3.5:9b",
+        })
+        proposal = b"Qwen3.5 CI fixture only: no host file effect.\n"
+        self.workspace.reserve_task_proposal(draft["id"], "qwen3.5:9b")
+        self.workspace.finalize_task_proposal(draft["id"], {
+            "status": "PROPOSED_UNVERIFIED", "model": "qwen3.5:9b",
+            "text": proposal.decode("utf-8"),
+            "content_sha256": sha256(proposal).hexdigest(),
+            "response_sha256": "f" * 64,
+        })
+        self.preview = prepare_draft_request(self.workspace, draft["id"])
+        self.spec = {**self.spec,
+                     "task_id": "NF-DEV-05-Q955",
+                     "project_id": self.preview["core_project_id"],
+                     "objective": draft["objective"],
+                     "model": "qwen3.5:9b"}
+        self.admit()
+        evidence = self.core.provider_preview(self.spec["task_id"])
+        self.assertEqual(evidence["binding"]["model"], "qwen3.5:9b")
+        self.assertFalse(evidence["permissions"]["execution"])
+        self.assertFalse(evidence["permissions"]["retry"])
+        self.assertFalse(evidence["permissions"]["publication"])
+        claim = self.core.claim("owner-restricted-worker", now=1000, lease_seconds=30)
+        self.assertEqual(claim["model"], "qwen3.5:9b")
+        self.assertEqual(self.core.snapshot()["attempts"], 1)
+        with self.assertRaises(CoreSafetyError):
+            self.core.apply_offline_test(self.spec["task_id"], claim["token"], {})
+        self.assertEqual(self.core.recover(now=1031)["state"], "NEEDS_MANUAL_REVIEW")
+        with self.assertRaises(CoreSafetyError):
+            self.core.claim("replay-worker", now=1032)
+        with self.assertRaises(AdmissionDenied):
+            admit_signed_draft(self.workspace, self.core, self.owner_permit(),
+                               owner_public_raw=_public(self.owner), now=self.owner_now)
+        self.assertFalse((self.out / "windows_pilot.txt").exists())
+        self.assertEqual(self._new_core().snapshot()["state"], "NEEDS_MANUAL_REVIEW")
+        print("NF_QWEN35_REAL_CORE_QUEUE_PASS_NO_HOST_EXECUTION_OR_AUTO_RETRY")
+
     def test_effect_without_signed_receipt_never_auto_retries(self):
         permit = self.admit()
         self.core.claim("isolated-host", now=1000, lease_seconds=20)
