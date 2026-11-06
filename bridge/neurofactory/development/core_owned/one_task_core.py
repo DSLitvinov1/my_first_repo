@@ -109,8 +109,15 @@ def _git(repo, *arguments):
         # inherited console startup. CREATE_NO_WINDOW gives the pinned Git
         # verifier a noninteractive OS startup WITHOUT relaxing file ACLs,
         # shell escape, SHA checks, or owner admission authorization.
+        # Windows LocalService runs with a different principal from the
+        # administrator who installed the read-only, ACL-protected Git repo.
+        # Git safe.directory is a CLI protected setting: scope it to the
+        # exact operator-pinned repository path, never '*' and never disable
+        # HEAD/blob/preimage SHA verification.
+        trusted_args = (["git", "-c", "safe.directory="+str(repo), "-C", str(repo)]
+                        if os.name == "nt" else ["git", "-C", str(repo)])
         result = subprocess.run(
-            ["git", "-C", str(repo), *arguments],
+            [*trusted_args, *arguments],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0),
