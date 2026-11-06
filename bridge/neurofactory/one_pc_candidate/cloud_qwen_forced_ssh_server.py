@@ -171,14 +171,21 @@ def main():
                 # Anchor on the first 96 chars of our exact known fixed
                 # prompt, then discard the ENTIRE echoed prompt line.
                 if message["model"] == MODEL_Q35_NAME:
-                    # Verified Qwen3.5 CLI prints the entire multi-line
-                    # prompt. Extract AFTER the full exact trusted prompt,
-                    # never include echoed user objective as model output.
-                    marker = "\n> " + prompt
+                    # llama.cpp b12040 shows the beginning of long
+                    # multi-line prompts but abbreviates the last line with
+                    # an exact " ... (truncated)" sentinel. A full-prompt
+                    # match fails; first-line extraction leaks echoed tasks.
+                    # Require the displayed echo to be an EXACT PREFIX of
+                    # our operator-generated prompt, then discard all of it.
+                    marker = "\n> " + prompt[:96]
                     position = completed.stdout.rfind(marker)
-                    if completed.returncode != 0 or position < 0:
+                    truncation = " ... (truncated)\n"
+                    end = completed.stdout.find(truncation, position + len(marker))
+                    if (completed.returncode != 0 or position < 0 or end < 0
+                            or not prompt.startswith(
+                                completed.stdout[position + 3:end])):
                         return denied("MODEL_STDOUT_FORMAT_UNKNOWN", message["model"])
-                    output = completed.stdout[position + len(marker):]
+                    output = completed.stdout[end + len(truncation):]
                 else:
                     # Preserve previously verified 1.5B abbreviated-echo
                     # extraction for compatibility with existing UI tasks.
