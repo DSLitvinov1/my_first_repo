@@ -24,7 +24,7 @@ import uuid
 PROJECT_ID = re.compile(r"[a-f0-9]{32}\Z")
 NAME_LIMIT = 80
 TASK_LIMIT = 1200
-SUPPORTED_QWEN = ("qwen3:0.6b", "qwen2.5-coder:1.5b")
+SUPPORTED_QWEN = ("qwen3:0.6b", "qwen2.5-coder:1.5b", "qwen3.5:9b")
 QWEN_PROBE_PROMPT = "Ответь одним коротким предложением: чему равно два плюс два?"
 FILES = {
     "/": "index.html",
@@ -226,7 +226,7 @@ class WorkspaceStore:
                 type(obj["objective"]) is not str or
                 not 15<=len(obj["objective"].strip())<=TASK_LIMIT or
                 any(ord(x)<32 and x not in ("\n","\t") for x in obj["objective"]) or
-                obj["model_preference"] not in ("auto","qwen3:0.6b","qwen2.5-coder:1.5b")):
+                obj["model_preference"] not in ("auto",)+SUPPORTED_QWEN):
             raise WorkspaceDenied("Invalid task fields")
         row=(uuid.uuid4().hex,obj["project_id"],obj["objective"].strip(),
              obj["model_preference"],"DRAFT_PENDING_OWNER_AUTH",_utc())
@@ -564,7 +564,7 @@ def handler(store,ui,token,port,components_dir=None,*,core_state_dir=None):
                         except (OSError,ValueError,ImportError):
                             online=False
                 choices["cloud_qwen_available"]=bool(online)
-                choices["cloud_qwen_model"]="qwen2.5-coder:1.5b" if online else None
+                choices["cloud_qwen_model"]="qwen3.5:9b" if online else None
                 self._json(200,choices);return
             if p.path=="/api/model-checks":
                 self._json(200,{"checks":store.model_checks()});return
