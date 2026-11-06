@@ -109,8 +109,15 @@ def _git(repo, *arguments):
         # inherited console startup. CREATE_NO_WINDOW gives the pinned Git
         # verifier a noninteractive OS startup WITHOUT relaxing file ACLs,
         # shell escape, SHA checks, or owner admission authorization.
+        # Windows LocalService runs with a different principal from the
+        # administrator who installed the read-only, ACL-protected Git repo.
+        # Git safe.directory is a CLI protected setting: scope it to the
+        # exact operator-pinned repository path, never '*' and never disable
+        # HEAD/blob/preimage SHA verification.
+        trusted_args = (["git", "-c", "safe.directory="+str(repo), "-C", str(repo)]
+                        if os.name == "nt" else ["git", "-C", str(repo)])
         result = subprocess.run(
-            ["git", "-C", str(repo), *arguments],
+            [*trusted_args, *arguments],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             creationflags=(subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0),
@@ -268,7 +275,7 @@ class OneTaskCore:
             raise CoreSafetyError("Checkpoint identity or task fingerprint corrupted")
         allowed_states = {"QUEUED", "CLAIMED", "APPLYING",
                           "CHECKPOINTED_TEST", "HOST_CHECKPOINTED_TEST",
-                          "NEEDS_MANUAL_REVIEW"}
+                          "HOST_CHECKPOINTED_PERSONAL", "NEEDS_MANUAL_REVIEW"}
         if state not in allowed_states or type(attempts) is not int or attempts not in (0, 1):
             raise CoreSafetyError("Unknown or corrupted durable queue state")
         if state == "QUEUED":
@@ -287,6 +294,8 @@ class OneTaskCore:
             raise CoreSafetyError("Unparseable offline checkpoint receipt") from exc
         if state == "HOST_CHECKPOINTED_TEST":
             self._validate_signed_host_receipt(spec, result, parsed_receipt)
+        elif state == "HOST_CHECKPOINTED_PERSONAL":
+            self._validate_personal_host_receipt(spec, result, parsed_receipt)
         elif result is not None or parsed_receipt is not None:
             expected_fields = {"schema", "task_id", "source_sha", "source_sha256",
                                "target", "result_sha256", "mode", "model_invoked",
@@ -523,6 +532,127 @@ class OneTaskCore:
         except (InvalidSignature, ValueError, binascii.Error) as exc:
             raise CoreSafetyError("HOST receipt not signed by pinned service") from exc
         self._host_file_readback(result)
+
+    @staticmethod
+    def _validate_personal_host_receipt(spec, result, receipt):
+        """Validate shape+identity of protected local completion checkpoint.
+
+        This does NOT alone attest the Linux signer or the physical file.
+        Recipient SCM MUST independently call verify_personal_host_result
+        using its pinned signed Linux status and its existing immutable file.
+        """
+        fields = {
+            "schema", "core_task_id", "qwen_task_uuid", "project_uuid",
+            "relative_path", "content_sha256", "external_epoch",
+            "linux_ledger_head", "source_sha40",
+            "linux_signature_checked", "generated_source_executed",
+            "automatic_retry_allowed",
+        }
+        uuid = re.compile(r"[a-f0-9]{32}\Z")
+        filename = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{0,60}\.(?:md|txt|json|py|js|ts|tsx|html|css|yaml|yml)\Z")
+        if (type(receipt) is not dict or set(receipt) != fields
+                or receipt.get("schema") != "nf.personal.core9.host_completion.v1"
+                or receipt.get("core_task_id") != spec["task_id"]
+                or type(receipt.get("qwen_task_uuid")) is not str
+                or not uuid.fullmatch(receipt["qwen_task_uuid"])
+                or type(receipt.get("project_uuid")) is not str
+                or not uuid.fullmatch(receipt["project_uuid"])
+                or spec["project_id"] != "p-" + receipt["project_uuid"]
+                or type(receipt.get("relative_path")) is not str
+                or not filename.fullmatch(receipt["relative_path"])
+                or ".." in receipt["relative_path"]
+                or type(receipt.get("content_sha256")) is not str
+                or not SHA64.fullmatch(receipt["content_sha256"])
+                or receipt["content_sha256"] != result
+                or type(receipt.get("external_epoch")) is not int
+                or receipt["external_epoch"] < 1
+                or type(receipt.get("linux_ledger_head")) is not str
+                or not SHA64.fullmatch(receipt["linux_ledger_head"])
+                or receipt.get("source_sha40") != spec["source_sha"]
+                or receipt.get("linux_signature_checked") is not True
+                or receipt.get("generated_source_executed") is not False
+                or receipt.get("automatic_retry_allowed") is not False):
+            raise CoreSafetyError("Personal HOST completion lacks exact persisted evidence")
+
+    def finalize_personal_host(self, task_id, token, receipt, *,
+                               trusted_effect_readback, now=None):
+        """One trusted SCM callback after local EXECUTED and signed Linux receipt.
+
+        Fail closed after crash: no unattended retry of CORE claim, Linux
+        reservation, owner signature, or protected file.
+        """
+        now = int(time.time()) if now is None else now
+        if (type(now) is not int or now < 0
+                or type(task_id) is not str or not TASK.fullmatch(task_id)
+                or type(token) is not str or not re.fullmatch(r"[a-f0-9]{64}",token)
+                or type(receipt) is not dict
+                or not callable(trusted_effect_readback)):
+            raise CoreSafetyError("Personal HOST completion request invalid")
+        encoded = _canonical(receipt)
+        if len(encoded) > 1600:
+            raise CoreSafetyError("Personal HOST proof too large")
+        with self._connect() as con:
+            con.execute("BEGIN IMMEDIATE")
+            row = self._row(con)
+            if (row is None or row["state"] != "CLAIMED"
+                    or row["spec"]["task_id"] != task_id
+                    or row["lease_until"] <= now
+                    or not secrets.compare_digest(row["token"],_sha(token.encode()))):
+                raise CoreSafetyError("Personal HOST CORE token, claim or lease invalid")
+            digest = receipt.get("content_sha256")
+            self._validate_personal_host_receipt(row["spec"],digest,receipt)
+            if trusted_effect_readback(json.loads(encoded)) is not True:
+                raise CoreSafetyError("Physical file + local HOST + Linux witness not verified")
+            cur=con.execute(
+                "UPDATE single_job SET state='HOST_CHECKPOINTED_PERSONAL',"
+                "result_sha256=?,receipt=? WHERE singleton=1 AND state='CLAIMED'",
+                (digest,encoded.decode("utf-8")))
+            if cur.rowcount != 1:
+                raise CoreSafetyError("CORE completion transaction uncertain")
+            con.execute("COMMIT")
+        return self.snapshot()
+
+    def verify_personal_host_result(self, *, protected_projects,
+                                    host_fence, signed_remote_head):
+        """Read back completed CORE against real protected file, HOST and Linux.
+
+        signed_remote_head must come from the operator-pinned, Ed25519 verified
+        Linux witness query by the restricted host, not a JSON input from UI.
+        """
+        with self._connect() as con:
+            con.execute("BEGIN")
+            row = self._row(con)
+            if row is None or row["state"] != "HOST_CHECKPOINTED_PERSONAL":
+                raise CoreSafetyError("No personally confirmed CORE checkpoint")
+            receipt = row["receipt"]
+        from contextlib import closing
+        if (type(signed_remote_head) is not dict
+                or signed_remote_head.get("remote_status_signature_verified") is not True
+                or signed_remote_head.get("epoch") != receipt["external_epoch"]
+                or signed_remote_head.get("ledger_head") != receipt["linux_ledger_head"]):
+            raise CoreSafetyError("Remote signed monotonic witness differs from CORE result")
+        projects = _safe_directory(protected_projects)
+        sub = _safe_directory(projects / receipt["project_uuid"])
+        file = sub / receipt["relative_path"]
+        if file.is_symlink() or not file.is_file():
+            raise CoreSafetyError("Protected CORE result file missing")
+        st = file.lstat()
+        if (not stat.S_ISREG(st.st_mode) or st.st_size > 2048 or st.st_size < 1
+                or os.name == "nt" and st.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                or _sha(file.read_bytes()) != receipt["content_sha256"]):
+            raise CoreSafetyError("Protected CORE result file changed or redirected")
+        db = pathlib.Path(host_fence)
+        if not db.is_absolute() or db.is_symlink() or not db.is_file():
+            raise CoreSafetyError("Original protected HOST durable intent missing")
+        with closing(sqlite3.connect(db.as_uri() + "?mode=ro",
+                                     uri=True,timeout=3)) as con:
+            con.execute("PRAGMA query_only=ON")
+            row = con.execute(
+                "SELECT status,external_epoch,remote_head FROM intents WHERE task_id=?",
+                (receipt["qwen_task_uuid"],)).fetchone()
+        if row != ("EXECUTED",receipt["external_epoch"],receipt["linux_ledger_head"]):
+            raise CoreSafetyError("Personal HOST durable completion not matching CORE")
+        return True
 
     def finalize_signed_host_test(self, task_id, token, receipt, *, now=None):
         """Durable final state only after matching signed HOST readback.
