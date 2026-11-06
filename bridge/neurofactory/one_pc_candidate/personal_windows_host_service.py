@@ -34,6 +34,11 @@ from personal_ssh_highwater import _canon, REQ_SCHEMA
 from personal_ssh_highwater_client import (
     reserve_personal_epoch,read_signed_remote_head,PersonalWitnessUnknown,
 )
+from personal_project_file_effect import (
+    PROJECT_FILE_SCHEMA, PROJECT_FILE_ACTION, PROJECT_FILE_FIELDS,
+    OWNER_FILE_DOMAIN, MAX_ENVELOPE, check_core_permission,
+    project_target, apply_approved_project_file, ProjectFileDenied,
+)
 
 SERVICE_NAME="NeurofactoryPersonalHost"
 ROOT=Path(os.environ.get("ProgramData",r"C:\ProgramData"))/"NeurofactoryPersonalHost"
@@ -42,6 +47,7 @@ STATE=ROOT/"state"
 FENCE=STATE/"intent-fence.sqlite3"
 INBOX=ROOT/"inbox"
 OUT=ROOT/"outputs"
+PROJECTS=ROOT/"projects"
 OWNER_DOMAIN=b"NF_PERSONAL_OWNER_NOTE_APPROVAL_V1\x00"
 HEX32=re.compile(r"[a-f0-9]{32}\Z")
 HEX40=re.compile(r"[a-f0-9]{40}\Z")
@@ -189,10 +195,20 @@ def assert_external_head_matches_local_fence():
 
 
 def _signed_body(packet,operator,owner,now):
-    if (type(packet) is not dict or set(packet)!=PERMIT_FIELDS or
-        packet.get("schema")!=PERMIT_SCHEMA or
-        packet.get("operation")!=ALLOWED_ACTION or
-        any(type(packet.get(k)) is not str or not HEX32.fullmatch(packet[k])
+    if type(packet) is not dict:
+        _deny("owner permit must be exact JSON object")
+    schema=packet.get("schema")
+    if schema==PERMIT_SCHEMA:
+        if set(packet)!=PERMIT_FIELDS or packet.get("operation")!=ALLOWED_ACTION:
+            _deny("legacy owner note permit invalid")
+        domain=OWNER_DOMAIN
+    elif schema==PROJECT_FILE_SCHEMA:
+        if set(packet)!=PROJECT_FILE_FIELDS or packet.get("operation")!=PROJECT_FILE_ACTION:
+            _deny("owner/Core/Qwen project file permit invalid")
+        domain=OWNER_FILE_DOMAIN
+    else:
+        _deny("unsupported owner permit action")
+    if (any(type(packet.get(k)) is not str or not HEX32.fullmatch(packet[k])
             for k in ("task_id","project_id","nonce")) or
         any(packet.get(k)!=operator[k] for k in
             ("source_sha40","machine_sha256","package_sha256")) or
@@ -206,13 +222,20 @@ def _signed_body(packet,operator,owner,now):
         not 1<=len(packet["text"].encode("utf-8"))<=2048 or
         any(ord(c)<32 and c not in "\n\t" for c in packet["text"])
         or type(packet.get("owner_signature_base64")) is not str):
-        _deny("exact allowed owner-approved note request required")
+        _deny("exact owner signed task scope required")
     body={k:v for k,v in packet.items() if k!="owner_signature_base64"}
+    if schema==PROJECT_FILE_SCHEMA:
+        try:
+            check_core_permission(body)
+        except ProjectFileDenied as exc:
+            raise PersonalHostDenied("CORE/project file scope denied") from exc
+    if len(_canon(packet))>MAX_ENVELOPE:
+        _deny("owner permit too large")
     try:
         raw=base64.b64decode(packet["owner_signature_base64"],validate=True)
         if len(raw)!=64:
             _deny("bad owner signature")
-        owner.verify(raw,OWNER_DOMAIN+_canon(body))
+        owner.verify(raw,domain+_canon(body))
     except (InvalidSignature,ValueError,TypeError) as exc:
         raise PersonalHostDenied("operator owner signature verification denied") from exc
     return body
@@ -251,6 +274,13 @@ def perform_approved_safe_note(packet):
     """Single owner-signed permitted note. Never called directly by Qwen."""
     operator,owner,witness=_config()
     body=_signed_body(packet,operator,owner,int(time.time()))
+    # The project directory is an operator-provisioned service-SID sandbox.
+    # Invalid or missing workspaces are denied BEFORE committing a new epoch.
+    if body["operation"]==PROJECT_FILE_ACTION:
+        try:
+            project_target(PROJECTS,body["project_id"],body["relative_path"])
+        except ProjectFileDenied as exc:
+            raise PersonalHostDenied("no operator-provisioned protected project") from exc
     # Signed status query consumes NO remote epoch. Deny any divergence
     # before reserving this new irreversible local intent.
     assert_external_head_matches_local_fence()
@@ -284,22 +314,27 @@ def perform_approved_safe_note(packet):
         # after the remote signed reservation, before any file effect.
         if not int(time.time())<body["expires_unix"]:
             _deny("approval expired during remote request")
-        _safe_dir(OUT)
-        target=OUT/(body["task_id"]+".txt")
-        if target.exists() or target.is_symlink():
-            _deny("one-use safe output already exists")
-        payload=body["text"].encode("utf-8")
-        fd=os.open(target,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-        with os.fdopen(fd,"wb") as file:
-            file.write(payload)
-            file.flush()
-            os.fsync(file.fileno())
-        if sha256(target.read_bytes()).hexdigest()!=sha256(payload).hexdigest():
-            _deny("file readback mismatch; UNKNOWN state")
+        if body["operation"]==PROJECT_FILE_ACTION:
+            outcome=apply_approved_project_file(
+                signed_body=body,projects_root=PROJECTS)
+        else:
+            # Existing one-use note action remains backward compatible.
+            _safe_dir(OUT)
+            target=OUT/(body["task_id"]+".txt")
+            if target.exists() or target.is_symlink():
+                _deny("one-use safe output already exists")
+            payload=body["text"].encode("utf-8")
+            fd=os.open(target,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            with os.fdopen(fd,"wb") as file:
+                file.write(payload)
+                file.flush()
+                os.fsync(file.fileno())
+            if sha256(target.read_bytes()).hexdigest()!=sha256(payload).hexdigest():
+                _deny("file readback mismatch; UNKNOWN state")
+            outcome={"status":"ONE_OWNER_APPROVED_SAFE_NOTE_CREATED",
+                     "task_id":body["task_id"]}
         _mark_executed(body,ack["ledger_head"])
-        return {"status":"ONE_OWNER_APPROVED_SAFE_NOTE_CREATED",
-                "task_id":body["task_id"],
-                "external_epoch":body["external_epoch"]}
+        return {**outcome,"external_epoch":body["external_epoch"]}
     except Exception as exc:
         # No file effect on SSH loss; possible UNKNOWN after remote commit.
         # Never release the local lock or retry an operation/epoch.
@@ -351,7 +386,7 @@ class NeurofactoryPersonalHost(win32serviceutil.ServiceFramework):
                 try:
                     if (len(path.name)!=37 or not HEX32.fullmatch(path.stem)):
                         continue
-                    raw=_plain(path,max_size=4096).read_text("utf-8")
+                    raw=_plain(path,max_size=MAX_ENVELOPE).read_text("utf-8")
                     packet=json.loads(raw,object_pairs_hook=_unique)
                     if packet.get("task_id")!=path.stem:
                         continue
