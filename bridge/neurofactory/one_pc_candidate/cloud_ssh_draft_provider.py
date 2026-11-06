@@ -18,6 +18,9 @@ import subprocess
 
 MODEL = "qwen2.5-coder:1.5b"
 MODEL_SHA = "cc324af070c2ecbfd324a30884d2f951a7ff756aba85cb811a6ec436933bb046"
+PRIMARY_MODEL = "qwen3.5:9b"
+PRIMARY_SHA = "cd76ec205963b3b33350093e6904d9de16c4e666fd104e1f632d25c7f15f2a13"
+MODEL_SHA_BY_NAME = {PRIMARY_MODEL: PRIMARY_SHA, MODEL: MODEL_SHA}
 SCHEMA = "nf.cloud.qwen.one_draft_request.v1"
 RESULT_SCHEMA = "nf.cloud.qwen.one_draft_result.v1"
 HOST = "157.228.118.199"
@@ -80,7 +83,7 @@ def available(workspace_dir: Path) -> bool:
 
 def generate(workspace_dir: Path, task: dict, *, model: str):
     ssh, identity, known = _config(workspace_dir)
-    if (model != MODEL or type(task) is not dict or
+    if (type(model) is not str or model not in MODEL_SHA_BY_NAME or type(task) is not dict or
             any(type(task.get(name)) is not str or
                 not HEX32.fullmatch(task[name])
                 for name in ("id", "project_id")) or
@@ -91,7 +94,7 @@ def generate(workspace_dir: Path, task: dict, *, model: str):
     request = {
         "schema": SCHEMA, "task_id": task["id"],
         "project_id": task["project_id"], "objective": task["objective"],
-        "model": MODEL, "nonce": nonce,
+        "model": model, "nonce": nonce,
     }
     data = json.dumps(request, ensure_ascii=False, sort_keys=True,
                       separators=(",", ":")).encode("utf-8")
@@ -117,9 +120,10 @@ def generate(workspace_dir: Path, task: dict, *, model: str):
     ]
     try:
         process = subprocess.run(cmd, input=data, capture_output=True,
-                                 timeout=120, check=False)
+                                 timeout=210 if model == PRIMARY_MODEL else 120,
+                                 check=False)
         if (process.returncode != 0 or not 2 <= len(process.stdout) <= 14000):
-            return {"status": "UNKNOWN", "model": MODEL,
+            return {"status": "UNKNOWN", "model": model,
                     "error_code": "CLOUD_SSH_UNKNOWN_NO_RETRY"}
         reply = json.loads(process.stdout.decode("utf-8"), object_pairs_hook=_unique)
         if (type(reply) is not dict or
@@ -129,7 +133,7 @@ def generate(workspace_dir: Path, task: dict, *, model: str):
                     "execution_allowed", "automatic_retry_allowed", "owner_signed"} or
                 reply["schema"] != RESULT_SCHEMA or
                 reply["status"] != "PROPOSED_UNVERIFIED" or
-                reply["model"] != MODEL or reply["model_sha256"] != MODEL_SHA or
+                reply["model"] != model or reply["model_sha256"] != MODEL_SHA_BY_NAME[model] or
                 reply["task_id"] != task["id"] or reply["nonce"] != nonce or
                 reply["execution_allowed"] is not False or
                 reply["automatic_retry_allowed"] is not False or
@@ -143,12 +147,12 @@ def generate(workspace_dir: Path, task: dict, *, model: str):
             raise CloudDraftDenied("Wrong model output digest")
         return {
             "status": "PROPOSED_UNVERIFIED",
-            "model": MODEL,
+            "model": model,
             "text": result,
             "response_sha256": reply["response_sha256"],
             "content_sha256": reply["response_sha256"],
         }
     except (OSError, subprocess.TimeoutExpired, ValueError, UnicodeError,
             TypeError, CloudDraftDenied):
-        return {"status": "UNKNOWN", "model": MODEL,
+        return {"status": "UNKNOWN", "model": model,
                 "error_code": "CLOUD_SSH_UNKNOWN_NO_RETRY"}
