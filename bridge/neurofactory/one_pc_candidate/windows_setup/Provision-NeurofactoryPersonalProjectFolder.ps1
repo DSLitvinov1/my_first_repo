@@ -51,6 +51,12 @@ function SecurePath([string]$path) {
     if($LASTEXITCODE -ne 0){throw 'Protected folder ACL setup failed'}
 }
 SecurePath $projects
+# The owner's NON-elevated console must inspect public policy but may never
+# change it. Allow read-only of public pins; private SSH/witness keys stay
+# SYSTEM/Administrators/ServiceSID only.
+$operatorConfig=Join-Path $root 'operator-config.json'
+& icacls.exe $operatorConfig '/grant:r' ('{0}:R' -f $user) | Out-Null
+if($LASTEXITCODE -ne 0){throw 'Owner cannot read pinned public policy'}
 New-Item -ItemType Directory -Path $project -ErrorAction Stop | Out-Null
 SecurePath $project
 $acl=Get-Acl $project
