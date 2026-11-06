@@ -23,7 +23,7 @@ if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $target) -or
 $man=Get-Content -LiteralPath $manifestFile -Raw -Encoding utf8 | ConvertFrom-Json
 if ($man.schema -cne 'nf.personal.scoped_host_unsigned_bundle.v1' -or
     $man.source_sha40 -cne $ExpectedSourceSha40 -or
-    $man.scope -cne 'SELF_MANAGED_OWNER_ONLY_SAFE_NOTES' -or
+    $man.scope -cnotin @('SELF_MANAGED_OWNER_ONLY_SAFE_NOTES','SELF_MANAGED_OWNER_REVIEWED_PROJECT_FILES') -or
     $man.publisher_signed -or $man.independent_operator_verified -or
     $man.protected_service_installed) {throw 'PERSONAL_BUNDLE_MANIFEST_SCOPE_INVALID'}
 if (@($man.entries).Count -lt 10) {throw 'BUNDLE_TRUNCATED'}
