@@ -22,7 +22,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Python restricted test dependencies
-        run: python -m pip install --disable-pip-version-check cryptography==46.0.3 pywin32==311
+        run: python -m pip install --disable-pip-version-check cryptography==46.0.3 pywin32==311 paramiko==4.0.0
       - name: Actual CORE SQLite Qwen 3.5 signed admission, no host effect
         run: python -m unittest discover -s bridge/neurofactory/one_pc_candidate -p test_owner_core_host_unified_e2e.py -k test_real_qwen35_owner_signed_core_queue_no_host_effect -v
       - name: Verify actual separate owner signatures against live OneTaskCore CLAIMED SQLite
