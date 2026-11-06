@@ -22,7 +22,7 @@ import tempfile
 from personal_approve_safe_note import approve_one_note
 
 TASK_ID = re.compile(r"[a-f0-9]{32}\Z")
-MODEL = "qwen2.5-coder:1.5b"
+TRUSTED_DRAFT_MODELS = frozenset(("qwen2.5-coder:1.5b","qwen3.5:9b"))
 
 
 class DraftOwnerApprovalDenied(ValueError):
@@ -63,7 +63,7 @@ def owner_approvable_saved_draft(workspace_dir: Path, task_id: str) -> dict:
             type(item[2]) is not str or not 15 <= len(item[2]) <= 1200 or
             item[3] != "DRAFT_PENDING_OWNER_AUTH" or
             type(item[4]) is not str or not 3 <= len(item[4]) <= 100 or
-            item[5] != MODEL or item[6] != "PROPOSED_UNVERIFIED" or
+            item[5] not in TRUSTED_DRAFT_MODELS or item[6] != "PROPOSED_UNVERIFIED" or
             type(item[7]) is not str or
             not 1 <= len(item[7].encode("utf-8")) <= 2048 or
             type(item[8]) is not str or
