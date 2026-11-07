@@ -308,6 +308,8 @@ class WorkStore:
             row=c.execute("SELECT * FROM tasks WHERE id=?",(ident,)).fetchone()
             if row is None or row["state"]!="DRAFT":
                 denied("GENERATION_ALREADY_ATTEMPTED_NO_RETRY")
+            if c.execute("SELECT count(*) FROM tasks WHERE state='GENERATING'").fetchone()[0]:
+                denied("MODEL_BUSY_ONE_GENERATION_AT_A_TIME")
             c.execute("UPDATE tasks SET state='GENERATING',updated=? WHERE id=?",(stamp(),ident))
             self.event(c,"MODEL_ATTEMPT_RESERVED",row["project_id"],{"task":ident})
             c.commit()

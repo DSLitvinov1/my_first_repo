@@ -70,6 +70,9 @@ class StoreTest(unittest.TestCase):
     def test_model_draft_one_attempt_and_no_auto_apply(self):
         task=self.store.create_task(self.project,"Документация","Подготовь короткий список изменений для локального приложения.")
         self.store.reserve_generation(task["id"])
+        concurrent=self.store.create_task(self.project,"Вторая модель","Ещё одна задача, которая должна дождаться завершения первой.")
+        with self.assertRaisesRegex(WorkDenied,"MODEL_BUSY_ONE_GENERATION_AT_A_TIME"):
+            self.store.reserve_generation(concurrent["id"])
         with self.assertRaises(WorkDenied):
             self.store.reserve_generation(task["id"])
         suggestion="Qwen: только предложение, файл не создан."
@@ -79,7 +82,7 @@ class StoreTest(unittest.TestCase):
         })
         self.assertEqual(self.store.task(task["id"])["state"],"REVIEW")
         self.assertFalse((self.root/self.project/"suggestion.md").exists())
-        interrupted=self.store.create_task(self.project,"Незавершённая генерация","Описание ещё одной задачи для проверки перезапуска.")
+        interrupted=concurrent
         self.store.reserve_generation(interrupted["id"])
         restored=WorkStore(self.root,self.data)
         self.assertEqual(restored.task(interrupted["id"])["state"],"UNKNOWN_NO_RETRY")
