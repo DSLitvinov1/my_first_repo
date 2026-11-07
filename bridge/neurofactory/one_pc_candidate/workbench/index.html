@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="nf-token" content="__NF_WORK_TOKEN__">
+  <title>Нейрозавод Work — рабочее пространство</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" aria-label="Рабочие проекты">
+    <a class="brand" href="/" aria-label="Нейрозавод Work">
+      <span class="brand-mark" aria-hidden="true">Н</span>
+      <span><strong>НЕЙРОЗАВОД</strong><small>WORK · PERSONAL</small></span>
+    </a>
+    <div class="side-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <button class="side-link current" id="all-projects" type="button"><span aria-hidden="true">▦</span> Все проекты <span class="side-count" id="projects-count">0</span></button>
+    <div class="side-head"><span>Мои проекты</span><button class="icon-btn" id="new-project-side" type="button" aria-label="Новый проект">＋</button></div>
+    <nav id="project-list" class="project-list" aria-label="Список проектов"><p class="muted small">Загрузка...</p></nav>
+    <div class="sidebar-bottom">
+      <div class="model-status"><span class="model-dot" id="model-dot"></span><span><strong id="model-label">Проверка Qwen</strong><small>Локальное управление · без API-платежей</small></span></div>
+      <div class="safety-side"> <span aria-hidden="true">♙</span> Изолированная папка проектов<br><span class="muted">Действующий HOST не изменён</span></div>
+    </div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <div class="crumb"><span class="crumb-root">Пространство</span><span class="sep">/</span><span id="crumb-project">Обзор</span></div>
+      <div class="top-actions"><span class="topmode">PERSONAL BUILD</span><button class="button small accent" id="top-new-project" type="button">＋ Новый проект</button></div>
+    </header>
+    <main class="main">
+      <section class="intro">
+        <div class="intro-tag"><span class="tag-circle"></span> ОТ ИДЕИ К РЕЗУЛЬТАТУ</div>
+        <h1 id="heading">Твоя мастерская ИИ</h1>
+        <p id="description">Задачи, файлы и черновики Qwen в одном месте. Изменения остаются под твоим контролем.</p>
+      </section>
+      <section class="stats" aria-label="Показатели">
+        <article class="stat"><small>Проекты</small><strong id="stat-projects">0</strong><span>Изолированные рабочие папки</span></article>
+        <article class="stat"><small>Задачи</small><strong id="stat-tasks">0</strong><span>С сохранением после перезапуска</span></article>
+        <article class="stat"><small>ИИ-модель</small><strong class="stat-model">Qwen <em>3.5 9B</em></strong><span>Черновики без запуска кода</span></article>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="panel tasks-panel">
+          <div class="panel-title"><div><span class="overline">01 · ПЛАНИРОВАНИЕ</span><h2>Задачи</h2></div><button class="button soft small" id="new-task" type="button">＋ Задача</button></div>
+          <div id="tasks-list" class="tasks-list"><div class="empty">Выбери проект или создай новый, чтобы начать работу.</div></div>
+        </section>
+        <section class="panel files-panel">
+          <div class="panel-title"><div><span class="overline">02 · ИСХОДНЫЕ ФАЙЛЫ</span><h2>Файлы проекта</h2></div><button class="button soft small" id="new-file" type="button">＋ Файл</button></div>
+          <div class="file-split"><nav id="files-list" class="files-list" aria-label="Файлы проекта"><div class="empty">Выбери проект</div></nav>
+            <div class="file-meta"><small>РАБОЧАЯ ПАПКА</small><strong id="project-path">Ещё не выбрана</strong><p>Без доступа к файлам других программ.</p></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel editor-panel" id="editor-panel">
+        <div class="panel-title"><div><span class="overline">03 · ПРАВКИ С КОНТРОЛЕМ ВЕРСИЙ</span><h2 id="editor-heading">Редактор файла</h2></div><div class="panel-buttons"><button class="button soft small" id="undo-file" type="button" disabled>↶ Предыдущая версия</button><button class="button accent small" id="save-file" type="button" disabled>Сохранить правку</button></div></div>
+        <div class="editor-toolbar"><span id="editor-sha">Выбери файл, чтобы начать</span><span id="editor-dirty"></span></div>
+        <textarea id="editor" spellcheck="false" placeholder="Выбери файл слева или создай новый..." aria-label="Содержимое файла" disabled></textarea>
+        <div class="editor-foot"><span>Каждое сохранение требует нажатия кнопки. Состояние проверяется по контрольной сумме.</span><span id="editor-size">0 символов</span></div>
+      </section>
+
+      <section class="notes-panel">
+        <div class="notes-left"><span class="shield-icon" aria-hidden="true">◇</span><div><strong>Безопасное пространство разработки</strong><p>Генерация Qwen не выполняет команды, не публикует проекты и не редактирует файлы сама. Расширение разрешений CORE/HOST — отдельный этап.</p></div></div>
+        <span class="note-pill">SANDBOX</span>
+      </section>
+    </main>
+  </div>
+
+  <aside class="inspector" aria-label="Помощник и история">
+    <div class="inspector-top"><div class="assistant-avatar">✳</div><div><strong>Qwen · помощник</strong><small>Черновики · без автоприменения</small></div></div>
+    <div class="assistant-section"><span class="overline">ВЫБРАННАЯ ЗАДАЧА</span><h2 id="selected-task-title">Пока нет задачи</h2><p id="selected-task-goal">Создай задачу внутри проекта, чтобы получить план или текстовый черновик от Qwen.</p>
+      <div class="assistant-action"><button class="button accent full" id="generate" type="button" disabled>✳ Подготовить черновик Qwen</button></div>
+      <div class="proposal-card"><div class="proposal-top"><span class="overline">РЕЗУЛЬТАТ МОДЕЛИ</span><span class="pill" id="draft-state">Нет черновика</span></div><pre id="draft-output">Выбери задачу. Здесь появится текст Qwen — он не будет автоматически запускаться или записываться.</pre><button class="button soft full" id="copy-draft-editor" type="button" disabled>Перенести в редактор, не сохраняя</button></div>
+    </div>
+    <div class="activity"><div class="panel-title"><div><span class="overline">ЖУРНАЛ</span><h2>Последние действия</h2></div><button class="icon-btn" id="refresh" type="button" aria-label="Обновить">↻</button></div><div id="activity-list" class="activity-list"><p class="muted small">Пока нет действий</p></div></div>
+    <div class="inspector-footer"><span class="model-dot good"></span> Нейрозавод Work · локальная версия</div>
+  </aside>
+</div>
+
+<dialog id="project-dialog">
+  <form method="dialog" id="project-form" class="dialog-form">
+    <div class="dialog-head"><span class="overline">НОВЫЙ ПРОЕКТ</span><button type="button" class="icon-btn" data-close="project-dialog" aria-label="Закрыть">✕</button></div>
+    <h2>Создать рабочую папку</h2><p>Проект появится только внутри выделенной папки Нейрозавода.</p>
+    <label for="project-name">Название проекта</label><input id="project-name" maxlength="80" required placeholder="Например, Сайт агентства">
+    <label for="project-kind">Начальный шаблон</label><select id="project-kind"><option value="web">Веб-сайт — HTML / CSS / JS</option><option value="python">Python-приложение</option><option value="empty">Пустой проект</option></select>
+    <button class="button accent full" id="project-submit" type="submit">Создать проект</button>
+  </form>
+</dialog>
+<dialog id="task-dialog">
+  <form method="dialog" id="task-form" class="dialog-form">
+    <div class="dialog-head"><span class="overline">НОВАЯ ЗАДАЧА</span><button type="button" class="icon-btn" data-close="task-dialog" aria-label="Закрыть">✕</button></div>
+    <h2>Что необходимо сделать?</h2><p>Qwen предложит черновик. Для изменения файлов потребуется твой отдельный выбор.</p>
+    <label for="task-title">Краткое название</label><input id="task-title" maxlength="100" required placeholder="Создать главную страницу">
+    <label for="task-goal">Описание результата (15–1200 символов)</label><textarea id="task-goal" minlength="15" maxlength="1200" required rows="6" placeholder="Опиши задачу, ограничения и желаемый результат..."></textarea>
+    <button class="button accent full" type="submit">Добавить задачу</button>
+  </form>
+</dialog>
+<dialog id="file-dialog">
+  <form method="dialog" id="file-form" class="dialog-form">
+    <div class="dialog-head"><span class="overline">НОВЫЙ ФАЙЛ</span><button type="button" class="icon-btn" data-close="file-dialog" aria-label="Закрыть">✕</button></div>
+    <h2>Добавить исходный файл</h2><p>Можно создавать только текстовые файлы внутри текущего проекта.</p>
+    <label for="file-name">Относительный путь</label><input id="file-name" required placeholder="src/index.js" maxlength="180">
+    <button class="button accent full" type="submit">Открыть пустой файл в редакторе</button>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body></html>
