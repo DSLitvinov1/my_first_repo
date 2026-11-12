@@ -1,7 +1,7 @@
 name: Neurofactory Work local sandbox regression
 on:
   push:
-    branches: [neurofactory-workbench-personal-mvp-20261107]
+    branches: [neurofactory-workbench-personal-mvp-20261107, neurofactory-work-one-agent-safe-20261113]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/workbench/**'
       - '.github/workflows/neurofactory-workbench-local.yml'
@@ -18,9 +18,10 @@ jobs:
       - name: Run isolated Work regression without secrets or live Qwen
         shell: pwsh
         run: |
-          python -B bridge/neurofactory/one_pc_candidate/workbench/test_workbench.py
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -v test_workbench test_agent_one
       - name: Compile Python and validate browser JavaScript syntax
         shell: pwsh
         run: |
-          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py
+          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py bridge/neurofactory/one_pc_candidate/workbench/agent_one.py
           node --check bridge/neurofactory/one_pc_candidate/workbench/app.js

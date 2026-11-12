@@ -20,6 +20,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import threading
 from urllib.parse import parse_qs,urlsplit
 from work_core import WorkStore,WorkDenied,denied
+from agent_one import AgentOne
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -65,7 +66,8 @@ def model_module():
         raise ServerDenied("EXISTING_QWEN_NOT_AVAILABLE")
     return module
 
-def make_handler(store,assets,token,port):
+def make_handler(store,assets,token,port,agent=None):
+    agent=agent or AgentOne(store)
     home=assets/"index.html"
     stylesheet=assets/"styles.css"
     script=assets/"app.js"
@@ -145,6 +147,16 @@ def make_handler(store,assets,token,port):
                 self.out(200,{"projects":store.projects()})
             elif path.path=="/api/activity" and not path.query:
                 self.out(200,{"events":store.events()})
+            elif path.path=="/api/agent/capabilities" and not path.query:
+                self.out(200,agent.capabilities())
+            elif path.path=="/api/agent/runs":
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
+                    raise ServerDenied("AGENT_PROJECT_REQUIRED")
+                self.out(200,{"runs":agent.runs(vals["project_id"][0])})
+            elif re.fullmatch(r"/api/agent/runs/[0-9a-f]{32}",path.path) and not path.query:
+                # Project binding is required to avoid exposing another project's audit.
+                raise ServerDenied("AGENT_PROJECT_REQUIRED")
             else:
                 match=PROJECT_RE.fullmatch(path.path)
                 if not match:
@@ -170,6 +182,10 @@ def make_handler(store,assets,token,port):
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/agent/audits" and set(data)=={"project_id","urls"}:
+                run=agent.create_audit(data["project_id"],data["urls"])
+                self.out(201,agent.execute(run["id"],data["project_id"]))
+                return
             if method=="POST" and url.path=="/api/projects" and set(data)=={"name","template"}:
                 self.out(201,store.create_project(data["name"],data["template"]))
                 return
