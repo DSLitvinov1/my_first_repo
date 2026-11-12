@@ -167,6 +167,7 @@ async function selectProject(id){
   $("heading").textContent=projectName();
   $("description").textContent="Задачи, файлы и история проекта. Qwen готовит черновики, а сохранение файлов остаётся под твоим контролем.";
   $("new-task").disabled=false;$("new-file").disabled=false;
+  $("agent-run").disabled=false;
   drawProjects();
   await Promise.all([refreshFiles(),refreshTasks()]);
 }
@@ -200,7 +201,7 @@ async function refreshAll(){
     const id=state.project&&state.projects.some(x=>x.id===state.project)?state.project:
               state.projects[0]?.id;
     if(id){state.project=null;await selectProject(id);}
-    else{clearEditor();drawTasks();drawFiles();$("new-task").disabled=true;$("new-file").disabled=true;}
+    else{clearEditor();drawTasks();drawFiles();$("new-task").disabled=true;$("new-file").disabled=true;$("agent-run").disabled=true;}
     await refreshActivity();
   }catch(e){notice("Не удалось открыть Work: "+e.message,true);}
 }
@@ -221,7 +222,44 @@ function showDialog(id){
   const inp=$(id).querySelector("input");
   if(inp)inp.focus();
 }
+async function runSiteAudit(){
+  if(!state.project){notice("Сначала выбери проект",true);return;}
+  const urls=$("agent-urls").value.split(/[\\n,]+/).map(x=>x.trim()).filter(Boolean);
+  if(urls.length<1||urls.length>4){notice("Укажи от 1 до 4 HTTPS-адресов",true);return;}
+  const button=$("agent-run");
+  button.disabled=true;
+  $("agent-progress").textContent="Идёт проверка...";
+  $("agent-results").textContent="Читаем только общедоступные страницы. Никакие формы не отправляются.";
+  try{
+    const report=await api("/api/agent/audits","POST",{project_id:state.project,urls});
+    const lines=["Результат: "+report.state+" · "+report.id.slice(0,8)];
+    for(const step of report.steps){
+      lines.push("",step.target, "Статус: "+step.state);
+      if(step.result){
+        lines.push("Заголовок: "+(step.result.title||"не найден"));
+        lines.push("Описание: "+(step.result.description||"отсутствует"));
+        lines.push("Robots: "+(step.result.robots||step.result.x_robots_tag||"не найден"));
+        lines.push("H1: "+step.result.h1.join(" | "));
+        lines.push("Формы: "+step.result.form_count+"; ссылки: "+step.result.link_count);
+        lines.push("Замечания: "+(step.result.warnings.join(", ")||"не обнаружено при базовой проверке"));
+        for(const form of step.result.forms){
+          lines.push("  Форма "+(form.id||"без имени")+": "+(form.hidden?"скрыта":"видима")+
+            ", метод "+form.method+", полей "+form.fields.length);
+        }
+      }else{lines.push("Причина: "+(step.error||"неизвестна"));}
+    }
+    $("agent-results").textContent=lines.join("\n");
+    await refreshActivity();
+  }catch(e){
+    $("agent-results").textContent="Проверка не выполнена: "+e.message;
+    notice(e.message,true);
+  }finally{
+    $("agent-progress").textContent="";
+    button.disabled=!state.project;
+  }
+}
 function bind(){
+  $("agent-run").addEventListener("click",runSiteAudit);
   for(const id of ["new-project-side","top-new-project"])
     $(id).addEventListener("click",()=>showDialog("project-dialog"));
   $("new-task").addEventListener("click",()=>{

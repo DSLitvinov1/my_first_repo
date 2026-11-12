@@ -43,6 +43,19 @@
         <article class="stat"><small>ИИ-модель</small><strong class="stat-model">Qwen <em>3.5 9B</em></strong><span>Черновики без запуска кода</span></article>
       </section>
 
+      <section class="panel agent-panel" aria-label="Агент ONE: веб-аудит">
+        <div class="panel-title"><div><span class="overline">ONE · АГЕНТ С КОНТРОЛЕМ ДЕЙСТВИЙ</span>
+          <h2>Проверка сайтов</h2></div><span class="pill">Только чтение</span></div>
+        <p class="agent-explain">Проверка до четырёх публичных HTTPS-страниц: заголовки, SEO, ссылки и формы.
+          Никаких нажатий кнопок, отправки заявок, изменения сайтов или управления компьютером.</p>
+        <label class="agent-label" for="agent-urls">Адреса страниц (каждый с новой строки)</label>
+        <textarea id="agent-urls" rows="2" maxlength="1600" spellcheck="false"
+          placeholder="https://example.org/"></textarea>
+        <div class="agent-actions"><button class="button accent small" id="agent-run" type="button" disabled>
+          Проверить страницы</button><span id="agent-progress" aria-live="polite"></span></div>
+        <pre class="agent-result" id="agent-results" aria-live="polite">Выберите проект и введите адреса страниц для проверки.</pre>
+      </section>
+
       <div class="workspace-grid">
         <section class="panel tasks-panel">
           <div class="panel-title"><div><span class="overline">01 · ПЛАНИРОВАНИЕ</span><h2>Задачи</h2></div><button class="button soft small" id="new-task" type="button">＋ Задача</button></div>
