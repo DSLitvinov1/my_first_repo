@@ -1,0 +1,1 @@
+{"name":"neirozavod-one-browser","private":true,"version":"0.3.0","description":"Browser mouse in isolated owner-scoped session","dependencies":{"puppeteer-core":"25.16.0"},"engines":{"node":">=22"}}

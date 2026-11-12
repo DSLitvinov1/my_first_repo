@@ -21,6 +21,7 @@ import threading
 from urllib.parse import parse_qs,urlsplit
 from work_core import WorkStore,WorkDenied,denied
 from agent_one import AgentOne
+from browser_control import BrowserController
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -66,8 +67,9 @@ def model_module():
         raise ServerDenied("EXISTING_QWEN_NOT_AVAILABLE")
     return module
 
-def make_handler(store,assets,token,port,agent=None):
+def make_handler(store,assets,token,port,agent=None,browser=None):
     agent=agent or AgentOne(store)
+    browser=browser or BrowserController(store,assets)
     home=assets/"index.html"
     stylesheet=assets/"styles.css"
     script=assets/"app.js"
@@ -149,6 +151,12 @@ def make_handler(store,assets,token,port,agent=None):
                 self.out(200,{"events":store.events()})
             elif path.path=="/api/agent/capabilities" and not path.query:
                 self.out(200,agent.capabilities())
+            elif path.path=="/api/browser/status":
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
+                    raise ServerDenied("BROWSER_PROJECT_REQUIRED")
+                store.project(vals["project_id"][0])
+                self.out(200,browser.status(vals["project_id"][0]))
             elif path.path=="/api/agent/runs":
                 vals=parse_qs(path.query)
                 if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
@@ -182,6 +190,24 @@ def make_handler(store,assets,token,port,agent=None):
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/browser/open" and set(data)=={"project_id","url"}:
+                self.out(201,browser.open(data["project_id"],data["url"]))
+                return
+            if method=="POST" and url.path=="/api/browser/close" and set(data)=={"project_id","session_id"}:
+                self.out(200,browser.close(data["project_id"],data["session_id"]))
+                return
+            if method=="POST" and url.path=="/api/browser/action" and isinstance(data.get("op"),str):
+                operation=data["op"]
+                required={"project_id","session_id","op"}
+                if operation in ("click","move"):
+                    required|={"x","y"}
+                elif operation=="scroll":
+                    required|={"delta"}
+                if set(data)!=required:
+                    raise ServerDenied("BROWSER_ACTION_FIELDS_INVALID")
+                opts={k:data[k] for k in required-{"project_id","session_id","op"}}
+                self.out(200,browser.action(data["project_id"],data["session_id"],operation,**opts))
+                return
             if method=="POST" and url.path=="/api/agent/audits" and set(data)=={"project_id","urls"}:
                 run=agent.create_audit(data["project_id"],data["urls"])
                 self.out(201,agent.execute(run["id"],data["project_id"]))
@@ -249,18 +275,27 @@ def main():
     ap.add_argument("--root",type=Path,required=True)
     ap.add_argument("--data",type=Path,required=True)
     ap.add_argument("--port",type=int,default=8770)
+    ap.add_argument("--browser-allow-hosts",default="",
+                    help="Comma-separated explicitly approved exact HTTPS hosts")
+    ap.add_argument("--browser-executable",type=Path,default=None)
     args=ap.parse_args()
     if not 1024<=args.port<=65535:
         raise ServerDenied("PORT_REFUSED")
     store=WorkStore(args.root,args.data)
     token=secrets.token_urlsafe(36)
+    browser=BrowserController(
+        store,Path(__file__).resolve().parent,
+        allowed_hosts=args.browser_allow_hosts.split(",") if args.browser_allow_hosts else (),
+        executable=args.browser_executable)
     server=ThreadingHTTPServer(("127.0.0.1",args.port),
                               make_handler(store,Path(__file__).resolve().parent,
-                                           token,args.port))
+                                           token,args.port,browser=browser))
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
     try:server.serve_forever(poll_interval=0.25)
-    finally:server.server_close()
+    finally:
+        browser._close_process()
+        server.server_close()
 
 if __name__=="__main__":
     import sqlite3

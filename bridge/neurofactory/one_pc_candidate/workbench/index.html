@@ -56,6 +56,37 @@
         <pre class="agent-result" id="agent-results" aria-live="polite">Выберите проект и введите адреса страниц для проверки.</pre>
       </section>
 
+      <section class="panel browser-panel" aria-label="Браузер агента">
+        <div class="panel-title">
+          <div><span class="overline">ONE · УПРАВЛЕНИЕ БРАУЗЕРОМ</span>
+            <h2>Браузер и мышь</h2></div>
+          <span class="pill" id="browser-mode">Изолированный сеанс</span>
+        </div>
+        <p class="browser-intro">Открывает разрешённый сайт во временном браузере. Нажимай на изображение,
+          чтобы управлять мышью браузера. Отправка форм и действия за пределами разрешённого сайта заблокированы.
+          Системный курсор Windows не управляется.</p>
+        <label class="agent-label" for="browser-address">Адрес HTTPS-сайта</label>
+        <div class="browser-open-row">
+          <input id="browser-address" type="url" spellcheck="false" maxlength="400" placeholder="https://example.org/" autocomplete="off"/>
+          <button class="button accent small" type="button" id="browser-open" disabled>Открыть браузер</button>
+        </div>
+        <div id="browser-status" class="browser-info" aria-live="polite">Проверка готовности браузера...</div>
+        <div class="browser-controls" id="browser-controls" hidden>
+          <button class="button soft small" type="button" data-browser-command="scroll_up">↑ Вверх</button>
+          <button class="button soft small" type="button" data-browser-command="scroll_down">↓ Вниз</button>
+          <button class="button soft small" type="button" data-browser-command="back">← Назад</button>
+          <button class="button soft small" type="button" data-browser-command="frame">Обновить кадр</button>
+          <button class="button soft small" type="button" data-browser-command="inspect">Найти кнопки</button>
+          <button class="button soft small" type="button" id="browser-close">Закрыть</button>
+        </div>
+        <div class="browser-screen" id="browser-screen" hidden>
+          <img id="browser-frame" alt="Текущий снимок открытой страницы; нажимайте на изображение для управления браузерной мышью" draggable="false"/>
+          <span class="browser-cursor" id="browser-cursor" aria-hidden="true" hidden></span>
+        </div>
+        <p class="browser-page-title" id="browser-page-title"></p>
+        <div class="browser-targets" id="browser-targets" hidden aria-label="Элементы управления открытой страницы"></div>
+      </section>
+
       <div class="workspace-grid">
         <section class="panel tasks-panel">
           <div class="panel-title"><div><span class="overline">01 · ПЛАНИРОВАНИЕ</span><h2>Задачи</h2></div><button class="button soft small" id="new-task" type="button">＋ Задача</button></div>

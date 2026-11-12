@@ -16,3 +16,26 @@
   border:1px solid #314057;border-radius:10px;padding:14px;max-height:370px;overflow:auto;
   font:13px/1.55 ui-monospace,monospace; }
 @media (max-width:700px) {.agent-panel{padding:14px}.agent-result{font-size:12px}}
+
+/* NEIROZAVOD ONE v0.3 browser mouse */
+.browser-panel { margin:18px 0; padding:22px; }
+.browser-intro { max-width:970px;line-height:1.55;color:var(--muted,#9da9bb); }
+.browser-open-row { display:flex;gap:10px;flex-wrap:wrap; }
+.browser-open-row input { flex:1;min-width:230px;box-sizing:border-box;border:1px solid #566078;
+  border-radius:10px;padding:12px;color:#f4f7fd;background:#101a2c;font:14px system-ui,sans-serif; }
+.browser-info { margin-top:10px;color:#b3c4d6;font-size:13px;min-height:21px; }
+.browser-controls { display:flex;flex-wrap:wrap;gap:8px;margin:12px 0; }
+.browser-screen { max-width:1100px;position:relative;border:1px solid #536176;border-radius:12px;
+  overflow:hidden;background:#111927;line-height:0;touch-action:manipulation; }
+.browser-screen img { display:block;width:100%;height:auto;cursor:crosshair;user-select:none; }
+.browser-cursor { position:absolute;border:2px solid #f6ca45;width:14px;height:14px;
+  pointer-events:none;box-shadow:0 0 0 1px #101827;border-radius:50%;
+  transform:translate(-50%,-50%);z-index:2; }
+.browser-page-title { color:#c2d6ea;font-size:13px;overflow-wrap:anywhere; }
+.browser-controls[hidden],.browser-screen[hidden],.browser-cursor[hidden] { display:none; }
+@media(max-width:700px){.browser-panel{padding:14px}.browser-open-row input{width:100%}}
+
+.browser-targets { display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:12px;background:#111c2f;border:1px solid #36435b;border-radius:10px; }
+.browser-targets strong { width:100%;font-size:13px;color:#c6d9eb; }
+.browser-targets[hidden]{display:none}
