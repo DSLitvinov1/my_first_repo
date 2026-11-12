@@ -5,6 +5,7 @@ const token = document.querySelector('meta[name="nf-token"]').content;
 const state = { projects:[],project:null,tasks:[],selectedTask:null,files:[],
                 file:null,sha:null,savedText:null,modelOk:false,poll:null };
 let toastTimer=null;
+const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0};
 
 async function api(url,method="GET",body){
   const opt={method,cache:"no-store",credentials:"same-origin",headers:{}};
@@ -169,7 +170,7 @@ async function selectProject(id){
   $("new-task").disabled=false;$("new-file").disabled=false;
   $("agent-run").disabled=false;
   drawProjects();
-  await Promise.all([refreshFiles(),refreshTasks()]);
+  await Promise.all([refreshFiles(),refreshTasks(),browserStatus()]);
 }
 async function refreshActivity(){
   try{
@@ -258,7 +259,167 @@ async function runSiteAudit(){
     button.disabled=!state.project;
   }
 }
+function browserButtons(){
+  const hasProject=!!state.project;
+  const active=browserState.session&&browserState.project===state.project;
+  $("browser-open").disabled=!hasProject||!browserState.configured||!!active||browserState.busy;
+  $("browser-controls").hidden=!active;
+  $("browser-screen").hidden=!active;
+  $("browser-close").disabled=!active||browserState.busy;
+  if(!active){
+    $("browser-page-title").textContent="";
+    $("browser-frame").removeAttribute("src");
+    $("browser-cursor").hidden=true;
+  }
+}
+async function browserStatus(){
+  if(!state.project){
+    browserState.session=null;browserState.project=null;browserButtons();
+    $("browser-status").textContent="Выбери проект, чтобы открыть разрешённый сайт.";
+    return;
+  }
+  try{
+    const result=await api("/api/browser/status?project_id="+state.project);
+    browserState.configured=!!result.configured;
+    browserState.session=result.session?.id||null;
+    browserState.project=state.project;
+    const hosts=result.allowed_hosts||[];
+    $("browser-status").textContent=result.configured?
+      "Разрешённые сайты: "+hosts.join(", ")+". Клики управляют только веб-страницей.":
+      "Браузер не настроен: для запуска необходим Chromium и явный список разрешённых сайтов.";
+    browserButtons();
+    if(browserState.session){
+      try{
+        const page=await browserAction("frame");
+        showBrowserFrame(page);
+      }catch(e){notice(e.message,true);}
+    }
+  }catch(e){browserState.configured=false;browserButtons();$("browser-status").textContent=e.message;}
+}
+function browserTargets(items){
+  const root=$("browser-targets");
+  root.replaceChildren();
+  const targets=Array.isArray(items)?items:[];
+  root.hidden=!targets.length;
+  if(!targets.length)return;
+  root.append(el("strong",null,"Видимые кнопки и ссылки"));
+  for(const entry of targets.slice(0,35)){
+    const button=el("button","button soft small",entry.label);
+    button.type="button";
+    button.disabled=!!entry.protected||browserState.busy;
+    button.title=entry.protected?"Кнопка формы: действие заблокировано":entry.kind;
+    button.addEventListener("click",()=>invokeBrowser("click",{x:entry.x,y:entry.y}));
+    root.append(button);
+  }
+}
+function showBrowserFrame(result){
+  const image=result?.frame?.image;
+  if(image&&/^[A-Za-z0-9+/=]+$/.test(image)&&image.length<=850000){
+    $("browser-frame").src="data:image/jpeg;base64,"+image;
+    $("browser-screen").hidden=false;
+  }
+  const info=result?.frame;
+  if(info)$("browser-page-title").textContent=(info.title||"Без названия")+" · "+(info.url||"");
+}
+async function openBrowser(){
+  if(!state.project||!browserState.configured||browserState.busy)return;
+  const url=$("browser-address").value.trim();
+  if(!url.startsWith("https://")){notice("Только HTTPS-адреса",true);return;}
+  if(!window.confirm("Открыть этот сайт в изолированном браузере?\n"+url+
+    "\nСессия не имеет доступа к файлам компьютера. Отправка форм запрещена."))return;
+  browserState.busy=true;browserButtons();
+  $("browser-status").textContent="Запуск изолированного браузера...";
+  try{
+    const reply=await api("/api/browser/open","POST",{project_id:state.project,url});
+    browserState.session=reply.session_id;
+    browserState.project=state.project;
+    showBrowserFrame(reply);
+    browserTargets([]);
+    $("browser-status").textContent="Браузер открыт. Мышью можно наводить и нажимать разрешённые кнопки.";
+    await refreshActivity();
+  }catch(e){
+    $("browser-status").textContent="Не удалось открыть браузер: "+e.message;
+    notice(e.message,true);
+  }finally{browserState.busy=false;browserButtons();}
+}
+async function browserAction(op,options={}){
+  if(!browserState.session||state.project!==browserState.project)
+    throw new Error("Нет активной сессии браузера.");
+  return await api("/api/browser/action","POST",{
+    project_id:state.project,session_id:browserState.session,op,...options
+  });
+}
+async function invokeBrowser(op,options={}){
+  if(!browserState.session||browserState.busy)return;
+  browserState.busy=true;browserButtons();
+  try{
+    const reply=await browserAction(op,options);
+    showBrowserFrame(reply);
+    if(op==="inspect")browserTargets(reply.frame?.targets);
+    else if(op!=="move")browserTargets([]);
+    if(op!=="move")await refreshActivity();
+  }catch(e){
+    notice("Браузер: "+e.message,true);
+    $("browser-status").textContent="Действие отклонено: "+e.message;
+    if(/UNKNOWN|STOPPED|EXPIRED|SESSION/.test(e.message)){
+      browserState.session=null;
+    }
+  }finally{browserState.busy=false;browserButtons();}
+}
+function browserCoordinates(event){
+  const rect=$("browser-frame").getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+  const x=Math.floor((event.clientX-rect.left)*1100/rect.width);
+  const y=Math.floor((event.clientY-rect.top)*720/rect.height);
+  if(x<0||y<0||x>=1100||y>=720)return null;
+  $("browser-cursor").hidden=false;
+  $("browser-cursor").style.left=(event.clientX-rect.left)+"px";
+  $("browser-cursor").style.top=(event.clientY-rect.top)+"px";
+  return {x,y};
+}
+function bindBrowser(){
+  $("browser-open").addEventListener("click",openBrowser);
+  $("browser-close").addEventListener("click",async()=>{
+    if(!browserState.session||browserState.busy)return;
+    browserState.busy=true;
+    try{
+      await api("/api/browser/close","POST",
+        {project_id:state.project,session_id:browserState.session});
+      browserState.session=null;
+      browserTargets([]);
+      $("browser-status").textContent="Сессия браузера закрыта. Куки не сохраняются.";
+      await refreshActivity();
+    }catch(e){notice(e.message,true);}
+    finally{browserState.busy=false;browserButtons();}
+  });
+  for(const el of document.querySelectorAll("[data-browser-command]")){
+    el.addEventListener("click",()=>{
+      const op=el.dataset.browserCommand;
+      if(op==="scroll_up")invokeBrowser("scroll",{delta:-560});
+      else if(op==="scroll_down")invokeBrowser("scroll",{delta:560});
+      else invokeBrowser(op);
+    });
+  }
+  $("browser-frame").addEventListener("click",async event=>{
+    const point=browserCoordinates(event);
+    if(point)await invokeBrowser("click",point);
+  });
+  $("browser-frame").addEventListener("pointermove",async event=>{
+    const point=browserCoordinates(event);
+    const now=Date.now();
+    if(!point||browserState.moveBusy||browserState.busy||now-browserState.lastMove<300
+       ||!browserState.session)return;
+    browserState.lastMove=now;
+    browserState.moveBusy=true;
+    try{await browserAction("move",point);}
+    catch(e){if(/UNKNOWN|STOPPED|EXPIRED|SESSION/.test(e.message)){
+      browserState.session=null;browserButtons();}}
+    finally{browserState.moveBusy=false;}
+  });
+  $("browser-frame").addEventListener("pointerleave",()=>{$("browser-cursor").hidden=true;});
+}
 function bind(){
+  bindBrowser();
   $("agent-run").addEventListener("click",runSiteAudit);
   for(const id of ["new-project-side","top-new-project"])
     $(id).addEventListener("click",()=>showDialog("project-dialog"));
@@ -356,6 +517,7 @@ function bind(){
     $("crumb-project").textContent="Обзор";
     $("description").textContent="Создавай проекты и управляй задачами в одном месте.";
     $("new-task").disabled=true;$("new-file").disabled=true;
+    browserState.session=null;browserState.project=null;browserButtons();
   });
 }
 async function poll(){
