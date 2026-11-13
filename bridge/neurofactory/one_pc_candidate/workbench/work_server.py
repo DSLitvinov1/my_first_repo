@@ -23,10 +23,16 @@ from work_core import WorkStore,WorkDenied,denied
 from agent_one import AgentOne
 from browser_control import BrowserController
 from workflow_one import WorkflowOne
+from desktop_one import DesktopOne
+from credentials_one import UserVault
+from google_oauth_one import GoogleOAuthOne, BitrixConnection
+from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
+from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
-      "/app.js":"application/javascript; charset=utf-8"}
+      "/app.js":"application/javascript; charset=utf-8",
+      "/toolmesh.js":"application/javascript; charset=utf-8"}
 ID="[0-9a-f]{32}"
 PROJECT_RE=re.compile(rf"^/api/projects/({ID})/(files|tasks|file|versions|undo)$")
 TASK_RE=re.compile(rf"^/api/tasks/({ID})/generate$")
@@ -68,14 +74,28 @@ def model_module():
         raise ServerDenied("EXISTING_QWEN_NOT_AVAILABLE")
     return module
 
-def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None):
+def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
+                 desktop=None,planner=None,services=None,oauth=None,bitrix=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
+    desktop=desktop or DesktopOne(store,assets)
+    planner=planner or QwenPlannerOne(store,browser)
+    oauth=oauth or GoogleOAuthOne()
+    bitrix=bitrix or BitrixConnection(oauth.vault)
+    if services is None:
+        adapters={}
+        if oauth.capabilities()["configured"]:
+            adapters["google.tasks"]=GoogleWorkspaceAdapter(oauth.token)
+        if bitrix.portal():
+            adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
+        services=ServiceOne(store,adapters)
     home=assets/"index.html"
     stylesheet=assets/"styles.css"
     script=assets/"app.js"
-    if not all(p.is_file() and not p.is_symlink() for p in (home,stylesheet,script)):
+    meshscript=assets/"toolmesh.js"
+    if not all(p.is_file() and not p.is_symlink() for p in (
+        home,stylesheet,script,meshscript)):
         raise ServerDenied("FRONTEND_ASSETS_MISSING")
     origin=f"http://127.0.0.1:{port}"
 
@@ -136,7 +156,10 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None):
                                                          html.escape(token,quote=True))
                     self.send_bytes(200,body.encode("utf-8"),MIME[path.path])
                 else:
-                    source=stylesheet if path.path=="/styles.css" else script
+                    source={
+                        "/styles.css":stylesheet, "/app.js":script,
+                        "/toolmesh.js":meshscript,
+                    }[path.path]
                     self.send_bytes(200,source.read_bytes(),MIME[path.path])
                 return
             if path.path=="/api/status" and not path.query:
@@ -147,6 +170,36 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None):
                 except (ServerDenied,OSError,ValueError):
                     state["qwen_available"]=False
                 self.out(200,state)
+            elif path.path=="/api/toolmesh/status" and not path.query:
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("TOOLMESH_OWNER_TOKEN_REQUIRED")
+                self.out(200,{"desktop":desktop.capabilities(),
+                              "qwen":planner.status(),
+                              "google":oauth.capabilities(),
+                              "bitrix_connected":bool(bitrix.portal()),
+                              "services":services.status()})
+            elif path.path=="/api/desktop/status":
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
+                    raise ServerDenied("DESKTOP_PROJECT_REQUIRED")
+                store.project(vals["project_id"][0])
+                self.out(200,desktop.status(vals["project_id"][0]))
+            elif path.path=="/api/qwen/plan":
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("QWEN_OWNER_TOKEN_REQUIRED")
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id","id"} or any(len(x)!=1 for x in vals.values()):
+                    raise ServerDenied("QWEN_PLAN_QUERY_INVALID")
+                self.out(200,planner.get(vals["project_id"][0],vals["id"][0]))
+            elif path.path=="/api/service/operations":
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("SERVICE_OWNER_TOKEN_REQUIRED")
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
+                    raise ServerDenied("SERVICE_PROJECT_REQUIRED")
+                self.out(200,{"operations":services.operations(vals["project_id"][0])})
             elif path.path=="/api/projects" and not path.query:
                 self.out(200,{"projects":store.projects()})
             elif path.path=="/api/activity" and not path.query:
@@ -208,6 +261,65 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None):
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/desktop/windows" and set(data)=={"project_id"}:
+                self.out(200,{"windows":desktop.windows(data["project_id"])})
+                return
+            if method=="POST" and url.path=="/api/desktop/attach" and set(data)=={"project_id","app","pid","handle"}:
+                self.out(201,desktop.attach(data["project_id"],data["app"],
+                                             data["pid"],data["handle"]))
+                return
+            if method=="POST" and url.path=="/api/desktop/open" and set(data)=={"project_id"}:
+                self.out(201,desktop.open(data["project_id"]))
+                return
+            if method=="POST" and url.path=="/api/desktop/close" and set(data)=={"project_id","session_id"}:
+                self.out(200,desktop.close(data["project_id"],data["session_id"]))
+                return
+            if method=="POST" and url.path=="/api/desktop/action" and isinstance(data.get("op"),str):
+                op=data["op"]
+                expected={"project_id","session_id","op"}
+                if op in ("move","click"):
+                    expected|={"x","y"}
+                if op=="type":
+                    expected|={"text"}
+                if set(data)!=expected:
+                    raise ServerDenied("DESKTOP_ACTION_FIELDS_REFUSED")
+                arguments={k:data[k] for k in expected-{"project_id","session_id","op"}}
+                self.out(200,desktop.action(data["project_id"],data["session_id"],op,**arguments))
+                return
+            if method=="POST" and url.path=="/api/qwen/propose" and set(data)=={"project_id","goal"}:
+                self.out(202,planner.propose(data["project_id"],data["goal"]))
+                return
+            if method=="POST" and url.path=="/api/service/read" and set(data)=={"project_id","resource","fields"}:
+                self.out(200,services.read(data["project_id"],data["resource"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/service/prepare" and set(data)=={"project_id","action","fields"}:
+                self.out(201,services.prepare(data["project_id"],data["action"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/service/commit" and set(data)=={"project_id","id","action","fields"}:
+                self.out(200,services.commit(data["project_id"],data["id"],
+                                             data["action"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/connectors/google/start" and set(data)=={"scope"}:
+                self.out(201,oauth.begin(data["scope"]))
+                return
+            if method=="POST" and url.path=="/api/connectors/google/disconnect" and set(data)=={"scope"}:
+                self.out(200,oauth.revoke_local(data["scope"]))
+                return
+            if method=="POST" and url.path=="/api/connectors/bitrix/crm/connect" and set(data)=={"portal","access_token"}:
+                result=bitrix.connect_crm(data["portal"],data["access_token"])
+                if "bitrix.tasks" not in services.adapters:
+                    services.adapters["bitrix.tasks"]=Bitrix24Adapter(data["portal"],bitrix.token)
+                self.out(201,result)
+                return
+            if method=="POST" and url.path=="/api/connectors/bitrix/connect" and set(data)=={"portal","access_token"}:
+                result=bitrix.connect(data["portal"],data["access_token"])
+                services.adapters["bitrix.tasks"]=Bitrix24Adapter(data["portal"],bitrix.token)
+                self.out(201,result)
+                return
+            if method=="POST" and url.path=="/api/connectors/bitrix/disconnect" and data=={}:
+                self.out(200,bitrix.disconnect_local())
+                services.adapters.pop("bitrix.tasks",None)
+                return
             if method=="POST" and url.path=="/api/one/prepare" and set(data)=={"project_id","script"}:
                 self.out(201,workflow.prepare(data["project_id"],data["script"]))
                 return
@@ -312,6 +424,12 @@ def main():
     ap.add_argument("--browser-allow-hosts",default="",
                     help="Comma-separated explicitly approved exact HTTPS hosts")
     ap.add_argument("--browser-executable",type=Path,default=None)
+    ap.add_argument("--desktop-enable",action="store_true",
+                    help="Explicit per-user Windows desktop pilot; never CORE/HOST")
+    ap.add_argument("--desktop-allow-apps",default="",
+                    help="Exact foreground exe names, comma-separated; default none")
+    ap.add_argument("--qwen-local",action="store_true",
+                    help="Use owner-installed Ollama Qwen 3.5:9b via 127.0.0.1:11434")
     args=ap.parse_args()
     if not 1024<=args.port<=65535:
         raise ServerDenied("PORT_REFUSED")
@@ -321,14 +439,49 @@ def main():
         store,Path(__file__).resolve().parent,
         allowed_hosts=args.browser_allow_hosts.split(",") if args.browser_allow_hosts else (),
         executable=args.browser_executable)
+    desktop=DesktopOne(store,Path(__file__).resolve().parent,
+        enabled=args.desktop_enable,
+        allowed_apps=args.desktop_allow_apps.split(",") if args.desktop_allow_apps else ())
+    vault=UserVault()
+    oauth=GoogleOAuthOne(vault,
+        client_id=os.environ.get("NF_GOOGLE_DESKTOP_CLIENT_ID") or None,
+        client_secret=os.environ.get("NF_GOOGLE_DESKTOP_CLIENT_SECRET") or None)
+    bitrix=BitrixConnection(vault)
+    adapters={}
+    if oauth.capabilities()["configured"]:
+        adapters["google.tasks"]=GoogleWorkspaceAdapter(oauth.token)
+    if bitrix.portal():
+        adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
+    services=ServiceOne(store,adapters)
+    model_fn=None
+    if args.qwen_local:
+        candidate=LocalOllamaQwen()
+        model_fn=candidate if candidate.available() else None
+    else:
+        try:
+            model_module()
+            def pinned_qwen(project,objective):
+                provider=model_module()
+                if len(objective)>1200:
+                    raise WorkDenied("QWEN_PINNED_PROMPT_TOO_LONG")
+                return provider.generate(OWNER_DATA,{
+                    "id":secrets.token_hex(16),"project_id":project,
+                    "objective":objective},model="qwen3.5:9b")
+            model_fn=pinned_qwen
+        except (ServerDenied,OSError,ValueError):
+            model_fn=None
+    planner=QwenPlannerOne(store,browser,model_fn=model_fn)
     server=ThreadingHTTPServer(("127.0.0.1",args.port),
                               make_handler(store,Path(__file__).resolve().parent,
-                                           token,args.port,browser=browser))
+                                           token,args.port,browser=browser,
+                                           desktop=desktop,planner=planner,
+                                           services=services,oauth=oauth,bitrix=bitrix))
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
     try:server.serve_forever(poll_interval=0.25)
     finally:
         browser._close_process()
+        desktop._close()
         server.server_close()
 
 if __name__=="__main__":

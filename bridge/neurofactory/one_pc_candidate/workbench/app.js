@@ -10,7 +10,9 @@ const browserState={configured:false,session:null,project:null,active:false,busy
 
 async function api(url,method="GET",body){
   const opt={method,cache:"no-store",credentials:"same-origin",headers:{}};
-  if(url.startsWith("/api/one/"))opt.headers["X-NF-Work-Token"]=token;
+  if(["/api/one/","/api/toolmesh/","/api/desktop/","/api/qwen/",
+      "/api/service/","/api/connectors/"].some(prefix=>url.startsWith(prefix)))
+    opt.headers["X-NF-Work-Token"]=token;
   if(method!=="GET"){
     opt.headers["Content-Type"]="application/json";
     opt.headers["X-NF-Work-Token"]=token;

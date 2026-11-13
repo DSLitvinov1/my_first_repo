@@ -8,6 +8,7 @@
   <title>Нейрозавод Work — рабочее пространство</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
+  <script src="/toolmesh.js" defer></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -134,6 +135,105 @@
         </div>
         <p class="browser-page-title" id="browser-page-title"></p>
         <div class="browser-targets" id="browser-targets" hidden aria-label="Элементы управления открытой страницы"></div>
+      </section>
+
+      <section class="panel mesh-panel" aria-label="Универсальный агент ONE: рабочий стол, Qwen и сервисы">
+        <div class="panel-title"><div><span class="overline">ONE · ИНСТРУМЕНТЫ И ИНТЕГРАЦИИ</span>
+          <h2>Агент для разных программ</h2></div><span class="pill">Разрешения владельца</span></div>
+        <div class="mesh-layout">
+          <div class="mesh-part">
+            <h3>Планирование через Qwen</h3>
+            <p>Опиши цель обычным языком. Qwen предложит сценарий; действия выполняются только после твоей проверки плана.</p>
+            <label for="mesh-goal" class="agent-label">Что необходимо сделать</label>
+            <textarea id="mesh-goal" rows="3" maxlength="400" placeholder="Открой сайт, найди раздел с услугами и проверь содержание..."></textarea>
+            <button class="button accent small" id="mesh-plan" type="button">Предложить план Qwen</button>
+            <div id="mesh-qwen-status" role="status" class="mesh-status">Проверка подключения модели...</div>
+          </div>
+          <div class="mesh-part">
+            <h3>Рабочий стол Windows</h3>
+            <p>Только разрешённые приложения и пользовательская сессия. Управление не затрагивает привилегированную службу CORE9/HOST.</p>
+            <div id="mesh-desktop-status" role="status" class="mesh-status">Проверка доступа...</div>
+            <div class="mesh-actions">
+              <button id="mesh-windows" type="button" class="button soft small">Найти окна</button>
+              <select id="mesh-window-list" aria-label="Разрешённые открытые окна"></select>
+              <button id="mesh-attach" type="button" class="button soft small">Выбрать окно</button>
+              <button id="mesh-frame" type="button" class="button soft small">Снимок</button>
+              <button id="mesh-close" type="button" class="button soft small">Отключить</button>
+            </div>
+            <label class="mesh-checkbox" for="mesh-click-mode">
+              <input type="checkbox" id="mesh-click-mode"/> Разрешить нажатия мышью по снимку выбранного окна
+            </label>
+            <img id="mesh-screen" alt="Снимок разрешённого окна Windows" hidden draggable="false"/>
+            <div class="mesh-actions">
+              <label for="mesh-desktop-input">Текст для активного поля программы</label>
+              <input id="mesh-desktop-input" type="text" maxlength="500" autocomplete="off"
+                placeholder="Текст для печати в выбранном поле"/>
+              <button id="mesh-type" type="button" class="button accent small">Напечатать</button>
+            </div>
+          </div>
+          <div class="mesh-part">
+            <h3>Google и Bitrix24</h3>
+            <p>Подключения оформляются отдельно. Существующие аккаунты ChatGPT не копируются в программу.</p>
+            <div id="mesh-connectors-status" role="status" class="mesh-status">Сведения о подключениях...</div>
+            <div class="mesh-actions">
+              <label for="mesh-google-scope">Google</label>
+              <select id="mesh-google-scope">
+                <option value="tasks">Задачи</option>
+                <option value="drive.metadata.readonly">Диск · список файлов</option>
+                <option value="gmail.readonly">Почта · список сообщений</option>
+                <option value="calendar.readonly">Календарь · просмотр</option>
+              </select>
+              <button type="button" id="mesh-google-connect" class="button soft small">Подключить Google</button>
+              <button type="button" id="mesh-google-disconnect" class="button soft small">Отозвать локальный доступ</button>
+            </div>
+            <div class="mesh-actions">
+              <label for="mesh-bitrix-portal">Bitrix24</label>
+              <input id="mesh-bitrix-portal" type="text" maxlength="100" placeholder="portal.bitrix24.ru" autocomplete="off"/>
+              <input id="mesh-bitrix-token" type="password" maxlength="4096" placeholder="OAuth-токен с правом tasks" autocomplete="off"/>
+              <button type="button" id="mesh-bitrix-connect" class="button soft small">Подключить портал</button>
+              <button type="button" id="mesh-bitrix-disconnect" class="button soft small">Отключить</button>
+            </div>
+          </div>
+          <div class="mesh-part">
+            <h3>Защищённые записи</h3>
+            <p>Создание и изменение только после отдельного подтверждения. Агент перечитывает запись и сверяет результат.</p>
+            <div class="mesh-actions">
+              <label for="mesh-record-action">Действие</label>
+              <select id="mesh-record-action">
+                <option value="google.tasks.create">Google Задачи · создать</option>
+                <option value="google.tasks.update">Google Задачи · изменить</option>
+                <option value="bitrix.tasks.create">Bitrix24 · создать задачу</option>
+                <option value="bitrix.tasks.update">Bitrix24 · изменить задачу</option>
+              </select>
+            </div>
+            <div class="mesh-form-grid">
+              <label>Название задачи<input id="mesh-record-title" type="text" maxlength="180" autocomplete="off"/></label>
+              <label>ID списка Google<input id="mesh-record-list" type="text" maxlength="160" placeholder="@default" value="@default"/></label>
+              <label>ID исполнителя Bitrix24<input id="mesh-record-responsible" type="number" min="1" value="1"/></label>
+              <label>ID задачи (при изменении)<input id="mesh-record-id" type="text" maxlength="160" autocomplete="off"/></label>
+              <label>Прежнее название (при изменении)<input id="mesh-record-old" type="text" maxlength="180" autocomplete="off"/></label>
+              <label class="mesh-wide">Описание<input id="mesh-record-notes" type="text" maxlength="2000" autocomplete="off"/></label>
+            </div>
+            <div class="mesh-actions">
+              <button type="button" id="mesh-record-prepare" class="button soft small">Проверить запись</button>
+              <button type="button" id="mesh-record-commit" class="button accent small" disabled>Подтвердить сохранение</button>
+            </div>
+            <div class="mesh-actions">
+              <label for="mesh-read-resource">Прочитать запись</label>
+              <select id="mesh-read-resource">
+                <option value="google.tasks.list">Google Задачи · список</option>
+                <option value="google.drive.files.list">Google Диск · файлы</option>
+                <option value="google.gmail.messages.list">Google Почта · сообщения</option>
+                <option value="google.calendar.events.list">Google Календарь · события</option>
+                <option value="bitrix.tasks.get">Bitrix24 · задача</option>
+                <option value="bitrix.crm.deal.get">Bitrix24 · сделка (отдельные CRM-права)</option>
+                <option value="bitrix.crm.contact.get">Bitrix24 · контакт (отдельные CRM-права)</option>
+              </select>
+              <button type="button" id="mesh-read" class="button soft small">Прочитать</button>
+            </div>
+            <pre id="mesh-record-result" class="mesh-result" aria-live="polite">Подключения не менялись.</pre>
+          </div>
+        </div>
       </section>
 
       <div class="workspace-grid">
