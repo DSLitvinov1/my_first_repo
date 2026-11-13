@@ -5,10 +5,12 @@ const token = document.querySelector('meta[name="nf-token"]').content;
 const state = { projects:[],project:null,tasks:[],selectedTask:null,files:[],
                 file:null,sha:null,savedText:null,modelOk:false,poll:null };
 let toastTimer=null;
+const oneState={runId:null,script:null,project:null,running:false,busy:false,started:false};
 const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0,fieldSelected:false,targets:[]};
 
 async function api(url,method="GET",body){
   const opt={method,cache:"no-store",credentials:"same-origin",headers:{}};
+  if(url.startsWith("/api/one/"))opt.headers["X-NF-Work-Token"]=token;
   if(method!=="GET"){
     opt.headers["Content-Type"]="application/json";
     opt.headers["X-NF-Work-Token"]=token;
@@ -171,6 +173,8 @@ async function selectProject(id){
   $("agent-run").disabled=false;
   drawProjects();
   await Promise.all([refreshFiles(),refreshTasks(),browserStatus()]);
+  if(oneState.project!==id)oneReset();
+  else oneButtons();
 }
 async function refreshActivity(){
   try{
@@ -472,7 +476,115 @@ function bindBrowser(){
   });
   $("browser-frame").addEventListener("pointerleave",()=>{$("browser-cursor").hidden=true;});
 }
+function oneButtons(){
+  const selected=!!state.project;
+  $("one-prepare").disabled=!selected||oneState.running||oneState.busy||
+    !$("one-instructions").value.trim();
+  $("one-start").disabled=!selected||!oneState.runId||oneState.running||
+    oneState.busy||oneState.started||oneState.project!==state.project||
+    oneState.script!==$("one-instructions").value;
+}
+function oneReset(){
+  oneState.runId=null;
+  oneState.script=null;
+  oneState.project=null;
+  oneState.running=false;
+  oneState.started=false;
+  $("one-last-frame").hidden=true;
+  $("one-last-frame").removeAttribute("src");
+  $("one-run-label").textContent="";
+  $("one-plan").textContent="Впиши задание и проверь план, прежде чем его выполнять.";
+  oneButtons();
+}
+async function onePrepare(){
+  if(!state.project||oneState.busy||oneState.running)return;
+  const script=$("one-instructions").value;
+  oneState.busy=true;oneButtons();
+  $("one-run-label").textContent="Проверяю разрешения и последовательность...";
+  try{
+    const result=await api("/api/one/prepare","POST",{project_id:state.project,script});
+    oneState.runId=result.run_id;
+    oneState.started=false;
+    oneState.script=script;
+    oneState.project=state.project;
+    const lines=["Готово к выполнению · "+result.steps.length+" действий."];
+    for(const step of result.steps){
+      lines.push(step.position+". "+step.description);
+    }
+    $("one-plan").textContent=lines.join("\n");
+    $("one-run-label").textContent="План проверен. Для запуска нажми «Выполнить задание».";
+  }catch(e){
+    oneState.runId=null;
+    $("one-plan").textContent="Не удалось проверить план: "+e.message;
+    $("one-run-label").textContent="Команда не разрешена.";
+  }finally{oneState.busy=false;oneButtons();}
+}
+async function oneStart(){
+  if(!oneState.runId||oneState.project!==state.project||oneState.busy||
+     oneState.running||oneState.script!==$("one-instructions").value)return;
+  if(!window.confirm("Выполнить проверенную последовательность в браузере?"+
+    "\nИзменение CRM, отправка форм, внешние сайты и системные команды недоступны."))return;
+  oneState.busy=true;oneButtons();
+  try{
+    const run=await api("/api/one/start","POST",{
+      project_id:state.project,run_id:oneState.runId,
+      script:oneState.script
+    });
+    if(run.state!=="ACCEPTED")throw new Error("Неожиданное состояние задания");
+    oneState.running=true;
+    oneState.started=true;
+    $("one-run-label").textContent="Выполняется...";
+    await onePoll();
+  }catch(e){
+    $("one-run-label").textContent="Запуск отклонён: "+e.message;
+    notice(e.message,true);
+  }finally{oneState.busy=false;oneButtons();}
+}
+async function onePoll(){
+  if(!oneState.runId||!oneState.running||!state.project||
+     oneState.project!==state.project)return;
+  try{
+    const params=new URLSearchParams({project_id:state.project,run_id:oneState.runId});
+    const run=await api("/api/one/run?"+params.toString());
+    const names={open:"Открыть сайт",click_text:"Нажать элемент",
+      fill_label:"Напечатать текст",scroll:"Прокрутить",
+      check_text:"Проверить страницу",frame:"Снимок страницы"};
+    const lines=["Состояние: "+run.state];
+    for(const step of run.steps){
+      lines.push(step.number+". "+(names[step.action]||step.action)+" — "+step.state);
+    }
+    if(run.error)lines.push("Причина: "+run.error);
+    $("one-plan").textContent=lines.join("\n");
+    if(run.frame?.image&&/^[A-Za-z0-9+/=]+$/.test(run.frame.image)&&
+       run.frame.image.length<=850000){
+      $("one-last-frame").src="data:image/jpeg;base64,"+run.frame.image;
+      $("one-last-frame").hidden=false;
+    }
+    if(run.state!=="RUNNING"){
+      oneState.running=false;
+      $("one-run-label").textContent=run.state==="DONE"?"Задание завершено":
+        "Задание остановлено без автоматического повтора";
+      oneButtons();
+      await refreshActivity();
+    }
+  }catch(e){
+    $("one-run-label").textContent="Не удалось узнать состояние: "+e.message;
+  }
+}
+function bindOne(){
+  $("one-instructions").addEventListener("input",()=>{
+    if(!oneState.running){
+      oneState.runId=null;
+      oneState.script=null;
+      oneState.started=false;
+      oneButtons();
+    }
+  });
+  $("one-prepare").addEventListener("click",onePrepare);
+  $("one-start").addEventListener("click",oneStart);
+}
 function bind(){
+  bindOne();
   bindBrowser();
   $("agent-run").addEventListener("click",runSiteAudit);
   for(const id of ["new-project-side","top-new-project"])
@@ -572,6 +684,7 @@ function bind(){
     $("description").textContent="Создавай проекты и управляй задачами в одном месте.";
     $("new-task").disabled=true;$("new-file").disabled=true;
     browserState.session=null;browserState.project=null;browserButtons();
+    oneReset();
   });
 }
 async function poll(){
@@ -580,3 +693,4 @@ async function poll(){
 }
 bind();refreshAll();
 setInterval(poll,4500);
+setInterval(onePoll,1400);

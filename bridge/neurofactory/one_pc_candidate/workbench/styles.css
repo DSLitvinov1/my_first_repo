@@ -54,3 +54,19 @@
 .browser-keyboard-actions select{padding:8px;background:#0b1726;color:#fff;
   border:1px solid #536176;border-radius:8px;max-width:100%}
 .browser-keyboard-hint{color:#9db0c6;line-height:1.4}
+
+/* Work ONE v0.5 deterministic multi-step runner */
+.one-scenario { margin:18px 0;padding:22px; }
+.one-explain {max-width:980px;line-height:1.55;color:var(--muted,#9da9bb);}
+#one-instructions {box-sizing:border-box;width:100%;background:#0e1a2b;color:#ecf4ff;
+  border:1px solid #50627d;border-radius:10px;padding:13px;
+  font:14px/1.6 ui-monospace,monospace;resize:vertical;min-height:135px;}
+.one-actions {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;}
+#one-run-label {font-size:13px;color:#b7cbe1;}
+.one-log {font:13px/1.6 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;
+  background:#0a1728;border:1px solid #304461;border-radius:10px;padding:14px;
+  max-height:250px;overflow:auto;color:#dbe8f7;}
+#one-last-frame {display:block;max-width:100%;border:1px solid #536176;
+  border-radius:10px;margin:10px 0;}
+#one-last-frame[hidden]{display:none}
+@media(max-width:700px){.one-scenario{padding:14px}}

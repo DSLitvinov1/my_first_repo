@@ -120,6 +120,27 @@ class BrowserCtrlTest(unittest.TestCase):
         self.assertNotIn("Написать задачу",history)
         self.assertNotIn("Описание и срок",history)
 
+    def test_semantic_mouse_and_keyboard_tools_require_approved_arguments(self):
+        sid=self.browser.open(self.project,"https://example.org/")["session_id"]
+        self.browser.action(self.project,sid,"click_text",label="Услуги")
+        self.browser.action(self.project,sid,"fill_label",
+                            label="Название задачи",text="Составить отчёт")
+        self.browser.action(self.project,sid,"check_text",text="Готово")
+        self.assertEqual([x["op"] for x in self.commands[-3:]],
+                         ["click_text","fill_label","check_text"])
+        for op,values in (
+            ("click_text",{"label":""}),
+            ("click_text",{"label":"x"*200}),
+            ("fill_label",{"label":"Название"}),
+            ("fill_label",{"label":"Название","text":""}),
+            ("check_text",{"text":""}),
+            ("check_text",{"text":"x"*181}),
+        ):
+            with self.subTest(op=op,values=str(values)[:40]),self.assertRaises(WorkDenied):
+                self.browser.action(self.project,sid,op,**values)
+        history=" ".join(x["detail"] for x in self.store.events())
+        self.assertNotIn("Составить отчёт",history)
+
     def test_private_dns_denied_without_worker(self):
         self.dns.stop()
         with patch("browser_control.socket.getaddrinfo",return_value=[

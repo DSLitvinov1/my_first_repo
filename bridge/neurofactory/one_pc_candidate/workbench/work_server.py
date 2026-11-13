@@ -22,6 +22,7 @@ from urllib.parse import parse_qs,urlsplit
 from work_core import WorkStore,WorkDenied,denied
 from agent_one import AgentOne
 from browser_control import BrowserController
+from workflow_one import WorkflowOne
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -67,9 +68,10 @@ def model_module():
         raise ServerDenied("EXISTING_QWEN_NOT_AVAILABLE")
     return module
 
-def make_handler(store,assets,token,port,agent=None,browser=None):
+def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
+    workflow=workflow or WorkflowOne(store,browser)
     home=assets/"index.html"
     stylesheet=assets/"styles.css"
     script=assets/"app.js"
@@ -151,6 +153,22 @@ def make_handler(store,assets,token,port,agent=None,browser=None):
                 self.out(200,{"events":store.events()})
             elif path.path=="/api/agent/capabilities" and not path.query:
                 self.out(200,agent.capabilities())
+            elif path.path=="/api/one/capabilities" and not path.query:
+                self.out(200,workflow.capabilities())
+            elif path.path=="/api/one/runs":
+                params=parse_qs(path.query)
+                if set(params)!={"project_id"} or len(params["project_id"])!=1:
+                    raise ServerDenied("ONE_PROJECT_REQUIRED")
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("ONE_OWNER_TOKEN_REQUIRED")
+                self.out(200,{"runs":workflow.runs(params["project_id"][0])})
+            elif path.path=="/api/one/run":
+                params=parse_qs(path.query)
+                if set(params)!={"project_id","run_id"} or any(len(x)!=1 for x in params.values()):
+                    raise ServerDenied("ONE_RUN_QUERY_INVALID")
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("ONE_OWNER_TOKEN_REQUIRED")
+                self.out(200,workflow.get(params["project_id"][0],params["run_id"][0],with_image=True))
             elif path.path=="/api/browser/status":
                 vals=parse_qs(path.query)
                 if set(vals)!={"project_id"} or len(vals["project_id"])!=1:
@@ -190,6 +208,12 @@ def make_handler(store,assets,token,port,agent=None,browser=None):
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/one/prepare" and set(data)=={"project_id","script"}:
+                self.out(201,workflow.prepare(data["project_id"],data["script"]))
+                return
+            if method=="POST" and url.path=="/api/one/start" and set(data)=={"project_id","run_id","script"}:
+                self.out(202,workflow.start(data["project_id"],data["run_id"],data["script"]))
+                return
             if method=="POST" and url.path=="/api/browser/open" and set(data)=={"project_id","url"}:
                 self.out(201,browser.open(data["project_id"],data["url"]))
                 return
@@ -203,6 +227,12 @@ def make_handler(store,assets,token,port,agent=None,browser=None):
                     required|={"x","y"}
                 if operation in ("type","fill"):
                     required|={"text","mode"}
+                if operation=="click_text":
+                    required|={"label"}
+                if operation=="fill_label":
+                    required|={"label","text"}
+                if operation=="check_text":
+                    required|={"text"}
                 if operation=="press":
                     required|={"key"}
                 elif operation=="scroll":
