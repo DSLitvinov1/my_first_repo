@@ -331,6 +331,53 @@ class ToolmeshTest(unittest.TestCase):
             self.assertIn("application/javascript",r.headers.get("Content-Type"))
             self.assertIn(b"bindMesh",r.read())
 
+    def test_qwen_llama_adapter_strict_local_model_and_secret_file(self):
+        from unittest.mock import patch
+        from llama_connector_one import LlamaCppQwenOne
+        keyfile=self.root/"local_qwen_key"
+        keyfile.write_text("a"*64,encoding="ascii")
+        keyfile.chmod(0o600)
+        adapter=LlamaCppQwenOne(key_file=keyfile)
+        class Reply:
+            status=200
+            def __init__(self,text):self.text=text
+            def read(self,n):return self.text
+        outputs=[]
+        class LocalConnection:
+            def __init__(self,host,port,timeout=None):
+                self.host,self.port=host,port
+            def request(self,method,path,body=None,headers=None):
+                outputs.append((method,path))
+                if path=="/v1/chat/completions":
+                    self.requested=json.loads(body.decode("utf8"))
+                    assert headers["Authorization"]=="Bearer "+"a"*64
+            def getresponse(self):
+                if outputs[-1][1]=="/health":
+                    return Reply(b'{"status":"ok"}')
+                return Reply(json.dumps({"choices":[{"message":{"content":
+                    '{"schema":"nf.one.qwen.proposal.v1","steps":'
+                    '[{"op":"open","url":"https://example.org/"},{"op":"frame"}]}'}}]}
+                ).encode("utf8"))
+            def close(self):pass
+        with patch.object(adapter,"_key",return_value="a"*64),patch(
+                "llama_connector_one.http.client.HTTPConnection",LocalConnection):
+            self.assertTrue(adapter.available())
+            result=adapter(self.project,"Проверь пример публичного сайта и сделай снимок")
+        self.assertEqual(result["status"],"PROPOSED_UNVERIFIED")
+        proposal=parse_proposal(result["text"],{"example.org"})
+        self.assertEqual(proposal["steps"],2)
+        self.assertEqual(outputs,[("GET","/health"),("POST","/v1/chat/completions")])
+        if __import__("os").name=="nt":
+            with self.assertRaisesRegex(WorkDenied,"POSIX_KEY_FILE_REQUIRED"):
+                adapter._key()
+        else:
+            self.assertEqual(adapter._key(),"a"*64)
+            keyfile.chmod(0o644)
+            with self.assertRaisesRegex(WorkDenied,"KEY_FILE_INSECURE"):
+                adapter._key()
+        with self.assertRaises(WorkDenied):
+            LlamaCppQwenOne(key_file=Path("relative.file"))
+
     def test_google_default_task_list_is_supported(self):
         from service_one import valid_id
         self.assertEqual(valid_id("@default"),"@default")
