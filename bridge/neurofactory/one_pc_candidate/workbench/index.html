@@ -225,6 +225,16 @@
               <button type="button" id="mesh-record-prepare" class="button soft small">Проверить запись</button>
               <button type="button" id="mesh-record-commit" class="button accent small" disabled>Подтвердить сохранение</button>
             </div>
+            <div class="mesh-private-ready">
+              <strong>Одна задача: проверить сайт → создать запись</strong>
+              <p>Используется сценарий из раздела заданий выше и выбранные поля задачи. На этом этапе разрешены только чтение страницы, проверка текста, прокрутка и снимок. Внешняя запись требует второго подтверждения.</p>
+              <div class="mesh-actions">
+                <button type="button" id="mesh-flow-prepare" class="button soft small">Подготовить цепочку</button>
+                <button type="button" id="mesh-flow-start" class="button soft small" disabled>Проверить сайт</button>
+                <button type="button" id="mesh-flow-write" class="button accent small" disabled>Подтвердить запись</button>
+              </div>
+              <pre id="mesh-flow-result" class="mesh-result" aria-live="polite">Сначала подготовь безопасный сценарий проверки.</pre>
+            </div>
             <div class="mesh-actions">
               <label for="mesh-read-resource">Прочитать запись</label>
               <select id="mesh-read-resource">
