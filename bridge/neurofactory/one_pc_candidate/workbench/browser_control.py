@@ -22,7 +22,7 @@ from work_core import WorkDenied
 
 BROWSER_TIMEOUT = 24
 BROWSER_LIFETIME = 10 * 60
-ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect"}
+ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect", "focus", "type", "fill", "press"}
 MAX_HOSTS = 8
 
 
@@ -49,9 +49,12 @@ class BrowserController:
     def capabilities(self):
         return {"configured": bool(self.allowed_hosts and self.executable),
                 "allowed_hosts": sorted(self.allowed_hosts),
-                "actions": ["open", "move", "click", "scroll", "back", "frame", "close"],
-                "permission": "owner_click_only",
-                "mode": "ephemeral_browser_read_only_no_form_submit",
+                "actions": ["open","move","click","scroll","back","frame","inspect",
+                            "focus","type","fill","press","close"],
+                "permission": "owner_initiated_browser_mouse_and_keyboard",
+                "mode": "ephemeral_browser_no_submit_no_password",
+                "browser_typing": True,
+                "form_submit": False,
                 "desktop_mouse": False,
                 "requires_os_egress_sandbox_for_production": True}
 
@@ -213,14 +216,29 @@ class BrowserController:
                 self._close_process()
                 raise
 
+    @staticmethod
+    def _validate_mode(value):
+        if value not in ("replace","append") or type(value) is not str:
+            raise WorkDenied("BROWSER_TYPING_MODE_INVALID")
+        return value
+
+    @staticmethod
+    def _validate_text(value):
+        if type(value) is not str or not 1 <= len(value) <= 2000 or (
+          len(value.encode("utf-8")) > 8000) or any(
+          ord(x) < 32 and x not in ("\n",) or ord(x)==127 for x in value):
+            raise WorkDenied("BROWSER_TYPING_TEXT_INVALID")
+        return value
+
     def action(self, project, ident, operation, **kwargs):
         if operation not in ALLOWED_OPS:
             raise WorkDenied("BROWSER_OPERATION_REFUSED")
         with self.lock:
             self._validate_session(project, ident)
             params = {"op": operation}
-            if operation in ("move", "click"):
-                if set(kwargs) != {"x", "y"}:
+            if operation in ("move", "click", "focus", "fill"):
+                expected={"x", "y", "text", "mode"} if operation=="fill" else {"x", "y"}
+                if set(kwargs) != expected:
                     raise WorkDenied("BROWSER_COORDINATES_REQUIRED")
                 for key in ("x", "y"):
                     x = kwargs[key]
@@ -229,6 +247,20 @@ class BrowserController:
                 if not 0 <= kwargs["x"] < 1100 or not 0 <= kwargs["y"] < 720:
                     raise WorkDenied("BROWSER_COORDINATES_OUT_OF_BOUNDS")
                 params.update(x=kwargs["x"], y=kwargs["y"])
+                if operation=="fill":
+                    params.update(text=self._validate_text(kwargs["text"]),
+                                  mode=self._validate_mode(kwargs["mode"]))
+            elif operation=="type":
+                if set(kwargs)!={"text","mode"}:
+                    raise WorkDenied("BROWSER_TYPE_FIELDS_INVALID")
+                params.update(text=self._validate_text(kwargs["text"]),
+                              mode=self._validate_mode(kwargs["mode"]))
+            elif operation=="press":
+                if set(kwargs)!={"key"} or kwargs["key"] not in (
+                  "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp",
+                  "ArrowDown", "Home", "End", "Backspace"):
+                    raise WorkDenied("BROWSER_KEY_REFUSED")
+                params["key"]=kwargs["key"]
             elif operation == "scroll":
                 if set(kwargs) != {"delta"} or type(kwargs["delta"]) is not int \
                         or kwargs["delta"] == 0 or abs(kwargs["delta"]) > 1200:

@@ -5,7 +5,7 @@ const token = document.querySelector('meta[name="nf-token"]').content;
 const state = { projects:[],project:null,tasks:[],selectedTask:null,files:[],
                 file:null,sha:null,savedText:null,modelOk:false,poll:null };
 let toastTimer=null;
-const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0};
+const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0,fieldSelected:false,targets:[]};
 
 async function api(url,method="GET",body){
   const opt={method,cache:"no-store",credentials:"same-origin",headers:{}};
@@ -266,10 +266,15 @@ function browserButtons(){
   $("browser-controls").hidden=!active;
   $("browser-screen").hidden=!active;
   $("browser-close").disabled=!active||browserState.busy;
+  $("browser-type").disabled=!active||browserState.busy||!browserState.fieldSelected
+    ||!$("browser-type-text").value.trim();
+  $("browser-tab").disabled=!active||browserState.busy||!browserState.fieldSelected;
   if(!active){
     $("browser-page-title").textContent="";
     $("browser-frame").removeAttribute("src");
     $("browser-cursor").hidden=true;
+    browserState.fieldSelected=false;
+    $("browser-selected-field").textContent="Поле ещё не выбрано";
   }
 }
 async function browserStatus(){
@@ -300,16 +305,35 @@ function browserTargets(items){
   const root=$("browser-targets");
   root.replaceChildren();
   const targets=Array.isArray(items)?items:[];
+  browserState.targets=targets;
   root.hidden=!targets.length;
   if(!targets.length)return;
   root.append(el("strong",null,"Видимые кнопки и ссылки"));
   for(const entry of targets.slice(0,35)){
     const button=el("button","button soft small",entry.label);
     button.type="button";
-    button.disabled=!!entry.protected||browserState.busy;
-    button.title=entry.protected?"Кнопка формы: действие заблокировано":entry.kind;
-    button.addEventListener("click",()=>invokeBrowser("click",{x:entry.x,y:entry.y}));
+    button.disabled=!!entry.protected&&!entry.editable;
+    button.title=entry.editable?"Выбрать поле клавиатуры":
+      entry.protected?"Кнопка формы: действие заблокировано":entry.kind;
+    button.addEventListener("click",()=>{
+      if(entry.editable){
+        invokeBrowser("focus",{x:entry.x,y:entry.y},entry.label);
+      }else{invokeBrowser("click",{x:entry.x,y:entry.y});}
+    });
     root.append(button);
+    if(entry.editable){
+      const quick=el("button","button soft small","Вставить сюда");
+      quick.type="button";
+      quick.title="Одним действием выбрать поле и напечатать подготовленный текст";
+      quick.disabled=!$("browser-type-text").value.trim();
+      quick.addEventListener("click",()=>{
+        const text=$("browser-type-text").value;
+        if(!text.trim()){notice("Сначала напиши текст для поля",true);return;}
+        invokeBrowser("fill",{x:entry.x,y:entry.y,text,
+                       mode:$("browser-type-mode").value},entry.label);
+      });
+      root.append(quick);
+    }
   }
 }
 function showBrowserFrame(result){
@@ -335,7 +359,9 @@ async function openBrowser(){
     browserState.project=state.project;
     showBrowserFrame(reply);
     browserTargets([]);
-    $("browser-status").textContent="Браузер открыт. Мышью можно наводить и нажимать разрешённые кнопки.";
+    browserState.fieldSelected=false;
+    $("browser-selected-field").textContent="Поле ещё не выбрано";
+    $("browser-status").textContent="Браузер открыт. Мышь и клавиатура доступны для разрешённых действий.";
     await refreshActivity();
   }catch(e){
     $("browser-status").textContent="Не удалось открыть браузер: "+e.message;
@@ -349,7 +375,7 @@ async function browserAction(op,options={}){
     project_id:state.project,session_id:browserState.session,op,...options
   });
 }
-async function invokeBrowser(op,options={}){
+async function invokeBrowser(op,options={},fieldLabel=""){
   if(!browserState.session||browserState.busy)return;
   browserState.busy=true;browserButtons();
   try{
@@ -357,10 +383,21 @@ async function invokeBrowser(op,options={}){
     showBrowserFrame(reply);
     if(op==="inspect")browserTargets(reply.frame?.targets);
     else if(op!=="move")browserTargets([]);
+    if(op==="focus"||op==="fill"){
+      browserState.fieldSelected=true;
+      $("browser-selected-field").textContent=fieldLabel||"Поле выбрано";
+    }else if(op==="click"||op==="back"||op==="press"){
+      browserState.fieldSelected=false;
+      $("browser-selected-field").textContent="Поле ещё не выбрано";
+    }
     if(op!=="move")await refreshActivity();
   }catch(e){
     notice("Браузер: "+e.message,true);
     $("browser-status").textContent="Действие отклонено: "+e.message;
+    if(/EDITOR_LOST_FOCUS|EDITOR_NOT_SELECTED/.test(e.message)){
+      browserState.fieldSelected=false;
+      $("browser-selected-field").textContent="Поле надо выбрать заново";
+    }
     if(/UNKNOWN|STOPPED|EXPIRED|SESSION/.test(e.message)){
       browserState.session=null;
     }
@@ -379,6 +416,19 @@ function browserCoordinates(event){
 }
 function bindBrowser(){
   $("browser-open").addEventListener("click",openBrowser);
+  $("browser-type-text").addEventListener("input",()=>{
+    browserButtons();
+    if(browserState.targets.length)browserTargets(browserState.targets);
+  });
+  $("browser-type").addEventListener("click",()=>{
+    if(!browserState.fieldSelected || browserState.busy)return;
+    const text=$("browser-type-text").value;
+    if(!text.trim()){notice("Введите текст для поля",true);return;}
+    invokeBrowser("type",{text,mode:$("browser-type-mode").value});
+  });
+  $("browser-tab").addEventListener("click",()=>{
+    invokeBrowser("press",{key:"Tab"});
+  });
   $("browser-close").addEventListener("click",async()=>{
     if(!browserState.session||browserState.busy)return;
     browserState.busy=true;
@@ -387,6 +437,7 @@ function bindBrowser(){
         {project_id:state.project,session_id:browserState.session});
       browserState.session=null;
       browserTargets([]);
+      browserState.fieldSelected=false;
       $("browser-status").textContent="Сессия браузера закрыта. Куки не сохраняются.";
       await refreshActivity();
     }catch(e){notice(e.message,true);}
@@ -402,7 +453,10 @@ function bindBrowser(){
   }
   $("browser-frame").addEventListener("click",async event=>{
     const point=browserCoordinates(event);
-    if(point)await invokeBrowser("click",point);
+    if(point){
+      if($("browser-focus-mode").checked)await invokeBrowser("focus",point);
+      else await invokeBrowser("click",point);
+    }
   });
   $("browser-frame").addEventListener("pointermove",async event=>{
     const point=browserCoordinates(event);

@@ -39,3 +39,18 @@
   padding:12px;background:#111c2f;border:1px solid #36435b;border-radius:10px; }
 .browser-targets strong { width:100%;font-size:13px;color:#c6d9eb; }
 .browser-targets[hidden]{display:none}
+
+/* ONE v0.4 keyboard UI: input stays in the owner's page until explicitly sent */
+.browser-keyboard-panel{border:1px solid #354964;background:#121f34;border-radius:12px;
+  margin:15px 0;padding:16px;display:grid;gap:10px}
+.browser-keyboard-title{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.browser-keyboard-title span{color:#b5c7d7;font-size:13px}
+.browser-keyboard-panel textarea{box-sizing:border-box;width:100%;background:#0b1726;
+  color:#f4f7fd;border:1px solid #536176;border-radius:9px;padding:12px;
+  font:14px/1.45 system-ui,sans-serif;resize:vertical;min-height:77px}
+.browser-edit-toggle{display:flex;gap:7px;align-items:center;font-size:13px;color:#cbd5e6}
+.browser-keyboard-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.browser-keyboard-actions label{font-size:13px}
+.browser-keyboard-actions select{padding:8px;background:#0b1726;color:#fff;
+  border:1px solid #536176;border-radius:8px;max-width:100%}
+.browser-keyboard-hint{color:#9db0c6;line-height:1.4}

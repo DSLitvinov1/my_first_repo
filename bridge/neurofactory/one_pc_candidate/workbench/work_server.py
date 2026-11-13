@@ -199,8 +199,12 @@ def make_handler(store,assets,token,port,agent=None,browser=None):
             if method=="POST" and url.path=="/api/browser/action" and isinstance(data.get("op"),str):
                 operation=data["op"]
                 required={"project_id","session_id","op"}
-                if operation in ("click","move"):
+                if operation in ("click","move","focus","fill"):
                     required|={"x","y"}
+                if operation in ("type","fill"):
+                    required|={"text","mode"}
+                if operation=="press":
+                    required|={"key"}
                 elif operation=="scroll":
                     required|={"delta"}
                 if set(data)!=required:
