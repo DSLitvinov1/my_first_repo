@@ -22,7 +22,7 @@ from work_core import WorkDenied
 
 BROWSER_TIMEOUT = 24
 BROWSER_LIFETIME = 10 * 60
-ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect", "focus", "type", "fill", "press"}
+ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect", "focus", "type", "fill", "press", "click_text", "fill_label", "check_text"}
 MAX_HOSTS = 8
 
 
@@ -50,7 +50,8 @@ class BrowserController:
         return {"configured": bool(self.allowed_hosts and self.executable),
                 "allowed_hosts": sorted(self.allowed_hosts),
                 "actions": ["open","move","click","scroll","back","frame","inspect",
-                            "focus","type","fill","press","close"],
+                            "focus","type","fill","press","click_text",
+                            "fill_label","check_text","close"],
                 "permission": "owner_initiated_browser_mouse_and_keyboard",
                 "mode": "ephemeral_browser_no_submit_no_password",
                 "browser_typing": True,
@@ -250,6 +251,18 @@ class BrowserController:
                 if operation=="fill":
                     params.update(text=self._validate_text(kwargs["text"]),
                                   mode=self._validate_mode(kwargs["mode"]))
+            elif operation == "click_text":
+                if set(kwargs)!={"label"} or type(kwargs["label"]) is not str or not 1<=len(kwargs["label"].strip())<=90:
+                    raise WorkDenied("BROWSER_LABEL_INVALID")
+                params["label"]=kwargs["label"]
+            elif operation == "fill_label":
+                if set(kwargs)!={"label","text"} or type(kwargs["label"]) is not str or not 1<=len(kwargs["label"].strip())<=90:
+                    raise WorkDenied("BROWSER_FIELD_LABEL_INVALID")
+                params.update(label=kwargs["label"],text=self._validate_text(kwargs["text"]))
+            elif operation == "check_text":
+                if set(kwargs)!={"text"} or type(kwargs["text"]) is not str or not 1<=len(kwargs["text"].strip())<=180:
+                    raise WorkDenied("BROWSER_CHECK_TEXT_INVALID")
+                params["text"]=kwargs["text"]
             elif operation=="type":
                 if set(kwargs)!={"text","mode"}:
                     raise WorkDenied("BROWSER_TYPE_FIELDS_INVALID")

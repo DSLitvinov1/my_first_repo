@@ -169,7 +169,7 @@ async function command(data) {
         if (style.visibility !== "visible" || style.display === "none" ||
             Number(style.opacity) === 0) continue;
         let label = (el.innerText || el.textContent ||
-                     el.getAttribute("aria-label") || "").trim().replace(/\\s+/g, " ");
+                     el.getAttribute("aria-label") || "").trim().replace(/\s+/g, " ");
         if (!label) continue;
         const x = Math.floor(Math.max(0,Math.min(1099,rect.left+rect.width/2)));
         const y = Math.floor(Math.max(0,Math.min(719,rect.top+rect.height/2)));
@@ -200,6 +200,60 @@ async function command(data) {
   if (operation === "press") {
     const pressed=await keyboard.press(data.key);
     return {...await frame(), editor:pressed};
+  }
+  if (operation === "click_text") {
+    const needle = data.label;
+    if (typeof needle !== "string" || !needle.trim() || needle.length > 90)
+      throw Error("BROWSER_LABEL_INVALID");
+    // DOM-based targeting is faster than image sampling, but still uses
+    // the same existing click safety gate and physical browser mouse.
+    const positions = await page.evaluate(value => {
+      const normalized = s => (s || "").replace(/\s+/g," ").trim().toLowerCase();
+      const positions=[];
+      for(const el of document.querySelectorAll("a,button,[role=button]")){
+        const text=normalized(el.innerText||el.textContent||el.getAttribute("aria-label"));
+        if(text!==normalized(value))continue;
+        const box=el.getBoundingClientRect();
+        if(box.width<2||box.height<2||box.bottom<=0||box.right<=0||
+           box.top>=720||box.left>=1100)continue;
+        const x=Math.floor(Math.min(1099,Math.max(0,box.left+box.width/2)));
+        const y=Math.floor(Math.min(719,Math.max(0,box.top+box.height/2)));
+        if(!el.contains(document.elementFromPoint(x,y)))continue;
+        positions.push({x,y});
+      }
+      return positions;
+    },needle);
+    if(positions.length!==1)throw Error(positions.length?
+      "BROWSER_LABEL_AMBIGUOUS":"BROWSER_LABEL_NOT_VISIBLE");
+    keyboard.invalidate();
+    const {x,y}=positions[0];
+    await guardClick(x,y);
+    await page.mouse.move(x,y,{steps:2});
+    await page.mouse.click(x,y,{clickCount:1,delay:45});
+    await sleep(200);
+    return await frame(false);
+  }
+  if (operation === "fill_label") {
+    if(typeof data.label!=="string"||!data.label.trim()||data.label.length>90)
+      throw Error("BROWSER_FIELD_LABEL_INVALID");
+    const inputs=await inspectInputs(page);
+    const needle=data.label.replace(/\s+/g," ").trim().toLowerCase();
+    const matched=inputs.filter(x=>x.label.replace(/\s+/g," ").trim().toLowerCase()===needle);
+    if(matched.length!==1)throw Error(matched.length?
+      "BROWSER_FIELD_AMBIGUOUS":"BROWSER_FIELD_NOT_VISIBLE");
+    const target=matched[0];
+    const output=await keyboard.fill(target.x,target.y,data.text,"replace");
+    return {...await frame(false),editor:output};
+  }
+  if (operation === "check_text") {
+    if(typeof data.text!=="string"||!data.text.trim()||data.text.length>180)
+      throw Error("BROWSER_CHECK_TEXT_INVALID");
+    const exists=await page.evaluate(value=>{
+      const normalize=s=>(s||"").replace(/\s+/g," ").trim().toLowerCase();
+      return normalize(document.body?.innerText).includes(normalize(value));
+    },data.text);
+    if(!exists)throw Error("BROWSER_EXPECTED_TEXT_NOT_FOUND");
+    return {...await frame(false),verified:true};
   }
   if (operation === "move") {
     const {x,y} = constrainPoint(data);

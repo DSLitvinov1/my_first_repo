@@ -56,6 +56,32 @@
         <pre class="agent-result" id="agent-results" aria-live="polite">Выберите проект и введите адреса страниц для проверки.</pre>
       </section>
 
+      <section class="panel one-scenario" aria-label="Многошаговый агент ONE">
+        <div class="panel-title"><div><span class="overline">ONE · ВЫПОЛНЕНИЕ ЗАДАНИЙ</span>
+          <h2>Поручи агенту несколько действий</h2></div>
+          <span class="pill">Проверка перед запуском</span></div>
+        <p class="one-explain">Опиши последовательность простыми командами, по одной на строку.
+          Агент быстро находит элементы по названию и управляет браузером мышью и клавиатурой.
+          Пока доступны только разрешённые сайты; сохранение и отправка форм заблокированы.</p>
+        <label class="agent-label" for="one-instructions">Задание агенту</label>
+        <textarea id="one-instructions" rows="6" maxlength="6000" spellcheck="false"
+          placeholder="Открой https://example.org/
+Нажми «Услуги»
+Проверь текст «Услуги»
+Сделай снимок"></textarea>
+        <div class="one-actions">
+          <button class="button soft small" id="one-prepare" type="button" disabled>Проверить план</button>
+          <button class="button accent small" id="one-start" type="button" disabled>Выполнить задание</button>
+          <span id="one-run-label" aria-live="polite"></span>
+        </div>
+        <pre class="one-log" id="one-plan" aria-live="polite">Выбери проект, впиши задание и нажми «Проверить план».</pre>
+        <img id="one-last-frame" alt="Снимок страницы после выполнения сценария"
+          hidden draggable="false"/>
+        <p class="browser-keyboard-hint">Примеры команд: «Нажми «Услуги»», «Напечатай в поле «Название» «Новая задача»»,
+          «Прокрути вниз», «Проверь текст «Готово»». Это ограниченный исполнитель,
+          а не автоматический доступ к Битрикс24, Google или рабочему столу Windows.</p>
+      </section>
+
       <section class="panel browser-panel" aria-label="Браузер агента">
         <div class="panel-title">
           <div><span class="overline">ONE · УПРАВЛЕНИЕ БРАУЗЕРОМ</span>
