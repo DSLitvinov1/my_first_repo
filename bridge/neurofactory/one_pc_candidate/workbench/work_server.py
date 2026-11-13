@@ -29,6 +29,8 @@ from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
 from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
 from llama_connector_one import LlamaCppQwenOne
+from personal_readiness_one import assess_private_readiness
+from private_flow_one import PrivateFlowOne
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -76,7 +78,7 @@ def model_module():
     return module
 
 def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
-                 desktop=None,planner=None,services=None,oauth=None,bitrix=None):
+                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,private_flow=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
@@ -91,6 +93,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
         if bitrix.portal():
             adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
         services=ServiceOne(store,adapters)
+    private_flow=private_flow or PrivateFlowOne(store,workflow,services)
     home=assets/"index.html"
     stylesheet=assets/"styles.css"
     script=assets/"app.js"
@@ -179,6 +182,23 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                               "google":oauth.capabilities(),
                               "bitrix_connected":bool(bitrix.portal()),
                               "services":services.status()})
+            elif path.path=="/api/private/readiness" and not path.query:
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("PERSONAL_OWNER_TOKEN_REQUIRED")
+                self.out(200,assess_private_readiness(
+                    browser=browser.capabilities(),
+                    desktop=desktop.capabilities(),
+                    qwen=planner.status(),
+                    google=oauth.capabilities(),
+                    bitrix_connected=bool(bitrix.portal()),
+                    services=services.status()))
+            elif path.path=="/api/private/flow/status":
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("PRIVATE_FLOW_OWNER_TOKEN_REQUIRED")
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id","id"} or any(len(x)!=1 for x in vals.values()):
+                    raise ServerDenied("PRIVATE_FLOW_QUERY_INVALID")
+                self.out(200,private_flow.status(vals["project_id"][0],vals["id"][0]))
             elif path.path=="/api/desktop/status":
                 if self.headers.get("X-NF-Work-Token")!=token:
                     raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")
@@ -262,6 +282,18 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/private/flow/prepare" and set(data)=={"project_id","script","action","fields"}:
+                self.out(201,private_flow.prepare(data["project_id"],data["script"],
+                                                   data["action"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/private/flow/start" and set(data)=={"project_id","id","script","action","fields"}:
+                self.out(202,private_flow.start(data["project_id"],data["id"],
+                                                 data["script"],data["action"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/private/flow/confirm" and set(data)=={"project_id","id","script","action","fields"}:
+                self.out(200,private_flow.confirm(data["project_id"],data["id"],
+                                                   data["script"],data["action"],data["fields"]))
+                return
             if method=="POST" and url.path=="/api/desktop/windows" and set(data)=={"project_id"}:
                 self.out(200,{"windows":desktop.windows(data["project_id"])})
                 return

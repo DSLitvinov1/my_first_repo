@@ -2,7 +2,7 @@
 /* Work ONE v0.6: one local UI; no direct secrets/model instructions execute. */
 const mesh = {
   project:null, status:null, planId:null, desktopSession:null,
-  screenshot:null, record:null, pending:null, busy:false,
+  screenshot:null, record:null, pending:null, flow:null, busy:false,
 };
 
 function meshMessage(text, error=false) {
@@ -35,7 +35,11 @@ async function meshRefresh() {
       mesh.project=state.project;
       mesh.record=null;
       mesh.pending=null;
+      mesh.flow=null;
       mesh.desktopSession=null;
+      $("mesh-flow-start").disabled=true;
+      $("mesh-flow-write").disabled=true;
+      $("mesh-flow-result").textContent="Подготовь сценарий для выбранного проекта.";
       $("mesh-record-commit").disabled=true;
       $("mesh-screen").hidden=true;
       $("mesh-screen").removeAttribute("src");
@@ -277,7 +281,144 @@ async function meshRead(){
   }catch(e){meshMessage("Чтение не выполнено: "+e.message,true);}
 }
 
+async function meshPrivateCheck() {
+  const target=$("mesh-personal-result");
+  target.textContent="Проверка...";
+  try {
+    const report=await api("/api/private/readiness");
+    const names={
+      qwen:"Планировщик Qwen",
+      browser:"Управление браузером",
+      desktop:"Рабочий стол Windows",
+      google_tasks:"Google Tasks",
+      bitrix24:"Bitrix24"
+    };
+    const states={
+      ready:"Готово к следующему тесту",
+      needs_setup:"Требуется подключение",
+      needs_live_test:"Нужна проверка реального аккаунта"
+    };
+    const lines=["Личный режим · без коммерческого выпуска",
+      "Это проверка подключения, не проверка безопасности."];
+    for(const step of report.checks||[]){
+      lines.push((names[step.id]||step.id)+": "+(states[step.status]||step.status));
+    }
+    lines.push("Автоматическое изменение внешних данных без подтверждения отключено.");
+    lines.push("Первое необходимое действие: "+(
+      report.next?.[0]||"Провести сквозной тест на отдельном тестовом аккаунте"));
+    target.textContent=lines.join("\n");
+  }catch(error) {
+    target.textContent="Проверка не выполнена: "+error.message;
+  }
+}
+
+function meshFlowInputs(){
+  const script=$("one-instructions").value;
+  const {action,fields}=meshRecordFields();
+  return {script,action,fields,signature:JSON.stringify({script,action,fields})};
+}
+
+function meshFlowMatches(){
+  if(!mesh.flow||mesh.flow.project!==state.project)return false;
+  return meshFlowInputs().signature===mesh.flow.signature;
+}
+
+async function meshFlowPrepare(){
+  if(!state.project)return notice("Выбери проект",true);
+  mesh.flow=null;
+  $("mesh-flow-start").disabled=true;
+  $("mesh-flow-write").disabled=true;
+  $("mesh-flow-result").textContent="Проверяю безопасный план...";
+  try{
+    const x=meshFlowInputs();
+    const result=await api("/api/private/flow/prepare","POST",{
+      project_id:state.project,script:x.script,action:x.action,fields:x.fields});
+    mesh.flow={id:result.id,project:state.project,...x,state:"PREPARED"};
+    $("mesh-flow-start").disabled=false;
+    $("mesh-flow-result").textContent="Подготовлено: "+result.browser_steps+
+      " безопасных действий браузера.\nВнешняя запись: "+result.service_action+
+      ".\nСначала разреши проверку сайта; создание записи потребует второго подтверждения.";
+  }catch(e){
+    $("mesh-flow-result").textContent="План отклонён: "+e.message;
+  }
+}
+
+async function meshFlowStart(){
+  const f=mesh.flow;
+  if(!f||f.state!=="PREPARED")return;
+  if(!meshFlowMatches()){
+    $("mesh-flow-start").disabled=true;
+    return notice("Сценарий или поля изменились. Подготовь цепочку заново.",true);
+  }
+  if(!window.confirm("Проверить страницу указанными безопасными действиями?\n"+
+       "Этот этап ничего не записывает в Google или Битрикс24."))return;
+  $("mesh-flow-start").disabled=true;
+  try{
+    const r=await api("/api/private/flow/start","POST",{
+      project_id:f.project,id:f.id,script:f.script,action:f.action,fields:f.fields});
+    f.state=r.state;
+    $("mesh-flow-result").textContent="Проверяю сайт. Сохранение задачи заблокировано.";
+  }catch(e){
+    f.state="UNKNOWN_NO_RETRY";
+    $("mesh-flow-result").textContent="Проверка не подтверждена: "+e.message;
+  }
+}
+
+async function meshFlowPoll(){
+  const f=mesh.flow;
+  if(!f||f.state!=="READING"||f.project!==state.project)return;
+  try{
+    const params=new URLSearchParams({project_id:f.project,id:f.id});
+    const r=await api("/api/private/flow/status?"+params);
+    if(!mesh.flow||mesh.flow.id!==f.id)return;
+    f.state=r.state;
+    if(r.state==="AWAITING_WRITE"){
+      $("mesh-flow-result").textContent=
+        "Сайт проверен. Теперь можно отдельно подтвердить запись во внешнем сервисе.";
+      $("mesh-flow-write").disabled=false;
+    }else if(r.state!=="READING"){
+      $("mesh-flow-result").textContent=
+        "Проверка остановлена: "+r.state+". Запись не выполнялась автоматически.";
+      $("mesh-flow-write").disabled=true;
+    }
+  }catch(e){
+    f.state="UNKNOWN_NO_RETRY";
+    $("mesh-flow-write").disabled=true;
+    $("mesh-flow-result").textContent="Неизвестный результат проверки: "+e.message;
+  }
+}
+
+async function meshFlowConfirm(){
+  const f=mesh.flow;
+  if(!f||f.state!=="AWAITING_WRITE")return;
+  if(!meshFlowMatches()){
+    $("mesh-flow-write").disabled=true;
+    return notice("Сценарий или поля изменились. Подготовь цепочку заново.",true);
+  }
+  if(!window.confirm("Проверка сайта завершена. Подтвердить ОДНУ запись во внешнем сервисе?\n"+
+    f.action+"\nПри неизвестном результате повторная отправка будет заблокирована."))return;
+  f.state="WRITING";
+  $("mesh-flow-write").disabled=true;
+  $("mesh-flow-result").textContent="Запись отправляется один раз, затем проверяется.";
+  try{
+    const r=await api("/api/private/flow/confirm","POST",{
+      project_id:f.project,id:f.id,script:f.script,action:f.action,fields:f.fields});
+    f.state=r.state;
+    $("mesh-flow-result").textContent=r.write_verified?
+      "Запись создана/изменена и повторно проверена (VERIFIED).":
+      "Неопределённый результат (UNKNOWN_NO_RETRY). Не отправляй повторно без ручной проверки.";
+  }catch(e){
+    f.state="UNKNOWN_NO_RETRY";
+    $("mesh-flow-result").textContent=
+      "Нет подтверждения результата. Автоматический повтор запрещён: "+e.message;
+  }
+}
+
 function bindMesh(){
+  $("mesh-personal-check").addEventListener("click",meshPrivateCheck);
+  $("mesh-flow-prepare").addEventListener("click",meshFlowPrepare);
+  $("mesh-flow-start").addEventListener("click",meshFlowStart);
+  $("mesh-flow-write").addEventListener("click",meshFlowConfirm);
   $("mesh-plan").addEventListener("click",meshQwenPlan);
   $("mesh-windows").addEventListener("click",meshWindows);
   $("mesh-attach").addEventListener("click",meshAttach);
@@ -314,5 +455,7 @@ function bindMesh(){
 
 bindMesh();
 meshRefresh();
+meshPrivateCheck();
 setInterval(meshRefresh,15000);
 setInterval(meshPollQwen,1500);
+setInterval(meshFlowPoll,1300);

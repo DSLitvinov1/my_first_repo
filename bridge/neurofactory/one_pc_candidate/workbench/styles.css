@@ -96,3 +96,9 @@
 .mesh-result{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:245px;
   padding:12px;color:#dae8f4;background:#0b1626;border-radius:8px;font:12px/1.6 ui-monospace,monospace}
 @media(max-width:850px){.mesh-layout{grid-template-columns:1fr;padding:12px}}
+
+/* Private single-owner readiness — no external account data in diagnostics */
+.mesh-personal-ready{margin:12px 18px;padding:12px 16px;border:1px solid var(--line);border-radius:12px;background:#111d2c;}
+.mesh-personal-ready .mesh-actions{margin:0 0 8px;}
+.mesh-personal-ready strong{font-size:14px;}
+.mesh-personal-ready pre{max-height:220px;margin:0;}
