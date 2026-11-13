@@ -75,3 +75,25 @@ SYSTEM и администраторов. Планировщик NeurofactoryWor
 локальный сервер от обычного пользователя при входе в Windows.
 Ярлык Neurofactory Work.lnk на рабочем столе открывает окно приложения.
 Одна одновременная генерация Qwen максимум; состояние сохраняется в SQLite.
+
+## Real Qwen 3.5 model — isolated staging mode (2026-11-13)
+
+The new LlamaCppQwenOne provider connects ONLY to 127.0.0.1:11435 and a
+Qwen 3.5 9B llama.cpp server with reasoning disabled. The program never
+downloads models, shares an API key, or silently enables model execution.
+The owner must supply an absolute Linux owner-only file containing a long
+hexadecimal access key and start Work ONE with the --qwen-llama-key-file
+option. Never expose the model service to the public Internet.
+
+In an authorized, temporary staging environment, real Qwen generated an
+approved public-browser plan in about 20 seconds. The integrated test
+live_pipeline_smoke_one.py used real Qwen and Chromium with a strictly
+isolated local task-account API, completed an approved read-only browser
+scenario, created a synthetic task, read it back, and blocked duplicate
+execution. That is NOT a live Google/Bitrix24 account test.
+
+To test actual Google or Bitrix24 writes, the owner must connect a dedicated
+test account through OAuth, approve one synthetic test task and confirm
+readback. ChatGPT's Google connections cannot be silently copied into the app.
+Do not enable production/CORE9/HOST until independent Windows and security
+verification and resource/sandbox limits have been accepted.

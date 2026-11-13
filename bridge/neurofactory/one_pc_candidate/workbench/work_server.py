@@ -28,6 +28,7 @@ from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
 from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
+from llama_connector_one import LlamaCppQwenOne
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -430,6 +431,8 @@ def main():
                     help="Exact foreground exe names, comma-separated; default none")
     ap.add_argument("--qwen-local",action="store_true",
                     help="Use owner-installed Ollama Qwen 3.5:9b via 127.0.0.1:11434")
+    ap.add_argument("--qwen-llama-key-file",type=Path,default=None,
+                    help="Owner-only key file for loopback Qwen llama.cpp on port 11435")
     args=ap.parse_args()
     if not 1024<=args.port<=65535:
         raise ServerDenied("PORT_REFUSED")
@@ -454,7 +457,12 @@ def main():
         adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
     services=ServiceOne(store,adapters)
     model_fn=None
-    if args.qwen_local:
+    if args.qwen_local and args.qwen_llama_key_file:
+        raise ServerDenied("QWEN_SELECT_ONE_PROVIDER")
+    if args.qwen_llama_key_file:
+        candidate=LlamaCppQwenOne(key_file=args.qwen_llama_key_file)
+        model_fn=candidate if candidate.available() else None
+    elif args.qwen_local:
         candidate=LocalOllamaQwen()
         model_fn=candidate if candidate.available() else None
     else:

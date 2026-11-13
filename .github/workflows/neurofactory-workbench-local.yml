@@ -1,7 +1,7 @@
 name: Neurofactory Work local sandbox regression
 on:
   push:
-    branches: [neurofactory-workbench-personal-mvp-20261107, neurofactory-work-one-agent-safe-20261113, neurofactory-work-one-browser-mouse-20261113, neurofactory-work-one-keyboard-20261113, neurofactory-work-one-scenarios-20261113, neurofactory-work-one-toolmesh-20261113]
+    branches: [neurofactory-workbench-personal-mvp-20261107, neurofactory-work-one-agent-safe-20261113, neurofactory-work-one-browser-mouse-20261113, neurofactory-work-one-keyboard-20261113, neurofactory-work-one-scenarios-20261113, neurofactory-work-one-toolmesh-20261113, neurofactory-work-one-qwen-live-20261113]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/workbench/**'
       - '.github/workflows/neurofactory-workbench-local.yml'
@@ -23,7 +23,7 @@ jobs:
       - name: Compile Python and validate browser JavaScript syntax
         shell: pwsh
         run: |
-          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py bridge/neurofactory/one_pc_candidate/workbench/agent_one.py bridge/neurofactory/one_pc_candidate/workbench/browser_control.py bridge/neurofactory/one_pc_candidate/workbench/workflow_one.py bridge/neurofactory/one_pc_candidate/workbench/desktop_one.py bridge/neurofactory/one_pc_candidate/workbench/credentials_one.py bridge/neurofactory/one_pc_candidate/workbench/google_oauth_one.py bridge/neurofactory/one_pc_candidate/workbench/service_one.py bridge/neurofactory/one_pc_candidate/workbench/qwen_planner_one.py
+          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py bridge/neurofactory/one_pc_candidate/workbench/agent_one.py bridge/neurofactory/one_pc_candidate/workbench/browser_control.py bridge/neurofactory/one_pc_candidate/workbench/workflow_one.py bridge/neurofactory/one_pc_candidate/workbench/desktop_one.py bridge/neurofactory/one_pc_candidate/workbench/credentials_one.py bridge/neurofactory/one_pc_candidate/workbench/google_oauth_one.py bridge/neurofactory/one_pc_candidate/workbench/service_one.py bridge/neurofactory/one_pc_candidate/workbench/qwen_planner_one.py bridge/neurofactory/one_pc_candidate/workbench/llama_connector_one.py bridge/neurofactory/one_pc_candidate/workbench/live_pipeline_smoke_one.py bridge/neurofactory/one_pc_candidate/workbench/live_qwen_smoke_one.py
           node --check bridge/neurofactory/one_pc_candidate/workbench/app.js
           node --check bridge/neurofactory/one_pc_candidate/workbench/toolmesh.js
           node --check bridge/neurofactory/one_pc_candidate/workbench/browser_worker.cjs
