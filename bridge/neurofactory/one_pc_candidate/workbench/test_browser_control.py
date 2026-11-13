@@ -93,6 +93,33 @@ class BrowserCtrlTest(unittest.TestCase):
                 self.browser.action(self.project,ident,op,**options)
         self.assertEqual(len(self.commands),before)
 
+    def test_keyboard_input_action_validation_and_private_log(self):
+        sid=self.browser.open(self.project,"https://example.org/")["session_id"]
+        self.browser.action(self.project,sid,"focus",x=220,y=120)
+        self.browser.action(self.project,sid,"type",
+                            text="Написать задачу в Битрикс24",mode="replace")
+        self.browser.action(self.project,sid,"fill",x=320,y=200,
+                            text="Описание и срок выполнения",mode="replace")
+        self.browser.action(self.project,sid,"press",key="Tab")
+        self.assertEqual([i["op"] for i in self.commands],
+                         ["open","focus","type","fill","press"])
+        for bad in ("", "x"*2001, "test"+chr(9)+"unsafe", "hello"+chr(0)):
+            with self.subTest(text=bad[:20]), self.assertRaises(WorkDenied):
+                self.browser.action(self.project,sid,"type",
+                                    text=bad,mode="replace")
+        for op,arguments in (
+            ("type",{"text":"ok","mode":"submit"}),
+            ("type",{"text":"ok"}),
+            ("fill",{"x":32,"y":48,"text":"ok","mode":"invalid"}),
+            ("press",{"key":"Enter"}),
+            ("press",{"key":"Control+Enter"}),
+            ("press",{"key":"Tab","extra":"value"})):
+            with self.subTest(op=op), self.assertRaises(WorkDenied):
+                self.browser.action(self.project,sid,op,**arguments)
+        history=" ".join(e["detail"] for e in self.store.events())
+        self.assertNotIn("Написать задачу",history)
+        self.assertNotIn("Описание и срок",history)
+
     def test_private_dns_denied_without_worker(self):
         self.dns.stop()
         with patch("browser_control.socket.getaddrinfo",return_value=[

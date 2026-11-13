@@ -6,10 +6,11 @@
  */
 const readline = require("node:readline");
 const puppeteer = require("puppeteer-core");
+const {KeyboardSession, inspectInputs} = require("./browser_typing.cjs");
 
 const WIDTH = 1100, HEIGHT = 720;
 let browser = null, page = null, origin = null;
-let currentIp = null;
+let currentIp = null, keyboard = null;
 let chain = Promise.resolve();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -43,6 +44,8 @@ async function frame(includeImage = true) {
 }
 async function shutdown() {
   const old = browser;
+  if (keyboard) keyboard.invalidate();
+  keyboard = null;
   browser = null; page = null; origin = null; currentIp = null;
   if (old) await old.close();
 }
@@ -105,6 +108,7 @@ async function open(input) {
     ],
   });
   page = await browser.newPage();
+  keyboard = new KeyboardSession(page);
   page.setDefaultNavigationTimeout(12000);
   page.setDefaultTimeout(6500);
   await page.setBypassServiceWorker(true);
@@ -176,7 +180,26 @@ async function command(data) {
       }
       return answer;
     });
-    return {...await frame(false), targets};
+    const editors=await inspectInputs(page);
+    return {...await frame(false), targets: targets.concat(editors).slice(0,55)};
+  }
+  if (operation === "focus") {
+    const {x,y} = constrainPoint(data);
+    const focused = await keyboard.focus(x,y);
+    return {...await frame(), editor:focused};
+  }
+  if (operation === "type") {
+    const typed=await keyboard.type(data.text,data.mode || "append");
+    return {...await frame(), editor:typed};
+  }
+  if (operation === "fill") {
+    const {x,y}=constrainPoint(data);
+    const typed=await keyboard.fill(x,y,data.text,data.mode || "replace");
+    return {...await frame(), editor:typed};
+  }
+  if (operation === "press") {
+    const pressed=await keyboard.press(data.key);
+    return {...await frame(), editor:pressed};
   }
   if (operation === "move") {
     const {x,y} = constrainPoint(data);
@@ -184,6 +207,7 @@ async function command(data) {
     return await frame(false);
   }
   if (operation === "click") {
+    keyboard.invalidate();
     const {x,y} = constrainPoint(data);
     await guardClick(x,y);
     await page.mouse.move(x,y,{steps:3});
@@ -200,6 +224,7 @@ async function command(data) {
     return await frame();
   }
   if (operation === "back") {
+    keyboard.invalidate();
     await page.goBack({waitUntil:"domcontentloaded",timeout:10000});
     await sleep(180);
     return await frame();

@@ -76,8 +76,31 @@
           <button class="button soft small" type="button" data-browser-command="scroll_down">↓ Вниз</button>
           <button class="button soft small" type="button" data-browser-command="back">← Назад</button>
           <button class="button soft small" type="button" data-browser-command="frame">Обновить кадр</button>
-          <button class="button soft small" type="button" data-browser-command="inspect">Найти кнопки</button>
+          <button class="button soft small" type="button" data-browser-command="inspect">Найти элементы</button>
           <button class="button soft small" type="button" id="browser-close">Закрыть</button>
+        </div>
+        <div class="browser-keyboard-panel">
+          <div class="browser-keyboard-title"><strong>Клавиатура агента</strong>
+            <span id="browser-selected-field" role="status">Поле ещё не выбрано</span></div>
+          <label class="browser-edit-toggle" for="browser-focus-mode">
+            <input type="checkbox" id="browser-focus-mode"/> Выбирать поле по изображению вместо клика по кнопке
+          </label>
+          <label class="agent-label" for="browser-type-text">Текст для ввода (не указывайте пароли или секретные коды)</label>
+          <textarea id="browser-type-text" rows="3" maxlength="2000"
+            placeholder="Например: Подготовить отчёт по заявкам клиентов за неделю..."></textarea>
+          <div class="browser-keyboard-actions">
+            <label for="browser-type-mode">Способ ввода</label>
+            <select id="browser-type-mode"><option value="replace">Заменить содержимое поля</option>
+              <option value="append">Добавить к тексту</option></select>
+            <button class="button accent small" id="browser-type" type="button" disabled>Напечатать текст</button>
+            <button class="button soft small" id="browser-tab" type="button" disabled>Tab — следующее поле</button>
+          </div>
+          <small class="browser-keyboard-hint">Для быстрого заполнения нажми «Найти элементы»,
+          затем «Вставить сюда» возле нужного поля — выбор и печать выполняются одним действием.
+          Это не отправляет заявку.</small>
+          <small class="browser-keyboard-hint">Ввод выполняется в браузере по вашему действию.
+          Поля паролей, кодов, платёжных реквизитов и отправка форм заблокированы.
+          Полноценное создание задачи в Битрикс24 потребует отдельного разрешения на сохранение.</small>
         </div>
         <div class="browser-screen" id="browser-screen" hidden>
           <img id="browser-frame" alt="Текущий снимок открытой страницы; нажимайте на изображение для управления браузерной мышью" draggable="false"/>
