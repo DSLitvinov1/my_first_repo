@@ -1,0 +1,26 @@
+name: Neurofactory SEDD read-only connectivity diagnostics tests
+
+on:
+  push:
+    branches:
+      - diagnostic/sedd-connectivity-readonly-20261114
+    paths:
+      - bridge/neurofactory/diagnostics/**
+      - .github/workflows/neurofactory-sedd-readonly-diagnostics-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify read-only diagnostics offline
+        working-directory: bridge/neurofactory/diagnostics
+        run: python3 -B -m unittest -v test_sedd_network_readonly.py
+      - name: No tracked changes
+        run: git diff --exit-code
