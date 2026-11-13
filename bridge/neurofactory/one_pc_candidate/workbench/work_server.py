@@ -29,6 +29,7 @@ from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
 from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
 from llama_connector_one import LlamaCppQwenOne
+from personal_readiness_one import assess_private_readiness
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -179,6 +180,16 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                               "google":oauth.capabilities(),
                               "bitrix_connected":bool(bitrix.portal()),
                               "services":services.status()})
+            elif path.path=="/api/private/readiness" and not path.query:
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("PERSONAL_OWNER_TOKEN_REQUIRED")
+                self.out(200,assess_private_readiness(
+                    browser=browser.capabilities(),
+                    desktop=desktop.capabilities(),
+                    qwen=planner.status(),
+                    google=oauth.capabilities(),
+                    bitrix_connected=bool(bitrix.portal()),
+                    services=services.status()))
             elif path.path=="/api/desktop/status":
                 if self.headers.get("X-NF-Work-Token")!=token:
                     raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")

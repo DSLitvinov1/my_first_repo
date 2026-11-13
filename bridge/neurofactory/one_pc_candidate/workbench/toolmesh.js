@@ -277,7 +277,38 @@ async function meshRead(){
   }catch(e){meshMessage("Чтение не выполнено: "+e.message,true);}
 }
 
+async function meshPrivateCheck() {
+  const target=$("mesh-personal-result");
+  target.textContent="Проверка...";
+  try {
+    const report=await api("/api/private/readiness");
+    const names={
+      qwen:"Планировщик Qwen",
+      browser:"Управление браузером",
+      desktop:"Рабочий стол Windows",
+      google_tasks:"Google Tasks",
+      bitrix24:"Bitrix24"
+    };
+    const states={
+      ready:"Готово к следующему тесту",
+      needs_setup:"Требуется подключение",
+      needs_live_test:"Нужна проверка реального аккаунта"
+    };
+    const lines=["Личный режим · без коммерческого выпуска",
+      "Это проверка подключения, не проверка безопасности."];
+    for(const step of report.checks||[]){
+      lines.push((names[step.id]||step.id)+": "+(states[step.status]||step.status));
+    }
+    lines.push("Автоматическое изменение внешних данных без подтверждения отключено.");
+    lines.push("Первое необходимое действие: "+(
+      report.next?.[0]||"Провести сквозной тест на отдельном тестовом аккаунте"));
+    target.textContent=lines.join("\n");
+  }catch(error) {
+    target.textContent="Проверка не выполнена: "+error.message;
+  }
+}
 function bindMesh(){
+  $("mesh-personal-check").addEventListener("click",meshPrivateCheck);
   $("mesh-plan").addEventListener("click",meshQwenPlan);
   $("mesh-windows").addEventListener("click",meshWindows);
   $("mesh-attach").addEventListener("click",meshAttach);
@@ -314,5 +345,6 @@ function bindMesh(){
 
 bindMesh();
 meshRefresh();
+meshPrivateCheck();
 setInterval(meshRefresh,15000);
 setInterval(meshPollQwen,1500);
