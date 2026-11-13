@@ -1,7 +1,7 @@
 name: Neurofactory Work local sandbox regression
 on:
   push:
-    branches: [neurofactory-workbench-personal-mvp-20261107, neurofactory-work-one-agent-safe-20261113, neurofactory-work-one-browser-mouse-20261113, neurofactory-work-one-keyboard-20261113, neurofactory-work-one-scenarios-20261113]
+    branches: [neurofactory-workbench-personal-mvp-20261107, neurofactory-work-one-agent-safe-20261113, neurofactory-work-one-browser-mouse-20261113, neurofactory-work-one-keyboard-20261113, neurofactory-work-one-scenarios-20261113, neurofactory-work-one-toolmesh-20261113]
     paths:
       - 'bridge/neurofactory/one_pc_candidate/workbench/**'
       - '.github/workflows/neurofactory-workbench-local.yml'
@@ -19,12 +19,21 @@ jobs:
         shell: pwsh
         run: |
           cd bridge/neurofactory/one_pc_candidate/workbench
-          python -B -m unittest -v test_workbench test_agent_one test_browser_control test_workflow_one
+          python -B -m unittest -v test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one
       - name: Compile Python and validate browser JavaScript syntax
         shell: pwsh
         run: |
-          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py bridge/neurofactory/one_pc_candidate/workbench/agent_one.py bridge/neurofactory/one_pc_candidate/workbench/browser_control.py bridge/neurofactory/one_pc_candidate/workbench/workflow_one.py
+          python -m py_compile bridge/neurofactory/one_pc_candidate/workbench/work_core.py bridge/neurofactory/one_pc_candidate/workbench/work_server.py bridge/neurofactory/one_pc_candidate/workbench/agent_one.py bridge/neurofactory/one_pc_candidate/workbench/browser_control.py bridge/neurofactory/one_pc_candidate/workbench/workflow_one.py bridge/neurofactory/one_pc_candidate/workbench/desktop_one.py bridge/neurofactory/one_pc_candidate/workbench/credentials_one.py bridge/neurofactory/one_pc_candidate/workbench/google_oauth_one.py bridge/neurofactory/one_pc_candidate/workbench/service_one.py bridge/neurofactory/one_pc_candidate/workbench/qwen_planner_one.py
           node --check bridge/neurofactory/one_pc_candidate/workbench/app.js
+          node --check bridge/neurofactory/one_pc_candidate/workbench/toolmesh.js
           node --check bridge/neurofactory/one_pc_candidate/workbench/browser_worker.cjs
           node --check bridge/neurofactory/one_pc_candidate/workbench/browser_typing.cjs
           node --test bridge/neurofactory/one_pc_candidate/workbench/test_browser_typing.cjs
+      - name: Check Windows user desktop worker syntax (no GUI actions)
+        shell: pwsh
+        run: |
+          $worker='bridge/neurofactory/one_pc_candidate/workbench/desktop_worker.ps1'
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $worker,[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count -ne 0) { throw 'Windows PowerShell desktop worker syntax invalid' }

@@ -70,3 +70,29 @@
   border-radius:10px;margin:10px 0;}
 #one-last-frame[hidden]{display:none}
 @media(max-width:700px){.one-scenario{padding:14px}}
+
+/* Work ONE v0.6 unified local tools */
+.mesh-panel{margin:18px 0}
+.mesh-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;padding:18px}
+.mesh-part{border:1px solid var(--line);background:#111d2c;border-radius:11px;padding:16px;min-width:0}
+.mesh-part h3{font-size:15px;margin:0 0 8px;color:var(--text)}
+.mesh-part p{font-size:12px;line-height:1.55;color:var(--sub)}
+.mesh-part textarea{width:100%;resize:vertical;box-sizing:border-box;padding:12px;
+  background:#0b1524;color:#f5f8fc;border:1px solid #456079;border-radius:9px}
+.mesh-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.mesh-actions input,.mesh-actions select,.mesh-form-grid input{background:#0b1625;color:#e9f2fc;
+  min-height:35px;border:1px solid #465c76;border-radius:8px;padding:7px;
+  max-width:100%;box-sizing:border-box;font-size:12px}
+.mesh-actions label,.mesh-form-grid label{font-size:12px;color:#bfd0df}
+.mesh-actions input[type=text],.mesh-actions input[type=password]{flex:1;min-width:160px}
+.mesh-status{font-size:12px;line-height:1.5;color:#afcadc;min-height:24px;margin-top:10px}
+.mesh-checkbox{display:flex;gap:7px;font-size:12px;color:#d1e1ee;align-items:center}
+#mesh-screen{display:block;max-width:100%;height:auto;border:1px solid #567;border-radius:9px;cursor:crosshair;margin:10px 0}
+#mesh-screen[hidden]{display:none}
+.mesh-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mesh-form-grid label{display:grid;gap:5px;min-width:0}
+.mesh-form-grid input{width:100%}
+.mesh-form-grid .mesh-wide{grid-column:1/-1}
+.mesh-result{white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;max-height:245px;
+  padding:12px;color:#dae8f4;background:#0b1626;border-radius:8px;font:12px/1.6 ui-monospace,monospace}
+@media(max-width:850px){.mesh-layout{grid-template-columns:1fr;padding:12px}}
