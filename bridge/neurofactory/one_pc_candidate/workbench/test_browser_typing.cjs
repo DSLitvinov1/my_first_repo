@@ -3,7 +3,6 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const {KeyboardSession,validateText,validateMode,validKey,inspectInputs}
   =require("./browser_typing.cjs");
-const puppeteer=require("puppeteer-core");
 
 test("keyboard text and key validation rejects unsafe commands",()=>{
   for(const t of ["", "a".repeat(2001), "\u0000", "hello\tworld",
@@ -20,6 +19,7 @@ test("keyboard text and key validation rejects unsafe commands",()=>{
 
 test("real Chromium owner keyboard: title, description, safe field constraints",{skip:!process.env.NF_TEST_CHROMIUM},
   async()=>{
+    const puppeteer=require("puppeteer-core");
     const browser=await puppeteer.launch({
       executablePath:process.env.NF_TEST_CHROMIUM,headless:true,
       args:["--disable-dev-shm-usage"],
