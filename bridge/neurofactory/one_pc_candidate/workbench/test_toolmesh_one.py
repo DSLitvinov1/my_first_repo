@@ -359,16 +359,22 @@ class ToolmeshTest(unittest.TestCase):
                     '[{"op":"open","url":"https://example.org/"},{"op":"frame"}]}'}}]}
                 ).encode("utf8"))
             def close(self):pass
-        with patch("llama_connector_one.http.client.HTTPConnection",LocalConnection):
+        with patch.object(adapter,"_key",return_value="a"*64),patch(
+                "llama_connector_one.http.client.HTTPConnection",LocalConnection):
             self.assertTrue(adapter.available())
             result=adapter(self.project,"Проверь пример публичного сайта и сделай снимок")
         self.assertEqual(result["status"],"PROPOSED_UNVERIFIED")
         proposal=parse_proposal(result["text"],{"example.org"})
         self.assertEqual(proposal["steps"],2)
         self.assertEqual(outputs,[("GET","/health"),("POST","/v1/chat/completions")])
-        keyfile.chmod(0o644)
-        with self.assertRaisesRegex(WorkDenied,"KEY_FILE_INSECURE"):
-            adapter._key()
+        if __import__("os").name=="nt":
+            with self.assertRaisesRegex(WorkDenied,"POSIX_KEY_FILE_REQUIRED"):
+                adapter._key()
+        else:
+            self.assertEqual(adapter._key(),"a"*64)
+            keyfile.chmod(0o644)
+            with self.assertRaisesRegex(WorkDenied,"KEY_FILE_INSECURE"):
+                adapter._key()
         with self.assertRaises(WorkDenied):
             LlamaCppQwenOne(key_file=Path("relative.file"))
 

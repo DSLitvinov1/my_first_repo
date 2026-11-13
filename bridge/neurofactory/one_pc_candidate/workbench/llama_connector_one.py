@@ -32,6 +32,11 @@ class LlamaCppQwenOne:
         self.port = port
 
     def _key(self):
+        # Windows chmod does not enforce POSIX owner-only ACLs. This adapter
+        # deliberately runs only on the Linux Qwen host; Windows uses a
+        # separately pinned SSH provider or a future DPAPI-secured tunnel.
+        if os.name == "nt":
+            raise WorkDenied("QWEN_LLAMA_POSIX_KEY_FILE_REQUIRED")
         path = self.key_file
         if path.is_symlink() or not path.is_file():
             raise WorkDenied("QWEN_KEY_FILE_MISSING")
