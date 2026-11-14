@@ -25,6 +25,7 @@ from agent_one import AgentOne
 from browser_control import BrowserController
 from workflow_one import WorkflowOne
 from desktop_one import DesktopOne
+from desktop_script_one import DesktopScriptOne
 from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
@@ -80,6 +81,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
     desktop=desktop or DesktopOne(store,assets)
+    desktop_scripts=DesktopScriptOne(desktop)
     planner=planner or QwenPlannerOne(store,browser)
     oauth=oauth or GoogleOAuthOne()
     bitrix=bitrix or BitrixConnection(oauth.vault)
@@ -196,6 +198,13 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                 if set(vals)!={"project_id","id"} or any(len(x)!=1 for x in vals.values()):
                     raise ServerDenied("PRIVATE_FLOW_QUERY_INVALID")
                 self.out(200,private_flow.status(vals["project_id"][0],vals["id"][0]))
+            elif path.path=="/api/desktop/script/status":
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")
+                vals=parse_qs(path.query)
+                if set(vals)!={"project_id","id"} or any(len(v)!=1 for v in vals.values()):
+                    raise ServerDenied("DESKTOP_SCRIPT_QUERY_INVALID")
+                self.out(200,desktop_scripts.get(vals["project_id"][0],vals["id"][0]))
             elif path.path=="/api/desktop/status":
                 if self.headers.get("X-NF-Work-Token")!=token:
                     raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")
@@ -290,6 +299,12 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
             if method=="POST" and url.path=="/api/private/flow/confirm" and set(data)=={"project_id","id","script","action","fields"}:
                 self.out(200,private_flow.confirm(data["project_id"],data["id"],
                                                    data["script"],data["action"],data["fields"]))
+                return
+            if method=="POST" and url.path=="/api/desktop/script/prepare" and set(data)=={"project_id","session_id","script"}:
+                self.out(201,desktop_scripts.prepare(data["project_id"],data["session_id"],data["script"]))
+                return
+            if method=="POST" and url.path=="/api/desktop/script/start" and set(data)=={"project_id","session_id","id","script"}:
+                self.out(202,desktop_scripts.start(data["project_id"],data["session_id"],data["id"],data["script"]))
                 return
             if method=="POST" and url.path=="/api/desktop/windows" and set(data)=={"project_id"}:
                 self.out(200,{"windows":desktop.windows(data["project_id"])})
