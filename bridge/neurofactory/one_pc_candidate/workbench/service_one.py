@@ -6,6 +6,8 @@ Only allowlisted API methods and explicitly approved fields are supported.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import hashlib
 import hmac
 import json
@@ -159,6 +161,41 @@ class GoogleWorkspaceAdapter:
         return self._call("gmail.googleapis.com","GET",
             "/gmail/v1/users/me/messages","gmail.readonly",
             query={"maxResults":20})
+
+    def list_searchconsole_sites(self):
+        """Exact Google endpoint, Google-owned OAuth grant, read-only resource."""
+        response=self._call("www.googleapis.com","GET",
+            "/webmasters/v3/sites","searchconsole.readonly")
+        items=response.get("siteEntry",[])
+        if type(items) is not list:
+            raise WorkDenied("GSC_SITES_RESPONSE_INVALID")
+        return {"siteEntry":[{"siteUrl":item.get("siteUrl",""),
+                               "permissionLevel":item.get("permissionLevel","")}
+                  for item in items[:100] if type(item) is dict and
+                  type(item.get("siteUrl")) is str]}
+
+    def searchconsole_queries(self, site_url):
+        """Last 28 completed days, 25 queries; never modifies a Google site."""
+        if (type(site_url) is not str or not 1 <= len(site_url) <= 250 or
+                any(ord(c) < 33 for c in site_url) or
+                not site_url.startswith(("https://","http://","sc-domain:"))):
+            raise WorkDenied("GSC_SITE_PROPERTY_INVALID")
+        entries=self.list_searchconsole_sites()["siteEntry"]
+        if not any(x["siteUrl"]==site_url and
+                   x["permissionLevel"]!="siteUnverifiedUser" for x in entries):
+            raise WorkDenied("GSC_SITE_NOT_AUTHORIZED")
+        end=date.today()-timedelta(days=3)
+        start=end-timedelta(days=27)
+        response=self._call("www.googleapis.com","POST",
+            "/webmasters/v3/sites/"+quote(site_url,safe="")+
+            "/searchAnalytics/query","searchconsole.readonly",
+            payload={"startDate":start.isoformat(),"endDate":end.isoformat(),
+                     "dimensions":["query"],"rowLimit":25})
+        rows=response.get("rows",[])
+        if type(rows) is not list or len(rows)>25:
+            raise WorkDenied("GSC_QUERIES_RESPONSE_INVALID")
+        return {"siteUrl":site_url,"startDate":start.isoformat(),
+                "endDate":end.isoformat(),"rows":rows}
 
     def create(self, values):
         tasklist = valid_id(values["list_id"])
@@ -439,7 +476,8 @@ class ServiceOne:
             raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
         if resource in (
           "google.tasks.list","google.drive.files.list",
-          "google.gmail.messages.list","google.calendar.events.list"):
+          "google.gmail.messages.list","google.calendar.events.list",
+          "google.searchconsole.sites.list","google.searchconsole.queries"):
             adapter=self.adapters.get("google.tasks")
             if adapter is None:
                 raise WorkDenied("GOOGLE_NOT_CONNECTED")
@@ -447,10 +485,15 @@ class ServiceOne:
                 if set(fields)!={"list_id"}:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 result=adapter.list_tasks(fields["list_id"])
+            elif resource=="google.searchconsole.queries":
+                if set(fields)!={"site_url"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.searchconsole_queries(fields["site_url"])
             else:
                 if fields:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 method={
+                    "google.searchconsole.sites.list":"list_searchconsole_sites",
                     "google.drive.files.list":"list_drive_files",
                     "google.gmail.messages.list":"list_gmail_messages",
                     "google.calendar.events.list":"list_calendar_events",
