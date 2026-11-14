@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         run: |
           cd bridge/neurofactory/one_pc_candidate/workbench
-          python -B -m unittest -q test_chatgpt_bridge_one test_desktop_goal_one test_desktop_script_one test_toolmesh_one test_browser_control test_workflow_one test_agent_one test_searchconsole_one test_yandex_one test_bitrix_crm_list_one test_workbench test_private_preflight_one test_personal_readiness_one
+          python -B -m unittest -q test_safe_qwen_planner_one test_qwen_reliability_one test_chatgpt_bridge_one test_desktop_goal_one test_desktop_script_one test_toolmesh_one test_browser_control test_workflow_one test_agent_one test_searchconsole_one test_yandex_one test_bitrix_crm_list_one test_workbench test_private_preflight_one test_personal_readiness_one
           if($LASTEXITCODE -ne 0){throw 'ONE_BRIDGE_REGRESSION_FAILED'}
           node --test test_browser_typing.cjs
           if($LASTEXITCODE -ne 0){throw 'ONE_BROWSER_REGRESSION_FAILED'}
