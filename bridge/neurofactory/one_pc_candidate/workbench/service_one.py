@@ -276,6 +276,34 @@ class Bitrix24Adapter:
             raise WorkDenied("BITRIX_CRM_READ_FAILED")
         return data["result"]
 
+    def crm_list(self, entity):
+        """Single latest CRM page for owner analysis, never a mutation."""
+        if entity not in ("deal","lead"):
+            raise WorkDenied("BITRIX_CRM_ENTITY_REFUSED")
+        crm_token=self.load("bitrix24","crm")
+        if not crm_token:
+            raise WorkDenied("BITRIX_CRM_SCOPE_NOT_CONNECTED")
+        fields=(["ID","STAGE_ID","CATEGORY_ID","SOURCE_ID","DATE_CREATE"]
+                if entity=="deal" else
+                ["ID","STATUS_ID","SOURCE_ID","DATE_CREATE"])
+        reply=self.transport.call(
+            self.portal,"POST","/rest/crm."+entity+".list.json",crm_token,
+            {"select":fields,"order":{"ID":"DESC"},"start":0},
+            auth_style="bitrix")
+        if reply.get("error") or type(reply.get("result")) is not list or len(reply["result"])>50:
+            raise WorkDenied("BITRIX_CRM_LIST_FAILED")
+        results=[]
+        for item in reply["result"]:
+            if type(item) is not dict:
+                raise WorkDenied("BITRIX_CRM_LIST_FAILED")
+            # Return exact non-PII funnel fields only; no names/contact details.
+            results.append({key:item.get(key) for key in fields})
+        total=reply.get("total")
+        return {"entity":entity,"records":results,
+                "returned":len(results),"total":total
+                   if type(total) is int and total>=0 else None,
+                "single_page":True}
+
     def get(self, task_id):
         result=self._call("tasks.task.get",{"taskId":int(valid_id(str(task_id)))})
         task=result.get("task")
@@ -525,10 +553,19 @@ class ServiceOne:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 result=adapter.webmaster_summary(fields["host_id"])
         elif resource in ("bitrix.tasks.get", "bitrix.crm.deal.get",
-                          "bitrix.crm.contact.get"):
+                          "bitrix.crm.contact.get",
+                          "bitrix.crm.deals.list","bitrix.crm.leads.list"):
             adapter=self.adapters.get("bitrix.tasks")
-            if adapter is None or set(fields)!={"id"}:
+            if adapter is None:
                 raise WorkDenied("BITRIX_READ_NOT_CONNECTED")
+            if resource in ("bitrix.crm.deals.list","bitrix.crm.leads.list"):
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.crm_list("deal" if resource.endswith("deals.list")
+                                       else "lead")
+                return {"resource":resource,"data":result}
+            if set(fields)!={"id"}:
+                raise WorkDenied("BITRIX_READ_FIELDS_INVALID")
             rid=valid_id(str(fields["id"]))
             if resource=="bitrix.tasks.get":
                 result=adapter.get(rid)
