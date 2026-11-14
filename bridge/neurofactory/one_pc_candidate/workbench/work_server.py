@@ -78,12 +78,12 @@ def model_module():
     return module
 
 def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
-                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,yandex=None,private_flow=None,chatgpt_bridge=None):
+                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,yandex=None,private_flow=None,chatgpt_bridge=None,desktop_scripts=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
     desktop=desktop or DesktopOne(store,assets)
-    desktop_scripts=DesktopScriptOne(desktop)
+    desktop_scripts=desktop_scripts or DesktopScriptOne(desktop)
     planner=planner or QwenPlannerOne(store,browser)
     oauth=oauth or GoogleOAuthOne()
     bitrix=bitrix or BitrixConnection(oauth.vault)
@@ -594,13 +594,15 @@ def main():
         except (ServerDenied,OSError,ValueError):
             model_fn=None
     planner=QwenPlannerOne(store,browser,model_fn=model_fn)
-    chatgpt_bridge=ChatGPTBridgeOne(store,AgentOne(store),desktop,DesktopScriptOne(desktop),vault)
+    desktop_scripts=DesktopScriptOne(desktop)
+    chatgpt_bridge=ChatGPTBridgeOne(store,AgentOne(store),desktop,desktop_scripts,vault)
     server=ThreadingHTTPServer(("127.0.0.1",args.port),
                               make_handler(store,Path(__file__).resolve().parent,
                                            token,args.port,browser=browser,
                                            desktop=desktop,planner=planner,
                                            services=services,oauth=oauth,bitrix=bitrix,yandex=yandex,
-                                           chatgpt_bridge=chatgpt_bridge))
+                                           chatgpt_bridge=chatgpt_bridge,
+                                           desktop_scripts=desktop_scripts))
     chatgpt_bridge.restore()
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
