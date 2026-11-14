@@ -93,3 +93,16 @@ Evidence: OpenSEO early-2026-11-14 completed crawls. **These crawls predate subs
 - OpenSEO GSC account lists are empty for both projects.
 - GitHub Action Playwright scan was committed on branch; actual workflow execution and results have not been confirmed.
 - New production changes in this turn: **NOT DONE** (prior 2026-11-14 metadata fixes and Yandex reindex submissions are described above). New sitemap submissions and Google submissions: **NOT DONE**. Post-fix crawl: **RUNNING**.
+
+## Full-sitemap Playwright verification — 2026-11-15 (completed)
+
+- CI: [GitHub Actions #43650559048](https://github.com/DSLitvinov1/my_first_repo/actions/runs/43650559048), branch head `3c4f66c173ce7a6a27cf285d06b396e5f2e3dadf`, **PASS**. Full sitemap audit is `audits/oleg-indexing/audit.cjs`.
+- `potrebpravo.ru`: `robots.txt` 200, `sitemap.xml` 200, 23/23 canonical sitemap URLs loaded with HTTP 200, 0 technical critical issues, 16 advisory warnings (mostly brief case summaries and some long titles). The 3 extra discovered internal URLs were reachable.
+- `semya-yurist.ru`: `robots.txt` 200, `sitemap.xml` 200, 18/18 canonical sitemap URLs loaded with HTTP 200, 0 technical critical issues, 9 advisory warnings (brief case summaries and some long titles). The 3 extra discovered internal URLs were reachable.
+- Bot restrictions for `*`, Googlebot, Yandex root /: no global root disallow was flagged; no `noindex` among the 41 sitemap pages; canonicals all matched their URL; duplicate sitemap URLs, duplicate titles/descriptions, and orphan sitemap URLs were not flagged.
+- 41/41 sitemap URLs are **technically crawlable**, not proof of inclusion in either engine's search index.
+- Existing privacy/consent pages outside sitemap are intentionally noindex: 2 per site, verified by the full OpenSEO crawl earlier the same day.
+- Last known Yandex state: 7 URLs each placed in reindex queue on 2026-11-14. Verify actual indexing from Yandex Webmaster after robot revisit. Separate sitemap/metric-counter submissions **not confirmed**.
+- Google Search Console connection through OpenSEO was explicitly tested on both properties and returned `not_connected`; no Google index coverage or indexing submission is authorized from the connected accounts.
+- Potential Yandex boost: bind each verified Webmaster site to its Yandex Metrica counter and enable 'Обход по счётчикам' **after verifying installation/owner authorization**. Official: https://yandex.ru/support/metrica/ru/general/link-webmaster . Nothing has been changed in the Webmaster/Metric settings in this turn.
+- Do not publish a claim of full indexing, merge the draft PR, or execute metadata updates until hosting access, source guard/diff and rollback are verified.
