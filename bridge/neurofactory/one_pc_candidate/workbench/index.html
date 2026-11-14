@@ -207,6 +207,7 @@
                 <option value="drive.metadata.readonly">Диск · список файлов</option>
                 <option value="gmail.readonly">Почта · список сообщений</option>
                 <option value="calendar.readonly">Календарь · просмотр</option>
+                <option value="searchconsole.readonly">Search Console · только чтение</option>
               </select>
               <button type="button" id="mesh-google-connect" class="button soft small">Подключить Google</button>
               <button type="button" id="mesh-google-disconnect" class="button soft small">Отозвать локальный доступ</button>
@@ -260,11 +261,18 @@
                 <option value="google.drive.files.list">Google Диск · файлы</option>
                 <option value="google.gmail.messages.list">Google Почта · сообщения</option>
                 <option value="google.calendar.events.list">Google Календарь · события</option>
+                <option value="google.searchconsole.sites.list">Search Console · мои сайты</option>
+                <option value="google.searchconsole.queries">Search Console · поисковые запросы за 28 дней</option>
                 <option value="bitrix.tasks.get">Bitrix24 · задача</option>
                 <option value="bitrix.crm.deal.get">Bitrix24 · сделка (отдельные CRM-права)</option>
                 <option value="bitrix.crm.contact.get">Bitrix24 · контакт (отдельные CRM-права)</option>
               </select>
               <button type="button" id="mesh-read" class="button soft small">Прочитать</button>
+            </div>
+            <div class="mesh-actions">
+              <label for="mesh-gsc-property">Ресурс Google Search Console (для запросов)</label>
+              <input id="mesh-gsc-property" type="text" maxlength="250" autocomplete="off"
+                placeholder="sc-domain:example.com или https://example.com/"/>
             </div>
             <pre id="mesh-record-result" class="mesh-result" aria-live="polite">Подключения не менялись.</pre>
           </div>
