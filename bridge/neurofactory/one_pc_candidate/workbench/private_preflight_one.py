@@ -65,7 +65,8 @@ def verify_manifest(root):
                     return {"state":"invalid","reason":"VENDOR_ENTRY_INVALID"}
                 parts=name.split("/")
                 if (len(parts)<3 or
-                        any(not re.fullmatch(r"[A-Za-z0-9@_.+-]{1,90}",part)
+                        any(part in (".","..") or not re.fullmatch(
+                            r"[A-Za-z0-9@_.+-]{1,90}",part)
                             for part in parts) or
                         not (name.startswith("runtime/python/") or
                              name.startswith("runtime/node/") or
