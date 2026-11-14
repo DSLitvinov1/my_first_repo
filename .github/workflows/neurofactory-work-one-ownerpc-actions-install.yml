@@ -1,0 +1,94 @@
+name: Work ONE owner Windows install through approved self-hosted GitHub runner
+on:
+  push:
+    branches:
+      - neurofactory-work-one-ownerpc-actions-install-20261114
+    paths:
+      - '.github/workflows/neurofactory-work-one-ownerpc-actions-install.yml'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/windows_setup/Install-WorkONE-FromGitHubActions.ps1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: work-one-ownerpc-install-one-at-a-time
+  cancel-in-progress: false
+jobs:
+  validate_trusted_package:
+    runs-on: windows-2025
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify installer parses on Windows PowerShell, without running it
+        shell: pwsh
+        run: |
+          $script='bridge/neurofactory/one_pc_candidate/workbench/windows_setup/Install-WorkONE-FromGitHubActions.ps1'
+          $tokens=$null
+          $errors=$null
+          [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script),[ref]$tokens,[ref]$errors)
+          if ($errors.Count -ne 0) {throw 'WORK_ONE_INSTALLER_PARSE_FAILED'}
+          Write-Output 'WORK_ONE_INSTALLER_SYNTAX=PASS'
+      - name: Download previously verified Work ONE owner archive, exactly one immutable run
+        uses: actions/download-artifact@v4
+        with:
+          repository: DSLitvinov1/my_first_repo
+          run-id: 43537680503
+          name: Neirozavod-Work-ONE-Private-Ready-Windows
+          github-token: ${{ github.token }}
+          path: checked-package
+      - name: Verify artifact content on fresh disposable Windows, no installation
+        shell: pwsh
+        run: |
+          $root=Join-Path $env:GITHUB_WORKSPACE 'checked-package'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          if (!(Test-Path -LiteralPath $python -PathType Leaf)) {throw 'WORK_ONE_ARCHIVE_PYTHON_MISSING'}
+          $json=Get-Content -LiteralPath (Join-Path $root 'manifest.json') -Raw | ConvertFrom-Json
+          if ($json.source_sha -cne 'b0345ee50d09be499d6ecbf8b858d77d48d2e5b0' -or
+              $json.portable_runtime -ne $true) {throw 'WORK_ONE_RELEASE_SHA_MISMATCH'}
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {throw 'WORK_ONE_ARCHIVE_HASH_CHECK_FAILED'}
+          Write-Host 'GITHUB_HOSTED_PACKAGE_INTEGRITY_VALIDATED=YES'
+          Write-Host 'OWNER_WINDOWS_PC_HAS_NOT_BEEN_TOUCHED=YES'
+
+  owner_windows_install:
+    needs: validate_trusted_package
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download immutable inspected private release (not untrusted latest)
+        uses: actions/download-artifact@v4
+        with:
+          repository: DSLitvinov1/my_first_repo
+          run-id: 43537680503
+          name: Neirozavod-Work-ONE-Private-Ready-Windows
+          github-token: ${{ github.token }}
+          path: owner-package
+      - name: Reject any other machine, noninteractive/service/admin session, or modified package
+        shell: pwsh
+        run: |
+          $file='bridge/neurofactory/one_pc_candidate/workbench/windows_setup/Install-WorkONE-FromGitHubActions.ps1'
+          $package=Join-Path $env:GITHUB_WORKSPACE 'owner-package'
+          & $file -Mode Inspect -PackageDirectory $package
+          if ($LASTEXITCODE -ne 0) {throw 'OWNER_PC_INSPECT_FAILED'}
+      - name: Install separate nonadmin Work ONE release; no CORE9/HOST, restart or external accounts
+        shell: pwsh
+        run: |
+          $file='bridge/neurofactory/one_pc_candidate/workbench/windows_setup/Install-WorkONE-FromGitHubActions.ps1'
+          $package=Join-Path $env:GITHUB_WORKSPACE 'owner-package'
+          & $file -Mode Install -PackageDirectory $package
+          if ($LASTEXITCODE -ne 0) {throw 'OWNER_PC_INSTALL_FAILED'}
+      - name: Confirm versioned private Work ONE release after copy
+        shell: pwsh
+        run: |
+          $root=Join-Path $env:LOCALAPPDATA 'NeirozavodWorkONEPrivatePilot\releases\work-one-b0345ee50d09'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          if (!(Test-Path -LiteralPath $python -PathType Leaf)) {throw 'OWNER_WORK_ONE_NOT_INSTALLED'}
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {throw 'OWNER_WORK_ONE_INSTALLED_FILES_CHANGED'}
+          Write-Output 'OWNER_WORK_ONE_INSTALLED_AND_HASH_VERIFIED=YES'
+          Write-Output 'OWNER_DESKTOP_AND_QWEN_REAL_E2E_STILL_NEEDS_USER_SESSION_ACCEPTANCE=YES'
