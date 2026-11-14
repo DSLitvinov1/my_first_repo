@@ -55,7 +55,7 @@ class DesktopScriptTests(unittest.TestCase):
         self.assertEqual([x["op"] for x in steps],
                          ["click_label", "key", "type", "frame"])
         self.assertEqual(steps[2]["text"], "ONE проверка")
-        for bad in ("Напечатай «»", "Напечатай «a\\nb»",
+        for bad in ("Напечатай «»", "Напечатай «a\nb»",
                     "Напечатай «" + "a"*501 + "»"):
             with self.subTest(bad=bad[:20]),self.assertRaises(WorkDenied):
                 parse_safe_desktop_script(bad)
