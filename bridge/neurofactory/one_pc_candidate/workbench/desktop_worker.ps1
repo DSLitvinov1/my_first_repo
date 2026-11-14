@@ -272,14 +272,16 @@ function AssertEditor($expectedProcessId) {
   if($null -eq $focus){throw "DESKTOP_EDITOR_NOT_FOUND"}
   if($focus.Current.ProcessId -ne $expectedProcessId){throw "DESKTOP_EDITOR_OTHER_PROCESS"}
   if($focus.Current.IsPassword){throw "DESKTOP_PASSWORD_FIELD_DENIED"}
-  $type=$focus.Current.ControlType
-  if($type -ne [Windows.Automation.ControlType]::Edit -and
-     $type -ne [Windows.Automation.ControlType]::Document){
-    throw "DESKTOP_TEXT_INPUT_NOT_FOCUSED"
-  }
+  # The focused control can be a WinForms/UIA Pane rather than Edit,
+  # but it must still advertise an editable ValuePattern. Reject any
+  # unknown non-editor control, even if keyboard focus is inside our app.
   $pattern=$null
-  if($focus.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)){
+  $isValue=$focus.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)
+  if($isValue) {
     if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
+  } elseif($focus.Current.ControlType -ne [Windows.Automation.ControlType]::Edit -and
+           $focus.Current.ControlType -ne [Windows.Automation.ControlType]::Document) {
+    throw "DESKTOP_TEXT_INPUT_NOT_FOCUSED"
   }
 }
 while($true){
