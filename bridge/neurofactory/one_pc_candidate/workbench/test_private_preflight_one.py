@@ -16,7 +16,7 @@ class PrivatePreflightTests(unittest.TestCase):
 
     def setup_manifest(self):
         names=set(REQUIRED)
-        names.update("extra%d.txt"%i for i in range(25-len(names)))
+        names.update("extra%d.txt"%i for i in range(26-len(names)))
         files={}
         for name in names:
             body=b"synthetic harmless test content"
