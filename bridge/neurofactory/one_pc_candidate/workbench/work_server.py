@@ -5,7 +5,6 @@ not protected CORE9 grants and not arbitrary code execution.
 """
 from __future__ import annotations
 import argparse
-from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import html
 import importlib.util
@@ -42,10 +41,6 @@ MIME={"/":"text/html; charset=utf-8",
 ID="[0-9a-f]{32}"
 PROJECT_RE=re.compile(rf"^/api/projects/({ID})/(files|tasks|file|versions|undo)$")
 TASK_RE=re.compile(rf"^/api/tasks/({ID})/generate$")
-# Reuse the user's existing, already working cloud Qwen UI release.
-# Never import this untrusted model client from an arbitrary project path.
-INSTALLED_QWEN=Path(r"C:\ChatGPTProjects\NeurofactoryReview-20261105-verified")
-PINNED_QWEN_PROVIDER_SHA="60cc46c07960e09aa64e55403e875e0b72d5f66bd274d3fa29855ea41ad5dbe3"
 OWNER_DATA=Path(os.environ.get("LOCALAPPDATA",""))/"NeurofactoryData"
 
 class ServerDenied(ValueError):
@@ -60,24 +55,23 @@ def unique(items):
     return result
 
 def model_module():
-    """Only the *existing pinned SSH draft client*, without copying its key."""
-    manifest=INSTALLED_QWEN/"release-manifest.json"
-    file=INSTALLED_QWEN/"app"/"cloud_ssh_draft_provider.py"
-    if (not manifest.is_file() or not file.is_file() or
-        manifest.is_symlink() or file.is_symlink()):
-        raise ServerDenied("PINNED_MODEL_PROVIDER_MISSING")
-    data=json.loads(manifest.read_text("utf-8-sig"))
-    entries=[x for x in data["entries"] if x.get("path")=="app/cloud_ssh_draft_provider.py"]
-    if (len(entries)!=1 or entries[0]["sha256"]!=PINNED_QWEN_PROVIDER_SHA or
-        sha256(file.read_bytes()).hexdigest()!=PINNED_QWEN_PROVIDER_SHA):
-        raise ServerDenied("PINNED_MODEL_PLUGIN_MUTATED")
-    spec=importlib.util.spec_from_file_location("_nf_work_pinned_qwen",file)
+    """Use the *existing* private SSH key with our release-manifested client.
+
+    No new credentials or exposed cloud listener. The portable release contains
+    only public, deterministic client source, not model weights or SSH secrets.
+    """
+    bundled=Path(__file__).resolve().parent/"cloud_ssh_draft_provider.py"
+    if bundled.is_symlink() or not bundled.is_file():
+        raise ServerDenied("BUNDLED_CLOUD_MODEL_CLIENT_MISSING")
+    # The one-click owner launcher verifies bundled content against every
+    # file's SHA256 in manifest.json before this module can be loaded.
+    spec=importlib.util.spec_from_file_location("_nf_work_bundled_cloud_qwen",bundled)
     if spec is None or spec.loader is None:
-        raise ServerDenied("PINNED_MODEL_IMPORT_FAILED")
+        raise ServerDenied("CLOUD_QWEN_CLIENT_IMPORT_DENIED")
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     if not module.available(OWNER_DATA):
-        raise ServerDenied("EXISTING_QWEN_NOT_AVAILABLE")
+        raise ServerDenied("CLOUD_QWEN_EXISTING_SSH_IDENTITY_UNAVAILABLE")
     return module
 
 def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
@@ -526,6 +520,7 @@ def main():
                 return provider.generate(OWNER_DATA,{
                     "id":secrets.token_hex(16),"project_id":project,
                     "objective":objective},model="qwen3.5:9b")
+            pinned_qwen.model="qwen3.5:9b"
             model_fn=pinned_qwen
         except (ServerDenied,OSError,ValueError):
             model_fn=None

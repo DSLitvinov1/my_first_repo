@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from private_preflight_one import verify_manifest
-from qwen_planner_one import LocalOllamaQwen, LOCAL_APPROVED_MODELS
+from cloud_ssh_draft_provider import available as cloud_qwen_configured
 
 
 def owner_session_eligible():
@@ -64,11 +64,15 @@ def prepare_state(profile: str) -> tuple[Path, Path]:
     return workspace, state
 
 
-def local_qwen_detected():
-    for model in LOCAL_APPROVED_MODELS:
-        if LocalOllamaQwen(model=model).available():
-            return True
-    return False
+def cloud_model_configured():
+    """Inspect only existing Windows private key and pinned server host record.
+
+    Never invoke the cloud model merely to check availability.
+    """
+    profile = os.environ.get("LOCALAPPDATA")
+    if not profile:
+        return False
+    return cloud_qwen_configured(Path(profile) / "NeurofactoryData")
 
 
 def _launch():
@@ -91,11 +95,14 @@ def _launch():
         "--port", "18770", "--open-ui",
         "--browser-allow-hosts", "example.org,www.wikipedia.org,wikipedia.org",
     ]
-    if local_qwen_detected():
-        cmd.append("--qwen-local")
-        print("Work ONE: existing local Qwen 3.5 discovered.")
+    if cloud_model_configured():
+        print("Work ONE: existing cloud Qwen 3.5 9B identity discovered.")
+        print("Work ONE: model inference stays on the existing Linux server.")
     else:
-        print("Work ONE: Qwen model is not connected; local features remain ready.")
+        print("Work ONE: existing cloud SSH identity is not configured for this user.")
+        print("Work ONE: local workspace and site audits remain available.")
+    # Deliberately never auto-start or download a Windows Ollama model.
+    # Default work_server provider reuses only the existing forced SSH key.
     print("Work ONE: http://127.0.0.1:18770/")
     print("Work ONE: only your projects. No Windows service or admin rights.")
     return subprocess.call(cmd, cwd=str(root))
