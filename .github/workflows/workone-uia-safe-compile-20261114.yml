@@ -1,0 +1,34 @@
+name: ONE Windows desktop worker Csharp runtime compile inspection
+on:
+  push:
+    branches: [workone-uia-safe-label-fallback-20261114]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/desktop_worker.ps1'
+      - '.github/workflows/workone-uia-safe-compile-20261114.yml'
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            bridge/neurofactory/one_pc_candidate/workbench/desktop_worker.ps1
+          sparse-checkout-cone-mode: false
+      - name: Compile actual Csharp SendInput and WinForms UIA code in clean PowerShell 5.1
+        shell: pwsh
+        run: |
+          $target=(Resolve-Path ./bridge/neurofactory/one_pc_candidate/workbench/desktop_worker.ps1).Path
+          $out=Join-Path $env:RUNNER_TEMP 'one-worker-stdout.txt'
+          $err=Join-Path $env:RUNNER_TEMP 'one-worker-stderr.txt'
+          $p=Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$target) -RedirectStandardOutput $out -RedirectStandardError $err -NoNewWindow -PassThru -Wait
+          $stderr=if(Test-Path $err){Get-Content -LiteralPath $err -Raw}else{''}
+          Write-Output ('DESKTOP_WORKER_HOSTED_EXIT_CODE='+$p.ExitCode)
+          if($stderr){Write-Output ('DESKTOP_WORKER_COMPILE_STDERR='+$stderr.Substring(0,[Math]::Min(4000,$stderr.Length)))}
+          if($p.ExitCode -notin @(0,2) -or $stderr -match '(?i)(error CS[0-9]+|Add-Type|Cannot add type|CompilationError)'){
+            throw 'DESKTOP_WORKER_CSHARP_RUNTIME_COMPILATION_FAILED'
+          }
+          Write-Output 'DESKTOP_WORKER_CSHARP_RUNTIME_COMPILE=PASS'
