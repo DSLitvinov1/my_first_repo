@@ -25,7 +25,7 @@ jobs:
         shell: pwsh
         run: |
           $root='bridge/neurofactory/one_pc_candidate/workbench'
-          python -m py_compile (Join-Path $root 'qwen_planner_one.py') (Join-Path $root 'test_qwen_reliability_one test_desktop_script_one.py')
+          python -m py_compile (Join-Path $root 'qwen_planner_one.py') (Join-Path $root 'test_qwen_reliability_one.py') (Join-Path $root 'test_desktop_script_one.py')
           if($LASTEXITCODE -ne 0){throw 'PYTHON_COMPILE_FAILED'}
           foreach($name in @('desktop_worker.ps1','START_PRIVATE_WORK_ONE.ps1','build_ready_one.ps1')){
             $tokens=$null
