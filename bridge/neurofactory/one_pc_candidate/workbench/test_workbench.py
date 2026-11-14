@@ -159,5 +159,65 @@ class ApiTest(unittest.TestCase):
                                "previous_sha":existing["sha256"]})
         self.assertEqual(ok,200)
 
+
+    def test_explicit_cloud_backup_never_silently_replaces_primary(self):
+        """Each model is a separate owner-selected one-shot route, no replay."""
+        import time
+        from unittest.mock import patch
+
+        class FakeCloud:
+            def __init__(self):
+                self.models=[]
+            def generate(self, workspace, task, *, model):
+                self.models.append(model)
+                assert len(task["id"]) == 32 and len(task["project_id"]) == 32
+                suggestion="Неприменяемый проверочный черновик."
+                return {"status":"PROPOSED_UNVERIFIED","model":model,
+                        "text":suggestion,
+                        "content_sha256":sha(suggestion.encode("utf-8"))}
+        provider=FakeCloud()
+        project=self.store.create_project("Тест облачной модели","web")["id"]
+        backup=self.store.create_task(project,"Резервная модель",
+              "Предложить краткий черновик, не изменяя файлы и проекты.")
+        endpoint="/api/tasks/"+backup["id"]+"/generate-fallback"
+        denied,_=self.request(endpoint,"POST",{},token="incorrect-owner-token")
+        self.assertEqual(denied,400)
+        self.assertEqual(self.store.task(backup["id"])["state"],"DRAFT")
+        with patch("work_server.model_module",return_value=provider):
+            accepted,reply=self.request(endpoint,"POST",{})
+            self.assertEqual(accepted,202)
+            body=json.loads(reply)
+            self.assertEqual(body["model"],"qwen2.5-coder:1.5b")
+            self.assertTrue(body["no_auto_retry"])
+            for _ in range(80):
+                if self.store.task(backup["id"])["state"]=="REVIEW":
+                    break
+                time.sleep(0.025)
+            row=self.store.task(backup["id"])
+            self.assertEqual(row["state"],"REVIEW")
+            self.assertEqual(row["model"],"qwen2.5-coder:1.5b")
+            replay,_=self.request(endpoint,"POST",{})
+            self.assertEqual(replay,400)
+            primary=self.store.create_task(project,"Основная модель",
+                 "Составить черновой план дальнейшей работы без исполнения.")
+            code,reply=self.request("/api/tasks/"+primary["id"]+"/generate",
+                                    "POST",{})
+            self.assertEqual(code,202)
+            self.assertEqual(json.loads(reply)["model"],"qwen3.5:9b")
+            for _ in range(80):
+                if self.store.task(primary["id"])["state"]=="REVIEW":
+                    break
+                time.sleep(0.025)
+            self.assertEqual(self.store.task(primary["id"])["model"],"qwen3.5:9b")
+        self.assertEqual(provider.models,["qwen2.5-coder:1.5b","qwen3.5:9b"])
+
+    def test_explicit_cloud_backup_button_is_displayed(self):
+        markup=(HERE/"index.html").read_text("utf-8")
+        client=(HERE/"app.js").read_text("utf-8")
+        self.assertIn('id="generate-fallback"',markup)
+        self.assertIn('Резервная облачная Qwen Coder 1.5B',markup)
+        self.assertIn('generate-fallback',client)
+        self.assertIn('generate("fallback")',client)
+
 if __name__=="__main__":
     unittest.main(verbosity=2)
