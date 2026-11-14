@@ -28,6 +28,7 @@ SCOPE_VALUES = {
         "https://www.googleapis.com/auth/drive.metadata.readonly",
     "gmail.readonly":"https://www.googleapis.com/auth/gmail.readonly",
     "calendar.readonly":"https://www.googleapis.com/auth/calendar.readonly",
+    "searchconsole.readonly":"https://www.googleapis.com/auth/webmasters.readonly",
 }
 CLIENT_RE=re.compile(r"^[0-9A-Za-z_.-]{6,190}\.apps\.googleusercontent\.com$")
 TIMEOUT=180
