@@ -27,10 +27,11 @@ from desktop_one import DesktopOne
 from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
-from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
+from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen, LOCAL_APPROVED_MODELS
 from llama_connector_one import LlamaCppQwenOne
 from personal_readiness_one import assess_private_readiness
 from private_flow_one import PrivateFlowOne
+from portable_runtime_one import find_node,find_browser,bundled_dependencies_ready
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -462,7 +463,9 @@ def main():
     ap.add_argument("--desktop-allow-apps",default="",
                     help="Exact foreground exe names, comma-separated; default none")
     ap.add_argument("--qwen-local",action="store_true",
-                    help="Use owner-installed Ollama Qwen 3.5:9b via 127.0.0.1:11434")
+                    help="Auto-select a locally installed Ollama Qwen 3.5 via 127.0.0.1:11434")
+    ap.add_argument("--qwen-model",choices=LOCAL_APPROVED_MODELS,default=None,
+                    help="Choose specifically one of the approved local Ollama models")
     ap.add_argument("--qwen-llama-key-file",type=Path,default=None,
                     help="Owner-only key file for loopback Qwen llama.cpp on port 11435")
     args=ap.parse_args()
@@ -470,10 +473,16 @@ def main():
         raise ServerDenied("PORT_REFUSED")
     store=WorkStore(args.root,args.data)
     token=secrets.token_urlsafe(36)
+    assets=Path(__file__).resolve().parent
+    browser_binary=args.browser_executable or find_browser()
+    node_executable=find_node(assets)
+    browser_available=bool(browser_binary and node_executable
+                            and bundled_dependencies_ready(assets))
     browser=BrowserController(
-        store,Path(__file__).resolve().parent,
+        store,assets,
         allowed_hosts=args.browser_allow_hosts.split(",") if args.browser_allow_hosts else (),
-        executable=args.browser_executable)
+        executable=browser_binary if browser_available else None,
+        node=str(node_executable) if node_executable else "node")
     desktop=DesktopOne(store,Path(__file__).resolve().parent,
         enabled=args.desktop_enable,
         allowed_apps=args.desktop_allow_apps.split(",") if args.desktop_allow_apps else ())
@@ -491,12 +500,18 @@ def main():
     model_fn=None
     if args.qwen_local and args.qwen_llama_key_file:
         raise ServerDenied("QWEN_SELECT_ONE_PROVIDER")
+    if args.qwen_model and not args.qwen_local:
+        raise ServerDenied("QWEN_MODEL_REQUIRES_LOCAL_PROVIDER")
     if args.qwen_llama_key_file:
         candidate=LlamaCppQwenOne(key_file=args.qwen_llama_key_file)
         model_fn=candidate if candidate.available() else None
     elif args.qwen_local:
-        candidate=LocalOllamaQwen()
-        model_fn=candidate if candidate.available() else None
+        choices=(args.qwen_model,) if args.qwen_model else LOCAL_APPROVED_MODELS
+        for name in choices:
+            candidate=LocalOllamaQwen(model=name)
+            if candidate.available():
+                model_fn=candidate
+                break
     else:
         try:
             model_module()
