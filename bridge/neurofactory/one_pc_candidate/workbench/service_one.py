@@ -6,6 +6,8 @@ Only allowlisted API methods and explicitly approved fields are supported.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import hashlib
 import hmac
 import json
@@ -64,7 +66,7 @@ class SafeServiceTransport:
                 method not in ("GET", "POST", "PATCH") or
                 not isinstance(token, str) or not 8 <= len(token) <= 4096):
             raise WorkDenied("SERVICE_HTTP_TARGET_REFUSED")
-        if auth_style not in ("bearer", "bitrix"):
+        if auth_style not in ("bearer", "bitrix", "yandex"):
             raise WorkDenied("SERVICE_AUTH_STYLE_REFUSED")
         if query:
             if type(query) is not dict or len(query) > 5:
@@ -80,6 +82,8 @@ class SafeServiceTransport:
             # With Bitrix OAuth, auth is in the JSON body according to REST docs.
             if method == "GET":
                 method = "POST"
+        elif auth_style == "yandex":
+            headers["Authorization"] = "OAuth " + token
         else:
             headers["Authorization"] = "Bearer " + token
         if payload is not None:
@@ -160,6 +164,41 @@ class GoogleWorkspaceAdapter:
             "/gmail/v1/users/me/messages","gmail.readonly",
             query={"maxResults":20})
 
+    def list_searchconsole_sites(self):
+        """Exact Google endpoint, Google-owned OAuth grant, read-only resource."""
+        response=self._call("www.googleapis.com","GET",
+            "/webmasters/v3/sites","searchconsole.readonly")
+        items=response.get("siteEntry",[])
+        if type(items) is not list:
+            raise WorkDenied("GSC_SITES_RESPONSE_INVALID")
+        return {"siteEntry":[{"siteUrl":item.get("siteUrl",""),
+                               "permissionLevel":item.get("permissionLevel","")}
+                  for item in items[:100] if type(item) is dict and
+                  type(item.get("siteUrl")) is str]}
+
+    def searchconsole_queries(self, site_url):
+        """Last 28 completed days, 25 queries; never modifies a Google site."""
+        if (type(site_url) is not str or not 1 <= len(site_url) <= 250 or
+                any(ord(c) < 33 for c in site_url) or
+                not site_url.startswith(("https://","http://","sc-domain:"))):
+            raise WorkDenied("GSC_SITE_PROPERTY_INVALID")
+        entries=self.list_searchconsole_sites()["siteEntry"]
+        if not any(x["siteUrl"]==site_url and
+                   x["permissionLevel"]!="siteUnverifiedUser" for x in entries):
+            raise WorkDenied("GSC_SITE_NOT_AUTHORIZED")
+        end=date.today()-timedelta(days=3)
+        start=end-timedelta(days=27)
+        response=self._call("www.googleapis.com","POST",
+            "/webmasters/v3/sites/"+quote(site_url,safe="")+
+            "/searchAnalytics/query","searchconsole.readonly",
+            payload={"startDate":start.isoformat(),"endDate":end.isoformat(),
+                     "dimensions":["query"],"rowLimit":25})
+        rows=response.get("rows",[])
+        if type(rows) is not list or len(rows)>25:
+            raise WorkDenied("GSC_QUERIES_RESPONSE_INVALID")
+        return {"siteUrl":site_url,"startDate":start.isoformat(),
+                "endDate":end.isoformat(),"rows":rows}
+
     def create(self, values):
         tasklist = valid_id(values["list_id"])
         payload = {"title": check_text(values["title"],1024),
@@ -236,6 +275,41 @@ class Bitrix24Adapter:
         if data.get("error") or type(data.get("result")) is not dict:
             raise WorkDenied("BITRIX_CRM_READ_FAILED")
         return data["result"]
+
+    def crm_list(self, entity):
+        """Single latest CRM page for owner analysis, never a mutation."""
+        if entity not in ("deal","lead"):
+            raise WorkDenied("BITRIX_CRM_ENTITY_REFUSED")
+        crm_token=self.load("bitrix24","crm")
+        if not crm_token:
+            raise WorkDenied("BITRIX_CRM_SCOPE_NOT_CONNECTED")
+        fields=(["ID","STAGE_ID","CATEGORY_ID","SOURCE_ID","DATE_CREATE"]
+                if entity=="deal" else
+                ["ID","STATUS_ID","SOURCE_ID","DATE_CREATE"])
+        reply=self.transport.call(
+            self.portal,"POST","/rest/crm."+entity+".list.json",crm_token,
+            {"select":fields,"order":{"ID":"DESC"},"start":0},
+            auth_style="bitrix")
+        if reply.get("error") or type(reply.get("result")) is not list or len(reply["result"])>50:
+            raise WorkDenied("BITRIX_CRM_LIST_FAILED")
+        results=[]
+        for item in reply["result"]:
+            if type(item) is not dict:
+                raise WorkDenied("BITRIX_CRM_LIST_FAILED")
+            # Return exact non-PII funnel fields only, with bounded scalar values.
+            clean={}
+            for key in fields:
+                value=item.get(key)
+                if value is not None and (type(value) not in (int,str) or
+                                          len(str(value))>100):
+                    raise WorkDenied("BITRIX_CRM_FIELD_INVALID")
+                clean[key]=value
+            results.append(clean)
+        total=reply.get("total")
+        return {"entity":entity,"records":results,
+                "returned":len(results),"total":total
+                   if type(total) is int and total>=0 else None,
+                "single_page":True}
 
     def get(self, task_id):
         result=self._call("tasks.task.get",{"taskId":int(valid_id(str(task_id)))})
@@ -439,7 +513,8 @@ class ServiceOne:
             raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
         if resource in (
           "google.tasks.list","google.drive.files.list",
-          "google.gmail.messages.list","google.calendar.events.list"):
+          "google.gmail.messages.list","google.calendar.events.list",
+          "google.searchconsole.sites.list","google.searchconsole.queries"):
             adapter=self.adapters.get("google.tasks")
             if adapter is None:
                 raise WorkDenied("GOOGLE_NOT_CONNECTED")
@@ -447,25 +522,62 @@ class ServiceOne:
                 if set(fields)!={"list_id"}:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 result=adapter.list_tasks(fields["list_id"])
+            elif resource=="google.searchconsole.queries":
+                if set(fields)!={"site_url"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.searchconsole_queries(fields["site_url"])
             else:
                 if fields:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 method={
+                    "google.searchconsole.sites.list":"list_searchconsole_sites",
                     "google.drive.files.list":"list_drive_files",
                     "google.gmail.messages.list":"list_gmail_messages",
                     "google.calendar.events.list":"list_calendar_events",
                 }[resource]
                 result=getattr(adapter,method)()
-        elif resource in ("bitrix.tasks.get", "bitrix.crm.deal.get",
-                          "bitrix.crm.contact.get"):
-            adapter=self.adapters.get("bitrix.tasks")
-            if adapter is None or set(fields)!={"id"}:
-                raise WorkDenied("BITRIX_READ_NOT_CONNECTED")
-            rid=valid_id(str(fields["id"]))
-            if resource=="bitrix.tasks.get":
-                result=adapter.get(rid)
+        elif resource in ("yandex.metrika.counters.list",
+                          "yandex.metrika.visits",
+                          "yandex.webmaster.hosts.list",
+                          "yandex.webmaster.summary"):
+            adapter=self.adapters.get("yandex.read")
+            if adapter is None:
+                raise WorkDenied("YANDEX_NOT_CONNECTED")
+            if resource=="yandex.metrika.counters.list":
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.metrika_counters()
+            elif resource=="yandex.metrika.visits":
+                if set(fields)!={"counter_id"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.metrika_visits(fields["counter_id"])
+            elif resource=="yandex.webmaster.hosts.list":
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.webmaster_hosts()
             else:
-                result=adapter.crm_get(resource.split(".")[2],rid)
+                if set(fields)!={"host_id"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.webmaster_summary(fields["host_id"])
+        elif resource in ("bitrix.tasks.get", "bitrix.crm.deal.get",
+                          "bitrix.crm.contact.get",
+                          "bitrix.crm.deals.list","bitrix.crm.leads.list"):
+            adapter=self.adapters.get("bitrix.tasks")
+            if adapter is None:
+                raise WorkDenied("BITRIX_READ_NOT_CONNECTED")
+            if resource in ("bitrix.crm.deals.list","bitrix.crm.leads.list"):
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.crm_list("deal" if resource.endswith("deals.list")
+                                       else "lead")
+            else:
+                if set(fields)!={"id"}:
+                    raise WorkDenied("BITRIX_READ_FIELDS_INVALID")
+                rid=valid_id(str(fields["id"]))
+                if resource=="bitrix.tasks.get":
+                    result=adapter.get(rid)
+                else:
+                    result=adapter.crm_get(resource.split(".")[2],rid)
         else:
             raise WorkDenied("SERVICE_READ_ACTION_REFUSED")
         if not isinstance(result, dict):

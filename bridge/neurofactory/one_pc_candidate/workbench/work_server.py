@@ -28,6 +28,7 @@ from desktop_one import DesktopOne
 from desktop_script_one import DesktopScriptOne
 from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
+from yandex_one import YandexConnection, YandexReadOnlyAdapter
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
 from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen, LOCAL_APPROVED_MODELS
 from llama_connector_one import LlamaCppQwenOne
@@ -76,7 +77,7 @@ def model_module():
     return module
 
 def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
-                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,private_flow=None):
+                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,yandex=None,private_flow=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
@@ -85,12 +86,15 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
     planner=planner or QwenPlannerOne(store,browser)
     oauth=oauth or GoogleOAuthOne()
     bitrix=bitrix or BitrixConnection(oauth.vault)
+    yandex=yandex or YandexConnection(oauth.vault)
     if services is None:
         adapters={}
         if oauth.capabilities()["configured"]:
             adapters["google.tasks"]=GoogleWorkspaceAdapter(oauth.token)
         if bitrix.portal():
             adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
+        if yandex.capabilities()["connected_scopes"]:
+            adapters["yandex.read"]=YandexReadOnlyAdapter(yandex.token)
         services=ServiceOne(store,adapters)
     private_flow=private_flow or PrivateFlowOne(store,workflow,services)
     home=assets/"index.html"
@@ -180,6 +184,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                               "qwen":planner.status(),
                               "google":oauth.capabilities(),
                               "bitrix_connected":bool(bitrix.portal()),
+                              "yandex":yandex.capabilities(),
                               "services":services.status()})
             elif path.path=="/api/private/readiness" and not path.query:
                 if self.headers.get("X-NF-Work-Token")!=token:
@@ -352,6 +357,17 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                 self.out(200,services.commit(data["project_id"],data["id"],
                                              data["action"],data["fields"]))
                 return
+            if method=="POST" and url.path=="/api/connectors/yandex/connect" and set(data)=={"scope","access_token"}:
+                result=yandex.connect(data["scope"],data["access_token"])
+                services.adapters["yandex.read"]=YandexReadOnlyAdapter(yandex.token)
+                self.out(201,result)
+                return
+            if method=="POST" and url.path=="/api/connectors/yandex/disconnect" and set(data)=={"scope"}:
+                result=yandex.disconnect(data["scope"])
+                if not yandex.capabilities()["connected_scopes"]:
+                    services.adapters.pop("yandex.read",None)
+                self.out(200,result)
+                return
             if method=="POST" and url.path=="/api/connectors/google/start" and set(data)=={"scope"}:
                 self.out(201,oauth.begin(data["scope"]))
                 return
@@ -398,6 +414,10 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                     required|={"label","text"}
                 if operation=="check_text":
                     required|={"text"}
+                if operation=="tab_new":
+                    required|={"url"}
+                if operation in ("tab_switch","tab_close"):
+                    required|={"tab_id"}
                 if operation=="press":
                     required|={"key"}
                 elif operation=="scroll":
@@ -516,11 +536,14 @@ def main():
         client_id=os.environ.get("NF_GOOGLE_DESKTOP_CLIENT_ID") or None,
         client_secret=os.environ.get("NF_GOOGLE_DESKTOP_CLIENT_SECRET") or None)
     bitrix=BitrixConnection(vault)
+    yandex=YandexConnection(vault)
     adapters={}
     if oauth.capabilities()["configured"]:
         adapters["google.tasks"]=GoogleWorkspaceAdapter(oauth.token)
     if bitrix.portal():
         adapters["bitrix.tasks"]=Bitrix24Adapter(bitrix.portal(),bitrix.token)
+    if yandex.capabilities()["connected_scopes"]:
+        adapters["yandex.read"]=YandexReadOnlyAdapter(yandex.token)
     services=ServiceOne(store,adapters)
     model_fn=None
     if args.qwen_local and args.qwen_llama_key_file:
@@ -556,7 +579,7 @@ def main():
                               make_handler(store,Path(__file__).resolve().parent,
                                            token,args.port,browser=browser,
                                            desktop=desktop,planner=planner,
-                                           services=services,oauth=oauth,bitrix=bitrix))
+                                           services=services,oauth=oauth,bitrix=bitrix,yandex=yandex))
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
     if args.open_ui and os.name=="nt":

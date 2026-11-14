@@ -1,5 +1,5 @@
 "use strict";
-/* NEIROZAVOD Work ONE browser pilot: explicit, single-tab, owner-driven.
+/* NEIROZAVOD Work ONE browser pilot: explicit, isolated tabs, owner-driven.
  * No persistent Chrome profile; no raw shell/desktop mouse; no form submits.
  * Network egress is limited to one public HTTPS origin with a DNS-pinned
  * Chromium resolver. Production requires OS-level network sandbox as well.
@@ -11,6 +11,9 @@ const {KeyboardSession, inspectInputs} = require("./browser_typing.cjs");
 const WIDTH = 1100, HEIGHT = 720;
 let browser = null, page = null, origin = null;
 let currentIp = null, keyboard = null;
+const tabs = new Map();
+let activeTabId = null, tabSequence = 0;
+const MAX_TABS = 4, MAX_CREATED_TABS = 16;
 let chain = Promise.resolve();
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -32,6 +35,7 @@ async function frame(includeImage = true) {
     url: url.slice(0, 500),
     title: (await page.title()).slice(0, 180),
     width: WIDTH, height: HEIGHT,
+    tab_id: activeTabId, tab_count: tabs.size,
   };
   if (includeImage) {
     const image = await page.screenshot({
@@ -47,6 +51,7 @@ async function shutdown() {
   if (keyboard) keyboard.invalidate();
   keyboard = null;
   browser = null; page = null; origin = null; currentIp = null;
+  tabs.clear(); activeTabId = null; tabSequence = 0;
   if (old) await old.close();
 }
 function constrainPoint(data) {
@@ -87,6 +92,39 @@ async function guardClick(x,y) {
   }, {x,y,origin});
   if (check) throw Error("BROWSER_CLICK_DENIED_" + check);
 }
+async function secureTab(tab) {
+  tab.setDefaultNavigationTimeout(12000);
+  tab.setDefaultTimeout(6500);
+  await tab.setBypassServiceWorker(true);
+  await tab.evaluateOnNewDocument(() => {
+    // Defense in depth, in addition to request-blocking and click guard.
+    window.addEventListener("submit", event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+    window.open = () => null;
+  });
+  await tab.setRequestInterception(true);
+  tab.on("request", request => {
+    let permitted = false;
+    try {
+      const requrl = new URL(request.url());
+      permitted = requrl.origin === origin &&
+                  requrl.protocol === "https:" &&
+                  ["GET","HEAD"].includes(request.method());
+      if (request.resourceType() === "websocket") permitted = false;
+    } catch (_) { permitted = false; }
+    (permitted ? request.continue() : request.abort("blockedbyclient")).catch(()=>{});
+  });
+  tab.on("dialog", dialog => dialog.dismiss().catch(()=>{}));
+  tab.on("popup", popup => popup.close().catch(()=>{}));
+  const cdp = await tab.createCDPSession();
+  await cdp.send("Network.enable");
+  await cdp.send("Network.setBlockedURLs", {
+    urls: ["http://*", "ws://*", "wss://*", "file://*"],
+  });
+}
+
 async function open(input) {
   if (browser) throw Error("CLOSE_CURRENT_BROWSER_FIRST");
   const u = new URL(input.url);
@@ -109,44 +147,90 @@ async function open(input) {
   });
   page = await browser.newPage();
   keyboard = new KeyboardSession(page);
-  page.setDefaultNavigationTimeout(12000);
-  page.setDefaultTimeout(6500);
-  await page.setBypassServiceWorker(true);
-  await page.evaluateOnNewDocument(() => {
-    // Defense in depth, in addition to request-blocking and click guard.
-    window.addEventListener("submit", event => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }, true);
-    window.open = () => null;
-  });
-  await page.setRequestInterception(true);
-  page.on("request", request => {
-    let permitted = false;
-    try {
-      const requrl = new URL(request.url());
-      permitted = requrl.origin === origin &&
-                  requrl.protocol === "https:" &&
-                  ["GET","HEAD"].includes(request.method());
-      if (request.resourceType() === "websocket") permitted = false;
-    } catch (_) { permitted = false; }
-    (permitted ? request.continue() : request.abort("blockedbyclient")).catch(()=>{});
-  });
-  page.on("dialog", dialog => dialog.dismiss().catch(()=>{}));
-  page.on("popup", popup => popup.close().catch(()=>{}));
-  const cdp = await page.createCDPSession();
-  await cdp.send("Network.enable");
-  await cdp.send("Network.setBlockedURLs", {
-    urls: ["http://*", "ws://*", "wss://*", "file://*"],
-  });
+  await secureTab(page);
   try {
     await page.goto(input.url, {waitUntil:"domcontentloaded", timeout:12000});
     await sleep(400);
+    tabSequence = 1; activeTabId = "tab-1";
+    tabs.set(activeTabId, page);
     return await frame();
   } catch (e) {
     await shutdown();
     throw e;
   }
+}
+function tabId(input) {
+  if (typeof input !== "string" || !/^tab-[1-9][0-9]{0,2}$/.test(input))
+    throw Error("BROWSER_TAB_ID_INVALID");
+  return input;
+}
+async function tabSummary() {
+  present();
+  const items = [];
+  for (const [id, tab] of tabs) {
+    if (tab.isClosed() || safeOrigin(tab.url()) !== origin)
+      throw Error("BROWSER_TAB_ORIGIN_CHANGED");
+    items.push({id, title:(await tab.title()).slice(0,150),
+                url:tab.url().slice(0,500), active:id===activeTabId});
+  }
+  return {tabs:items,active_tab_id:activeTabId,max_tabs:MAX_TABS};
+}
+async function newTab(url) {
+  present();
+  if (typeof url !== "string" || url.length > 400 || safeOrigin(url) !== origin)
+    throw Error("BROWSER_TAB_ORIGIN_REFUSED");
+  const u = new URL(url);
+  if (u.username || u.password || u.hash || u.port || tabs.size >= MAX_TABS ||
+      tabSequence >= MAX_CREATED_TABS)
+    throw Error("BROWSER_TAB_LIMIT_OR_URL_REFUSED");
+  const tab = await browser.newPage();
+  try {
+    await secureTab(tab);
+    await tab.goto(url, {waitUntil:"domcontentloaded",timeout:12000});
+    if (safeOrigin(tab.url()) !== origin)
+      throw Error("BROWSER_TAB_ORIGIN_CHANGED");
+    await sleep(150);
+  } catch (error) {
+    await tab.close().catch(()=>{});
+    throw error;
+  }
+  if (keyboard) keyboard.invalidate();
+  page = tab;
+  keyboard = new KeyboardSession(page);
+  tabSequence += 1;
+  activeTabId = "tab-" + tabSequence;
+  tabs.set(activeTabId, page);
+  return await frame();
+}
+async function switchTab(input) {
+  present();
+  const id = tabId(input);
+  const tab = tabs.get(id);
+  if (!tab || tab.isClosed() || safeOrigin(tab.url()) !== origin)
+    throw Error("BROWSER_TAB_NOT_FOUND_OR_REFUSED");
+  if (keyboard) keyboard.invalidate();
+  page = tab; activeTabId = id;
+  keyboard = new KeyboardSession(page);
+  await page.bringToFront();
+  return await frame();
+}
+async function closeTab(input) {
+  present();
+  const id = tabId(input);
+  if (!tabs.has(id)) throw Error("BROWSER_TAB_NOT_FOUND");
+  if (tabs.size <= 1) throw Error("BROWSER_CANNOT_CLOSE_LAST_TAB");
+  const closing = tabs.get(id);
+  const closingActive = id === activeTabId;
+  if (keyboard) keyboard.invalidate();
+  tabs.delete(id);
+  await closing.close();
+  if (closingActive) {
+    const [nextId,nextPage] = tabs.entries().next().value;
+    activeTabId = nextId; page = nextPage;
+    await page.bringToFront();
+  }
+  keyboard = new KeyboardSession(page);
+  return await frame();
 }
 async function command(data) {
   const operation = data.op;
@@ -156,6 +240,10 @@ async function command(data) {
     return {closed:true};
   }
   present();
+  if (operation === "tabs") return await tabSummary();
+  if (operation === "tab_new") return await newTab(data.url);
+  if (operation === "tab_switch") return await switchTab(data.tab_id);
+  if (operation === "tab_close") return await closeTab(data.tab_id);
   if (operation === "frame") return await frame();
   if (operation === "inspect") {
     const targets = await page.evaluate(() => {

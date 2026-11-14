@@ -1,0 +1,37 @@
+name: ONE Agent safe browser tabs regression
+on:
+  push:
+    branches:
+      - workone-safe-browser-tabs-seo-20261114
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/**'
+      - '.github/workflows/workone-safe-browser-tabs-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser_tabs_and_previous_features:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Python and existing ONE Agent regressions
+        shell: pwsh
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -q test_browser_control test_searchconsole_one test_yandex_one test_bitrix_crm_list_one test_workflow_one test_agent_one test_workbench test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_desktop_script_one
+          if($LASTEXITCODE -ne 0){throw 'ONE_BROWSER_TABS_PYTHON_REGRESSION_FAILED'}
+      - name: Browser worker and UI syntax
+        shell: pwsh
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          foreach($filename in @('browser_worker.cjs','app.js','browser_typing.cjs','toolmesh.js')){
+            node --check (Join-Path $root $filename)
+            if($LASTEXITCODE -ne 0){throw ('ONE_JS_PARSE_FAILED: '+$filename)}
+          }
+          python -m py_compile (Join-Path $root 'browser_control.py') (Join-Path $root 'work_server.py')
+          if($LASTEXITCODE -ne 0){throw 'ONE_PY_PARSE_FAILED'}
+          node --test (Join-Path $root 'test_browser_typing.cjs')
+          if($LASTEXITCODE -ne 0){throw 'ONE_BROWSER_TYPING_TESTS_FAILED'}

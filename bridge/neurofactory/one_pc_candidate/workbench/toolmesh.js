@@ -21,10 +21,13 @@ async function meshRefresh() {
       "Модель Qwen не подключена в этом экземпляре. Можно вводить проверенный сценарий вручную.";
     $("mesh-connectors-status").textContent=
       "Google: "+((google.connected_scopes||[]).join(", ")||"нет согласованных прав")+
+      " · Яндекс: "+((status.yandex?.connected_scopes||[]).join(", ")||"нет прав")+
       " · Bitrix24: "+(status.bitrix_connected?"подключён":"не подключён");
     $("mesh-google-connect").disabled=!google.configured;
     $("mesh-google-disconnect").disabled=!google.configured;
     $("mesh-bitrix-connect").disabled=false;
+    $("mesh-yandex-connect").disabled=!status.yandex?.configured;
+    $("mesh-yandex-disconnect").disabled=!status.yandex?.configured;
     $("mesh-plan").disabled=!state.project||!status.qwen?.configured;
     const desktop=status.desktop||{};
     $("mesh-desktop-status").textContent=desktop.configured?
@@ -257,6 +260,28 @@ async function meshDisconnectGoogle(){
     await meshRefresh();
   }catch(e){notice(e.message,true);}
 }
+async function meshConnectYandex(){
+  const scope=$("mesh-yandex-scope").value;
+  const access_token=$("mesh-yandex-token").value.trim();
+  if(!access_token){notice("Укажи OAuth-токен, созданный в своём аккаунте Яндекса.",true);return;}
+  if(!window.confirm("Подключить Яндекс с разрешением "+scope+"?"+
+    "\\nДоступ будет сохранён только в зашифрованном хранилище Windows."))return;
+  try{
+    await api("/api/connectors/yandex/connect","POST",{scope,access_token});
+    $("mesh-yandex-token").value="";
+    await meshRefresh();
+    notice("Чтение данных Яндекса подключено в локальном приложении.");
+  }catch(e){$("mesh-yandex-token").value="";notice("Яндекс: "+e.message,true);}
+}
+async function meshDisconnectYandex(){
+  const scope=$("mesh-yandex-scope").value;
+  if(!window.confirm("Удалить локальный токен Яндекса для "+scope+"?"+
+    "\\nПри необходимости отзови доступ также в аккаунте Яндекса."))return;
+  try{
+    await api("/api/connectors/yandex/disconnect","POST",{scope});
+    await meshRefresh();
+  }catch(e){notice("Яндекс: "+e.message,true);}
+}
 async function meshConnectBitrix(){
   const portal=$("mesh-bitrix-portal").value.trim().toLowerCase();
   const access_token=$("mesh-bitrix-token").value.trim();
@@ -337,7 +362,14 @@ async function meshRead(){
   const resource=$("mesh-read-resource").value;
   let fields={};
   if(resource==="google.tasks.list")fields={list_id:$("mesh-record-list").value.trim()};
-  if(resource.startsWith("bitrix."))fields={id:$("mesh-record-id").value.trim()};
+  if(resource.startsWith("bitrix.")&&resource.endsWith(".get"))
+    fields={id:$("mesh-record-id").value.trim()};
+  if(resource==="google.searchconsole.queries")
+    fields={site_url:$("mesh-gsc-property").value.trim()};
+  if(resource==="yandex.metrika.visits")
+    fields={counter_id:$("mesh-yandex-counter").value.trim()};
+  if(resource==="yandex.webmaster.summary")
+    fields={host_id:$("mesh-yandex-host").value.trim()};
   try{
     const result=await api("/api/service/read","POST",{
       project_id:state.project,resource,fields});
@@ -509,6 +541,8 @@ function bindMesh(){
   });
   $("mesh-google-connect").addEventListener("click",meshConnectGoogle);
   $("mesh-google-disconnect").addEventListener("click",meshDisconnectGoogle);
+  $("mesh-yandex-connect").addEventListener("click",meshConnectYandex);
+  $("mesh-yandex-disconnect").addEventListener("click",meshDisconnectYandex);
   $("mesh-bitrix-connect").addEventListener("click",meshConnectBitrix);
   $("mesh-bitrix-disconnect").addEventListener("click",meshDisconnectBitrix);
   $("mesh-record-prepare").addEventListener("click",meshRecordPrepare);

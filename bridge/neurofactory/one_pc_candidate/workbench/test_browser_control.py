@@ -141,6 +141,36 @@ class BrowserCtrlTest(unittest.TestCase):
         history=" ".join(x["detail"] for x in self.store.events())
         self.assertNotIn("Составить отчёт",history)
 
+    def test_isolated_tab_controls_and_refused_cross_origin(self):
+        session=self.browser.open(self.project,"https://example.org/")["session_id"]
+        self.browser.action(self.project,session,"tabs")
+        self.browser.action(self.project,session,"tab_new",
+                            url="https://example.org/services")
+        self.browser.action(self.project,session,"tab_switch",tab_id="tab-2")
+        self.browser.action(self.project,session,"tab_close",tab_id="tab-2")
+        self.assertEqual([x["op"] for x in self.commands[-4:]],
+                         ["tabs","tab_new","tab_switch","tab_close"])
+        before=len(self.commands)
+        for op,values in (
+            ("tab_new",{"url":"https://evil.example.org/"}),
+            ("tab_new",{"url":"https://example.org:444/"}),
+            ("tab_new",{"url":"http://example.org/"}),
+            ("tab_new",{"url":"https://example.org/#fragment"}),
+            ("tab_new",{"url":"https://example.org/","other":"wrong"}),
+            ("tab_switch",{"tab_id":"../../secret"}),
+            ("tab_switch",{"tab_id":"tab-0"}),
+            ("tab_switch",{"tab_id":"tab-2000"}),
+            ("tab_close",{"tab_id":"tab-2","other":"wrong"}),
+            ("tabs",{"unused":True}),
+        ):
+            with self.subTest(op=op,values=values),self.assertRaises(WorkDenied):
+                self.browser.action(self.project,session,op,**values)
+        self.assertEqual(len(self.commands),before)
+        other=self.store.create_project("Чужой проект","empty")["id"]
+        with self.assertRaisesRegex(WorkDenied,"PROJECT_SESSION_REFUSED"):
+            self.browser.action(other,session,"tabs")
+        self.assertFalse(any("secret" in x["detail"] for x in self.store.events()))
+
     def test_private_dns_denied_without_worker(self):
         self.dns.stop()
         with patch("browser_control.socket.getaddrinfo",return_value=[

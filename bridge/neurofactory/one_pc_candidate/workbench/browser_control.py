@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import re
 import secrets
 import socket
 import subprocess
@@ -22,7 +23,8 @@ from work_core import WorkDenied
 
 BROWSER_TIMEOUT = 24
 BROWSER_LIFETIME = 10 * 60
-ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect", "focus", "type", "fill", "press", "click_text", "fill_label", "check_text"}
+ALLOWED_OPS = {"move", "click", "scroll", "back", "frame", "inspect", "focus", "type", "fill", "press", "click_text", "fill_label", "check_text",
+               "tabs", "tab_new", "tab_switch", "tab_close"}
 MAX_HOSTS = 8
 
 
@@ -51,10 +53,13 @@ class BrowserController:
                 "allowed_hosts": sorted(self.allowed_hosts),
                 "actions": ["open","move","click","scroll","back","frame","inspect",
                             "focus","type","fill","press","click_text",
-                            "fill_label","check_text","close"],
+                            "fill_label","check_text","tabs","tab_new",
+                            "tab_switch","tab_close","close"],
                 "permission": "owner_initiated_browser_mouse_and_keyboard",
                 "mode": "ephemeral_browser_no_submit_no_password",
                 "browser_typing": True,
+                "tabs": {"maximum": 4, "single_approved_origin": True,
+                         "persistent_profile": False},
                 "form_submit": False,
                 "desktop_mouse": False,
                 "requires_os_egress_sandbox_for_production": True}
@@ -268,6 +273,17 @@ class BrowserController:
                     raise WorkDenied("BROWSER_TYPE_FIELDS_INVALID")
                 params.update(text=self._validate_text(kwargs["text"]),
                               mode=self._validate_mode(kwargs["mode"]))
+            elif operation=="tab_new":
+                if set(kwargs)!={"url"}:
+                    raise WorkDenied("BROWSER_TAB_URL_REQUIRED")
+                tab_url=validated_url(kwargs["url"])
+                if urlsplit(tab_url).hostname!=self.session["host"]:
+                    raise WorkDenied("BROWSER_TAB_ORIGIN_REFUSED")
+                params["url"]=tab_url
+            elif operation in ("tab_switch","tab_close"):
+                if set(kwargs)!={"tab_id"} or type(kwargs["tab_id"]) is not str or not re.fullmatch(r"tab-[1-9][0-9]{0,2}",kwargs["tab_id"]):
+                    raise WorkDenied("BROWSER_TAB_ID_INVALID")
+                params["tab_id"]=kwargs["tab_id"]
             elif operation=="press":
                 if set(kwargs)!={"key"} or kwargs["key"] not in (
                   "Tab", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp",
@@ -288,7 +304,7 @@ class BrowserController:
                     self._event(project, "BROWSER_UNKNOWN_NO_RETRY",
                                 {"operation": operation})
                 raise
-            if operation != "move":
+            if operation not in ("move","tabs"):
                 self._event(project, "BROWSER_" + operation.upper(),
                             {"host": self.session["host"], "operation": operation})
             return {"session_id": ident, "frame": result}

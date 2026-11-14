@@ -6,7 +6,7 @@ const state = { projects:[],project:null,tasks:[],selectedTask:null,files:[],
                 file:null,sha:null,savedText:null,modelOk:false,poll:null };
 let toastTimer=null;
 const oneState={runId:null,script:null,project:null,running:false,busy:false,started:false};
-const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0,fieldSelected:false,targets:[]};
+const browserState={configured:false,session:null,project:null,active:false,busy:false,moveBusy:false,lastMove:0,fieldSelected:false,targets:[],tabId:null,tabCount:0};
 
 async function api(url,method="GET",body){
   const opt={method,cache:"no-store",credentials:"same-origin",headers:{}};
@@ -279,6 +279,10 @@ function browserButtons(){
   $("browser-controls").hidden=!active;
   $("browser-screen").hidden=!active;
   $("browser-close").disabled=!active||browserState.busy;
+  $("browser-tabs").hidden=!active;
+  $("browser-tab-new").disabled=!active||browserState.busy;
+  $("browser-tab-list").disabled=!active||browserState.busy;
+  $("browser-tab-close").disabled=!active||browserState.busy||browserState.tabCount<=1;
   $("browser-type").disabled=!active||browserState.busy||!browserState.fieldSelected
     ||!$("browser-type-text").value.trim();
   $("browser-tab").disabled=!active||browserState.busy||!browserState.fieldSelected;
@@ -287,6 +291,8 @@ function browserButtons(){
     $("browser-frame").removeAttribute("src");
     $("browser-cursor").hidden=true;
     browserState.fieldSelected=false;
+    browserState.tabId=null;browserState.tabCount=0;
+    $("browser-tab-list").replaceChildren();
     $("browser-selected-field").textContent="Поле ещё не выбрано";
   }
 }
@@ -310,9 +316,30 @@ async function browserStatus(){
       try{
         const page=await browserAction("frame");
         showBrowserFrame(page);
+        await syncBrowserTabs();
       }catch(e){notice(e.message,true);}
     }
   }catch(e){browserState.configured=false;browserButtons();$("browser-status").textContent=e.message;}
+}
+function renderBrowserTabs(frame){
+  if(!frame||!Array.isArray(frame.tabs))return;
+  const select=$("browser-tab-list");
+  select.replaceChildren();
+  for(const item of frame.tabs){
+    const option=el("option",null,(item.title||"Без названия").slice(0,65));
+    option.value=item.id;
+    select.append(option);
+  }
+  browserState.tabCount=frame.tabs.length;
+  browserState.tabId=frame.active_tab_id;
+  select.value=frame.active_tab_id||"";
+  browserButtons();
+}
+async function syncBrowserTabs(){
+  if(browserState.session&&browserState.project===state.project){
+    const result=await browserAction("tabs");
+    renderBrowserTabs(result.frame);
+  }
 }
 function browserTargets(items){
   const root=$("browser-targets");
@@ -371,6 +398,7 @@ async function openBrowser(){
     browserState.session=reply.session_id;
     browserState.project=state.project;
     showBrowserFrame(reply);
+    await syncBrowserTabs();
     browserTargets([]);
     browserState.fieldSelected=false;
     $("browser-selected-field").textContent="Поле ещё не выбрано";
@@ -394,12 +422,13 @@ async function invokeBrowser(op,options={},fieldLabel=""){
   try{
     const reply=await browserAction(op,options);
     showBrowserFrame(reply);
+    if(["tab_new","tab_switch","tab_close"].includes(op))await syncBrowserTabs();
     if(op==="inspect")browserTargets(reply.frame?.targets);
     else if(op!=="move")browserTargets([]);
     if(op==="focus"||op==="fill"){
       browserState.fieldSelected=true;
       $("browser-selected-field").textContent=fieldLabel||"Поле выбрано";
-    }else if(op==="click"||op==="back"||op==="press"){
+    }else if(["click","back","press","tab_new","tab_switch","tab_close"].includes(op)){
       browserState.fieldSelected=false;
       $("browser-selected-field").textContent="Поле ещё не выбрано";
     }
@@ -429,6 +458,19 @@ function browserCoordinates(event){
 }
 function bindBrowser(){
   $("browser-open").addEventListener("click",openBrowser);
+  $("browser-tab-new").addEventListener("click",()=>{
+    const url=$("browser-address").value.trim();
+    if(!url.startsWith("https://")){notice("Укажи HTTPS-адрес новой вкладки",true);return;}
+    invokeBrowser("tab_new",{url});
+  });
+  $("browser-tab-list").addEventListener("change",()=>{
+    const tab_id=$("browser-tab-list").value;
+    if(tab_id&&tab_id!==browserState.tabId)invokeBrowser("tab_switch",{tab_id});
+  });
+  $("browser-tab-close").addEventListener("click",()=>{
+    if(browserState.tabId&&browserState.tabCount>1)
+      invokeBrowser("tab_close",{tab_id:browserState.tabId});
+  });
   $("browser-type-text").addEventListener("input",()=>{
     browserButtons();
     if(browserState.targets.length)browserTargets(browserState.targets);
