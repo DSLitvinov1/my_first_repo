@@ -19,7 +19,7 @@ from work_core import WorkDenied
 
 APP_NAMES = frozenset(("google", "bitrix24"))
 SCOPE_NAMES = frozenset(("tasks","task","crm","drive.metadata.readonly",
-                         "gmail.readonly","calendar.readonly"))
+                         "gmail.readonly","calendar.readonly","searchconsole.readonly"))
 KEY_RE = re.compile(r"^[a-z0-9.-]{2,90}$")
 
 
