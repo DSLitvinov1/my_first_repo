@@ -177,6 +177,18 @@
                 placeholder="Текст для печати в выбранном поле"/>
               <button id="mesh-type" type="button" class="button accent small">Напечатать</button>
             </div>
+            <div class="mesh-private-ready" aria-label="Безопасное задание для выбранного окна Windows">
+              <strong>Задание Windows — несколько действий за один запуск</strong>
+              <p>Пиши по одной команде в строке. Агент выполнит до 8 проверенных шагов в выбранной программе. Отправка, удаление, платежи и сохранение без отдельного разрешения заблокированы.</p>
+              <label for="mesh-desktop-script" class="agent-label">Команды для выбранного окна</label>
+              <textarea id="mesh-desktop-script" rows="5" maxlength="2400" spellcheck="false"
+                placeholder="Нажми Ctrl+F&#10;Прокрути вниз на 2 шага&#10;Сделай снимок"></textarea>
+              <div class="mesh-actions">
+                <button id="mesh-script-prepare" type="button" class="button soft small">Проверить задание</button>
+                <button id="mesh-script-start" type="button" class="button accent small" disabled>Выполнить всё</button>
+              </div>
+              <pre id="mesh-script-result" class="mesh-result" aria-live="polite">Выбери окно, укажи команды и проверь их перед запуском.</pre>
+            </div>
           </div>
           <div class="mesh-part">
             <h3>Google и Bitrix24</h3>
