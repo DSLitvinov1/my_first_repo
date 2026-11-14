@@ -13,6 +13,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+# Official embedded Python has isolated sys.path (_pth). Include ONLY this
+# verified package directory for sibling modules, never user site-packages.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from private_preflight_one import verify_manifest
 from qwen_planner_one import LocalOllamaQwen, LOCAL_APPROVED_MODELS
 
