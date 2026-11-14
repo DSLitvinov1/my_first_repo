@@ -128,7 +128,7 @@ def verify_owner_goal_completeness(goal, allowed_hosts, safe):
         expected = safe_explicit_owner_readonly_plan(goal, allowed_hosts)
     except WorkDenied:
         if (type(goal) is str and
-                re.search(r"(?i)сделай\\s+снимок", goal) and
+                re.search(r"(?i)сделай\s+снимок", goal) and
                 "frame" not in safe["actions"]):
             raise WorkDenied("QWEN_PLAN_OMITTED_OWNER_SCREENSHOT")
         return safe, None
