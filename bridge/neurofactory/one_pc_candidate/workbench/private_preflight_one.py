@@ -20,7 +20,7 @@ REQUIRED = frozenset((
     "app.js","toolmesh.js","index.html","styles.css",
     "START_PRIVATE_WORK_ONE.ps1",
     "portable_runtime_one.py", "SETUP_LOCAL_QWEN.ps1",
-    "start_work_one.py", "START_WORK_ONE.cmd",
+    "start_work_one.py", "START_WORK_ONE.cmd", "cloud_ssh_draft_provider.py",
 ))
 LOCAL_URL="http://127.0.0.1:18770"
 TOKEN_META=re.compile(r'<meta\s+name="nf-token"\s+content="([^"]+)"')
@@ -38,7 +38,7 @@ def verify_manifest(root):
         names=doc["file_digests"]
         if (doc.get("schema")!="nf.workone.personal-bundle.v1" or
             type(names) is not dict or not REQUIRED.issubset(names) or
-            len(names)!=30 or doc.get("contains_secrets") is not False or
+            len(names)!=31 or doc.get("contains_secrets") is not False or
             doc.get("installs_windows_service") is not False):
             return {"state":"invalid","reason":"MANIFEST_INVALID"}
         for name,digest in names.items():
