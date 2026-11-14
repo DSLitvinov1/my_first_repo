@@ -52,7 +52,7 @@ class DesktopOne:
             "supported_os": "windows",
             "configured": bool(self.enabled and self.apps and os.name == "nt"),
             "allowed_apps": sorted(self.apps),
-            "actions": ["inspect", "frame", "move", "click", "type", "scroll", "key", "click_label", "type_label", "close"],
+            "actions": ["inspect", "frame", "observe", "expect_label", "move", "click", "type", "scroll", "key", "click_label", "type_label", "close"],
             "global_mouse_keyboard": True,
             "process_policy": "interactive_user_session_only_exact_foreground_window",
             "model_allowed": False,
@@ -246,7 +246,7 @@ class DesktopOne:
             if time.monotonic()-self.session["created"] > MAX_LIFETIME:
                 self._close()
                 raise WorkDenied("DESKTOP_SESSION_EXPIRED")
-            if op not in {"frame", "move", "click", "type", "scroll", "key",
+            if op not in {"frame", "observe", "expect_label", "move", "click", "type", "scroll", "key",
                           "click_label", "type_label"}:
                 raise WorkDenied("DESKTOP_OPERATION_NOT_ALLOWED")
             params = {"op": op, "app": self.session["app"],
@@ -276,9 +276,9 @@ class DesktopOne:
                         or kwargs["key"] not in SAFE_KEYS):
                     raise WorkDenied("DESKTOP_KEY_REFUSED")
                 params["key"] = kwargs["key"]
-            elif op in ("click_label", "type_label"):
+            elif op in ("click_label", "type_label", "expect_label"):
                 label = kwargs.get("label")
-                expected = {"label"} if op == "click_label" else {"label", "text"}
+                expected = {"label"} if op != "type_label" else {"label", "text"}
                 if (set(kwargs) != expected or type(label) is not str
                         or not 1 <= len(label.strip()) <= MAX_LABEL
                         or any(ord(c) < 32 for c in label)
