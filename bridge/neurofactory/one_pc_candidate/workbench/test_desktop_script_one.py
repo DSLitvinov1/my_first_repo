@@ -48,6 +48,18 @@ class DesktopScriptTests(unittest.TestCase):
         self.assertEqual(steps[1]["steps"], 2)
         self.assertEqual(steps[3]["key"], "ctrl_f")
 
+    def test_focused_editor_unicode_safe_grammar(self):
+        script = ('Нажми кнопку «Открыть тест»\nНажми Tab\n'
+                  'Напечатай «ONE проверка»\nСделай снимок')
+        steps = parse_safe_desktop_script(script)
+        self.assertEqual([x["op"] for x in steps],
+                         ["click_label", "key", "type", "frame"])
+        self.assertEqual(steps[2]["text"], "ONE проверка")
+        for bad in ("Напечатай «»", "Напечатай «a\\nb»",
+                    "Напечатай «" + "a"*501 + "»"):
+            with self.subTest(bad=bad[:20]),self.assertRaises(WorkDenied):
+                parse_safe_desktop_script(bad)
+
     def test_unsafe_commands_never_enter_plan(self):
         for command in (
             "Удалить всю почту", "Отправь сообщение",
