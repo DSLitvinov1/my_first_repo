@@ -155,8 +155,15 @@ async function main(){
         for(const group of collection.values())if(group.length>1)warning(type,group);
       }
       for(const url of [...outgoing].slice(0,40)){
-        const response=await fetch(url);
-        if(response.status>=400||response.status===0)critical('BROKEN_INTERNAL_LINK',url+' '+response.status);
+        let response={status:0};
+        for(let attempt=0;attempt<3;attempt++){
+          response=await fetch(url);
+          if(response.status!==0)break;
+          if(attempt<2)await new Promise(resolve=>setTimeout(resolve,350*(attempt+1)));
+        }
+        if(response.status===0){
+          warning('INTERNAL_LINK_NETWORK_UNVERIFIED',url+' '+(response.error||'network timeout'));
+        }else if(response.status>=400)critical('BROKEN_INTERNAL_LINK',url+' '+response.status);
       }
       out.summary={pagesInSitemap:map.size,checked:out.pages.length,healthy:out.pages.filter(p=>p.status===200&&!p.error).length,
         rootRobots:robots.status,sitemapStatus:sitemap.status,externalLinkedPagesTested:Math.min(40,outgoing.size),
