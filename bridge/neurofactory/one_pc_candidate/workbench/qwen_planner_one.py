@@ -22,6 +22,7 @@ SCHEMA = "nf.one.qwen.proposal.v1"
 PLANNABLE = frozenset(("open","click_text","fill_label","check_text",
                        "scroll","frame"))
 MODEL = "qwen3.5:9b"
+LOCAL_APPROVED_MODELS = ("qwen3.5:9b","qwen3.5:4b","qwen3.5:2b","qwen3.5:0.8b")
 MODEL_TIMEOUT = 120
 
 
@@ -135,7 +136,7 @@ class LocalOllamaQwen:
             return False
 
     def __init__(self, model=MODEL):
-        if model != MODEL:
+        if model not in LOCAL_APPROVED_MODELS:
             raise WorkDenied("QWEN_MODEL_NOT_APPROVED")
         self.model=model
 
@@ -175,6 +176,7 @@ class QwenPlannerOne:
     def __init__(self, store, browser, model_fn=None):
         self.store,self.browser=store,browser
         self.model_fn=model_fn
+        self.model_name=getattr(model_fn,"model",MODEL)
         self.lock=threading.RLock()
         self.pending={}
         with store.db() as c:
@@ -193,7 +195,7 @@ class QwenPlannerOne:
     def status(self):
         return {"configured":self.model_fn is not None,
                 "mode":"qwen_drafts_only_no_tool_execution",
-                "model":MODEL, "owner_approval_required":True,
+                "model":self.model_name, "owner_approval_required":True,
                 "no_auto_retry":True}
 
     def propose(self, project, goal):

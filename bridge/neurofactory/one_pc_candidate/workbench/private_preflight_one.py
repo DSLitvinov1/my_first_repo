@@ -19,6 +19,8 @@ REQUIRED = frozenset((
     "private_flow_one.py","personal_readiness_one.py",
     "app.js","toolmesh.js","index.html","styles.css",
     "START_PRIVATE_WORK_ONE.ps1",
+    "portable_runtime_one.py", "SETUP_LOCAL_QWEN.ps1",
+    "start_work_one.py", "START_WORK_ONE.cmd",
 ))
 LOCAL_URL="http://127.0.0.1:18770"
 TOKEN_META=re.compile(r'<meta\s+name="nf-token"\s+content="([^"]+)"')
@@ -29,14 +31,14 @@ def verify_manifest(root):
     manifest=root/"manifest.json"
     if manifest.is_symlink() or not manifest.is_file():
         return {"state":"not_packaged","reason":"MISSING_MANIFEST"}
-    if manifest.stat().st_size>30000:
+    if manifest.stat().st_size>400000:
         return {"state":"invalid","reason":"MANIFEST_TOO_LARGE"}
     try:
         doc=json.loads(manifest.read_text(encoding="utf-8-sig"))
         names=doc["file_digests"]
         if (doc.get("schema")!="nf.workone.personal-bundle.v1" or
             type(names) is not dict or not REQUIRED.issubset(names) or
-            len(names)!=26 or doc.get("contains_secrets") is not False or
+            len(names)!=30 or doc.get("contains_secrets") is not False or
             doc.get("installs_windows_service") is not False):
             return {"state":"invalid","reason":"MANIFEST_INVALID"}
         for name,digest in names.items():
@@ -50,7 +52,44 @@ def verify_manifest(root):
                 return {"state":"invalid","reason":"MANIFEST_FILE_INVALID"}
             if hashlib.sha256(file.read_bytes()).hexdigest()!=digest:
                 return {"state":"invalid","reason":"MANIFEST_DIGEST_MISMATCH"}
-        return {"state":"verified","files":len(names)}
+        vendor=doc.get("vendor_file_digests")
+        if doc.get("portable_runtime") is True:
+            mandatory={"runtime/python/python.exe","runtime/node/node.exe",
+                       "node_modules/puppeteer-core/package.json"}
+            if (type(vendor) is not dict or not mandatory.issubset(vendor)
+                    or not 3<=len(vendor)<=3500):
+                return {"state":"invalid","reason":"PORTABLE_VENDOR_INVALID"}
+            for name,digest in vendor.items():
+                if (type(name) is not str or type(digest) is not str or
+                        not re.fullmatch(r"[0-9a-f]{64}",digest) or
+                        len(name)>240 or "\\" in name):
+                    return {"state":"invalid","reason":"VENDOR_ENTRY_INVALID"}
+                parts=name.split("/")
+                if (len(parts)<(2 if name.startswith("node_modules/") else 3) or
+                        any(part in (".","..") or not re.fullmatch(
+                            r"[A-Za-z0-9@_.+-]{1,90}",part)
+                            for part in parts) or
+                        not (name.startswith("runtime/python/") or
+                             name.startswith("runtime/node/") or
+                             name.startswith("node_modules/"))):
+                    return {"state":"invalid","reason":"VENDOR_PATH_REFUSED"}
+            # Validate every path before touching any vendor file.
+            for name,digest in vendor.items():
+                parts=name.split("/")
+                file=root
+                for part in parts:
+                    file=file/part
+                    if file.is_symlink():
+                        return {"state":"invalid","reason":"VENDOR_SYMLINK_REFUSED"}
+                if not file.is_file() or file.stat().st_size>100*1024*1024:
+                    return {"state":"invalid","reason":"VENDOR_FILE_INVALID"}
+                if hashlib.sha256(file.read_bytes()).hexdigest()!=digest:
+                    return {"state":"invalid","reason":"VENDOR_DIGEST_MISMATCH"}
+        elif vendor is not None:
+            return {"state":"invalid","reason":"UNEXPECTED_VENDOR"}
+        return {"state":"verified","files":len(names),
+                "portable_runtime_verified":doc.get("portable_runtime") is True,
+                "vendor_files":len(vendor) if vendor else 0}
     except (OSError,ValueError,KeyError,TypeError,UnicodeError):
         return {"state":"invalid","reason":"MANIFEST_UNREADABLE"}
 

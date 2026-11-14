@@ -18,6 +18,8 @@ import sqlite3
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import threading
+import time
+import webbrowser
 from urllib.parse import parse_qs,urlsplit
 from work_core import WorkStore,WorkDenied,denied
 from agent_one import AgentOne
@@ -27,10 +29,11 @@ from desktop_one import DesktopOne
 from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
-from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen
+from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen, LOCAL_APPROVED_MODELS
 from llama_connector_one import LlamaCppQwenOne
 from personal_readiness_one import assess_private_readiness
 from private_flow_one import PrivateFlowOne
+from portable_runtime_one import find_node,find_browser,bundled_dependencies_ready
 
 MIME={"/":"text/html; charset=utf-8",
       "/styles.css":"text/css; charset=utf-8",
@@ -457,12 +460,16 @@ def main():
     ap.add_argument("--browser-allow-hosts",default="",
                     help="Comma-separated explicitly approved exact HTTPS hosts")
     ap.add_argument("--browser-executable",type=Path,default=None)
+    ap.add_argument("--open-ui",action="store_true",
+                    help="Open the local UI in the owner's default browser")
     ap.add_argument("--desktop-enable",action="store_true",
                     help="Explicit per-user Windows desktop pilot; never CORE/HOST")
     ap.add_argument("--desktop-allow-apps",default="",
                     help="Exact foreground exe names, comma-separated; default none")
     ap.add_argument("--qwen-local",action="store_true",
-                    help="Use owner-installed Ollama Qwen 3.5:9b via 127.0.0.1:11434")
+                    help="Auto-select a locally installed Ollama Qwen 3.5 via 127.0.0.1:11434")
+    ap.add_argument("--qwen-model",choices=LOCAL_APPROVED_MODELS,default=None,
+                    help="Choose specifically one of the approved local Ollama models")
     ap.add_argument("--qwen-llama-key-file",type=Path,default=None,
                     help="Owner-only key file for loopback Qwen llama.cpp on port 11435")
     args=ap.parse_args()
@@ -470,10 +477,16 @@ def main():
         raise ServerDenied("PORT_REFUSED")
     store=WorkStore(args.root,args.data)
     token=secrets.token_urlsafe(36)
+    assets=Path(__file__).resolve().parent
+    browser_binary=args.browser_executable or find_browser()
+    node_executable=find_node(assets)
+    browser_available=bool(browser_binary and node_executable
+                            and bundled_dependencies_ready(assets))
     browser=BrowserController(
-        store,Path(__file__).resolve().parent,
+        store,assets,
         allowed_hosts=args.browser_allow_hosts.split(",") if args.browser_allow_hosts else (),
-        executable=args.browser_executable)
+        executable=browser_binary if browser_available else None,
+        node=str(node_executable) if node_executable else "node")
     desktop=DesktopOne(store,Path(__file__).resolve().parent,
         enabled=args.desktop_enable,
         allowed_apps=args.desktop_allow_apps.split(",") if args.desktop_allow_apps else ())
@@ -491,12 +504,18 @@ def main():
     model_fn=None
     if args.qwen_local and args.qwen_llama_key_file:
         raise ServerDenied("QWEN_SELECT_ONE_PROVIDER")
+    if args.qwen_model and not args.qwen_local:
+        raise ServerDenied("QWEN_MODEL_REQUIRES_LOCAL_PROVIDER")
     if args.qwen_llama_key_file:
         candidate=LlamaCppQwenOne(key_file=args.qwen_llama_key_file)
         model_fn=candidate if candidate.available() else None
     elif args.qwen_local:
-        candidate=LocalOllamaQwen()
-        model_fn=candidate if candidate.available() else None
+        choices=(args.qwen_model,) if args.qwen_model else LOCAL_APPROVED_MODELS
+        for name in choices:
+            candidate=LocalOllamaQwen(model=name)
+            if candidate.available():
+                model_fn=candidate
+                break
     else:
         try:
             model_module()
@@ -518,6 +537,15 @@ def main():
                                            services=services,oauth=oauth,bitrix=bitrix))
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
+    if args.open_ui and os.name=="nt":
+        def open_private_browser():
+            time.sleep(0.6)
+            try:
+                webbrowser.open(f"http://127.0.0.1:{args.port}/",new=1)
+            except (OSError,ValueError):
+                pass
+        threading.Thread(target=open_private_browser,daemon=True,
+                         name="nf-one-owner-ui").start()
     try:server.serve_forever(poll_interval=0.25)
     finally:
         browser._close_process()
