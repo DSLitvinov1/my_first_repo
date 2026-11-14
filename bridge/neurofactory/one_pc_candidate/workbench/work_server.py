@@ -40,7 +40,7 @@ MIME={"/":"text/html; charset=utf-8",
       "/toolmesh.js":"application/javascript; charset=utf-8"}
 ID="[0-9a-f]{32}"
 PROJECT_RE=re.compile(rf"^/api/projects/({ID})/(files|tasks|file|versions|undo)$")
-TASK_RE=re.compile(rf"^/api/tasks/({ID})/generate$")
+TASK_RE=re.compile(rf"^/api/tasks/({ID})/(generate|generate-fallback)$")
 OWNER_DATA=Path(os.environ.get("LOCALAPPDATA",""))/"NeurofactoryData"
 
 class ServerDenied(ValueError):
@@ -405,14 +405,18 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                     return
             m=TASK_RE.fullmatch(url.path)
             if method=="POST" and m and data=={}:
-                taskid=m.group(1)
+                taskid,choice=m.groups()
+                # Explicit button/endpoint; NEVER automatically downgrade or
+                # retry an UNKNOWN 9B attempt as the smaller cloud model.
+                cloud_model=("qwen2.5-coder:1.5b" if choice=="generate-fallback"
+                             else "qwen3.5:9b")
                 info=store.reserve_generation(taskid)
                 def runner():
                     try:
                         provider=model_module()
                         reply=provider.generate(OWNER_DATA,{
                             "id":info["id"],"project_id":info["project_id"],
-                            "objective":info["goal"]},model="qwen3.5:9b")
+                            "objective":info["goal"]},model=cloud_model)
                     except Exception:
                         reply={"status":"UNKNOWN","error_code":"MODEL_OR_TRANSPORT_UNKNOWN"}
                     try:
@@ -423,7 +427,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                 threading.Thread(target=runner,daemon=True,
                                  name=f"nf-qwen-{taskid[:6]}").start()
                 self.out(202,{"status":"GENERATING","task_id":taskid,
-                              "no_auto_retry":True})
+                              "model":cloud_model,"no_auto_retry":True})
                 return
             raise ServerDenied("MUTATION_NOT_SUPPORTED")
         def dispatch(self,method):
