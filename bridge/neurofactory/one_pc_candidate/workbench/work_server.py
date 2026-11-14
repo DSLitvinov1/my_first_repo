@@ -309,8 +309,16 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                 expected={"project_id","session_id","op"}
                 if op in ("move","click"):
                     expected|={"x","y"}
-                if op=="type":
+                elif op=="type":
                     expected|={"text"}
+                elif op=="scroll":
+                    expected|={"direction","steps"}
+                elif op=="key":
+                    expected|={"key"}
+                elif op=="click_label":
+                    expected|={"label"}
+                elif op=="type_label":
+                    expected|={"label","text"}
                 if set(data)!=expected:
                     raise ServerDenied("DESKTOP_ACTION_FIELDS_REFUSED")
                 arguments={k:data[k] for k in expected-{"project_id","session_id","op"}}
