@@ -49,6 +49,28 @@ public static class NFDesktop {
   }
   [DllImport("user32.dll", SetLastError=true)]
   public static extern uint SendInput(uint count, INPUT[] input, int size);
+  private static INPUT MakeKey(ushort vk, bool release) {
+    INPUT key = new INPUT();
+    key.type = 1;
+    key.data.ki.wVk = vk;
+    key.data.ki.wScan = 0;
+    key.data.ki.dwFlags = release ? (uint)2 : (uint)0;
+    return key;
+  }
+  public static bool PressKey(ushort vk, bool ctrl, bool shift) {
+    INPUT[] items = new INPUT[(ctrl ? 2 : 0) + (shift ? 2 : 0) + 2];
+    int i = 0;
+    if (ctrl) items[i++] = MakeKey(0x11, false);
+    if (shift) items[i++] = MakeKey(0x10, false);
+    items[i++] = MakeKey(vk, false);
+    items[i++] = MakeKey(vk, true);
+    if (shift) items[i++] = MakeKey(0x10, true);
+    if (ctrl) items[i++] = MakeKey(0x11, true);
+    return SendInput((uint)items.Length, items, Marshal.SizeOf(typeof(INPUT))) == items.Length;
+  }
+  public static void ScrollWheel(int notches) {
+    mouse_event(0x0800, 0, 0, unchecked((uint)(notches * 120)), IntPtr.Zero);
+  }
   public static bool TypeUnicode(string text) {
     INPUT[] inputs = new INPUT[text.Length*2];
     int idx=0;
@@ -183,6 +205,40 @@ function Capture($w) {
     } finally {$mem.Dispose()}
   } finally {$bmp.Dispose()}
 }
+function CheckElementLabel([string]$label) {
+  if([string]::IsNullOrWhiteSpace($label) -or $label.Length -gt 100 -or
+     $label -match '(?i)(delete|remove|erase|clear|pay|buy|purchase|transfer|send|post|publish|submit|confirm|save|sign|удал|очист|оплат|купить|покуп|перевод|отправ|публика|подтверд|сохран|подпис|password|secret|token|otp|pin|cvv|card number|парол|секрет|токен|одноразов|пин.код|номер карты|код подтверждения)') {
+    throw "DESKTOP_SENSITIVE_TARGET_REFUSED"
+  }
+}
+function FindNamedControl($w,[string]$label,[bool]$editor) {
+  CheckElementLabel $label
+  $root=[Windows.Automation.AutomationElement]::FromHandle([IntPtr]$w.handle)
+  if($null -eq $root){throw "DESKTOP_WINDOW_AUTOMATION_MISSING"}
+  $condition=New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty,$label)
+  $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$condition)
+  if($hits.Count -ne 1){throw "DESKTOP_LABEL_NOT_UNIQUE_OR_MISSING"}
+  $item=$hits[0]
+  if($item.Current.ProcessId -ne $w.pid -or $item.Current.IsPassword){
+    throw "DESKTOP_TARGET_UNSAFE"
+  }
+  if($editor) {
+    if($item.Current.ControlType -ne [Windows.Automation.ControlType]::Edit -and
+       $item.Current.ControlType -ne [Windows.Automation.ControlType]::Document) {
+      throw "DESKTOP_EDITOR_NOT_FOUND"
+    }
+    $pattern=$null
+    if($item.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)) {
+      if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
+    }
+  } elseif($item.Current.ControlType -notin @(
+       [Windows.Automation.ControlType]::Button,
+       [Windows.Automation.ControlType]::MenuItem,
+       [Windows.Automation.ControlType]::TabItem)) {
+    throw "DESKTOP_CONTROL_TYPE_NOT_APPROVED"
+  }
+  return $item
+}
 function AssertEditor($expectedProcessId) {
   $focus=[Windows.Automation.AutomationElement]::FocusedElement
   if($null -eq $focus){throw "DESKTOP_EDITOR_NOT_FOUND"}
@@ -254,6 +310,65 @@ while($true){
         [NFDesktop]::mouse_event(2,0,0,0,[IntPtr]::Zero)
         [NFDesktop]::mouse_event(4,0,0,0,[IntPtr]::Zero)
         $result=@{clicked=$true}
+        break
+      }
+      "scroll" {
+        $w=AssertForeground $req
+        $direction=[string]$req.direction
+        $steps=[int]$req.steps
+        if($direction -notin @("up","down") -or $steps -lt 1 -or $steps -gt 3) {
+          throw "DESKTOP_SCROLL_REFUSED"
+        }
+        [void][NFDesktop]::SetCursorPos(($w.x+[Math]::Floor($w.width/2)),($w.y+[Math]::Floor($w.height/2)))
+        [NFDesktop]::ScrollWheel($(if($direction -eq "up"){$steps}else{-$steps}))
+        $result=@{scrolled=$true;direction=$direction;steps=$steps}
+        break
+      }
+      "key" {
+        $w=AssertForeground $req
+        $name=[string]$req.key
+        $keymap=@{escape=0x1b;tab=0x09;shift_tab=0x09;up=0x26;down=0x28;
+                  left=0x25;right=0x27;pageup=0x21;pagedown=0x22;
+                  home=0x24;end=0x23;ctrl_f=0x46}
+        if(-not $keymap.ContainsKey($name)){throw "DESKTOP_KEY_REFUSED"}
+        if(-not [NFDesktop]::PressKey([uint16]$keymap[$name],($name -eq "ctrl_f"),
+                                                  ($name -eq "shift_tab"))) {
+          throw "DESKTOP_SEND_INPUT_FAILED"
+        }
+        $result=@{pressed=$true;key=$name}
+        break
+      }
+      "click_label" {
+        $w=AssertForeground $req
+        $element=FindNamedControl $w ([string]$req.label) $false
+        $pattern=$null
+        if($element.Current.ControlType -eq [Windows.Automation.ControlType]::TabItem) {
+          if(-not $element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
+            throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+          }
+          $pattern.Select()
+        } else {
+          if(-not $element.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)) {
+            throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+          }
+          $pattern.Invoke()
+        }
+        $result=@{invoked=$true}
+        break
+      }
+      "type_label" {
+        $w=AssertForeground $req
+        $text=[string]$req.text
+        if([string]::IsNullOrWhiteSpace($text) -or $text.Length -gt 500 -or
+           $text -match '[\x00-\x09\x0b-\x1f\x7f]') {
+          throw "DESKTOP_TEXT_INVALID"
+        }
+        $element=FindNamedControl $w ([string]$req.label) $true
+        $element.SetFocus()
+        Start-Sleep -Milliseconds 70
+        AssertEditor $w.pid
+        if(-not [NFDesktop]::TypeUnicode($text)){throw "DESKTOP_SEND_INPUT_FAILED"}
+        $result=@{typed=$true;characters=$text.Length}
         break
       }
       "type" {
