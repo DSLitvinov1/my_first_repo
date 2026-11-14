@@ -296,8 +296,15 @@ class Bitrix24Adapter:
         for item in reply["result"]:
             if type(item) is not dict:
                 raise WorkDenied("BITRIX_CRM_LIST_FAILED")
-            # Return exact non-PII funnel fields only; no names/contact details.
-            results.append({key:item.get(key) for key in fields})
+            # Return exact non-PII funnel fields only, with bounded scalar values.
+            clean={}
+            for key in fields:
+                value=item.get(key)
+                if value is not None and (type(value) not in (int,str) or
+                                          len(str(value))>100):
+                    raise WorkDenied("BITRIX_CRM_FIELD_INVALID")
+                clean[key]=value
+            results.append(clean)
         total=reply.get("total")
         return {"entity":entity,"records":results,
                 "returned":len(results),"total":total
@@ -563,14 +570,14 @@ class ServiceOne:
                     raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
                 result=adapter.crm_list("deal" if resource.endswith("deals.list")
                                        else "lead")
-                return {"resource":resource,"data":result}
-            if set(fields)!={"id"}:
-                raise WorkDenied("BITRIX_READ_FIELDS_INVALID")
-            rid=valid_id(str(fields["id"]))
-            if resource=="bitrix.tasks.get":
-                result=adapter.get(rid)
             else:
-                result=adapter.crm_get(resource.split(".")[2],rid)
+                if set(fields)!={"id"}:
+                    raise WorkDenied("BITRIX_READ_FIELDS_INVALID")
+                rid=valid_id(str(fields["id"]))
+                if resource=="bitrix.tasks.get":
+                    result=adapter.get(rid)
+                else:
+                    result=adapter.crm_get(resource.split(".")[2],rid)
         else:
             raise WorkDenied("SERVICE_READ_ACTION_REFUSED")
         if not isinstance(result, dict):
