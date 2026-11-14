@@ -1,0 +1,42 @@
+name: ONE Agent 12 Windows apps bounded safe desktop tasks full regression
+on:
+  push:
+    branches: [workone-desktop-navigation-20261114]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/**'
+      - '.github/workflows/workone-desktop-navigation-regression-20261114.yml'
+permissions:
+  contents: read
+jobs:
+  unit_and_ui_regression:
+    runs-on: windows-2025
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run existing ONE Agent tests and new real-prompt contract tests
+        shell: pwsh
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -q test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_portable_runtime_one test_start_work_one test_cloud_qwen_existing_one test_qwen_reliability_one test_desktop_script_one
+          if($LASTEXITCODE -ne 0){throw 'WORKONE_UNIT_REGRESSION_FAILED'}
+      - name: Verify Python, JS, PowerShell syntax
+        shell: pwsh
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          python -m py_compile (Join-Path $root 'qwen_planner_one.py') (Join-Path $root 'test_qwen_reliability_one test_desktop_script_one.py')
+          if($LASTEXITCODE -ne 0){throw 'PYTHON_COMPILE_FAILED'}
+          foreach($name in @('desktop_worker.ps1','START_PRIVATE_WORK_ONE.ps1','build_ready_one.ps1')){
+            $tokens=$null
+            $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path (Join-Path $root $name)).Path,[ref]$tokens,[ref]$errors)|Out-Null
+            if($errors.Count -gt 0){throw ('PS_PARSE_FAILED: '+$name)}
+          }
+          foreach($name in @('toolmesh.js','app.js','browser_worker.cjs')){
+            node --check (Join-Path $root $name)
+            if($LASTEXITCODE -ne 0){throw ('NODE_PARSE_FAILED: '+$name)}
+          }
+          node --test (Join-Path $root 'test_browser_typing.cjs')
+          if($LASTEXITCODE -ne 0){throw 'BROWSER_TYPING_REGRESSION_FAILED'}
