@@ -217,6 +217,13 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
   if($null -eq $root){throw "DESKTOP_WINDOW_AUTOMATION_MISSING"}
   $condition=New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty,$label)
   $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$condition)
+  if($hits.Count -ne 1) {
+    # Office and WinForms often expose AutomationId rather than Name for
+    # edit controls. Resolve the exact owner-provided identifier; never
+    # type into the first field or an arbitrary focused element.
+    $identifier=New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::AutomationIdProperty,$label)
+    $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$identifier)
+  }
   if($hits.Count -ne 1){throw "DESKTOP_LABEL_NOT_UNIQUE_OR_MISSING"}
   $item=$hits[0]
   if($item.Current.ProcessId -ne $w.pid -or $item.Current.IsPassword){
@@ -236,7 +243,26 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
     $canInvoke=$item.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$invoke)
     $canSelect=$item.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$select)
     if(-not $canInvoke -and -not $canSelect) {
-      throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+      # Some genuine WinForms captions have no InvokePattern. Allow an
+      # exact-name, visible, same-process small caption to be clicked
+      # inside the already approved window; no arbitrary coordinate input.
+      $kind=[int]$item.Current.ControlType.Id
+      if($kind -notin @(
+          [Windows.Automation.ControlType]::Text.Id,
+          [Windows.Automation.ControlType]::Button.Id,
+          [Windows.Automation.ControlType]::Custom.Id,
+          [Windows.Automation.ControlType]::Pane.Id)) {
+        throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+      }
+      $bounds=$item.Current.BoundingRectangle
+      if(-not $item.Current.IsEnabled -or $item.Current.IsOffscreen -or
+         $bounds.Width -lt 12 -or $bounds.Height -lt 8 -or
+         $bounds.Width -gt 360 -or $bounds.Height -gt 130 -or
+         $bounds.Left -lt $w.x -or $bounds.Top -lt $w.y -or
+         ($bounds.Left+$bounds.Width) -gt ($w.x+$w.width) -or
+         ($bounds.Top+$bounds.Height) -gt ($w.y+$w.height)) {
+        throw "DESKTOP_NAMED_TARGET_BOUNDS_REFUSED"
+      }
     }
   }
   return $item
@@ -246,14 +272,16 @@ function AssertEditor($expectedProcessId) {
   if($null -eq $focus){throw "DESKTOP_EDITOR_NOT_FOUND"}
   if($focus.Current.ProcessId -ne $expectedProcessId){throw "DESKTOP_EDITOR_OTHER_PROCESS"}
   if($focus.Current.IsPassword){throw "DESKTOP_PASSWORD_FIELD_DENIED"}
-  $type=$focus.Current.ControlType
-  if($type -ne [Windows.Automation.ControlType]::Edit -and
-     $type -ne [Windows.Automation.ControlType]::Document){
-    throw "DESKTOP_TEXT_INPUT_NOT_FOCUSED"
-  }
+  # The focused control can be a WinForms/UIA Pane rather than Edit,
+  # but it must still advertise an editable ValuePattern. Reject any
+  # unknown non-editor control, even if keyboard focus is inside our app.
   $pattern=$null
-  if($focus.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)){
+  $isValue=$focus.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)
+  if($isValue) {
     if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
+  } elseif($focus.Current.ControlType -ne [Windows.Automation.ControlType]::Edit -and
+           $focus.Current.ControlType -ne [Windows.Automation.ControlType]::Document) {
+    throw "DESKTOP_TEXT_INPUT_NOT_FOCUSED"
   }
 }
 while($true){
@@ -349,7 +377,14 @@ while($true){
         } elseif($element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
           $pattern.Select()
         } else {
-          throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+          $bounds=$element.Current.BoundingRectangle
+          $px=[int][Math]::Floor($bounds.Left+$bounds.Width/2)
+          $py=[int][Math]::Floor($bounds.Top+$bounds.Height/2)
+          if(-not [NFDesktop]::SetCursorPos($px,$py)){
+            throw "DESKTOP_NAMED_TARGET_MOVE_DENIED"
+          }
+          [NFDesktop]::mouse_event(2,0,0,0,[IntPtr]::Zero)
+          [NFDesktop]::mouse_event(4,0,0,0,[IntPtr]::Zero)
         }
         $result=@{invoked=$true}
         break
