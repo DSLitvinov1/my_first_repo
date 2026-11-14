@@ -283,7 +283,9 @@
   <aside class="inspector" aria-label="Помощник и история">
     <div class="inspector-top"><div class="assistant-avatar">✳</div><div><strong>Qwen · помощник</strong><small>Черновики · без автоприменения</small></div></div>
     <div class="assistant-section"><span class="overline">ВЫБРАННАЯ ЗАДАЧА</span><h2 id="selected-task-title">Пока нет задачи</h2><p id="selected-task-goal">Создай задачу внутри проекта, чтобы получить план или текстовый черновик от Qwen.</p>
-      <div class="assistant-action"><button class="button accent full" id="generate" type="button" disabled>✳ Подготовить черновик Qwen</button></div>
+      <div class="assistant-action"><button class="button accent full" id="generate" type="button" disabled>✳ Основная облачная Qwen 3.5 9B</button></div>
+      <div class="assistant-action"><button class="button soft full" id="generate-fallback" type="button" disabled>☁ Резервная облачная Qwen Coder 1.5B</button></div>
+      <p class="muted small">Резервная модель выбирается только вручную для новой задачи. Неудавшиеся запросы не повторяются; выполнение и сохранение изменений требуют отдельного подтверждения.</p>
       <div class="proposal-card"><div class="proposal-top"><span class="overline">РЕЗУЛЬТАТ МОДЕЛИ</span><span class="pill" id="draft-state">Нет черновика</span></div><pre id="draft-output">Выбери задачу. Здесь появится текст Qwen — он не будет автоматически запускаться или записываться.</pre><button class="button soft full" id="copy-draft-editor" type="button" disabled>Перенести в редактор, не сохраняя</button></div>
     </div>
     <div class="activity"><div class="panel-title"><div><span class="overline">ЖУРНАЛ</span><h2>Последние действия</h2></div><button class="icon-btn" id="refresh" type="button" aria-label="Обновить">↻</button></div><div id="activity-list" class="activity-list"><p class="muted small">Пока нет действий</p></div></div>
