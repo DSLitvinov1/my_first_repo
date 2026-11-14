@@ -1,0 +1,102 @@
+name: Work ONE private ready Windows portable bundle and offline end-to-end
+on:
+  push:
+    branches: [neurofactory-work-one-private-ready-20261114]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/**'
+      - '.github/workflows/neurofactory-work-one-private-ready.yml'
+permissions:
+  contents: read
+jobs:
+  private_ready_bundle:
+    runs-on: windows-2025
+    timeout-minutes: 23
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test all existing Work ONE components and new offline runtime discovery
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -q test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_portable_runtime_one
+          if ($LASTEXITCODE -ne 0) {throw 'WORK_ONE_TESTS_FAILED'}
+      - name: Compile Python JS and parse Windows launch, worker and builder
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          foreach($filename in @('START_PRIVATE_WORK_ONE.ps1','SETUP_LOCAL_QWEN.ps1','desktop_worker.ps1','build_ready_one.ps1')) {
+            $tokens=$null;$errors=$null
+            [void][Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path (Join-Path $root $filename)),[ref]$tokens,[ref]$errors)
+            if ($errors.Count -gt 0) {throw ('POWERSHELL_PARSE_FAILED: '+$filename)}
+          }
+          python -m py_compile "$root/work_server.py" "$root/portable_runtime_one.py" "$root/qwen_planner_one.py" "$root/private_preflight_one.py"
+          if ($LASTEXITCODE -ne 0) {throw 'PYTHON_SYNTAX_FAILED'}
+          foreach($filename in @('app.js','toolmesh.js','browser_worker.cjs','browser_typing.cjs')) {
+            node --check (Join-Path $root $filename)
+            if ($LASTEXITCODE -ne 0) {throw ('NODE_SYNTAX_FAILED: '+$filename)}
+          }
+          node --test "$root/test_browser_typing.cjs"
+          if ($LASTEXITCODE -ne 0) {throw 'BROWSER_TYPING_REGRESSION_FAILED'}
+      - name: Build pinned owner-local offline Python Node and Puppeteer portable package
+        run: |
+          & bridge/neurofactory/one_pc_candidate/workbench/build_ready_one.ps1
+          if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_BUILD_FAILED'}
+      - name: Runtime smoke on actual shipped embedded Python and Node, no external services
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:GITHUB_WORKSPACE 'bundle_output/Work_ONE_Private_Ready'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          $node=Join-Path $root 'runtime/node/node.exe'
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {throw 'OFFLINE_INTEGRITY_CHECK_FAILED'}
+          Push-Location $root
+          try {
+            & $node -e 'const p=require("puppeteer-core"); if (typeof p.launch!=="function") process.exit(1)'
+            if ($LASTEXITCODE -ne 0) {throw 'PORTABLE_BROWSER_MODULE_INVALID'}
+            $project=Join-Path $env:RUNNER_TEMP 'NF_OWNED_PROJECTS'
+            $data=Join-Path $env:RUNNER_TEMP 'NF_OWNED_DATA'
+            New-Item -ItemType Directory -Path $project,$data | Out-Null
+            $stdout=Join-Path $env:RUNNER_TEMP 'nf-work-one-ready-out.log'
+            $stderr=Join-Path $env:RUNNER_TEMP 'nf-work-one-ready-err.log'
+            $args=@((Join-Path $root 'work_server.py'),'--root',$project,'--data',$data,
+                    '--port','18770','--browser-allow-hosts','example.org')
+            $proc=Start-Process -FilePath $python -ArgumentList $args -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            try {
+              $ok=$false
+              for($i=0;$i -lt 45;$i++) {
+                Start-Sleep -Milliseconds 300
+                try {
+                  $res=Invoke-WebRequest -Uri 'http://127.0.0.1:18770/' -TimeoutSec 2 -UseBasicParsing
+                  if ($res.StatusCode -eq 200 -and $res.Content -match 'nf-token') {
+                    $ok=$true
+                    break
+                  }
+                } catch {}
+              }
+              if (-not $ok) {throw 'PORTABLE_WINDOWS_RUNTIME_START_FAILED'}
+              $tokenMatch=[regex]::Match($res.Content,'<meta name="nf-token" content="([^"]+)"')
+              if (-not $tokenMatch.Success) {throw 'PORTABLE_OWNER_TOKEN_NOT_GENERATED'}
+              $headers=@{'X-NF-Work-Token'=$tokenMatch.Groups[1].Value}
+              $ready=Invoke-RestMethod -Uri 'http://127.0.0.1:18770/api/private/readiness' -Headers $headers -TimeoutSec 4
+              if ($ready.mode -ne 'personal_single_owner') {throw 'PORTABLE_OWNER_PREFLIGHT_INVALID'}
+              Write-Output 'PORTABLE_WINDOWS_SHIPPED_RUNTIME_HTTP_AND_OWNER_READINESS=PASS'
+              Write-Output 'REMOTE_USER_PC_NOT_TOUCHED=YES'
+            } finally {
+              if ($null -ne $proc -and -not $proc.HasExited) {
+                Stop-Process -Id $proc.Id -Force
+              }
+            }
+          } finally {
+            Pop-Location
+          }
+      - name: Upload private archive only, no self-hosted runner, no remote deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neirozavod-Work-ONE-Private-Ready-Windows
+          path: bundle_output/Work_ONE_Private_Ready/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
