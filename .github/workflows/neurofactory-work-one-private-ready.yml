@@ -54,6 +54,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {throw 'OFFLINE_INTEGRITY_CHECK_FAILED'}
           & $python (Join-Path $root 'start_work_one.py') --verify-only
           if ($LASTEXITCODE -ne 0) {throw 'ONE_CLICK_BINARY_RUNTIME_INVALID'}
+          & (Join-Path $root 'START_WORK_ONE.cmd') --verify-only
+          if ($LASTEXITCODE -ne 0) {throw 'ONE_CLICK_CMD_RUNTIME_INVALID'}
           Push-Location $root
           try {
             & $node -e 'const p=require("puppeteer-core"); if (typeof p.launch!=="function") process.exit(1)'
