@@ -115,6 +115,28 @@ def safe_explicit_owner_readonly_plan(goal, allowed_hosts):
     return {"script": script, "steps": 2, "actions": ["open", "frame"]}
 
 
+def verify_owner_goal_completeness(goal, allowed_hosts, safe):
+    """Never accept model JSON as completion of an explicit owner request
+    when it silently omits a requested harmless step or changes its URL.
+
+    For the exact, preapproved OPEN+FRAME request ONLY, substitute a
+    deterministic owner-authored read-only plan; for other screenshot goals
+    lacking FRAME, fail closed rather than infer missing UI actions.
+    No model output is ever granted execution authority.
+    """
+    try:
+        expected = safe_explicit_owner_readonly_plan(goal, allowed_hosts)
+    except WorkDenied:
+        if (type(goal) is str and
+                re.search(r"(?i)сделай\\s+снимок", goal) and
+                "frame" not in safe["actions"]):
+            raise WorkDenied("QWEN_PLAN_OMITTED_OWNER_SCREENSHOT")
+        return safe, None
+    if safe["script"] != expected["script"]:
+        return expected, "owner_exact_readonly_completion"
+    return safe, None
+
+
 def prompt_for(user_goal, allowed_hosts):
     if type(user_goal) is not str or not 15 <= len(user_goal.strip()) <= 400:
         raise WorkDenied("QWEN_GOAL_INVALID")
@@ -279,6 +301,10 @@ class QwenPlannerOne:
                 safe=safe_explicit_owner_readonly_plan(
                     goal,self.browser.allowed_hosts)
                 provenance="owner_explicit_readonly_fallback"
+            safe, completeness_origin = verify_owner_goal_completeness(
+                goal, self.browser.allowed_hosts, safe)
+            if completeness_origin:
+                provenance=completeness_origin
             result={"state":"PROPOSED","script":safe["script"],
                     "steps":safe["steps"],"model":MODEL,"origin":provenance}
             dbstate="PROPOSED"
