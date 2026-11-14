@@ -5,7 +5,6 @@ not protected CORE9 grants and not arbitrary code execution.
 """
 from __future__ import annotations
 import argparse
-from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import html
 import importlib.util
@@ -42,10 +41,6 @@ MIME={"/":"text/html; charset=utf-8",
 ID="[0-9a-f]{32}"
 PROJECT_RE=re.compile(rf"^/api/projects/({ID})/(files|tasks|file|versions|undo)$")
 TASK_RE=re.compile(rf"^/api/tasks/({ID})/generate$")
-# Reuse the user's existing, already working cloud Qwen UI release.
-# Never import this untrusted model client from an arbitrary project path.
-INSTALLED_QWEN=Path(r"C:\ChatGPTProjects\NeurofactoryReview-20261105-verified")
-PINNED_QWEN_PROVIDER_SHA="60cc46c07960e09aa64e55403e875e0b72d5f66bd274d3fa29855ea41ad5dbe3"
 OWNER_DATA=Path(os.environ.get("LOCALAPPDATA",""))/"NeurofactoryData"
 
 class ServerDenied(ValueError):
