@@ -126,6 +126,15 @@ class ChatGPTBridgeTest(unittest.TestCase):
             row=conn.execute("SELECT state FROM one_chatgpt_commands WHERE issue_id=501").fetchone()
         self.assertEqual(row["state"],"DONE")
 
+    def test_ping_without_workspace_is_safe_and_idempotent(self):
+        self.issues.list=[owner_issue("0"*32,"ping",ident=712)]
+        result=self.bridge.poll_once()
+        self.assertEqual(result["state"],"DONE")
+        self.assertEqual(result["bridge"],"PAIRED")
+        self.assertEqual(self.desktop.calls,[])
+        self.assertEqual(self.agent.calls,[])
+        self.assertIsNone(self.bridge.poll_once())
+
     def test_readonly_audit_and_window_observation_do_not_write(self):
         self.issues.list=[owner_issue(self.project,"site.audit",
                                      {"urls":["https://example.org/"]})]
