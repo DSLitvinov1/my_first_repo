@@ -52,7 +52,7 @@ def parse_safe_desktop_script(script):
         if re.fullmatch(r"(?i)(?:посмотри|осмотри|изучи)(?: окно| интерфейс)", line):
             result.append({"op": "observe"})
             continue
-        m = re.fullmatch(r"(?i)(?:проверь наличие|найди элемент|убедись что есть)\\s+" + Q, line)
+        m = re.fullmatch(r"(?i)(?:проверь наличие|найди элемент|убедись что есть)\s+" + Q, line)
         if m:
             result.append({"op": "expect_label", "label": _label(m[1])})
             continue
