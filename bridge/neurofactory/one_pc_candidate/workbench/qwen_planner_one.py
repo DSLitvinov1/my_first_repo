@@ -87,6 +87,27 @@ def parse_proposal(raw, allowed_hosts):
             "actions":[s["op"] for s in parsed]}
 
 
+def safe_explicit_owner_readonly_plan(goal, allowed_hosts):
+    """Fail-closed fixed read-only alternative, never a model-authored plan.
+
+    Only the exact owner request "Открой https://approved/ и сделай снимок"
+    qualifies. No guessed clicks, writes, follow-up text or host changes.
+    """
+    if type(goal) is not str or len(goal) > 300:
+        raise WorkDenied("QWEN_SAFE_FALLBACK_GOAL_REFUSED")
+    match = re.fullmatch(
+        r"\s*открой\s+(https://[^\s]+)\s+и\s+сделай\s+снимок"
+        r"(?:\s+страницы)?\.?\s*", goal, re.IGNORECASE
+    )
+    if not match:
+        raise WorkDenied("QWEN_SAFE_FALLBACK_GOAL_REFUSED")
+    script = "Открой " + match.group(1) + "\nСделай снимок"
+    steps = parse_scenario(script, allowed_hosts)
+    if len(steps) != 2 or [x["op"] for x in steps] != ["open", "frame"]:
+        raise WorkDenied("QWEN_SAFE_FALLBACK_STEPS_REFUSED")
+    return {"script": script, "steps": 2, "actions": ["open", "frame"]}
+
+
 def prompt_for(user_goal, allowed_hosts):
     if type(user_goal) is not str or not 15 <= len(user_goal.strip()) <= 400:
         raise WorkDenied("QWEN_GOAL_INVALID")
@@ -113,7 +134,14 @@ def prompt_for(user_goal, allowed_hosts):
         ". Если задачу нельзя выполнить безопасно, предложи только "
         " read-only навигацию и снимок. Задача владельца: "+user_goal.strip()
     )
-    if len(instruction)>2500:
+    # The currently pinned cloud llama-cli emits a different echo format for
+    # short prompts. Keep the single model attempt, but use a bounded neutral
+    # schema reminder so the cloud transport can extract its response.
+    reminder = (" Схема остаётся неизменной: одна структура JSON schema и steps."
+                " Вывод не запускает действия; после проверки нужен выбор владельца.")
+    while len(instruction) < 1060:
+        instruction += reminder
+    if len(instruction) > 1200:
         raise WorkDenied("QWEN_GOAL_TOO_LONG")
     return instruction
 
@@ -216,19 +244,32 @@ class QwenPlannerOne:
                 c.commit()
             self.pending[rid]={"project":project,"state":"GENERATING",
                                "created":time.monotonic()}
-            threading.Thread(target=self._produce,args=(rid,project,instruction),
+            threading.Thread(target=self._produce,args=(rid,project,instruction,goal),
                 name="nf-one-qwen-"+rid[:8],daemon=True).start()
         return {"id":rid,"state":"GENERATING"}
 
-    def _produce(self, rid, project, instruction):
+    def _produce(self, rid, project, instruction, goal):
         try:
             reply=self.model_fn(project,instruction)
             if (type(reply) is not dict or reply.get("status")!="PROPOSED_UNVERIFIED"
                     or type(reply.get("text")) is not str):
                 raise WorkDenied("QWEN_MODEL_NOT_VERIFIED")
-            safe=parse_proposal(reply["text"],self.browser.allowed_hosts)
+            try:
+                safe=parse_proposal(reply["text"],self.browser.allowed_hosts)
+                provenance="validated_model_json"
+            except WorkDenied:
+                # Never reinterpret a model's arbitrary text as commands.
+                # A hash-validated cloud response may instead trigger ONE
+                # narrow, fixed, owner-authored open+frame script.
+                digest=reply.get("response_sha256")
+                if (reply.get("model")!=MODEL or type(digest) is not str or
+                    sha256(reply["text"].encode("utf8")).hexdigest()!=digest):
+                    raise
+                safe=safe_explicit_owner_readonly_plan(
+                    goal,self.browser.allowed_hosts)
+                provenance="owner_explicit_readonly_fallback"
             result={"state":"PROPOSED","script":safe["script"],
-                    "steps":safe["steps"],"model":MODEL}
+                    "steps":safe["steps"],"model":MODEL,"origin":provenance}
             dbstate="PROPOSED"
         except Exception:
             result={"state":"UNKNOWN_NO_RETRY","error":"QWEN_PLAN_UNAVAILABLE_OR_REFUSED"}
@@ -253,5 +294,5 @@ class QwenPlannerOne:
             if rid in self.pending and self.pending[rid]["project"]==project:
                 entry=self.pending[rid]
                 return {"id":rid,"state":entry["state"],**{
-                    k:entry[k] for k in ("script","steps","model","error") if k in entry}}
+                    k:entry[k] for k in ("script","steps","model","origin","error") if k in entry}}
         return {"id":rid,"state":row["state"],"error":row["error"]}
