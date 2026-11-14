@@ -66,7 +66,7 @@ class SafeServiceTransport:
                 method not in ("GET", "POST", "PATCH") or
                 not isinstance(token, str) or not 8 <= len(token) <= 4096):
             raise WorkDenied("SERVICE_HTTP_TARGET_REFUSED")
-        if auth_style not in ("bearer", "bitrix"):
+        if auth_style not in ("bearer", "bitrix", "yandex"):
             raise WorkDenied("SERVICE_AUTH_STYLE_REFUSED")
         if query:
             if type(query) is not dict or len(query) > 5:
@@ -82,6 +82,8 @@ class SafeServiceTransport:
             # With Bitrix OAuth, auth is in the JSON body according to REST docs.
             if method == "GET":
                 method = "POST"
+        elif auth_style == "yandex":
+            headers["Authorization"] = "OAuth " + token
         else:
             headers["Authorization"] = "Bearer " + token
         if payload is not None:
@@ -499,6 +501,29 @@ class ServiceOne:
                     "google.calendar.events.list":"list_calendar_events",
                 }[resource]
                 result=getattr(adapter,method)()
+        elif resource in ("yandex.metrika.counters.list",
+                          "yandex.metrika.visits",
+                          "yandex.webmaster.hosts.list",
+                          "yandex.webmaster.summary"):
+            adapter=self.adapters.get("yandex.read")
+            if adapter is None:
+                raise WorkDenied("YANDEX_NOT_CONNECTED")
+            if resource=="yandex.metrika.counters.list":
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.metrika_counters()
+            elif resource=="yandex.metrika.visits":
+                if set(fields)!={"counter_id"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.metrika_visits(fields["counter_id"])
+            elif resource=="yandex.webmaster.hosts.list":
+                if fields:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.webmaster_hosts()
+            else:
+                if set(fields)!={"host_id"}:
+                    raise WorkDenied("SERVICE_READ_FIELDS_INVALID")
+                result=adapter.webmaster_summary(fields["host_id"])
         elif resource in ("bitrix.tasks.get", "bitrix.crm.deal.get",
                           "bitrix.crm.contact.get"):
             adapter=self.adapters.get("bitrix.tasks")
