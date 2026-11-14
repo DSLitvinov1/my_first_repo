@@ -1,6 +1,6 @@
 # Oleg websites — indexability remediation checkpoint
 
-Evidence: OpenSEO completed crawls dated 2026-11-14. This file is a preparation checkpoint, **not** a claim that production changes or webmaster submissions were made.
+Evidence: OpenSEO early-2026-11-14 completed crawls. **These crawls predate subsequent verified same-day server edits.** This file is a preparation checkpoint and does not claim that new production changes were made in this turn.
 
 ## Confirmed
 
@@ -68,6 +68,14 @@ Evidence: OpenSEO completed crawls dated 2026-11-14. This file is a preparation 
 - **title-too-long**: https://potrebpravo.ru/privacy.html
 - **title-too-long**: https://potrebpravo.ru/services/vozvrat-deneg.html
 
+## Prior verified actions (2026-11-14, separate session)
+
+- All five duplicate meta descriptions detected in the early crawl on **potrebpravo.ru** were already edited and HTTP-checked in production later on 2026-11-14. Treat the old audit findings as stale until a fresh crawl verifies them. Do not reapply blindly.
+- Seven main URLs for each site were submitted to Yandex Webmaster Reindex; status was **queued**, not indexed. Do not submit duplicates unnecessarily.
+- Both sites had accessible sitemap files referenced in robots.txt. Yandex Webmaster reportedly had a temporary sitemap-submission read-only outage. Google Search Console properties remained unverified.
+- Existing backups at Timeweb are recorded in `Oleg_status_2026-11-14.md` in the user's Library; check their current existence on hosting before any further deployment.
+- Fresh post-edit read-only OpenSEO audits were started 2026-11-15 local date: semya `90c3b32e-b295-40ac-af86-61272c769fe1`; potreb `2fe561ef-f8c5-46c3-9ac5-6bcaf7cc483e`. Do not mark them complete before fetching status and issues.
+
 ## Remediation and release gates
 
 1. Keep legal privacy/consent pages noindex; they should not be indexed or in sitemap.
@@ -84,4 +92,4 @@ Evidence: OpenSEO completed crawls dated 2026-11-14. This file is a preparation 
 - Browser connector is read-only for the available Yandex tab; no authorized browser submission action is available.
 - OpenSEO GSC account lists are empty for both projects.
 - GitHub Action Playwright scan was committed on branch; actual workflow execution and results have not been confirmed.
-- Production changes, sitemap submissions, and post-deployment checks: **NOT DONE**. Do not represent these as done.
+- New production changes in this turn: **NOT DONE** (prior 2026-11-14 metadata fixes and Yandex reindex submissions are described above). New sitemap submissions and Google submissions: **NOT DONE**. Post-fix crawl: **RUNNING**.
