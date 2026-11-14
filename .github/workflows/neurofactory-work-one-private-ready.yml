@@ -101,3 +101,30 @@ jobs:
           retention-days: 7
           compression-level: 6
           include-hidden-files: true
+
+  verify_downloaded_archive:
+    needs: private_ready_bundle
+    runs-on: windows-2025
+    timeout-minutes: 7
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Download EXACT published user artifact back to a fresh Windows runner
+        uses: actions/download-artifact@v4
+        with:
+          name: Neirozavod-Work-ONE-Private-Ready-Windows
+          path: downloaded-user-archive
+      - name: Confirm published archive has every source and vendor hash
+        run: |
+          $root=Join-Path $env:GITHUB_WORKSPACE 'downloaded-user-archive'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          if (!(Test-Path -LiteralPath $python -PathType Leaf)) {
+            throw 'PUBLISHED_ARTIFACT_MISSING_EMBEDDED_PYTHON'
+          }
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {
+            throw 'PUBLISHED_ARTIFACT_MANIFEST_MISMATCH_OR_MISSING_FILES'
+          }
+          Write-Host 'PUBLISHED_USER_ARTIFACT_ALL_COMPONENTS_VERIFIED=YES'
+          Write-Host 'NO_OWNER_PC_OR_EXTERNAL_ACCOUNT_ACCESSED=YES'
