@@ -30,11 +30,16 @@ jobs:
       - name: Verify guarded SEO metadata changes
         run: python -m unittest -v test_metadata_guard
       - name: Verify audit syntax
-        run: node --check audit.cjs
+        run: |
+          node --check audit.cjs
+          node --check sitemap_operator.mjs
+          node --check test_sitemap_operator.mjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Test authenticated sitemap operator against simulated UI only
+        run: node --test test_sitemap_operator.mjs
       - name: Audit public indexing eligibility without changing sites
         run: node audit.cjs
       - name: Attach report
