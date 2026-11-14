@@ -2,7 +2,7 @@
 /* Work ONE v0.6: one local UI; no direct secrets/model instructions execute. */
 const mesh = {
   project:null, status:null, planId:null, desktopSession:null,
-  screenshot:null, record:null, pending:null, flow:null, busy:false,
+  screenshot:null, record:null, pending:null, flow:null, desktopTask:null, busy:false,
 };
 
 function meshMessage(text, error=false) {
@@ -37,6 +37,9 @@ async function meshRefresh() {
       mesh.pending=null;
       mesh.flow=null;
       mesh.desktopSession=null;
+      mesh.desktopTask=null;
+      $("mesh-script-start").disabled=true;
+      $("mesh-script-result").textContent="Выбери разрешённое окно и проверь задание.";
       $("mesh-flow-start").disabled=true;
       $("mesh-flow-write").disabled=true;
       $("mesh-flow-result").textContent="Подготовь сценарий для выбранного проекта.";
@@ -118,6 +121,8 @@ async function meshAttach(){
     const result=await api("/api/desktop/attach","POST",{
       project_id:state.project,app:win.app,pid:win.pid,handle:win.handle});
     mesh.desktopSession=result.session_id;
+    mesh.desktopTask=null;
+    $("mesh-script-start").disabled=true;
     $("mesh-desktop-status").textContent=
       "Подключено: "+result.app+". Нажми «Снимок», чтобы увидеть окно.";
     await meshDesktopAction("frame");
@@ -156,8 +161,67 @@ async function meshDesktopClose(){
     $("mesh-desktop-status").textContent="Окно отключено.";
   }catch(e){$("mesh-desktop-status").textContent=e.message;}
   finally{
-    mesh.desktopSession=null;mesh.screenshot=null;
+    mesh.desktopSession=null;mesh.screenshot=null;mesh.desktopTask=null;
+    $("mesh-script-start").disabled=true;
     $("mesh-screen").hidden=true;$("mesh-click-mode").checked=false;
+  }
+}
+
+async function meshDesktopScriptPrepare(){
+  const script=$("mesh-desktop-script").value.trim();
+  mesh.desktopTask=null;
+  $("mesh-script-start").disabled=true;
+  if(!state.project||!mesh.desktopSession){
+    $("mesh-script-result").textContent="Сначала выбери разрешённое окно Windows.";
+    return;
+  }
+  try{
+    const plan=await api("/api/desktop/script/prepare","POST",{
+      project_id:state.project,session_id:mesh.desktopSession,script});
+    mesh.desktopTask={id:plan.id,script,session:mesh.desktopSession,project:state.project,started:false};
+    $("mesh-script-result").textContent=
+      "План проверен. Шагов: "+plan.step_count+".\n"+
+      "Операции: "+plan.operations.join(", ")+
+      "\nДля запуска требуется одно подтверждение владельца. Автоматического повтора нет.";
+    $("mesh-script-start").disabled=false;
+  }catch(e){$("mesh-script-result").textContent="Задание отклонено: "+e.message;}
+}
+async function meshDesktopScriptStart(){
+  const task=mesh.desktopTask;
+  if(!task||task.project!==state.project||task.session!==mesh.desktopSession||
+     task.script!==$("mesh-desktop-script").value.trim()||task.started)return;
+  if(!window.confirm("Выполнить проверенное задание в выбранной программе Windows?"+
+      "\nПосле подтверждения агент автоматически выполнит все разрешённые шаги.\n"+
+      "Отправка, удаление и платежи этим сценарием не разрешены."))return;
+  $("mesh-script-start").disabled=true;
+  task.started=true;
+  try{
+    await api("/api/desktop/script/start","POST",{
+      project_id:state.project,session_id:task.session,id:task.id,script:task.script});
+    $("mesh-script-result").textContent="Задание выполняется в выбранном окне...";
+  }catch(e){
+    $("mesh-script-result").textContent="Запуск отклонён: "+e.message;
+    mesh.desktopTask=null;
+  }
+}
+async function meshDesktopScriptPoll(){
+  const task=mesh.desktopTask;
+  if(!task||!task.started||task.project!==state.project)return;
+  try{
+    const params=new URLSearchParams({project_id:task.project,id:task.id});
+    const result=await api("/api/desktop/script/status?"+params.toString());
+    $("mesh-script-result").textContent="Состояние: "+result.state+
+      "\nУспешно завершено шагов: "+result.completed+
+      (result.error?"\nПричина остановки: "+result.error:"");
+    if(result.state!=="RUNNING"){
+      mesh.desktopTask=null;
+      if(result.state==="DONE"&&mesh.desktopSession===task.session){
+        await meshDesktopAction("frame");
+      }
+    }
+  }catch(e){
+    mesh.desktopTask=null;
+    $("mesh-script-result").textContent="Не удалось проверить результат: "+e.message;
   }
 }
 
@@ -423,6 +487,11 @@ function bindMesh(){
   $("mesh-windows").addEventListener("click",meshWindows);
   $("mesh-attach").addEventListener("click",meshAttach);
   $("mesh-frame").addEventListener("click",()=>meshDesktopAction("frame"));
+  $("mesh-script-prepare").addEventListener("click",meshDesktopScriptPrepare);
+  $("mesh-script-start").addEventListener("click",meshDesktopScriptStart);
+  $("mesh-desktop-script").addEventListener("input",()=>{
+    if(mesh.desktopTask&&!mesh.desktopTask.started){mesh.desktopTask=null;$("mesh-script-start").disabled=true;}
+  });
   $("mesh-close").addEventListener("click",meshDesktopClose);
   $("mesh-type").addEventListener("click",()=>{
     const text=$("mesh-desktop-input").value;
@@ -459,3 +528,4 @@ meshPrivateCheck();
 setInterval(meshRefresh,15000);
 setInterval(meshPollQwen,1500);
 setInterval(meshFlowPoll,1300);
+setInterval(meshDesktopScriptPoll,1100);
