@@ -16,7 +16,7 @@ class PrivatePreflightTests(unittest.TestCase):
 
     def setup_manifest(self):
         names=set(REQUIRED)
-        names.update("extra%d.txt"%i for i in range(26-len(names)))
+        names.update("extra%d.txt"%i for i in range(28-len(names)))
         files={}
         for name in names:
             body=b"synthetic harmless test content"
@@ -55,6 +55,41 @@ class PrivatePreflightTests(unittest.TestCase):
         data["contains_secrets"]=True
         (self.root/"manifest.json").write_text(json.dumps(data))
         self.assertEqual(verify_manifest(self.root)["state"],"invalid")
+
+    def test_embedded_runtime_required_and_tamper_denied(self):
+        self.setup_manifest()
+        manifest=self.root/"manifest.json"
+        data=json.loads(manifest.read_text())
+        data["portable_runtime"]=True
+        data["vendor_file_digests"]={}
+        manifest.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["state"],"invalid")
+        vendors={}
+        for name in ("runtime/python/python.exe","runtime/node/node.exe",
+                     "node_modules/puppeteer-core/package.json"):
+            path=self.root.joinpath(*name.split("/"))
+            path.parent.mkdir(parents=True,exist_ok=True)
+            body=b"synthetic portable binary test"
+            path.write_bytes(body)
+            vendors[name]=hashlib.sha256(body).hexdigest()
+        data["vendor_file_digests"]=vendors
+        manifest.write_text(json.dumps(data))
+        self.assertTrue(verify_manifest(self.root)["portable_runtime_verified"])
+        (self.root/"runtime/node/node.exe").write_bytes(b"tampered")
+        self.assertEqual(verify_manifest(self.root)["reason"],"VENDOR_DIGEST_MISMATCH")
+
+    def test_embedded_vendor_traversal_and_symlink_refused(self):
+        self.setup_manifest()
+        data=json.loads((self.root/"manifest.json").read_text())
+        data["portable_runtime"]=True
+        data["vendor_file_digests"]={
+            "runtime/python/python.exe":"a"*64,
+            "runtime/node/node.exe":"b"*64,
+            "node_modules/puppeteer-core/package.json":"c"*64,
+            "node_modules/../private.txt":"d"*64,
+        }
+        (self.root/"manifest.json").write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["reason"],"VENDOR_PATH_REFUSED")
 
     def test_preflight_does_not_require_live_http(self):
         self.setup_manifest()
