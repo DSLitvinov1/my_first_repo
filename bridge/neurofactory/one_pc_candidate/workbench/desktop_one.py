@@ -20,6 +20,11 @@ from work_core import WorkDenied
 
 APP_RE = re.compile(r"^[a-z0-9_.-]{2,70}\.exe$")
 MAX_TEXT = 500
+MAX_LABEL = 100
+# Non-reversible UI controls may only be used through a separate consent flow.
+RISKY_LABEL = re.compile(r"(?i)(?:delete|remove|erase|clear|pay|buy|purchase|transfer|send|post|publish|submit|confirm|save|sign|удал|очист|оплат|купить|покуп|перевод|отправ|публика|подтверд|сохран|подпис)")
+RISKY_FIELD = re.compile(r"(?i)(?:password|secret|token|otp|pin|cvv|card number|парол|секрет|токен|одноразов|пин.код|номер карты|код подтверждения)")
+SAFE_KEYS = frozenset(("escape", "tab", "shift_tab", "up", "down", "left", "right", "pageup", "pagedown", "home", "end", "ctrl_f"))
 MAX_LIFETIME = 600
 RPC_TIMEOUT = 8
 
@@ -47,7 +52,7 @@ class DesktopOne:
             "supported_os": "windows",
             "configured": bool(self.enabled and self.apps and os.name == "nt"),
             "allowed_apps": sorted(self.apps),
-            "actions": ["inspect", "frame", "move", "click", "type", "close"],
+            "actions": ["inspect", "frame", "move", "click", "type", "scroll", "key", "click_label", "type_label", "close"],
             "global_mouse_keyboard": True,
             "process_policy": "interactive_user_session_only_exact_foreground_window",
             "model_allowed": False,
@@ -241,7 +246,8 @@ class DesktopOne:
             if time.monotonic()-self.session["created"] > MAX_LIFETIME:
                 self._close()
                 raise WorkDenied("DESKTOP_SESSION_EXPIRED")
-            if op not in {"frame", "move", "click", "type"}:
+            if op not in {"frame", "move", "click", "type", "scroll", "key",
+                          "click_label", "type_label"}:
                 raise WorkDenied("DESKTOP_OPERATION_NOT_ALLOWED")
             params = {"op": op, "app": self.session["app"],
                       "pid": self.session["pid"],
@@ -258,6 +264,33 @@ class DesktopOne:
                         or any(ord(c) < 32 or ord(c) == 127 for c in value)):
                     raise WorkDenied("DESKTOP_TEXT_REFUSED")
                 params["text"] = value
+            elif op == "scroll":
+                if (set(kwargs) != {"direction", "steps"}
+                        or kwargs["direction"] not in ("up", "down")
+                        or type(kwargs["steps"]) is not int
+                        or not 1 <= kwargs["steps"] <= 3):
+                    raise WorkDenied("DESKTOP_SCROLL_REFUSED")
+                params.update(kwargs)
+            elif op == "key":
+                if (set(kwargs) != {"key"} or type(kwargs["key"]) is not str
+                        or kwargs["key"] not in SAFE_KEYS):
+                    raise WorkDenied("DESKTOP_KEY_REFUSED")
+                params["key"] = kwargs["key"]
+            elif op in ("click_label", "type_label"):
+                label = kwargs.get("label")
+                expected = {"label"} if op == "click_label" else {"label", "text"}
+                if (set(kwargs) != expected or type(label) is not str
+                        or not 1 <= len(label.strip()) <= MAX_LABEL
+                        or any(ord(c) < 32 for c in label)
+                        or RISKY_LABEL.search(label) or RISKY_FIELD.search(label)):
+                    raise WorkDenied("DESKTOP_SENSITIVE_TARGET_REFUSED")
+                params["label"] = label.strip()
+                if op == "type_label":
+                    value = kwargs.get("text")
+                    if (type(value) is not str or not 1 <= len(value) <= MAX_TEXT
+                            or any(ord(c) < 32 or ord(c) == 127 for c in value)):
+                        raise WorkDenied("DESKTOP_TEXT_REFUSED")
+                    params["text"] = value
             elif kwargs:
                 raise WorkDenied("DESKTOP_UNEXPECTED_ARGUMENTS")
             try:
