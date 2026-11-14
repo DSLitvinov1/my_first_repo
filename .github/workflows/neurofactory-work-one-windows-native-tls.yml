@@ -1,0 +1,155 @@
+name: Work ONE Windows native TLS verified portable release
+on:
+  push:
+    branches: [neurofactory-work-one-windows-native-tls-20261114]
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/**'
+      - '.github/workflows/neurofactory-work-one-windows-native-tls.yml'
+permissions:
+  contents: read
+jobs:
+  private_ready_bundle:
+    runs-on: windows-2025
+    timeout-minutes: 23
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test all existing Work ONE components and new offline runtime discovery
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -q test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_portable_runtime_one test_start_work_one
+          if ($LASTEXITCODE -ne 0) {throw 'WORK_ONE_TESTS_FAILED'}
+      - name: Compile Python JS and parse Windows launch, worker and builder
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          foreach($filename in @('START_PRIVATE_WORK_ONE.ps1','SETUP_LOCAL_QWEN.ps1','desktop_worker.ps1','build_ready_one.ps1')) {
+            $tokens=$null;$errors=$null
+            [void][Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path (Join-Path $root $filename)),[ref]$tokens,[ref]$errors)
+            if ($errors.Count -gt 0) {throw ('POWERSHELL_PARSE_FAILED: '+$filename)}
+          }
+          python -m py_compile "$root/work_server.py" "$root/portable_runtime_one.py" "$root/qwen_planner_one.py" "$root/private_preflight_one.py" "$root/start_work_one.py"
+          if ($LASTEXITCODE -ne 0) {throw 'PYTHON_SYNTAX_FAILED'}
+          foreach($filename in @('app.js','toolmesh.js','browser_worker.cjs','browser_typing.cjs')) {
+            node --check (Join-Path $root $filename)
+            if ($LASTEXITCODE -ne 0) {throw ('NODE_SYNTAX_FAILED: '+$filename)}
+          }
+          node --test "$root/test_browser_typing.cjs"
+          if ($LASTEXITCODE -ne 0) {throw 'BROWSER_TYPING_REGRESSION_FAILED'}
+      - name: Build pinned owner-local offline Python Node and Puppeteer portable package
+        run: |
+          & bridge/neurofactory/one_pc_candidate/workbench/build_ready_one.ps1
+          if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_BUILD_FAILED'}
+      - name: Runtime smoke on actual shipped embedded Python and Node, no external services
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:GITHUB_WORKSPACE 'bundle_output/Work_ONE_Private_Ready'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          $node=Join-Path $root 'runtime/node/node.exe'
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {throw 'OFFLINE_INTEGRITY_CHECK_FAILED'}
+          & $python (Join-Path $root 'start_work_one.py') --verify-only
+          if ($LASTEXITCODE -ne 0) {throw 'ONE_CLICK_BINARY_RUNTIME_INVALID'}
+          & (Join-Path $root 'START_WORK_ONE.cmd') --verify-only
+          if ($LASTEXITCODE -ne 0) {throw 'ONE_CLICK_CMD_RUNTIME_INVALID'}
+          Push-Location $root
+          try {
+            & $node -e 'const p=require("puppeteer-core"); if (typeof p.launch!=="function") process.exit(1)'
+            if ($LASTEXITCODE -ne 0) {throw 'PORTABLE_BROWSER_MODULE_INVALID'}
+            $project=Join-Path $env:RUNNER_TEMP 'NF_OWNED_PROJECTS'
+            $data=Join-Path $env:RUNNER_TEMP 'NF_OWNED_DATA'
+            New-Item -ItemType Directory -Path $project,$data | Out-Null
+            $stdout=Join-Path $env:RUNNER_TEMP 'nf-work-one-ready-out.log'
+            $stderr=Join-Path $env:RUNNER_TEMP 'nf-work-one-ready-err.log'
+            $args=@((Join-Path $root 'work_server.py'),'--root',$project,'--data',$data,
+                    '--port','18770','--browser-allow-hosts','example.org')
+            $proc=Start-Process -FilePath $python -ArgumentList $args -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+            try {
+              $ok=$false
+              for($i=0;$i -lt 45;$i++) {
+                Start-Sleep -Milliseconds 300
+                try {
+                  $res=Invoke-WebRequest -Uri 'http://127.0.0.1:18770/' -TimeoutSec 2 -UseBasicParsing
+                  if ($res.StatusCode -eq 200 -and $res.Content -match 'nf-token') {
+                    $ok=$true
+                    break
+                  }
+                } catch {}
+              }
+              if (-not $ok) {throw 'PORTABLE_WINDOWS_RUNTIME_START_FAILED'}
+              $tokenMatch=[regex]::Match($res.Content,'<meta name="nf-token" content="([^"]+)"')
+              if (-not $tokenMatch.Success) {throw 'PORTABLE_OWNER_TOKEN_NOT_GENERATED'}
+              $headers=@{'X-NF-Work-Token'=$tokenMatch.Groups[1].Value}
+              $ready=Invoke-RestMethod -Uri 'http://127.0.0.1:18770/api/private/readiness' -Headers $headers -TimeoutSec 4
+              if ($ready.mode -ne 'personal_single_owner') {throw 'PORTABLE_OWNER_PREFLIGHT_INVALID'}
+              Write-Output 'PORTABLE_WINDOWS_SHIPPED_RUNTIME_HTTP_AND_OWNER_READINESS=PASS'
+              Write-Output 'REMOTE_USER_PC_NOT_TOUCHED=YES'
+            } finally {
+              if ($null -ne $proc -and -not $proc.HasExited) {
+                Stop-Process -Id $proc.Id -Force
+              }
+            }
+          } finally {
+            Pop-Location
+          }
+      - name: Verify bundled native truststore HTTPS reads on actual Windows before publishing
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:GITHUB_WORKSPACE 'bundle_output/Work_ONE_Private_Ready'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          $script=Join-Path $env:RUNNER_TEMP 'nf_work_one_native_https_test.py'
+          @'
+          import sys, ssl
+          sys.path.insert(0,sys.argv[1])
+          import truststore
+          from agent_one import fetch_public_html,verified_tls_context
+          ctx=verified_tls_context()
+          assert isinstance(ctx,truststore.SSLContext),type(ctx)
+          assert ctx.check_hostname and ctx.verify_mode == ssl.CERT_REQUIRED
+          report=fetch_public_html('https://example.org/')
+          assert report['url']=='https://example.org/'
+          assert isinstance(report['title'],str) and len(report['title'])>0
+          print('WINDOWS_NATIVE_TLS_SCHANNEL_VERIFIED_HTTPS_AUDIT=PASS')
+          '@ | Set-Content -LiteralPath $script -Encoding UTF8
+          & $python $script $root
+          if ($LASTEXITCODE -ne 0) {throw 'WINDOWS_NATIVE_TLS_HTTPS_AUDIT_FAILED'}
+      - name: Upload private archive only, no self-hosted runner, no remote deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: Neirozavod-Work-ONE-Windows-Native-TLS
+          path: bundle_output/Work_ONE_Private_Ready/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+          include-hidden-files: true
+
+  verify_downloaded_archive:
+    needs: private_ready_bundle
+    runs-on: windows-2025
+    timeout-minutes: 7
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Download EXACT published user artifact back to a fresh Windows runner
+        uses: actions/download-artifact@v4
+        with:
+          name: Neirozavod-Work-ONE-Windows-Native-TLS
+          path: downloaded-user-archive
+      - name: Confirm published archive has every source and vendor hash
+        run: |
+          $root=Join-Path $env:GITHUB_WORKSPACE 'downloaded-user-archive'
+          $python=Join-Path $root 'runtime/python/python.exe'
+          if (!(Test-Path -LiteralPath $python -PathType Leaf)) {
+            throw 'PUBLISHED_ARTIFACT_MISSING_EMBEDDED_PYTHON'
+          }
+          & $python (Join-Path $root 'private_preflight_one.py')
+          if ($LASTEXITCODE -ne 0) {
+            throw 'PUBLISHED_ARTIFACT_MANIFEST_MISMATCH_OR_MISSING_FILES'
+          }
+          Write-Host 'PUBLISHED_USER_ARTIFACT_ALL_COMPONENTS_VERIFIED=YES'
+          Write-Host 'NO_OWNER_PC_OR_EXTERNAL_ACCOUNT_ACCESSED=YES'

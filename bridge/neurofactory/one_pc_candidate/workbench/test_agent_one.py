@@ -8,11 +8,14 @@ from urllib.request import Request, urlopen
 from http.server import ThreadingHTTPServer
 import json
 import socket
+import ssl
+import sys
+import types
 import threading
 from work_server import make_handler
 
 from work_core import WorkStore, WorkDenied
-from agent_one import AgentOne, AuditHTML, validated_url, public_dns, fetch_public_html
+from agent_one import AgentOne, AuditHTML, validated_url, public_dns, fetch_public_html, verified_tls_context
 
 
 class AgentOneTest(unittest.TestCase):
@@ -61,6 +64,42 @@ class AgentOneTest(unittest.TestCase):
                 with self.assertRaisesRegex(WorkDenied, "REDIRECT"):
                     fetch_public_html("https://example.org/")
                 connection.assert_called_once_with("example.org", "93.184.216.34")
+
+    def test_native_windows_trust_context_is_used_with_verification(self):
+        safe = types.SimpleNamespace(
+            verify_mode=ssl.CERT_REQUIRED,check_hostname=True)
+        factory = unittest.mock.Mock(return_value=safe)
+        fake = types.SimpleNamespace(SSLContext=factory)
+        with patch("agent_one.sys.platform","win32"):
+            with patch.dict(sys.modules,{"truststore":fake}):
+                self.assertIs(verified_tls_context(),safe)
+        factory.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
+
+    def test_windows_context_rejects_disabled_certificate_checks(self):
+        insecure = types.SimpleNamespace(
+            verify_mode=ssl.CERT_NONE,check_hostname=False)
+        fake = types.SimpleNamespace(SSLContext=lambda *_:insecure)
+        with patch("agent_one.sys.platform","win32"):
+            with patch.dict(sys.modules,{"truststore":fake}):
+                with self.assertRaisesRegex(
+                    WorkDenied,"AUDIT_TLS_VERIFICATION_UNAVAILABLE"):
+                    verified_tls_context()
+
+    def test_windows_context_missing_native_truststore_fails_closed(self):
+        with patch("agent_one.sys.platform","win32"):
+            with patch.dict(sys.modules,{"truststore":None}):
+                with self.assertRaisesRegex(
+                    WorkDenied,"AUDIT_NATIVE_CERT_STORE_UNAVAILABLE"):
+                    verified_tls_context()
+
+    def test_invalid_certificate_has_actionable_safe_error(self):
+        with patch("agent_one.public_dns",return_value="93.184.216.34"):
+            with patch("agent_one.PinnedHTTPSConnection") as connection:
+                connection.return_value.request.side_effect = (
+                    ssl.SSLCertVerificationError("untrusted issuer"))
+                with self.assertRaisesRegex(
+                    WorkDenied,"AUDIT_TLS_CERTIFICATE_UNTRUSTED"):
+                    fetch_public_html("https://example.org/")
 
     def test_durable_two_site_workflow_and_no_replay(self):
         seen = []

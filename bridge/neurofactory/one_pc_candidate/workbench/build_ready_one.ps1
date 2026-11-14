@@ -52,6 +52,22 @@ $python=Join-Path $pythonDir 'python.exe'
 if (!(Test-Path -LiteralPath $python -PathType Leaf)) {throw 'BUNDLE_PYTHON_MISSING'}
 & $python -c 'import sys,sqlite3; assert sys.version_info >= (3,12); sqlite3.connect(":memory:").close()'
 if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_EMBEDDED_PYTHON_BROKEN'}
+# Add a hash-pinned pure Python wheel using Windows native CryptoAPI for TLS.
+# Do NOT disable certificate checks or change the Windows trust store.
+$wheelDir=Join-Path $env:RUNNER_TEMP 'NF_PINNED_NATIVE_TLS'
+New-Item -ItemType Directory -Path $wheelDir -Force | Out-Null
+& python -m pip download --disable-pip-version-check --no-deps --no-cache-dir --only-binary=:all: --dest $wheelDir 'truststore==0.10.5'
+if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_NATIVE_TLS_DOWNLOAD_FAILED'}
+$wheel=Join-Path $wheelDir 'truststore-0.10.5-py3-none-any.whl'
+if (!(Test-Path -LiteralPath $wheel -PathType Leaf) -or
+    (Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -cne '9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c') {
+  throw 'BUNDLE_NATIVE_TLS_WHEEL_SHA256_MISMATCH'
+}
+$wheelZip=Join-Path $wheelDir 'truststore-0.10.5-py3-none-any.zip'
+Copy-Item -LiteralPath $wheel -Destination $wheelZip
+Expand-Archive -LiteralPath $wheelZip -DestinationPath $pythonDir -Force
+& $python -c 'import truststore,ssl; ctx=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT); assert ctx.check_hostname is True and ctx.verify_mode==ssl.CERT_REQUIRED'
+if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_NATIVE_TLS_VERIFY_CONTEXT_BROKEN'}
 $nodeVersion='v24.22.3'
 $nodeName='node-v24.22.3-win-x64.zip'
 $nodeBase='https://nodejs.org/dist/'+$nodeVersion+'/'
@@ -99,7 +115,8 @@ foreach ($area in @('runtime/python','runtime/node','node_modules')) {
 }
 if (-not $vendorDigests.ContainsKey('runtime/python/python.exe') -or
     -not $vendorDigests.ContainsKey('runtime/node/node.exe') -or
-    -not $vendorDigests.ContainsKey('node_modules/puppeteer-core/package.json')) {
+    -not $vendorDigests.ContainsKey('node_modules/puppeteer-core/package.json') -or
+    -not $vendorDigests.ContainsKey('runtime/python/truststore/__init__.py')) {
   throw 'BUNDLE_VENDOR_REQUIRED_FILE_MISSING'
 }
 $manifest=@{
@@ -109,6 +126,7 @@ $manifest=@{
   installs_windows_service=$false
   contains_secrets=$false
   portable_runtime=$true
+  windows_native_tls=$true
   file_digests=$digests
   vendor_file_digests=$vendorDigests
 }

@@ -56,6 +56,10 @@ def verify_manifest(root):
         if doc.get("portable_runtime") is True:
             mandatory={"runtime/python/python.exe","runtime/node/node.exe",
                        "node_modules/puppeteer-core/package.json"}
+            if doc.get("windows_native_tls") is True:
+                mandatory.add("runtime/python/truststore/__init__.py")
+            elif doc.get("windows_native_tls") is not None:
+                return {"state":"invalid","reason":"NATIVE_TLS_MANIFEST_INVALID"}
             if (type(vendor) is not dict or not mandatory.issubset(vendor)
                     or not 3<=len(vendor)<=3500):
                 return {"state":"invalid","reason":"PORTABLE_VENDOR_INVALID"}

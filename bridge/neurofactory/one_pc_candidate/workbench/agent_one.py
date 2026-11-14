@@ -9,6 +9,8 @@ from __future__ import annotations
 from html.parser import HTMLParser
 from http.client import HTTPSConnection, HTTPException
 from ssl import SSLError
+import ssl
+import sys
 import ipaddress
 import json
 import re
@@ -152,10 +154,31 @@ class AuditHTML(HTMLParser):
         }
 
 
+def verified_tls_context():
+    """Use Windows' native verified roots and intermediate chain building.
+
+    No certificate bypass, no global SSL monkeypatch and no cert collection.
+    The OS trust store must validate both certificate chain and server name.
+    """
+    if sys.platform == "win32":
+        try:
+            import truststore
+        except ImportError:
+            raise WorkDenied("AUDIT_NATIVE_CERT_STORE_UNAVAILABLE")
+        context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    else:
+        context = ssl.create_default_context()
+    if (context.verify_mode != ssl.CERT_REQUIRED or
+            context.check_hostname is not True):
+        raise WorkDenied("AUDIT_TLS_VERIFICATION_UNAVAILABLE")
+    return context
+
+
 class PinnedHTTPSConnection(HTTPSConnection):
     """TLS hostname verification against the origin, TCP to audited public IP."""
     def __init__(self, hostname, public_ip):
-        super().__init__(hostname, port=443, timeout=10)
+        super().__init__(hostname, port=443, timeout=10,
+                         context=verified_tls_context())
         self.public_ip = public_ip
 
     def connect(self):
@@ -204,6 +227,8 @@ def fetch_public_html(url):
         return page.report(target, {k.lower(): v for k, v in response.headers.items()})
     except WorkDenied:
         raise
+    except ssl.SSLCertVerificationError:
+        raise WorkDenied("AUDIT_TLS_CERTIFICATE_UNTRUSTED")
     except (HTTPException, TimeoutError, OSError, SSLError, UnicodeError):
         raise WorkDenied("AUDIT_NETWORK_UNAVAILABLE")
     finally:
@@ -344,6 +369,9 @@ class AgentOne:
                     "AUDIT_HTTP_NOT_OK_OR_REDIRECT", "AUDIT_NOT_HTML",
                     "AUDIT_ENCODING_REFUSED", "AUDIT_BODY_TOO_LARGE",
                     "AUDIT_CHARSET_UNSUPPORTED", "AUDIT_NETWORK_UNAVAILABLE",
+                    "AUDIT_TLS_CERTIFICATE_UNTRUSTED",
+                    "AUDIT_NATIVE_CERT_STORE_UNAVAILABLE",
+                    "AUDIT_TLS_VERIFICATION_UNAVAILABLE",
                 }
                 encoded, state, err = None, "FAILED", (
                     reason if reason in allowed else "AUDIT_TOOL_FAILED")

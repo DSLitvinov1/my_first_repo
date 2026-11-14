@@ -91,6 +91,33 @@ class PrivatePreflightTests(unittest.TestCase):
         (self.root/"manifest.json").write_text(json.dumps(data))
         self.assertEqual(verify_manifest(self.root)["reason"],"VENDOR_PATH_REFUSED")
 
+    def test_native_tls_bundle_requires_verified_truststore(self):
+        self.setup_manifest()
+        manifest=self.root/"manifest.json"
+        doc=json.loads(manifest.read_text())
+        doc["portable_runtime"]=True
+        doc["windows_native_tls"]=True
+        vendor={}
+        for name in ("runtime/python/python.exe", "runtime/node/node.exe",
+                     "node_modules/puppeteer-core/package.json"):
+            path=self.root.joinpath(*name.split("/"))
+            path.parent.mkdir(parents=True,exist_ok=True)
+            blob=b"synthetic"
+            path.write_bytes(blob)
+            vendor[name]=hashlib.sha256(blob).hexdigest()
+        doc["vendor_file_digests"]=vendor
+        manifest.write_text(json.dumps(doc))
+        self.assertEqual(verify_manifest(self.root)["reason"],"PORTABLE_VENDOR_INVALID")
+        file=self.root/"runtime/python/truststore/__init__.py"
+        file.parent.mkdir(parents=True,exist_ok=True)
+        file.write_bytes(b"# synthetic package only")
+        vendor["runtime/python/truststore/__init__.py"]=hashlib.sha256(
+            file.read_bytes()).hexdigest()
+        manifest.write_text(json.dumps(doc))
+        self.assertTrue(verify_manifest(self.root)["portable_runtime_verified"])
+        file.write_bytes(b"tampered")
+        self.assertEqual(verify_manifest(self.root)["reason"],"VENDOR_DIGEST_MISMATCH")
+
     def test_preflight_does_not_require_live_http(self):
         self.setup_manifest()
         result=inspect(self.root,check_http=False)
