@@ -126,8 +126,8 @@ class GithubIssueTransport:
                 "X-GitHub-Api-Version": "2022-11-28",
                 "User-Agent": "NeirozavodWorkONE-OwnerBridge/1.0"})
             response=conn.getresponse()
-            if response.status not in (200,201) or
-                    response.headers.get_content_type() not in ("application/json","text/json"):
+            if (response.status not in (200,201) or
+                    response.headers.get_content_type() not in ("application/json","text/json")):
                 raise WorkDenied("CHATGPT_GITHUB_ACCESS_REFUSED")
             raw=response.read(240001)
             if len(raw)>240000:
