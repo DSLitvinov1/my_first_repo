@@ -76,10 +76,12 @@ function setTask(task){
     (task?.state==="GENERATING"?"Qwen готовит ответ. Повторные запросы отключены.":
      task?.state==="UNKNOWN_NO_RETRY"?"Результат модели неопределённый. Автоматическая повторная генерация запрещена.":
       "Текст модели появится здесь. Он не будет автоматически сохраняться или выполняться.");
-  $("generate").disabled=!task||task.state!=="DRAFT";
+  const blocked=!task||task.state!=="DRAFT"||!state.modelOk;
+  $("generate").disabled=blocked;
+  $("generate-fallback").disabled=blocked;
   $("copy-draft-editor").disabled=!task?.draft||!state.file;
-  const btn=$("generate");
-  btn.textContent=task?.state==="GENERATING"?"◌ Модель работает...":"✳ Подготовить черновик Qwen";
+  $("generate").textContent=task?.state==="GENERATING"?"◌ Модель работает...":"✳ Основная облачная Qwen 3.5 9B";
+  $("generate-fallback").textContent=task?.state==="GENERATING"?"◌ Модель работает...":"☁ Резервная облачная Qwen Coder 1.5B";
 }
 function drawTasks(){
   const list=$("tasks-list");list.replaceChildren();
@@ -202,7 +204,7 @@ async function refreshAll(){
     const [s,p]=await Promise.all([api("/api/status"),api("/api/projects")]);
     state.projects=p.projects;
     state.modelOk=!!s.qwen_available;
-    $("model-label").textContent=s.qwen_available?"Qwen 3.5 · подключена":"Qwen · недоступна";
+    $("model-label").textContent=s.qwen_available?"Qwen · защищённый SSH настроен":"Qwen · недоступна";
     $("model-dot").classList.toggle("good",!!s.qwen_available);
     drawProjects();
     const id=state.project&&state.projects.some(x=>x.id===state.project)?state.project:
@@ -212,15 +214,20 @@ async function refreshAll(){
     await refreshActivity();
   }catch(e){notice("Не удалось открыть Work: "+e.message,true);}
 }
-async function generate(){
+async function generate(choice="primary"){
   const task=state.tasks.find(x=>x.id===state.selectedTask);
   if(!task||task.state!=="DRAFT")return;
-  if(!state.modelOk){notice("Qwen пока недоступна",true);return;}
-  if(!window.confirm("Отправить задачу Qwen 3.5? Запрос одноразовый: при неопределённом результате автоматический повтор запрещён."))return;
+  if(!state.modelOk){notice("Облачная Qwen пока недоступна",true);return;}
+  const backup=choice==="fallback";
+  const label=backup?"резервной облачной Qwen Coder 1.5B":"основной облачной Qwen 3.5 9B";
+  if(!window.confirm("Отправить НОВУЮ задачу "+label+"? Запрос одноразовый: при неопределённом результате повтор запрещён. Модель не изменяет файлы."))return;
   $("generate").disabled=true;
+  $("generate-fallback").disabled=true;
   try{
-    await api("/api/tasks/"+task.id+"/generate","POST",{});
-    notice("Qwen получила задачу. Результат появится в правой панели.");
+    const endpoint=backup?"generate-fallback":"generate";
+    const accepted=await api("/api/tasks/"+task.id+"/"+endpoint,"POST",{});
+    if(accepted.model!==(backup?"qwen2.5-coder:1.5b":"qwen3.5:9b"))throw Error("Модель не соответствует выбранному режиму");
+    notice("Задача передана "+label+". Результат появится в правой панели.");
     await Promise.all([refreshTasks(),refreshActivity()]);
   }catch(e){notice(e.message,true);await refreshTasks();}
 }
@@ -664,7 +671,8 @@ function bind(){
       await refreshActivity();notice("Предыдущая версия восстановлена");
     }catch(e){notice(e.message,true);}
   });
-  $("generate").addEventListener("click",generate);
+  $("generate").addEventListener("click",()=>generate("primary"));
+  $("generate-fallback").addEventListener("click",()=>generate("fallback"));
   $("copy-draft-editor").addEventListener("click",()=>{
     const task=state.tasks.find(x=>x.id===state.selectedTask);
     if(!task?.draft||!state.file)return;
