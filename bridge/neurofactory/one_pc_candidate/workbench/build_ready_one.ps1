@@ -23,9 +23,10 @@ $names=@(
   'index.html','styles.css','app.js','toolmesh.js',
   'package.json','package-lock.json','README.md',
   'START_PRIVATE_WORK_ONE.ps1','PERSONAL_START_README.md',
-  'private_preflight_one.py','portable_runtime_one.py','SETUP_LOCAL_QWEN.ps1'
+  'private_preflight_one.py','portable_runtime_one.py','SETUP_LOCAL_QWEN.ps1',
+  'start_work_one.py','START_WORK_ONE.cmd'
 )
-if ($names.Count -ne 28) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
+if ($names.Count -ne 30) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
 $digests=@{}
 foreach ($name in $names) {
   if ($name -notmatch '^[A-Za-z0-9_.-]{2,90}$') {throw 'BUNDLE_UNSAFE_SOURCE_NAME'}
