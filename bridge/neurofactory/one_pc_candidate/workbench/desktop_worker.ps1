@@ -267,6 +267,49 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
   }
   return $item
 }
+# Read-only perception of the owner-selected window. No field values, passwords,
+# clipboard contents, tokens or input text leave the Windows user session.
+function ObserveVisibleControls($w) {
+  $root=[Windows.Automation.AutomationElement]::FromHandle([IntPtr]$w.handle)
+  if($null -eq $root){throw "DESKTOP_WINDOW_AUTOMATION_MISSING"}
+  $cond=New-Object Windows.Automation.PropertyCondition(
+    [Windows.Automation.AutomationElement]::IsOffscreenProperty,$false)
+  $found=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$cond)
+  $items=@()
+  $scanned=0
+  foreach($element in $found) {
+    $scanned++
+    if($scanned -gt 260 -or $items.Count -ge 55){break}
+    try {
+      $current=$element.Current
+      if($current.ProcessId -ne $w.pid -or $current.IsPassword -or
+         -not $current.IsEnabled){continue}
+      $name=[string]$current.Name
+      if([string]::IsNullOrWhiteSpace($name) -or $name.Length -gt 100){continue}
+      try {CheckElementLabel $name} catch {continue}
+      $kind=[int]$current.ControlType.Id
+      if($kind -notin @(
+        [Windows.Automation.ControlType]::Button.Id,
+        [Windows.Automation.ControlType]::Text.Id,
+        [Windows.Automation.ControlType]::Edit.Id,
+        [Windows.Automation.ControlType]::TabItem.Id,
+        [Windows.Automation.ControlType]::MenuItem.Id,
+        [Windows.Automation.ControlType]::Hyperlink.Id,
+        [Windows.Automation.ControlType]::ListItem.Id,
+        [Windows.Automation.ControlType]::Custom.Id)){continue}
+      $rectangle=$current.BoundingRectangle
+      if($rectangle.Width -lt 3 -or $rectangle.Height -lt 3 -or
+         $rectangle.Width -gt $w.width -or $rectangle.Height -gt $w.height -or
+         $rectangle.Left -lt $w.x -or $rectangle.Top -lt $w.y -or
+         ($rectangle.Left+$rectangle.Width) -gt ($w.x+$w.width) -or
+         ($rectangle.Top+$rectangle.Height) -gt ($w.y+$w.height)){continue}
+      $items+=@{label=$name;type=$kind; x=[int][Math]::Floor($rectangle.Left-$w.x);
+                y=[int][Math]::Floor($rectangle.Top-$w.y);
+                width=[int]$rectangle.Width;height=[int]$rectangle.Height}
+    } catch {}
+  }
+  return @{controls=@($items);truncated=($scanned -gt 260 -or $items.Count -ge 55)}
+}
 function AssertEditor($expectedProcessId) {
   $focus=[Windows.Automation.AutomationElement]::FocusedElement
   if($null -eq $focus){throw "DESKTOP_EDITOR_NOT_FOUND"}
@@ -324,6 +367,29 @@ while($true){
       "frame" {
         $w=AssertForeground $req
         $result=Capture $w
+        break
+      }
+      "observe" {
+        $w=AssertForeground $req
+        $result=ObserveVisibleControls $w
+        break
+      }
+      "expect_label" {
+        $w=AssertForeground $req
+        CheckElementLabel ([string]$req.label)
+        $root=[Windows.Automation.AutomationElement]::FromHandle([IntPtr]$w.handle)
+        $cond=New-Object Windows.Automation.PropertyCondition(
+          [Windows.Automation.AutomationElement]::NameProperty,[string]$req.label)
+        $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$cond)
+        $visible=0
+        foreach($item in $hits) {
+          if($item.Current.ProcessId -eq $w.pid -and
+             -not $item.Current.IsOffscreen -and -not $item.Current.IsPassword) {
+            $visible++
+          }
+        }
+        if($visible -ne 1){throw "DESKTOP_EXPECTED_LABEL_NOT_UNIQUE_OR_VISIBLE"}
+        $result=@{verified=$true}
         break
       }
       "move" {
