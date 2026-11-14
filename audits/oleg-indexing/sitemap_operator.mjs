@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import readline from 'node:readline/promises';
 
 export const SITES = Object.freeze([
   { host: 'potrebpravo.ru', sitemap: 'https://potrebpravo.ru/sitemap.xml', count: 23 },
@@ -109,6 +110,7 @@ export async function submitOne(page, site, service, {apply=false, strictUrl=tru
 
 async function main() {
   const apply=process.argv.includes('--apply');
+  const login=process.argv.includes('--login');
   const dir=path.join(os.homedir(), '.oleg-seo-playwright-profile');
   await fs.mkdir(dir,{recursive:true,mode:0o700});
   const context=await chromium.launchPersistentContext(dir,{
@@ -116,6 +118,17 @@ async function main() {
     args:['--no-first-run']
   });
   const report={time:new Date().toISOString(),mode:apply?'apply':'dry-run',results:[]};
+  if(login){
+    for(const url of ['https://webmaster.yandex.ru/sites/','https://search.google.com/search-console']){
+      const tab=await context.newPage();
+      await tab.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+    }
+    const rl=readline.createInterface({input:process.stdin,output:process.stdout});
+    try{await rl.question('Войдите в Яндекс и Google в открытых окнах, затем нажмите Enter здесь. ');}
+    finally{rl.close();await context.close();}
+    console.log('Локальная авторизация сохранена только в отдельном профиле на этом компьютере.');
+    return;
+  }
   try {
     for (const site of SITES) {
       const page=await context.newPage();
