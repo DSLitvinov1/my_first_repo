@@ -14,7 +14,7 @@ import sys
 from urllib.request import Request, urlopen
 
 REQUIRED = frozenset((
-    "work_server.py","work_core.py","agent_one.py","desktop_one.py",
+    "work_server.py","work_core.py","agent_one.py","desktop_one.py","desktop_script_one.py",
     "desktop_worker.ps1","browser_control.py","browser_worker.cjs",
     "private_flow_one.py","personal_readiness_one.py",
     "app.js","toolmesh.js","index.html","styles.css",
@@ -38,7 +38,7 @@ def verify_manifest(root):
         names=doc["file_digests"]
         if (doc.get("schema")!="nf.workone.personal-bundle.v1" or
             type(names) is not dict or not REQUIRED.issubset(names) or
-            len(names)!=31 or doc.get("contains_secrets") is not False or
+            len(names)!=32 or doc.get("contains_secrets") is not False or
             doc.get("installs_windows_service") is not False):
             return {"state":"invalid","reason":"MANIFEST_INVALID"}
         for name,digest in names.items():
