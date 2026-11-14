@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Path $destination -Force | Out-Null
 $names=@(
   'work_core.py','work_server.py','agent_one.py',
   'browser_control.py','browser_typing.cjs','browser_worker.cjs',
-  'workflow_one.py','desktop_one.py','desktop_worker.ps1',
+  'workflow_one.py','desktop_one.py','desktop_script_one.py','desktop_worker.ps1',
   'credentials_one.py','google_oauth_one.py','service_one.py',
   'qwen_planner_one.py','llama_connector_one.py',
   'personal_readiness_one.py','private_flow_one.py',
@@ -26,7 +26,7 @@ $names=@(
   'private_preflight_one.py','portable_runtime_one.py','SETUP_LOCAL_QWEN.ps1',
   'start_work_one.py','START_WORK_ONE.cmd','cloud_ssh_draft_provider.py'
 )
-if ($names.Count -ne 31) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
+if ($names.Count -ne 32) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
 $digests=@{}
 foreach ($name in $names) {
   if ($name -notmatch '^[A-Za-z0-9_.-]{2,90}$') {throw 'BUNDLE_UNSAFE_SOURCE_NAME'}
