@@ -2,7 +2,7 @@
 /* Work ONE v0.6: one local UI; no direct secrets/model instructions execute. */
 const mesh = {
   project:null, status:null, planId:null, desktopSession:null,
-  screenshot:null, record:null, pending:null, flow:null, desktopTask:null, busy:false,
+  screenshot:null, record:null, pending:null, flow:null, desktopTask:null, chatgptRun:null, busy:false,
 };
 
 function meshMessage(text, error=false) {
@@ -26,6 +26,16 @@ async function meshRefresh() {
     $("mesh-google-connect").disabled=!google.configured;
     $("mesh-google-disconnect").disabled=!google.configured;
     $("mesh-bitrix-connect").disabled=false;
+    const chatgpt=status.chatgpt||{};
+    $("mesh-chatgpt-status").textContent=chatgpt.connected?
+      "Сопряжено: "+chatgpt.repository+
+      " · Последняя проверка: "+(chatgpt.last_poll?
+        new Date(chatgpt.last_poll*1000).toLocaleString("ru-RU"):"ещё не было"):
+      "Не подключено. Нужен ограниченный ключ GitHub для закрытого репозитория.";
+    $("mesh-chatgpt-connect").disabled=!!chatgpt.connected;
+    $("mesh-chatgpt-disconnect").disabled=!chatgpt.connected;
+    if(chatgpt.connected)meshChatGPTPending().catch(()=>{});
+
     $("mesh-yandex-connect").disabled=!status.yandex?.configured;
     $("mesh-yandex-disconnect").disabled=!status.yandex?.configured;
     $("mesh-plan").disabled=!state.project||!status.qwen?.configured;
@@ -281,6 +291,92 @@ async function meshDisconnectYandex(){
     await api("/api/connectors/yandex/disconnect","POST",{scope});
     await meshRefresh();
   }catch(e){notice("Яндекс: "+e.message,true);}
+}
+async function meshChatGPTConnect(){
+  const repository=$("mesh-chatgpt-repo").value.trim();
+  const owner=$("mesh-chatgpt-owner").value.trim();
+  const access_token=$("mesh-chatgpt-token").value.trim();
+  if(!repository||!owner||!access_token){
+    notice("Укажи закрытый репозиторий, владельца и отдельный ключ GitHub.",true);return;
+  }
+  if(!window.confirm("Подключить ChatGPT к закрытому репозиторию "+repository+
+    "?\\nONE Agent будет проверять новые команды. Любые действия с окнами Windows потребуют подтверждения здесь."))return;
+  try {
+    const result=await api("/api/connectors/chatgpt/github/connect","POST",
+      {repository,owner,access_token});
+    $("mesh-chatgpt-token").value="";
+    $("mesh-chatgpt-status").textContent="Подключено: "+result.repository;
+    await meshRefresh();
+  } catch(e) {
+    $("mesh-chatgpt-token").value="";
+    notice("ChatGPT: "+e.message,true);
+  }
+}
+async function meshChatGPTDisconnect(){
+  if(!window.confirm("Отключить ChatGPT и удалить локальный ключ GitHub?"))return;
+  try{
+    await api("/api/connectors/chatgpt/github/disconnect","POST",{});
+    $("mesh-chatgpt-pending").textContent="Соединение отключено.";
+    await meshRefresh();
+  }catch(e){notice("ChatGPT: "+e.message,true);}
+}
+async function meshChatGPTPending(){
+  const root=$("mesh-chatgpt-pending");
+  const result=await api("/api/chatgpt/pending");
+  root.replaceChildren();
+  const items=(result.pending||[]).filter(x=>x.project_id===state.project);
+  if(!items.length){
+    root.textContent="Для выбранного проекта нет задач, ожидающих подтверждения.";
+    return;
+  }
+  for(const job of items.slice(0,5)){
+    const card=el("div","mesh-private-ready");
+    card.append(el("strong",null,
+      "Задание из ChatGPT · "+job.step_count+" шагов"));
+    const pre=el("pre","mesh-result",job.script);
+    card.append(pre);
+    const controls=el("div","mesh-actions");
+    const yes=el("button","button accent small","Подтвердить выполнение");
+    const no=el("button","button soft small","Отклонить");
+    yes.type=no.type="button";
+    yes.addEventListener("click",async()=>{
+      if(!window.confirm("Выполнить именно эти "+job.step_count+
+          " действия в выбранном окне Windows?\\n\\n"+job.script))return;
+      yes.disabled=no.disabled=true;
+      try{
+        const run=await api("/api/chatgpt/approve","POST",
+           {project_id:job.project_id,issue_id:job.issue_id});
+        mesh.chatgptRun={project:job.project_id,id:run.plan_id};
+        card.replaceChildren(el("strong",null,
+           "Запущено после твоего подтверждения; проверяем результат."));
+      }catch(e){notice("ChatGPT: "+e.message,true);yes.disabled=no.disabled=false;}
+    });
+    no.addEventListener("click",async()=>{
+      no.disabled=yes.disabled=true;
+      try{
+        await api("/api/chatgpt/reject","POST",
+            {project_id:job.project_id,issue_id:job.issue_id});
+        card.replaceChildren(el("strong",null,"Задание отклонено."));
+      }catch(e){notice(e.message,true);no.disabled=yes.disabled=false;}
+    });
+    controls.append(yes,no);
+    card.append(controls);
+    root.append(card);
+  }
+}
+async function meshChatGPTPoll(){
+  const run=mesh.chatgptRun;
+  if(!run||run.project!==state.project)return;
+  try{
+    const q=new URLSearchParams({project_id:run.project,id:run.id});
+    const result=await api("/api/desktop/script/status?"+q);
+    if(result.state==="RUNNING")return;
+    $("mesh-chatgpt-status").textContent=
+      "Последнее задание ChatGPT: "+result.state+
+      ", выполнено шагов: "+result.completed+
+      (result.error?" · "+result.error:"");
+    mesh.chatgptRun=null;
+  }catch(e){mesh.chatgptRun=null;notice("ChatGPT: "+e.message,true);}
 }
 async function meshConnectBitrix(){
   const portal=$("mesh-bitrix-portal").value.trim().toLowerCase();
@@ -543,6 +639,9 @@ function bindMesh(){
   $("mesh-google-disconnect").addEventListener("click",meshDisconnectGoogle);
   $("mesh-yandex-connect").addEventListener("click",meshConnectYandex);
   $("mesh-yandex-disconnect").addEventListener("click",meshDisconnectYandex);
+  $("mesh-chatgpt-connect").addEventListener("click",meshChatGPTConnect);
+  $("mesh-chatgpt-disconnect").addEventListener("click",meshChatGPTDisconnect);
+  $("mesh-chatgpt-refresh").addEventListener("click",meshChatGPTPending);
   $("mesh-bitrix-connect").addEventListener("click",meshConnectBitrix);
   $("mesh-bitrix-disconnect").addEventListener("click",meshDisconnectBitrix);
   $("mesh-record-prepare").addEventListener("click",meshRecordPrepare);
@@ -563,3 +662,4 @@ setInterval(meshRefresh,15000);
 setInterval(meshPollQwen,1500);
 setInterval(meshFlowPoll,1300);
 setInterval(meshDesktopScriptPoll,1100);
+setInterval(meshChatGPTPoll,1400);
