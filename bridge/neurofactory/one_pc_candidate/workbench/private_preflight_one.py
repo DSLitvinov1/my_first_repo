@@ -118,5 +118,6 @@ def inspect(root=None,*,check_http=True):
 if __name__=="__main__":
     report=inspect()
     print(json.dumps(report,ensure_ascii=False,indent=2))
-    if not report["python_supported"] or report["manifest"]["state"]=="invalid":
+    if (not report["python_supported"] or
+            report["manifest"]["state"]!="verified"):
         raise SystemExit(2)
