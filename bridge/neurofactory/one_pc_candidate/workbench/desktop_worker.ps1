@@ -217,6 +217,13 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
   if($null -eq $root){throw "DESKTOP_WINDOW_AUTOMATION_MISSING"}
   $condition=New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::NameProperty,$label)
   $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$condition)
+  if($hits.Count -ne 1) {
+    # Office and WinForms often expose AutomationId rather than Name for
+    # edit controls. Resolve the exact owner-provided identifier; never
+    # type into the first field or an arbitrary focused element.
+    $identifier=New-Object Windows.Automation.PropertyCondition([Windows.Automation.AutomationElement]::AutomationIdProperty,$label)
+    $hits=$root.FindAll([Windows.Automation.TreeScope]::Descendants,$identifier)
+  }
   if($hits.Count -ne 1){throw "DESKTOP_LABEL_NOT_UNIQUE_OR_MISSING"}
   $item=$hits[0]
   if($item.Current.ProcessId -ne $w.pid -or $item.Current.IsPassword){
