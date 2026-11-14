@@ -45,7 +45,8 @@ def verify_command(issue, owner, now=None):
             "pull_request" in issue or
             type(issue.get("number")) is not int or issue["number"] <= 0 or
             type(issue.get("id")) is not int or issue["id"] <= 0 or
-            issue.get("user", {}).get("login") != owner or
+            type(issue.get("user")) is not dict or
+            issue["user"].get("login") != owner or
             type(issue.get("title")) is not str or
             not issue["title"].startswith(BRIDGE_LABEL)):
         raise WorkDenied("CHATGPT_ISSUE_NOT_OWNER_COMMAND")
@@ -208,6 +209,9 @@ class ChatGPTBridgeOne:
     def connect(self, repo, owner, access_token):
         if not self.vault.ready():
             raise WorkDenied("CHATGPT_OWNER_WINDOWS_REQUIRED")
+        with self.lock:
+            if self.transport is not None:
+                raise WorkDenied("CHATGPT_ALREADY_CONNECTED")
         api=GithubIssueTransport(access_token,repo,owner)
         api.verify_private_repo()
         with self.lock:
@@ -329,8 +333,8 @@ class ChatGPTBridgeOne:
         if op=="status":
             info=self.store.status()
             return {"state":"DONE","operation":op,
-                    "projects":len(info.get("projects",[])) if
-                       type(info.get("projects")) is list else None}
+                    "projects":info.get("projects") if
+                       type(info.get("projects")) is int else None}
         if op=="site.audit":
             run=self.agent.create_audit(project,cmd["params"]["urls"])
             final=self.agent.execute(run["id"],project)
@@ -391,7 +395,7 @@ class ChatGPTBridgeOne:
         self._check_running(api)
         issues=api.issues()
         self.last_poll=int(self.now())
-        for issue in sorted(issues,key=lambda x: x.get("id",0))[:MAX_ISSUES]:
+        for issue in sorted(issues,key=lambda x: x.get("id",0) if type(x) is dict else 0)[:MAX_ISSUES]:
             if event is not None and event.is_set():
                 return None
             with self.lock:
