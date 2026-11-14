@@ -398,6 +398,10 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                     required|={"label","text"}
                 if operation=="check_text":
                     required|={"text"}
+                if operation=="tab_new":
+                    required|={"url"}
+                if operation in ("tab_switch","tab_close"):
+                    required|={"tab_id"}
                 if operation=="press":
                     required|={"key"}
                 elif operation=="scroll":
