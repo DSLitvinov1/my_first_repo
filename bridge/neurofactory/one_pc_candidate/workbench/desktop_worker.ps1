@@ -222,22 +222,22 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
   if($item.Current.ProcessId -ne $w.pid -or $item.Current.IsPassword){
     throw "DESKTOP_TARGET_UNSAFE"
   }
+  # UI Automation control types vary between WinForms, Office and browsers.
+  # The actual exposed *capability*, not its UIA class name, is authoritative.
   if($editor) {
-    $controlId=[int]$item.Current.ControlType.Id
-    if($controlId -notin @(
-       [Windows.Automation.ControlType]::Edit.Id,
-       [Windows.Automation.ControlType]::Document.Id)) {
+    $pattern=$null
+    if(-not $item.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)) {
       throw "DESKTOP_EDITOR_NOT_FOUND"
     }
-    $pattern=$null
-    if($item.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)) {
-      if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
+    if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
+  } else {
+    $invoke=$null
+    $select=$null
+    $canInvoke=$item.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$invoke)
+    $canSelect=$item.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$select)
+    if(-not $canInvoke -and -not $canSelect) {
+      throw "DESKTOP_CONTROL_NOT_INVOCABLE"
     }
-  } elseif([int]$item.Current.ControlType.Id -notin @(
-       [Windows.Automation.ControlType]::Button.Id,
-       [Windows.Automation.ControlType]::MenuItem.Id,
-       [Windows.Automation.ControlType]::TabItem.Id)) {
-    throw "DESKTOP_CONTROL_TYPE_NOT_APPROVED"
   }
   return $item
 }
@@ -344,16 +344,12 @@ while($true){
         $w=AssertForeground $req
         $element=FindNamedControl $w ([string]$req.label) $false
         $pattern=$null
-        if([int]$element.Current.ControlType.Id -eq [Windows.Automation.ControlType]::TabItem.Id) {
-          if(-not $element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
-            throw "DESKTOP_CONTROL_NOT_INVOCABLE"
-          }
+        if($element.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)) {
+          $pattern.Invoke()
+        } elseif($element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
           $pattern.Select()
         } else {
-          if(-not $element.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)) {
-            throw "DESKTOP_CONTROL_NOT_INVOCABLE"
-          }
-          $pattern.Invoke()
+          throw "DESKTOP_CONTROL_NOT_INVOCABLE"
         }
         $result=@{invoked=$true}
         break
