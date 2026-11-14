@@ -1,0 +1,63 @@
+{
+  "snapshot": "2026-11-14",
+  "note": "Candidates from technical crawl, NOT submitted",
+  "queue": [
+    {
+      "site": "semya-yurist.ru",
+      "projectId": "e52f0f28-fb80-4bcc-8d8f-b657ced0e472",
+      "auditId": "b7e9af9d-aaa7-46c0-82f0-43fe2f047f7c",
+      "candidates": [
+        "https://semya-yurist.ru/",
+        "https://semya-yurist.ru/practice/cases/family-alimony-appeal.html",
+        "https://semya-yurist.ru/practice/cases/family-alimony-cassation.html",
+        "https://semya-yurist.ru/practice/cases/family-divorce-public-example.html",
+        "https://semya-yurist.ru/practice/cases/family-invalid-marriage.html",
+        "https://semya-yurist.ru/practice/index.html",
+        "https://semya-yurist.ru/services/alimenty.html",
+        "https://semya-yurist.ru/services/brachnyi-dogovor.html",
+        "https://semya-yurist.ru/services/ipotechnaya-kvartira.html",
+        "https://semya-yurist.ru/services/razdel-imushchestva.html",
+        "https://semya-yurist.ru/services/razvod.html",
+        "https://semya-yurist.ru/services/spory-o-detyakh.html",
+        "https://semya-yurist.ru/specialists/levin-oleg.html",
+        "https://semya-yurist.ru/specialists/maryin-nikita.html",
+        "https://semya-yurist.ru/specialists/nigmatova-karina.html",
+        "https://semya-yurist.ru/specialists/nikolaeva-alena.html",
+        "https://semya-yurist.ru/specialists/obyknovennova-yulia.html",
+        "https://semya-yurist.ru/specialists/tonyan-aram.html"
+      ],
+      "unverified_submission": true
+    },
+    {
+      "site": "potrebpravo.ru",
+      "projectId": "0b14cd92-bf4d-43a0-b2dd-23b0ae1a02c1",
+      "auditId": "ba18c1f4-2042-43fd-bf1d-3d158fe3c399",
+      "candidates": [
+        "https://potrebpravo.ru/",
+        "https://potrebpravo.ru/practice/cases/consumer-refunded.html",
+        "https://potrebpravo.ru/practice/cases/developer-four.html",
+        "https://potrebpravo.ru/practice/cases/developer-one.html",
+        "https://potrebpravo.ru/practice/cases/developer-three.html",
+        "https://potrebpravo.ru/practice/cases/developer-two.html",
+        "https://potrebpravo.ru/practice/cases/rental-dispute.html",
+        "https://potrebpravo.ru/practice/cases/rental-money.html",
+        "https://potrebpravo.ru/practice/cases/traffic-accident.html",
+        "https://potrebpravo.ru/practice/cases/zpp-staircase.html",
+        "https://potrebpravo.ru/practice/index.html",
+        "https://potrebpravo.ru/services/nekachestvennye-uslugi.html",
+        "https://potrebpravo.ru/services/neustoyka-zastroishchika.html",
+        "https://potrebpravo.ru/services/pretenziya-prodavcu.html",
+        "https://potrebpravo.ru/services/strahovye-spory.html",
+        "https://potrebpravo.ru/services/vozvrat-avtomobilya.html",
+        "https://potrebpravo.ru/services/vozvrat-deneg.html",
+        "https://potrebpravo.ru/specialists/levin-oleg.html",
+        "https://potrebpravo.ru/specialists/maryin-nikita.html",
+        "https://potrebpravo.ru/specialists/nigmatova-karina.html",
+        "https://potrebpravo.ru/specialists/nikolaeva-alena.html",
+        "https://potrebpravo.ru/specialists/obyknovennova-yulia.html",
+        "https://potrebpravo.ru/specialists/tonyan-aram.html"
+      ],
+      "unverified_submission": true
+    }
+  ]
+}
