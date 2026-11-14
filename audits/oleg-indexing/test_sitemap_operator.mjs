@@ -49,6 +49,10 @@ test('Playwright sitemap operator: dry-run, apply, idempotency and guards',async
   await page.setContent('<h1>potrebpravo.ru</h1><input type="text"><button>Добавить</button>');
   await assert.rejects(submitOne(page,site,'yandex',{apply:true,strictUrl:false}),/unique sitemap URL input/);
 
+  await page.setContent('<h1>potrebpravo.ru</h1><input placeholder="Sitemap URL"><button>Submit</button><p>Nothing changed</p>');
+  const failed = await submitOne(page,site,'google',{apply:true,strictUrl:false});
+  assert.equal(failed.status,'unconfirmed');
+
   await page.setContent('<h1>potrebpravo.ru</h1><input placeholder="Sitemap URL"><button id="add">Submit</button><table><tbody id="rows"></tbody></table><script>window.sent=0;document.getElementById("add").addEventListener("click",()=>{window.sent++;document.getElementById("rows").innerHTML="<tr><td>sitemap.xml</td><td>Submitted</td></tr>";});</script>');
   const google=await submitOne(page,site,'google',{apply:true,strictUrl:false});
   assert.equal(google.status,'submitted-ui-confirmed');
