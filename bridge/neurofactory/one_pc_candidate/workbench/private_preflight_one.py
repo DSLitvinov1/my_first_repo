@@ -64,7 +64,7 @@ def verify_manifest(root):
                         len(name)>240 or "\\" in name):
                     return {"state":"invalid","reason":"VENDOR_ENTRY_INVALID"}
                 parts=name.split("/")
-                if (len(parts)<3 or
+                if (len(parts)<(2 if name.startswith("node_modules/") else 3) or
                         any(part in (".","..") or not re.fullmatch(
                             r"[A-Za-z0-9@_.+-]{1,90}",part)
                             for part in parts) or
