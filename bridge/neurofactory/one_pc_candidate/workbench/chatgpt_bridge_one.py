@@ -178,6 +178,7 @@ class ChatGPTBridgeOne:
         self.last_poll = None
         self.last_error = None
         self.pending = {}
+        self.running = {}
         with self.store.db() as c:
             c.executescript("""
             CREATE TABLE IF NOT EXISTS one_chatgpt_commands (
@@ -199,6 +200,7 @@ class ChatGPTBridgeOne:
                     "last_poll":self.last_poll,
                     "last_error":self.last_error,
                     "pending_approvals":len(self.pending),
+                    "running_approved":len(self.running),
                     "operations":sorted(BRIDGE_OPS),
                     "outbound_only":True,
                     "unattended_desktop_actions":False}
@@ -239,26 +241,32 @@ class ChatGPTBridgeOne:
             self.transport=None
             self.repo=self.owner=None
             self.pending.clear()
+            self.running.clear()
             if self.vault.ready():
                 self.vault.delete("github","issuebridge")
         return self.status()
 
     def start(self):
         with self.lock:
-            if self.worker is not None and self.worker.is_alive():
+            if (self.worker is not None and self.worker.is_alive() and
+                    not self.stop_event.is_set()):
                 return
-            self.stop_event.clear()
-            self.worker=threading.Thread(target=self._loop,daemon=True,
+            # Independent lifecycle token prevents a disconnected old worker
+            # from resuming if the user pairs another repository.
+            self.stop_event=threading.Event()
+            event=self.stop_event
+            self.worker=threading.Thread(target=self._loop,args=(event,),
+                                         daemon=True,
                                          name="one-chatgpt-private-issue-bridge")
             self.worker.start()
 
-    def _loop(self):
-        while not self.stop_event.is_set():
+    def _loop(self,event):
+        while not event.is_set():
             try:
-                self.poll_once()
+                self.poll_once(event)
             except Exception:
                 self.last_error="CHATGPT_BRIDGE_POLL_FAILED"
-            self.stop_event.wait(20)
+            event.wait(20)
 
     def _journal(self, issue_id, cmd):
         with self.store.db() as c:
@@ -293,8 +301,13 @@ class ChatGPTBridgeOne:
             if not item or item["project"] != project:
                 raise WorkDenied("CHATGPT_APPROVAL_NOT_FOUND")
             self.pending.pop(issue_id)
-        self.scripts.start(project,item["session"],item["plan_id"],item["script"])
-        return {"issue_id":issue_id,"state":"RUNNING","owner_approved":True}
+        result=self.scripts.start(project,item["session"],item["plan_id"],item["script"])
+        with self.lock:
+            self.running[issue_id]={"project":project,"plan_id":item["plan_id"],
+                                    "request_id":item["request_id"],
+                                    "number":item["number"]}
+        return {"issue_id":issue_id,"state":"RUNNING","owner_approved":True,
+                "plan_id":item["plan_id"]}
 
     def reject(self, project, issue_id):
         if type(issue_id) is not int or issue_id <= 0:
@@ -306,7 +319,7 @@ class ChatGPTBridgeOne:
             self.pending.pop(issue_id)
         return {"issue_id":issue_id,"state":"REJECTED_BY_OWNER"}
 
-    def _execute(self, cmd, issue_id):
+    def _execute(self, cmd, issue_id, issue_number):
         project=cmd["project_id"]
         self.store.project(project)
         op=cmd["operation"]
@@ -333,20 +346,54 @@ class ChatGPTBridgeOne:
             plan=self.scripts.prepare(project,active["id"],script)
             with self.lock:
                 self.pending[issue_id]={"project":project,"session":active["id"],
-                    "plan_id":plan["id"],"script":script,"step_count":plan["step_count"]}
+                    "plan_id":plan["id"],"script":script,"step_count":plan["step_count"],
+                    "number":issue_number,"request_id":cmd["request_id"]}
             return {"state":"NEEDS_LOCAL_OWNER_APPROVAL","operation":op,
                     "steps":plan["step_count"]}
         raise WorkDenied("CHATGPT_OPERATION_REFUSED")
 
-    def poll_once(self):
+    def _check_running(self, api):
+        with self.lock:
+            executions=list(self.running.items())
+        for issue_id,item in executions:
+            try:
+                state=self.scripts.get(item["project"],item["plan_id"])
+            except WorkDenied:
+                state={"state":"STOPPED","completed":0}
+            if state["state"]=="RUNNING":
+                continue
+            receipt={"schema":"one.chatgpt.receipt.v1",
+                     "request_id":item["request_id"],
+                     "operation":"desktop.prepare",
+                     "state":"DONE" if state["state"]=="DONE" else "STOPPED",
+                     "completed":state.get("completed",0),
+                     "owner_approved":True}
+            self._finish(issue_id,receipt["state"],receipt)
+            with self.lock:
+                self.running.pop(issue_id,None)
+            try:
+                api.comment(item["number"],receipt)
+            except Exception:
+                self.last_error="CHATGPT_RECEIPT_DELIVERY_UNKNOWN_NO_RETRY"
+            break
+
+    def poll_once(self, event=None):
         with self.lock:
             api=self.transport
             owner=self.owner
         if not api:
             raise WorkDenied("CHATGPT_BRIDGE_NOT_CONNECTED")
+        if event is not None and event.is_set():
+            return None
+        self._check_running(api)
         issues=api.issues()
         self.last_poll=int(self.now())
         for issue in sorted(issues,key=lambda x: x.get("id",0))[:MAX_ISSUES]:
+            if event is not None and event.is_set():
+                return None
+            with self.lock:
+                if self.transport is not api:
+                    return None
             try:
                 cmd=verify_command(issue,owner,self.now())
             except WorkDenied:
@@ -355,7 +402,7 @@ class ChatGPTBridgeOne:
             if not self._journal(issue_id,cmd):
                 continue
             try:
-                result=self._execute(cmd,issue_id)
+                result=self._execute(cmd,issue_id,issue["number"])
                 state=result["state"]
                 receipt={"schema":"one.chatgpt.receipt.v1",
                          "request_id":cmd["request_id"],**result}
