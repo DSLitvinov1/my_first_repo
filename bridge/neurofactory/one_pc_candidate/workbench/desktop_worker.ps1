@@ -243,7 +243,8 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
       if($kind -notin @(
           [Windows.Automation.ControlType]::Text.Id,
           [Windows.Automation.ControlType]::Button.Id,
-          [Windows.Automation.ControlType]::Custom.Id)) {
+          [Windows.Automation.ControlType]::Custom.Id,
+          [Windows.Automation.ControlType]::Pane.Id)) {
         throw "DESKTOP_CONTROL_NOT_INVOCABLE"
       }
       $bounds=$item.Current.BoundingRectangle
