@@ -71,6 +71,9 @@ def verify_manifest(root):
                              name.startswith("runtime/node/") or
                              name.startswith("node_modules/"))):
                     return {"state":"invalid","reason":"VENDOR_PATH_REFUSED"}
+            # Validate every path before touching any vendor file.
+            for name,digest in vendor.items():
+                parts=name.split("/")
                 file=root
                 for part in parts:
                     file=file/part
