@@ -140,7 +140,7 @@ class ChatGPTBridgeTest(unittest.TestCase):
         self.assertEqual(self.scripts.approved,[])
 
     def test_remote_desktop_script_requires_local_confirm(self):
-        script="Посмотри окно\\nНайди элемент «Отчёты»"
+        script="Посмотри окно\nНайди элемент «Отчёты»"
         item=owner_issue(self.project,"desktop.prepare",{"script":script},ident=508)
         self.issues.list=[item]
         staged=self.bridge.poll_once()
