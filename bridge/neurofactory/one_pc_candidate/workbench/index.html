@@ -183,6 +183,21 @@
                 placeholder="Текст для печати в выбранном поле"/>
               <button id="mesh-type" type="button" class="button accent small">Напечатать</button>
             </div>
+            <div class="mesh-private-ready" aria-label="Планирование действий по обычной просьбе">
+              <strong>Объясни ONE Agent своими словами</strong>
+              <p>Агент осмотрит доступные кнопки и вкладки выбранного окна и попросит Qwen
+                 составить план. Никаких действий он не выполнит, пока ты не проверишь
+                 и не разрешишь план.</p>
+              <label for="mesh-desktop-goal" class="agent-label">Что нужно сделать</label>
+              <textarea id="mesh-desktop-goal" rows="3" maxlength="500" spellcheck="false"
+                placeholder="Посмотри меню этой программы, найди отчёты и покажи их"></textarea>
+              <div class="mesh-actions">
+                <button id="mesh-desktop-goal-submit" type="button" class="button accent small">Понять задачу и составить план</button>
+              </div>
+              <div id="mesh-desktop-goal-status" role="status" class="mesh-status">
+                Выбери окно программы и опиши результат.
+              </div>
+            </div>
             <div class="mesh-private-ready" aria-label="Безопасное задание для выбранного окна Windows">
               <strong>Задание Windows — несколько действий за один запуск</strong>
               <p>Пиши по одной команде в строке. Агент выполнит до 8 проверенных шагов в выбранной программе. Отправка, удаление, платежи и сохранение без отдельного разрешения заблокированы.</p>
