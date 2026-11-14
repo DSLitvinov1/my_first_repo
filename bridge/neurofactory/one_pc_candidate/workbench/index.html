@@ -98,6 +98,12 @@
           <button class="button accent small" type="button" id="browser-open" disabled>Открыть браузер</button>
         </div>
         <div id="browser-status" class="browser-info" aria-live="polite">Проверка готовности браузера...</div>
+        <div class="browser-controls" id="browser-tabs" hidden>
+          <label for="browser-tab-list">Вкладки изолированного браузера</label>
+          <select id="browser-tab-list" aria-label="Выбрать вкладку ONE Agent"></select>
+          <button class="button soft small" type="button" id="browser-tab-new">＋ Вкладка по адресу</button>
+          <button class="button soft small" type="button" id="browser-tab-close">Закрыть вкладку</button>
+        </div>
         <div class="browser-controls" id="browser-controls" hidden>
           <button class="button soft small" type="button" data-browser-command="scroll_up">↑ Вверх</button>
           <button class="button soft small" type="button" data-browser-command="scroll_down">↓ Вниз</button>
