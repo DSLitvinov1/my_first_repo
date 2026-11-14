@@ -88,5 +88,5 @@ if ($apps.Count -gt 0) {
 Write-Host 'NEIROZAVOD WORK ONE / PRIVATE / LOCAL'
 Write-Host 'Local address: http://127.0.0.1:18770/'
 Write-Host 'No CORE9/HOST changes; service actions require explicit separate approval.'
-& $pythonExe (Join-Path $root 'work_server.py') --root (Join-Path $state 'projects') --data (Join-Path $state 'data') --port 18770 @extra
+& $pythonExe (Join-Path $root 'work_server.py') --root (Join-Path $state 'projects') --data (Join-Path $state 'data') --port 18770 --open-ui @extra
 if ($LASTEXITCODE -ne 0) { throw 'PERSONAL_WORK_SERVER_STOPPED_WITH_ERROR' }
