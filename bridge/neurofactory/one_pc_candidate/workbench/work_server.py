@@ -29,6 +29,7 @@ from desktop_script_one import DesktopScriptOne
 from credentials_one import UserVault
 from google_oauth_one import GoogleOAuthOne, BitrixConnection
 from yandex_one import YandexConnection, YandexReadOnlyAdapter
+from chatgpt_bridge_one import ChatGPTBridgeOne
 from service_one import ServiceOne, GoogleWorkspaceAdapter, Bitrix24Adapter
 from qwen_planner_one import QwenPlannerOne, LocalOllamaQwen, LOCAL_APPROVED_MODELS
 from llama_connector_one import LlamaCppQwenOne
@@ -77,7 +78,7 @@ def model_module():
     return module
 
 def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
-                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,yandex=None,private_flow=None):
+                 desktop=None,planner=None,services=None,oauth=None,bitrix=None,yandex=None,private_flow=None,chatgpt_bridge=None):
     agent=agent or AgentOne(store)
     browser=browser or BrowserController(store,assets)
     workflow=workflow or WorkflowOne(store,browser)
@@ -87,6 +88,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
     oauth=oauth or GoogleOAuthOne()
     bitrix=bitrix or BitrixConnection(oauth.vault)
     yandex=yandex or YandexConnection(oauth.vault)
+    chatgpt_bridge=chatgpt_bridge or ChatGPTBridgeOne(store,agent,desktop,desktop_scripts,oauth.vault)
     if services is None:
         adapters={}
         if oauth.capabilities()["configured"]:
@@ -185,6 +187,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                               "google":oauth.capabilities(),
                               "bitrix_connected":bool(bitrix.portal()),
                               "yandex":yandex.capabilities(),
+                              "chatgpt":chatgpt_bridge.status(),
                               "services":services.status()})
             elif path.path=="/api/private/readiness" and not path.query:
                 if self.headers.get("X-NF-Work-Token")!=token:
@@ -203,6 +206,10 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                 if set(vals)!={"project_id","id"} or any(len(x)!=1 for x in vals.values()):
                     raise ServerDenied("PRIVATE_FLOW_QUERY_INVALID")
                 self.out(200,private_flow.status(vals["project_id"][0],vals["id"][0]))
+            elif path.path=="/api/chatgpt/pending" and not path.query:
+                if self.headers.get("X-NF-Work-Token")!=token:
+                    raise ServerDenied("CHATGPT_OWNER_TOKEN_REQUIRED")
+                self.out(200,{"pending":chatgpt_bridge.pending_approvals()})
             elif path.path=="/api/desktop/script/status":
                 if self.headers.get("X-NF-Work-Token")!=token:
                     raise ServerDenied("DESKTOP_OWNER_TOKEN_REQUIRED")
@@ -293,6 +300,18 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
             if url.query:
                 raise ServerDenied("MUTATION_QUERY_REFUSED")
             data=self.parse()
+            if method=="POST" and url.path=="/api/connectors/chatgpt/github/connect" and set(data)=={"repository","owner","access_token"}:
+                self.out(201,chatgpt_bridge.connect(data["repository"],data["owner"],data["access_token"]))
+                return
+            if method=="POST" and url.path=="/api/connectors/chatgpt/github/disconnect" and data=={}:
+                self.out(200,chatgpt_bridge.disconnect())
+                return
+            if method=="POST" and url.path=="/api/chatgpt/approve" and set(data)=={"project_id","issue_id"}:
+                self.out(202,chatgpt_bridge.approve(data["project_id"],data["issue_id"]))
+                return
+            if method=="POST" and url.path=="/api/chatgpt/reject" and set(data)=={"project_id","issue_id"}:
+                self.out(200,chatgpt_bridge.reject(data["project_id"],data["issue_id"]))
+                return
             if method=="POST" and url.path=="/api/private/flow/prepare" and set(data)=={"project_id","script","action","fields"}:
                 self.out(201,private_flow.prepare(data["project_id"],data["script"],
                                                    data["action"],data["fields"]))
@@ -335,7 +354,7 @@ def make_handler(store,assets,token,port,agent=None,browser=None,workflow=None,
                     expected|={"direction","steps"}
                 elif op=="key":
                     expected|={"key"}
-                elif op=="click_label":
+                elif op in ("click_label","expect_label"):
                     expected|={"label"}
                 elif op=="type_label":
                     expected|={"label","text"}
@@ -575,11 +594,14 @@ def main():
         except (ServerDenied,OSError,ValueError):
             model_fn=None
     planner=QwenPlannerOne(store,browser,model_fn=model_fn)
+    chatgpt_bridge=ChatGPTBridgeOne(store,AgentOne(store),desktop,DesktopScriptOne(desktop),vault)
     server=ThreadingHTTPServer(("127.0.0.1",args.port),
                               make_handler(store,Path(__file__).resolve().parent,
                                            token,args.port,browser=browser,
                                            desktop=desktop,planner=planner,
-                                           services=services,oauth=oauth,bitrix=bitrix,yandex=yandex))
+                                           services=services,oauth=oauth,bitrix=bitrix,yandex=yandex,
+                                           chatgpt_bridge=chatgpt_bridge))
+    chatgpt_bridge.restore()
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
     if args.open_ui and os.name=="nt":
