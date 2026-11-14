@@ -362,7 +362,8 @@ async function meshRead(){
   const resource=$("mesh-read-resource").value;
   let fields={};
   if(resource==="google.tasks.list")fields={list_id:$("mesh-record-list").value.trim()};
-  if(resource.startsWith("bitrix."))fields={id:$("mesh-record-id").value.trim()};
+  if(resource.startsWith("bitrix.")&&resource.endsWith(".get"))
+    fields={id:$("mesh-record-id").value.trim()};
   if(resource==="google.searchconsole.queries")
     fields={site_url:$("mesh-gsc-property").value.trim()};
   if(resource==="yandex.metrika.visits")
