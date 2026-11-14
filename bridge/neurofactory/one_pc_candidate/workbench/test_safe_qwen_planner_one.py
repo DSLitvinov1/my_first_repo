@@ -100,7 +100,7 @@ class QwenSafePlanRegression(unittest.TestCase):
         self.assertEqual(state["steps"],2)
         self.assertEqual(state["origin"],"owner_exact_readonly_completion")
         self.assertEqual(state["script"],
-                         "Открой https://example.org/\\nСделай снимок")
+                         "Открой https://example.org/\nСделай снимок")
 
     def test_exact_owner_target_overrides_wrong_model_path(self):
         reply=json.dumps({"schema":"nf.one.qwen.proposal.v1",
