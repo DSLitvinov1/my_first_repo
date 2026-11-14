@@ -25,6 +25,13 @@ Checkpoint 2026-11-15. Continue existing code, never recreate CORE/HOST or the u
 - The local browser and user accounts must not have their Chrome profiles, passwords, cookies or credentials copied into ONE.
 - No publishing, payment, deletion, Yandex Direct campaign launch, external write, privilege escalation or unattended automation without separate authorization and verified guarded workflow.
 
+## Live baseline diagnostic through existing ChatGPT Windows runner
+
+- Private existing runner inspection succeeded: [lesson3.1 GitHub Actions #43644838772](https://github.com/DSLitvinov1/lesson3.1/actions/runs/43644838772) using only the baseline local HTTP status endpoints.
+- EXACT baseline SHA matched; ONE loopback UI was reachable; Qwen configured = TRUE; desktop adapter configured = TRUE; projects = 1; Google connected = FALSE, Bitrix connected = FALSE. **No new candidate code was installed**.
+- The shared Windows runner checkout emitted `not uptodate; will not remove from working tree` warnings for other project files even though the read-only status step ended PASS. Do not reuse `actions/checkout` on that shared dirty runner workspace without isolation; use a fresh worktree or a trusted read-only remote transport to prevent modifying unrelated projects. No evidence of unrelated file deletion was collected.
+- This proves the existing ChatGPT/GitHub -> Windows read-only diagnostic channel works, **not** universal human-like GUI automation.
+
 ## Outstanding acceptance
 1. Confirm whether existing private GitHub bridge reaches Windows and exact loopback ONE endpoint. Separate read-only diagnostic: `DSLitvinov1/lesson3.1` branch `workone-chatgpt-readonly-smoke-20261115`. Never modify production while testing.
 2. Run Windows UI Automation E2E inside an actual interactive desktop session (bounded synthetic WinForms window, real key/point/label).
