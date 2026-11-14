@@ -2,7 +2,7 @@
 /* Work ONE v0.6: one local UI; no direct secrets/model instructions execute. */
 const mesh = {
   project:null, status:null, planId:null, desktopSession:null,
-  screenshot:null, record:null, pending:null, flow:null, desktopTask:null, chatgptRun:null, busy:false,
+  screenshot:null, record:null, pending:null, flow:null, desktopTask:null, chatgptRun:null, desktopGoal:null, busy:false,
 };
 
 function meshMessage(text, error=false) {
@@ -40,6 +40,7 @@ async function meshRefresh() {
     $("mesh-yandex-disconnect").disabled=!status.yandex?.configured;
     $("mesh-plan").disabled=!state.project||!status.qwen?.configured;
     const desktop=status.desktop||{};
+    $("mesh-desktop-goal-submit").disabled=!state.project||!status.desktop_qwen?.available;
     $("mesh-desktop-status").textContent=desktop.configured?
       "Доступ только для приложений: "+(desktop.allowed_apps||[]).join(", "):
       "Управление Windows выключено. Запустите приложение в пользовательской сессии с явным списком разрешённых программ.";
@@ -51,6 +52,7 @@ async function meshRefresh() {
       mesh.flow=null;
       mesh.desktopSession=null;
       mesh.desktopTask=null;
+      mesh.desktopGoal=null;
       $("mesh-script-start").disabled=true;
       $("mesh-script-result").textContent="Выбери разрешённое окно и проверь задание.";
       $("mesh-flow-start").disabled=true;
@@ -135,6 +137,7 @@ async function meshAttach(){
       project_id:state.project,app:win.app,pid:win.pid,handle:win.handle});
     mesh.desktopSession=result.session_id;
     mesh.desktopTask=null;
+    mesh.desktopGoal=null;
     $("mesh-script-start").disabled=true;
     $("mesh-desktop-status").textContent=
       "Подключено: "+result.app+". Нажми «Снимок», чтобы увидеть окно.";
@@ -180,6 +183,47 @@ async function meshDesktopClose(){
   }
 }
 
+async function meshDesktopGoalPropose(){
+  if(!state.project||!mesh.desktopSession){
+    notice("Сначала выбери разрешённое окно Windows.",true);return;
+  }
+  const goal=$("mesh-desktop-goal").value.trim();
+  if(goal.length<15){notice("Опиши задачу подробнее.",true);return;}
+  $("mesh-desktop-goal-submit").disabled=true;
+  $("mesh-desktop-goal-status").textContent="Агент осматривает окно и готовит безопасный план...";
+  try{
+    const result=await api("/api/desktop/goal/propose","POST",{
+      project_id:state.project,session_id:mesh.desktopSession,goal});
+    mesh.desktopGoal={id:result.id,project:state.project,session:mesh.desktopSession};
+  }catch(e){
+    $("mesh-desktop-goal-status").textContent="Задание не принято: "+e.message;
+    notice(e.message,true);
+  }finally{$("mesh-desktop-goal-submit").disabled=false;}
+}
+async function meshDesktopGoalPoll(){
+  const pending=mesh.desktopGoal;
+  if(!pending||pending.project!==state.project||pending.session!==mesh.desktopSession)return;
+  try{
+    const q=new URLSearchParams({project_id:pending.project,id:pending.id});
+    const plan=await api("/api/desktop/goal/status?"+q);
+    if(plan.state==="GENERATING")return;
+    mesh.desktopGoal=null;
+    if(plan.state==="PROPOSED"&&plan.script){
+      $("mesh-desktop-script").value=plan.script;
+      $("mesh-script-start").disabled=true;
+      mesh.desktopTask=null;
+      $("mesh-desktop-goal-status").textContent=
+        "Qwen подготовила "+plan.steps+" действий. Прочитай план ниже, "+
+        "нажми «Проверить задание» и только затем «Выполнить всё».";
+    }else{
+      $("mesh-desktop-goal-status").textContent=
+        "Qwen не смогла составить безопасный план: "+(plan.error||plan.state);
+    }
+  }catch(e){
+    mesh.desktopGoal=null;
+    $("mesh-desktop-goal-status").textContent="Ошибка проверки плана: "+e.message;
+  }
+}
 async function meshDesktopScriptPrepare(){
   const script=$("mesh-desktop-script").value.trim();
   mesh.desktopTask=null;
@@ -639,6 +683,7 @@ function bindMesh(){
   $("mesh-google-disconnect").addEventListener("click",meshDisconnectGoogle);
   $("mesh-yandex-connect").addEventListener("click",meshConnectYandex);
   $("mesh-yandex-disconnect").addEventListener("click",meshDisconnectYandex);
+  $("mesh-desktop-goal-submit").addEventListener("click",meshDesktopGoalPropose);
   $("mesh-chatgpt-connect").addEventListener("click",meshChatGPTConnect);
   $("mesh-chatgpt-disconnect").addEventListener("click",meshChatGPTDisconnect);
   $("mesh-chatgpt-refresh").addEventListener("click",meshChatGPTPending);
@@ -663,3 +708,4 @@ setInterval(meshPollQwen,1500);
 setInterval(meshFlowPoll,1300);
 setInterval(meshDesktopScriptPoll,1100);
 setInterval(meshChatGPTPoll,1400);
+setInterval(meshDesktopGoalPoll,1400);
