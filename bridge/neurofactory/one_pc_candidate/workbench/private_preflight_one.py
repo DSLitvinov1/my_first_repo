@@ -36,7 +36,7 @@ def verify_manifest(root):
         names=doc["file_digests"]
         if (doc.get("schema")!="nf.workone.personal-bundle.v1" or
             type(names) is not dict or not REQUIRED.issubset(names) or
-            len(names)!=25 or doc.get("contains_secrets") is not False or
+            len(names)!=26 or doc.get("contains_secrets") is not False or
             doc.get("installs_windows_service") is not False):
             return {"state":"invalid","reason":"MANIFEST_INVALID"}
         for name,digest in names.items():
