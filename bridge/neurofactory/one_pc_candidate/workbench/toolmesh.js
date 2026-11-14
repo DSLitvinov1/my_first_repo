@@ -338,6 +338,8 @@ async function meshRead(){
   let fields={};
   if(resource==="google.tasks.list")fields={list_id:$("mesh-record-list").value.trim()};
   if(resource.startsWith("bitrix."))fields={id:$("mesh-record-id").value.trim()};
+  if(resource==="google.searchconsole.queries")
+    fields={site_url:$("mesh-gsc-property").value.trim()};
   try{
     const result=await api("/api/service/read","POST",{
       project_id:state.project,resource,fields});
