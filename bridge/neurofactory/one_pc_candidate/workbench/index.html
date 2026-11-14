@@ -197,7 +197,7 @@
             </div>
           </div>
           <div class="mesh-part">
-            <h3>Google и Bitrix24</h3>
+            <h3>Google, Яндекс и Bitrix24</h3>
             <p>Подключения оформляются отдельно. Существующие аккаунты ChatGPT не копируются в программу.</p>
             <div id="mesh-connectors-status" role="status" class="mesh-status">Сведения о подключениях...</div>
             <div class="mesh-actions">
@@ -211,6 +211,16 @@
               </select>
               <button type="button" id="mesh-google-connect" class="button soft small">Подключить Google</button>
               <button type="button" id="mesh-google-disconnect" class="button soft small">Отозвать локальный доступ</button>
+            </div>
+            <div class="mesh-actions">
+              <label for="mesh-yandex-scope">Яндекс</label>
+              <select id="mesh-yandex-scope">
+                <option value="metrika.readonly">Метрика · только чтение</option>
+                <option value="webmaster.readonly">Вебмастер · только чтение</option>
+              </select>
+              <input id="mesh-yandex-token" type="password" maxlength="4096" autocomplete="off" placeholder="OAuth-токен от Яндекса с соответствующим разрешением"/>
+              <button type="button" class="button soft small" id="mesh-yandex-connect">Подключить</button>
+              <button type="button" class="button soft small" id="mesh-yandex-disconnect">Отключить</button>
             </div>
             <div class="mesh-actions">
               <label for="mesh-bitrix-portal">Bitrix24</label>
@@ -263,6 +273,10 @@
                 <option value="google.calendar.events.list">Google Календарь · события</option>
                 <option value="google.searchconsole.sites.list">Search Console · мои сайты</option>
                 <option value="google.searchconsole.queries">Search Console · поисковые запросы за 28 дней</option>
+                <option value="yandex.metrika.counters.list">Яндекс Метрика · счётчики</option>
+                <option value="yandex.metrika.visits">Яндекс Метрика · визиты за 28 дней</option>
+                <option value="yandex.webmaster.hosts.list">Яндекс Вебмастер · мои сайты</option>
+                <option value="yandex.webmaster.summary">Яндекс Вебмастер · сводка индексации</option>
                 <option value="bitrix.tasks.get">Bitrix24 · задача</option>
                 <option value="bitrix.crm.deal.get">Bitrix24 · сделка (отдельные CRM-права)</option>
                 <option value="bitrix.crm.contact.get">Bitrix24 · контакт (отдельные CRM-права)</option>
@@ -273,6 +287,10 @@
               <label for="mesh-gsc-property">Ресурс Google Search Console (для запросов)</label>
               <input id="mesh-gsc-property" type="text" maxlength="250" autocomplete="off"
                 placeholder="sc-domain:example.com или https://example.com/"/>
+              <label for="mesh-yandex-counter">ID счётчика Метрики</label>
+              <input id="mesh-yandex-counter" type="text" maxlength="18" autocomplete="off" placeholder="12345678"/>
+              <label for="mesh-yandex-host">ID сайта Вебмастера</label>
+              <input id="mesh-yandex-host" type="text" maxlength="240" autocomplete="off" placeholder="https:example.com:443"/>
             </div>
             <pre id="mesh-record-result" class="mesh-result" aria-live="polite">Подключения не менялись.</pre>
           </div>
