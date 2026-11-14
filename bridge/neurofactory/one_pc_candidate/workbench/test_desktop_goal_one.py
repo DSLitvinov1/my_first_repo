@@ -49,7 +49,7 @@ class DesktopGoalTest(unittest.TestCase):
 
     def test_model_only_proposes_not_executes(self):
         prompts=[]
-        script="Посмотри окно\\nНайди элемент «Отчёты»\\nНажми «Отчёты»\\nСделай снимок окна"
+        script="Посмотри окно\nНайди элемент «Отчёты»\nНажми «Отчёты»\nСделай снимок окна"
         def model(project,prompt):
             prompts.append(prompt)
             return {"status":"PROPOSED_UNVERIFIED",
