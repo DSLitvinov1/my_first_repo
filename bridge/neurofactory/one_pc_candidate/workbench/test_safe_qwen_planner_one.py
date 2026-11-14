@@ -88,6 +88,37 @@ class QwenSafePlanRegression(unittest.TestCase):
         self.assertEqual(state["state"], "PROPOSED")
         self.assertEqual(state["origin"], "validated_model_json")
 
+    def test_real_model_valid_json_missing_screenshot_gets_exact_safe_completion(self):
+        # Live Windows QA demonstrated model emitting one valid OPEN action
+        # for an explicit OPEN + FRAME owner goal. Never mark that as full.
+        reply = json.dumps({"schema":"nf.one.qwen.proposal.v1",
+                            "steps":[{"op":"open","url":"https://example.org/"}]})
+        state=self.result(lambda project, request:{
+            "status":"PROPOSED_UNVERIFIED","text":reply},
+            "Открой https://example.org/ и сделай снимок")
+        self.assertEqual(state["state"],"PROPOSED")
+        self.assertEqual(state["steps"],2)
+        self.assertEqual(state["origin"],"owner_exact_readonly_completion")
+        self.assertEqual(state["script"],
+                         "Открой https://example.org/\\nСделай снимок")
+
+    def test_exact_owner_target_overrides_wrong_model_path(self):
+        reply=json.dumps({"schema":"nf.one.qwen.proposal.v1",
+                          "steps":[{"op":"open","url":"https://example.org/unrequested"},
+                                   {"op":"frame"}]})
+        state=self.result(lambda p,q:{"status":"PROPOSED_UNVERIFIED","text":reply},
+                          "Открой https://example.org/ и сделай снимок")
+        self.assertEqual(state["origin"],"owner_exact_readonly_completion")
+        self.assertEqual(state["steps"],2)
+        self.assertNotIn("unrequested",state["script"])
+
+    def test_nonexact_screenshot_goal_missing_frame_fails_closed(self):
+        reply=json.dumps({"schema":"nf.one.qwen.proposal.v1",
+                          "steps":[{"op":"open","url":"https://example.org/"}]})
+        state=self.result(lambda p,q:{"status":"PROPOSED_UNVERIFIED","text":reply},
+                          "Открой https://example.org/ и сделай снимок после прокрутки")
+        self.assertEqual(state["state"],"UNKNOWN_NO_RETRY")
+
     def test_invalid_digest_never_falls_back(self):
         state = self.result(lambda project, request: {
             "status": "PROPOSED_UNVERIFIED", "text": "not json",
