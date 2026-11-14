@@ -49,7 +49,7 @@ class DesktopScriptTests(unittest.TestCase):
         self.assertEqual(steps[3]["key"], "ctrl_f")
 
     def test_human_window_observe_and_verify_labels(self):
-        script="Посмотри окно\\nНайди элемент «Отчёты»\\nНажми «Отчёты»\\nУбедись что есть «Статистика»"
+        script="Посмотри окно\nНайди элемент «Отчёты»\nНажми «Отчёты»\nУбедись что есть «Статистика»"
         steps=parse_safe_desktop_script(script)
         self.assertEqual([x["op"] for x in steps],
                          ["observe","expect_label","click_label","expect_label"])
