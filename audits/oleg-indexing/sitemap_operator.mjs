@@ -51,7 +51,7 @@ const errors = [
   /нет прав/i, /доступ запрещён/i, /нет доступа/i, /you don't have permission/i,
   /property not found/i, /подтвердите права/i
 ];
-const accepted = /(^|[\s\n])(успешно|добавлен|отправлен|accepted|success|submitted|sitemap\.xml)([\s\n]|$)/i;
+const accepted = /(успешно|добавлен[аоы]?|отправлен[аоы]?|accepted|success|submitted)/i;
 
 async function detectForm(page, service) {
   const candidates = service === 'yandex' ?
@@ -103,8 +103,9 @@ export async function submitOne(page, site, service, {apply=false, strictUrl=tru
   const now = (await page.locator('body').innerText()).slice(0,24000);
   if (errors.some(rx=>rx.test(now)))
     return {status:'rejected',site:site.host,service,reason:'permission or property error'};
-  if (!accepted.test(now))
-    return {status:'unconfirmed',site:site.host,service,reason:'submit click occurred but acceptance not visible'};
+  const listAfter = norm(await page.locator('table').allTextContents().then(xs=>xs.join('\n')));
+  if (now === text || !accepted.test(now) || (service==='yandex' && !listAfter.includes(site.sitemap.toLowerCase())))
+    return {status:'unconfirmed',site:site.host,service,reason:'submit click occurred but fresh acceptance not verifiable'};
   return {status:'submitted-ui-confirmed',site:site.host,service};
 }
 
