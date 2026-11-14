@@ -5,6 +5,11 @@ on:
     paths:
       - 'audits/oleg-indexing/**'
       - '.github/workflows/oleg-playwright-indexability.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/**'
+      - '.github/workflows/oleg-playwright-indexability.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +31,8 @@ jobs:
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
+      - name: Verify audit syntax
+        run: node --check audit.cjs
       - name: Audit public indexing eligibility without changing sites
         run: node audit.cjs
       - name: Attach report
