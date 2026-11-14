@@ -333,7 +333,22 @@ class AgentOne:
                 if len(encoded.encode("utf-8")) > 64 * 1024:
                     raise WorkDenied("AGENT_TOOL_RESULT_TOO_LARGE")
                 state, err = "DONE", None
+            except WorkDenied as exc:
+                # Expose only our fixed, operator-actionable audit error codes.
+                # Never store remote HTML, host addresses or OS exception text.
+                reason = str(exc)
+                allowed = {
+                    "AUDIT_URL_INVALID", "AUDIT_URL_REFUSED",
+                    "AUDIT_IP_LITERAL_REFUSED", "AUDIT_DNS_FAILED",
+                    "AUDIT_PRIVATE_NETWORK_REFUSED",
+                    "AUDIT_HTTP_NOT_OK_OR_REDIRECT", "AUDIT_NOT_HTML",
+                    "AUDIT_ENCODING_REFUSED", "AUDIT_BODY_TOO_LARGE",
+                    "AUDIT_CHARSET_UNSUPPORTED", "AUDIT_NETWORK_UNAVAILABLE",
+                }
+                encoded, state, err = None, "FAILED", (
+                    reason if reason in allowed else "AUDIT_TOOL_FAILED")
             except Exception:
+                # Unexpected failures are generic; do not leak secrets or paths.
                 encoded, state, err = None, "FAILED", "AUDIT_TOOL_FAILED"
             with self.store.db() as c:
                 c.execute("UPDATE one_steps SET state=?,result_json=?,error=? "
