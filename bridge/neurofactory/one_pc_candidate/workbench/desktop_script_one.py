@@ -66,6 +66,16 @@ def parse_safe_desktop_script(script):
                 raise WorkDenied("DESKTOP_TEXT_REFUSED")
             result.append({"op": "type_label", "label": label, "text": value})
             continue
+        # Focused text input is useful when a legacy desktop application
+        # exposes no accessible field name. The desktop worker still verifies
+        # the owner window, process, editable control and non-password state.
+        m = re.fullmatch(r'(?i)напечатай\s+[«"]([^»"]{1,500})[»"]', line)
+        if m:
+            value = m[1]
+            if not value or len(value) > MAX_TEXT or any(ord(c) < 32 for c in value):
+                raise WorkDenied("DESKTOP_TEXT_REFUSED")
+            result.append({"op": "type", "text": value})
+            continue
         m = re.fullmatch(r"(?i)нажми\s+(esc|escape|tab|shift\+tab|ctrl\+f|вверх|вниз|влево|вправо|pageup|pagedown|home|end)", line)
         if m:
             result.append({"op": "key", "key": SAFE_KEYS[m[1].lower()]})
