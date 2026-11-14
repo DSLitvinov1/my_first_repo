@@ -230,6 +230,30 @@
               <button type="button" id="mesh-bitrix-disconnect" class="button soft small">Отключить</button>
             </div>
           </div>
+          <div class="mesh-part" aria-label="Команды ONE Agent из ChatGPT">
+            <h3>Связь с ChatGPT</h3>
+            <p>Подключи закрытый GitHub-репозиторий для передачи задач. ChatGPT отправляет команды,
+              ONE Agent забирает их сам. Доступ к компьютеру извне не открывается.
+              Действия мышью и клавиатурой требуют твоего подтверждения.</p>
+            <label class="agent-label" for="mesh-chatgpt-repo">Закрытый репозиторий</label>
+            <input id="mesh-chatgpt-repo" type="text" maxlength="140"
+                   value="DSLitvinov1/lesson3.1" spellcheck="false" autocomplete="off"/>
+            <label class="agent-label" for="mesh-chatgpt-owner">Владелец репозитория</label>
+            <input id="mesh-chatgpt-owner" type="text" maxlength="39"
+                   value="DSLitvinov1" spellcheck="false" autocomplete="off"/>
+            <label class="agent-label" for="mesh-chatgpt-token">Персональный ключ GitHub — только Issues в выбранном репозитории</label>
+            <input id="mesh-chatgpt-token" type="password" maxlength="255"
+                   placeholder="Ввести один раз для шифрованного хранения Windows" autocomplete="off"/>
+            <div class="mesh-actions">
+              <button type="button" id="mesh-chatgpt-connect" class="button accent small">Подключить ChatGPT</button>
+              <button type="button" id="mesh-chatgpt-disconnect" class="button soft small">Отключить</button>
+              <button type="button" id="mesh-chatgpt-refresh" class="button soft small">Проверить задачи</button>
+            </div>
+            <div id="mesh-chatgpt-status" role="status" class="mesh-status">Подключение не настроено.</div>
+            <div id="mesh-chatgpt-pending" class="mesh-private-ready" aria-live="polite">
+              Нет заданий на подтверждение.
+            </div>
+          </div>
           <div class="mesh-part">
             <h3>Защищённые записи</h3>
             <p>Создание и изменение только после отдельного подтверждения. Агент перечитывает запись и сверяет результат.</p>
