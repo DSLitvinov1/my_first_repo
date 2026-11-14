@@ -223,18 +223,20 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
     throw "DESKTOP_TARGET_UNSAFE"
   }
   if($editor) {
-    if($item.Current.ControlType -ne [Windows.Automation.ControlType]::Edit -and
-       $item.Current.ControlType -ne [Windows.Automation.ControlType]::Document) {
+    $controlId=[int]$item.Current.ControlType.Id
+    if($controlId -notin @(
+       [Windows.Automation.ControlType]::Edit.Id,
+       [Windows.Automation.ControlType]::Document.Id)) {
       throw "DESKTOP_EDITOR_NOT_FOUND"
     }
     $pattern=$null
     if($item.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)) {
       if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
     }
-  } elseif($item.Current.ControlType -notin @(
-       [Windows.Automation.ControlType]::Button,
-       [Windows.Automation.ControlType]::MenuItem,
-       [Windows.Automation.ControlType]::TabItem)) {
+  } elseif([int]$item.Current.ControlType.Id -notin @(
+       [Windows.Automation.ControlType]::Button.Id,
+       [Windows.Automation.ControlType]::MenuItem.Id,
+       [Windows.Automation.ControlType]::TabItem.Id)) {
     throw "DESKTOP_CONTROL_TYPE_NOT_APPROVED"
   }
   return $item
@@ -342,7 +344,7 @@ while($true){
         $w=AssertForeground $req
         $element=FindNamedControl $w ([string]$req.label) $false
         $pattern=$null
-        if($element.Current.ControlType -eq [Windows.Automation.ControlType]::TabItem) {
+        if([int]$element.Current.ControlType.Id -eq [Windows.Automation.ControlType]::TabItem.Id) {
           if(-not $element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
             throw "DESKTOP_CONTROL_NOT_INVOCABLE"
           }
