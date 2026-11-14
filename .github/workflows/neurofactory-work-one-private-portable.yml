@@ -19,7 +19,7 @@ jobs:
         shell: pwsh
         run: |
           cd bridge/neurofactory/one_pc_candidate/workbench
-          python -B -m unittest -q test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one
+          python -B -m unittest -q test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one
           if ($LASTEXITCODE -ne 0) {throw 'PERSONAL_REGRESSION_FAILED'}
       - name: Parse Windows launcher and desktop worker; validate Python/JavaScript
         shell: pwsh
@@ -31,7 +31,7 @@ jobs:
               (Join-Path $root $script),[ref]$tokens,[ref]$errors) | Out-Null
             if ($errors.Count -gt 0) {throw ('POWERSHELL_PARSE_REFUSED: '+$script)}
           }
-          python -m py_compile "$root/work_server.py" "$root/private_flow_one.py" "$root/personal_readiness_one.py"
+          python -m py_compile "$root/work_server.py" "$root/private_flow_one.py" "$root/personal_readiness_one.py" "$root/private_preflight_one.py"
           if ($LASTEXITCODE -ne 0) {throw 'PYTHON_COMPILE_FAILED'}
           node --check "$root/app.js"
           if ($LASTEXITCODE -ne 0) {throw 'APP_JAVASCRIPT_FAILED'}
@@ -55,7 +55,8 @@ jobs:
             'personal_readiness_one.py','private_flow_one.py',
             'index.html','styles.css','app.js','toolmesh.js',
             'package.json','package-lock.json','README.md',
-            'START_PRIVATE_WORK_ONE.ps1','PERSONAL_START_README.md'
+            'START_PRIVATE_WORK_ONE.ps1','PERSONAL_START_README.md',
+            'private_preflight_one.py'
           )
           $checksums=@{}
           foreach ($filename in $files) {
@@ -83,6 +84,8 @@ jobs:
           }
           $manifest|ConvertTo-Json -Depth 8|Set-Content -LiteralPath (Join-Path $destination 'manifest.json') -Encoding UTF8
           Write-Host ("BUNDLE_VERIFIED_FILES="+$checksums.Count)
+          python "$destination/private_preflight_one.py"
+          if ($LASTEXITCODE -ne 0) {throw 'BUNDLE_PREFLIGHT_FAILED'}
       - name: Upload private GitHub artifact only; do not install or deploy
         uses: actions/upload-artifact@v4
         with:
