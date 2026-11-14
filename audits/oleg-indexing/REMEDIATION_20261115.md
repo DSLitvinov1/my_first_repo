@@ -113,3 +113,15 @@ Evidence: OpenSEO early-2026-11-14 completed crawls. **These crawls predate subs
 - OpenSEO generated a public verification key. The exact file is staged in the isolated PR under `audits/oleg-indexing/staged-host-files/potrebpravo.ru/57b3c551867d47f49d6d76567e5485df.txt`, containing only its filename stem.
 - To complete (requires authorized Timeweb write): publish it as `https://potrebpravo.ru/57b3c551867d47f49d6d76567e5485df.txt`, verify `HTTP 200` and the exact body, then retry the **same five changed pages** with OpenSEO IndexNow. Do not claim the notification was accepted until host status is `submitted`.
 - Do not deploy this file anywhere else or change existing site code merely to force indexation.
+
+## Owner browser follow-up — 2026-11-15
+
+- Browser tab enumeration **succeeded** from the connected extension for the user's Oleg browser session.
+- Read-only inspection of the authenticated **semya-yurist.ru Yandex Webmaster reindex** page succeeded: it explicitly lists **seven URLs, each status `В очереди`**, all submitted **2026-11-14 13:24**. No subsequent indexing is confirmed; no duplicate reindex submission was made.
+- Reads of other relevant open browser tabs (potrebpravo.ru Yandex Webmaster pages, Yandex Metrica, and Google Search Console) were denied by the connected browser extension's **host permission gate**. The browser action provides no authorization to click or submit.
+- The currently open Google Search Console tab is tied to `sc-domain:rentabkhazia.ru`, not Oleg's two domains, and cannot establish that either Oleg property is verified.
+- OpenSEO reconfirmed `accounts: []` for Google Search Console on **both** Oleg projects; no site inspection or new Google submission possible through that connection.
+- Public `site:` search attempts yielded no useful search results and cannot establish zero pages indexed; do not infer indexed counts from them.
+- Next permitted step depends on owner/browser host granting access for `webmaster.yandex.ru`, `metrika.yandex.ru`, and `search.google.com` in an authorized interactive session or on a properly connected Search Console account. Do not attempt browser-host bypass, raw CDP, credential/cookie extraction, or cross-browser workarounds.
+- Previously verified full sitemap **41/41 HTTP 200** and Playwright operator simulated UI tests **PASS** (GitHub Actions #43652024913). The local operator is **not** a completed authenticated production submission.
+- No production files or search console settings were modified in this follow-up. Yandex Direct not touched.
