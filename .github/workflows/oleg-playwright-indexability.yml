@@ -27,12 +27,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify guarded SEO metadata changes
+        run: python -m unittest -v test_metadata_guard
+      - name: Verify audit syntax
+        run: node --check audit.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Verify audit syntax
-        run: node --check audit.cjs
       - name: Audit public indexing eligibility without changing sites
         run: node audit.cjs
       - name: Attach report
