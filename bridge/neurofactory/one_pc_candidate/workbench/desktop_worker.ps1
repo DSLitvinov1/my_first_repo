@@ -233,11 +233,34 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
     if($item.TryGetCurrentPattern([Windows.Automation.ValuePattern]::Pattern,[ref]$pattern)) {
       if($pattern.Current.IsReadOnly){throw "DESKTOP_READ_ONLY_FIELD"}
     }
-  } elseif([int]$item.Current.ControlType.Id -notin @(
-       [Windows.Automation.ControlType]::Button.Id,
-       [Windows.Automation.ControlType]::MenuItem.Id,
-       [Windows.Automation.ControlType]::TabItem.Id)) {
-    throw "DESKTOP_CONTROL_TYPE_NOT_APPROVED"
+  } else {
+    $allowedIds=@(
+      [Windows.Automation.ControlType]::Button.Id,
+      [Windows.Automation.ControlType]::MenuItem.Id,
+      [Windows.Automation.ControlType]::TabItem.Id
+    )
+    if([int]$item.Current.ControlType.Id -notin $allowedIds) {
+      # UIA may expose the visible caption as a Text descendant of a
+      # genuine Button. Walk at most three parents, never accept an
+      # arbitrary element and never cross the target owner window.
+      $walker=[Windows.Automation.TreeWalker]::ControlViewWalker
+      $parent=$item
+      $promoted=$false
+      for($depth=0;$depth -lt 3;$depth++){
+        $parent=$walker.GetParent($parent)
+        if($null -eq $parent){break}
+        if($parent.Current.NativeWindowHandle -eq $w.handle){break}
+        if($parent.Current.ProcessId -ne $w.pid){break}
+        if([int]$parent.Current.ControlType.Id -in $allowedIds -and
+           [string]$parent.Current.Name -ceq $label -and
+           -not $parent.Current.IsPassword){
+          $item=$parent
+          $promoted=$true
+          break
+        }
+      }
+      if(-not $promoted){throw "DESKTOP_CONTROL_TYPE_NOT_APPROVED"}
+    }
   }
   return $item
 }
