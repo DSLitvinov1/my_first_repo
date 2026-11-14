@@ -42,3 +42,20 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'ONE_BRIDGE_REGRESSION_FAILED'}
           node --test test_browser_typing.cjs
           if($LASTEXITCODE -ne 0){throw 'ONE_BROWSER_REGRESSION_FAILED'}
+      - name: Real isolated Chromium typing E2E on synthetic page
+        shell: pwsh
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          $chrome='C:\Program Files\Google\Chrome\Application\chrome.exe'
+          if(!(Test-Path -LiteralPath $chrome)){throw 'ONE_CHROMIUM_NOT_INSTALLED_ON_CI'}
+          Push-Location $root
+          try{
+            npm ci --ignore-scripts --no-audit --no-fund
+            if($LASTEXITCODE -ne 0){throw 'ONE_PUPPETEER_INSTALL_FAILED'}
+            $env:NF_TEST_CHROMIUM=$chrome
+            node --test test_browser_typing.cjs
+            if($LASTEXITCODE -ne 0){throw 'ONE_CHROMIUM_REAL_KEYBOARD_TEST_FAILED'}
+          } finally {
+            Remove-Item Env:NF_TEST_CHROMIUM -ErrorAction SilentlyContinue
+            Pop-Location
+          }
