@@ -106,3 +106,10 @@ Evidence: OpenSEO early-2026-11-14 completed crawls. **These crawls predate subs
 - Google Search Console connection through OpenSEO was explicitly tested on both properties and returned `not_connected`; no Google index coverage or indexing submission is authorized from the connected accounts.
 - Potential Yandex boost: bind each verified Webmaster site to its Yandex Metrica counter and enable 'Обход по счётчикам' **after verifying installation/owner authorization**. Official: https://yandex.ru/support/metrica/ru/general/link-webmaster . Nothing has been changed in the Webmaster/Metric settings in this turn.
 - Do not publish a claim of full indexing, merge the draft PR, or execute metadata updates until hosting access, source guard/diff and rollback are verified.
+
+## IndexNow attempt — 2026-11-15
+
+- A free OpenSEO IndexNow notification was attempted for **five genuinely updated** consumer-law case metadata pages (2026-11-14 edits). Result: **FAILED — key file not found on host**; there is no proof of submission to Yandex/Bing or other participants.
+- OpenSEO generated a public verification key. The exact file is staged in the isolated PR under `audits/oleg-indexing/staged-host-files/potrebpravo.ru/57b3c551867d47f49d6d76567e5485df.txt`, containing only its filename stem.
+- To complete (requires authorized Timeweb write): publish it as `https://potrebpravo.ru/57b3c551867d47f49d6d76567e5485df.txt`, verify `HTTP 200` and the exact body, then retry the **same five changed pages** with OpenSEO IndexNow. Do not claim the notification was accepted until host status is `submitted`.
+- Do not deploy this file anywhere else or change existing site code merely to force indexation.
