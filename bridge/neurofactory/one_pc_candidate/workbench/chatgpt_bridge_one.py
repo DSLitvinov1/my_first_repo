@@ -20,7 +20,7 @@ from work_core import WorkDenied
 
 BRIDGE_SCHEMA = "one.chatgpt.command.v1"
 BRIDGE_LABEL = "[ONE-COMMAND]"
-BRIDGE_OPS = frozenset(("status", "site.audit", "desktop.observe", "desktop.prepare"))
+BRIDGE_OPS = frozenset(("ping", "status", "site.audit", "desktop.observe", "desktop.prepare"))
 REPO_RE = re.compile(r"^[A-Za-z0-9-]{1,39}/[A-Za-z0-9_.-]{1,100}$")
 LOGIN_RE = re.compile(r"^[A-Za-z0-9-]{1,39}$")
 HEX_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -70,7 +70,7 @@ def verify_command(issue, owner, now=None):
     op, params = cmd["operation"], cmd["params"]
     if op not in BRIDGE_OPS or type(params) is not dict:
         raise WorkDenied("CHATGPT_OPERATION_REFUSED")
-    if op in ("status", "desktop.observe") and params:
+    if op in ("ping", "status", "desktop.observe") and params:
         raise WorkDenied("CHATGPT_PARAMS_REFUSED")
     if op == "site.audit":
         if (set(params) != {"urls"} or type(params["urls"]) is not list or
@@ -321,8 +321,11 @@ class ChatGPTBridgeOne:
 
     def _execute(self, cmd, issue_id, issue_number):
         project=cmd["project_id"]
-        self.store.project(project)
         op=cmd["operation"]
+        if op=="ping":
+            return {"state":"DONE","operation":"ping","agent":"ONE",
+                    "bridge":"PAIRED"}
+        self.store.project(project)
         if op=="status":
             info=self.store.status()
             return {"state":"DONE","operation":op,
