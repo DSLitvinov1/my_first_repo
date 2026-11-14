@@ -236,7 +236,25 @@ function FindNamedControl($w,[string]$label,[bool]$editor) {
     $canInvoke=$item.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern,[ref]$invoke)
     $canSelect=$item.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$select)
     if(-not $canInvoke -and -not $canSelect) {
-      throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+      # Some genuine WinForms captions have no InvokePattern. Allow an
+      # exact-name, visible, same-process small caption to be clicked
+      # inside the already approved window; no arbitrary coordinate input.
+      $kind=[int]$item.Current.ControlType.Id
+      if($kind -notin @(
+          [Windows.Automation.ControlType]::Text.Id,
+          [Windows.Automation.ControlType]::Button.Id,
+          [Windows.Automation.ControlType]::Custom.Id)) {
+        throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+      }
+      $bounds=$item.Current.BoundingRectangle
+      if(-not $item.Current.IsEnabled -or $item.Current.IsOffscreen -or
+         $bounds.Width -lt 12 -or $bounds.Height -lt 8 -or
+         $bounds.Width -gt 360 -or $bounds.Height -gt 130 -or
+         $bounds.Left -lt $w.x -or $bounds.Top -lt $w.y -or
+         ($bounds.Left+$bounds.Width) -gt ($w.x+$w.width) -or
+         ($bounds.Top+$bounds.Height) -gt ($w.y+$w.height)) {
+        throw "DESKTOP_NAMED_TARGET_BOUNDS_REFUSED"
+      }
     }
   }
   return $item
@@ -349,7 +367,14 @@ while($true){
         } elseif($element.TryGetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern,[ref]$pattern)) {
           $pattern.Select()
         } else {
-          throw "DESKTOP_CONTROL_NOT_INVOCABLE"
+          $bounds=$element.Current.BoundingRectangle
+          $px=[int][Math]::Floor($bounds.Left+$bounds.Width/2)
+          $py=[int][Math]::Floor($bounds.Top+$bounds.Height/2)
+          if(-not [NFDesktop]::SetCursorPos($px,$py)){
+            throw "DESKTOP_NAMED_TARGET_MOVE_DENIED"
+          }
+          [NFDesktop]::mouse_event(2,0,0,0,[IntPtr]::Zero)
+          [NFDesktop]::mouse_event(4,0,0,0,[IntPtr]::Zero)
         }
         $result=@{invoked=$true}
         break
