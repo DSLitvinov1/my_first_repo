@@ -1,0 +1,48 @@
+name: Work ONE read-only HTTPS audit root-cause probe
+on:
+  push:
+    branches: [neurofactory-work-one-audit-repair-20261114]
+    paths:
+      - '.github/workflows/neurofactory-work-one-audit-repair.yml'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/agent_one.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/test_agent_one.py'
+permissions:
+  contents: read
+jobs:
+  audit_windows_readonly:
+    runs-on: windows-2025
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reproduce read-only audit on public HTTPS using exact Work ONE code
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Set-Location 'bridge/neurofactory/one_pc_candidate/workbench'
+          @'
+          from agent_one import fetch_public_html
+          from work_core import WorkDenied
+          import socket, ssl, json
+          print('PY_SSL=' + ssl.OPENSSL_VERSION)
+          for host in ('example.org','www.wikipedia.org'):
+              try:
+                  families = {str(x[0]) for x in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)}
+                  print('HOST_'+host+'_FAMILIES='+','.join(sorted(families)))
+                  x=fetch_public_html('https://'+host+'/')
+                  print('HOST_'+host+'_STATUS=PASS')
+                  print('HOST_'+host+'_TITLE_LENGTH='+str(len(x.get('title',''))))
+              except WorkDenied as ex:
+                  print('HOST_'+host+'_DENIED='+str(ex))
+              except Exception as ex:
+                  print('HOST_'+host+'_EXCEPTION='+type(ex).__name__)
+          '@ | Set-Content -Path probe.py -Encoding UTF8
+          python -B probe.py
+          if ($LASTEXITCODE -ne 0) {throw 'AUDIT_PROBE_PYTHON_FAILED'}
+      - name: Run regression with no live accounts
+        shell: pwsh
+        run: |
+          Set-Location 'bridge/neurofactory/one_pc_candidate/workbench'
+          python -B -m unittest -q test_agent_one
+          if ($LASTEXITCODE -ne 0) {throw 'AGENT_REGRESSION_FAILED'}

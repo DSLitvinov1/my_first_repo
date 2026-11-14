@@ -95,6 +95,23 @@ class AgentOneTest(unittest.TestCase):
         self.assertEqual(after["steps"][1]["error"], "AUDIT_TOOL_FAILED")
         self.assertEqual(len(agent.runs(self.project)), 1)
 
+    def test_exposes_only_safe_diagnostic_codes(self):
+        for error, expected in (
+            ("AUDIT_DNS_FAILED", "AUDIT_DNS_FAILED"),
+            ("AUDIT_HTTP_NOT_OK_OR_REDIRECT", "AUDIT_HTTP_NOT_OK_OR_REDIRECT"),
+            ("AUDIT_NETWORK_UNAVAILABLE", "AUDIT_NETWORK_UNAVAILABLE"),
+            ("credentials at private path!", "AUDIT_TOOL_FAILED"),
+        ):
+            with self.subTest(error=error):
+                def fails(_url, reason=error):
+                    raise WorkDenied(reason)
+                agent = AgentOne(self.store, fetcher=fails)
+                run = agent.create_audit(self.project, ["https://example.org/"])
+                after = agent.execute(run["id"], self.project)
+                self.assertEqual(after["state"], "PARTIAL")
+                self.assertEqual(after["steps"][0]["error"], expected)
+                self.assertNotIn("private path", str(after))
+
     def test_interrupted_run_is_fenced_after_recovery(self):
         agent = AgentOne(self.store, fetcher=lambda url: {})
         run = agent.create_audit(self.project, ["https://example.org"])
