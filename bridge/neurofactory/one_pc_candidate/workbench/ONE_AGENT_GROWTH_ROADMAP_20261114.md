@@ -33,10 +33,16 @@ A Russian-language single-agent assistant that can understand the user's goal an
 - Read counter list, 28-day visit/user/pageview totals; read Webmaster site list and verified site's indexation summary.
 - Read-only API methods and validated resource ownership; no Yandex Direct authentication or write support. Live tokens are not connected.
 
+### Bitrix24 CRM read-only view
+
+- Existing dedicated CRM OAuth token path is reused; no CRM read is allowed through only a task token.
+- A new fixed-schema method reads at most the latest 50 lead/deal records to show stage/category/source/date and total, with no names or contact details.
+- No create/update/delete CRM actions were added; real portal OAuth and read-only acceptance remain pending.
+
 ## Remaining implementation and physical acceptance (not represented as complete)
 
 1. **Browser and tab live E2E:** test actual Chromium on Windows owner session, label matching, cookies and safety boundaries; authorization to work with existing Chrome tabs requires dedicated extension/browser pairing with explicit tab and site grants, not copying cookies or passwords.
-2. **Bitrix24 CRM:** integrate separate CRM-permission OAuth for read-only deals/leads, per-project portal mapping; test read-back with a dedicated sandbox; reserve writes for explicit approved operations.
+2. **Bitrix24 CRM:** finish real CRM-permission OAuth, per-project portal mapping and dedicated sandbox read-back for new lead/deal list; reserve writes for explicit approved operations.
 3. **Yandex Metrica/Webmaster:** get owner consent, verify read-only endpoints, handle OAuth renewal/revoke; test real counters and host reports; honor service quotas and API policy.
 4. **Google Search Console:** owner OAuth consent, verify property list and query data on a user-granted property, add delta comparisons and privacy-preserving reporting.
 5. **Yandex Direct:** register and obtain separate API application approval, read campaigns and spend first; draft campaigns without publishing; budget limits, second confirmation and post-change verification before any ad writes. **Never launch advertising silently.**
