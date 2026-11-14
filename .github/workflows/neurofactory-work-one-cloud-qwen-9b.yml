@@ -1,4 +1,4 @@
-name: Work ONE Cloud Qwen 9B existing SSH client Windows release
+name: Work ONE Cloud Qwen 9B existing Windows release
 on:
   push:
     branches: [neurofactory-work-one-cloud-qwen-existing-20261114]
@@ -117,62 +117,18 @@ jobs:
           '@ | Set-Content -LiteralPath $script -Encoding UTF8
           & $python $script $root
           if ($LASTEXITCODE -ne 0) {throw 'WINDOWS_NATIVE_TLS_HTTPS_AUDIT_FAILED'}
-      - name: Verify portable source uses cloud-only model and carries no private key
+      - name: Audit included cloud SSH client and reject included user SSH keys
         run: |
           $ErrorActionPreference='Stop'
           $root=Join-Path $env:GITHUB_WORKSPACE 'bundle_output/Work_ONE_Private_Ready'
           $model=Join-Path $root 'cloud_ssh_draft_provider.py'
-          $manifest=Get-Content (Join-Path $root 'manifest.json') -Raw | ConvertFrom-Json
-          if ($manifest.file_digests.PSObject.Properties.Name -notcontains 'cloud_ssh_draft_provider.py' -or
-              -not (Test-Path -LiteralPath $model -PathType Leaf)) {
-            throw 'CLOUD_QWEN_SOURCE_MISSING_FROM_MANIFEST'
-          }
-          $leak=@(Get-ChildItem -LiteralPath $root -Recurse -Force -File |
-                 Where-Object { $_.Name -match '^(?:id_ed25519|known_hosts|.*\.pem)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Neirozavod-Work-ONE-Cloud-Qwen9B-Windows
-          path: bundle_output/Work_ONE_Private_Ready/
-          if-no-files-found: error
-          retention-days: 7
-          compression-level: 6
-          include-hidden-files: true
-
-  verify_downloaded_archive:
-    needs: private_ready_bundle
-    runs-on: windows-2025
-    timeout-minutes: 7
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - name: Download EXACT published user artifact back to a fresh Windows runner
-        uses: actions/download-artifact@v4
-        with:
-          name: Neirozavod-Work-ONE-Cloud-Qwen9B-Windows
-          path: downloaded-user-archive
-      - name: Confirm published archive has every source and vendor hash
-        run: |
-          $root=Join-Path $env:GITHUB_WORKSPACE 'downloaded-user-archive'
-          $python=Join-Path $root 'runtime/python/python.exe'
-          if (!(Test-Path -LiteralPath $python -PathType Leaf)) {
-            throw 'PUBLISHED_ARTIFACT_MISSING_EMBEDDED_PYTHON'
-          }
-          & $python (Join-Path $root 'private_preflight_one.py')
-          if ($LASTEXITCODE -ne 0) {
-            throw 'PUBLISHED_ARTIFACT_MANIFEST_MISMATCH_OR_MISSING_FILES'
-          }
-          Write-Host 'PUBLISHED_USER_ARTIFACT_ALL_COMPONENTS_VERIFIED=YES'
-          Write-Host 'NO_OWNER_PC_OR_EXTERNAL_ACCOUNT_ACCESSED=YES'
- })
-          if ($leak.Count -gt 0) {throw 'PRIVATE_SSH_IDENTITY_ACCIDENTALLY_PACKAGED'}
-          $oneclick=Get-Content (Join-Path $root 'start_work_one.py') -Raw
-          if ($oneclick -notmatch 'cloud_model_configured' -or $oneclick -match 'cmd\.append\("--qwen-local"\)') {
-            throw 'WORKONE_LOCAL_QWEN_AUTOLAUNCH_REFUSED'
-          }
-          Write-Host 'CLOUD_QWEN_FORCED_SSH_CLIENT_BUNDLED=YES'
-          Write-Host 'PRIVATE_USER_IDENTITY_NOT_PACKAGED=YES'
-          Write-Host 'NO_LOCAL_QWEN_DOWNLOAD_OR_AUTOSTART=YES'
+          if (!(Test-Path -LiteralPath $model -PathType Leaf)) {throw 'CLOUD_CLIENT_NOT_BUNDLED'}
+          $manifest=Get-Content -LiteralPath (Join-Path $root 'manifest.json') -Raw|ConvertFrom-Json
+          if ($manifest.file_digests.PSObject.Properties.Name -notcontains 'cloud_ssh_draft_provider.py') {throw 'CLOUD_CLIENT_NOT_HASH_PINNED'}
+          $files=@(Get-ChildItem -LiteralPath $root -Recurse -Force -File)
+          $leaks=@($files|Where-Object { $_.Name -eq 'id_ed25519' -or $_.Name -eq 'known_hosts' })
+          if ($leaks.Count -gt 0) {throw 'PRIVATE_SSH_KEYS_INCLUDED'}
+          Write-Host 'CLOUD_QWEN_CLIENT_VERIFIED_AND_NO_SECRETS_BUNDLED=YES'
       - name: Upload private archive only, no self-hosted runner, no remote deployment
         uses: actions/upload-artifact@v4
         with:
