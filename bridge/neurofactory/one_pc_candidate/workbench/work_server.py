@@ -18,6 +18,8 @@ import sqlite3
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import threading
+import time
+import webbrowser
 from urllib.parse import parse_qs,urlsplit
 from work_core import WorkStore,WorkDenied,denied
 from agent_one import AgentOne
@@ -458,6 +460,8 @@ def main():
     ap.add_argument("--browser-allow-hosts",default="",
                     help="Comma-separated explicitly approved exact HTTPS hosts")
     ap.add_argument("--browser-executable",type=Path,default=None)
+    ap.add_argument("--open-ui",action="store_true",
+                    help="Open the local UI in the owner's default browser")
     ap.add_argument("--desktop-enable",action="store_true",
                     help="Explicit per-user Windows desktop pilot; never CORE/HOST")
     ap.add_argument("--desktop-allow-apps",default="",
@@ -533,6 +537,15 @@ def main():
                                            services=services,oauth=oauth,bitrix=bitrix))
     print(f"NEIROZAVOD_WORK_LOCAL_READY http://127.0.0.1:{args.port}/",flush=True)
     print("ISOLATED_USER_PROJECTS_ONLY; MODEL_OUTPUT_UNTRUSTED; NO_SHELL",flush=True)
+    if args.open_ui and os.name=="nt":
+        def open_private_browser():
+            time.sleep(0.6)
+            try:
+                webbrowser.open(f"http://127.0.0.1:{args.port}/",new=1)
+            except (OSError,ValueError):
+                pass
+        threading.Thread(target=open_private_browser,daemon=True,
+                         name="nf-one-owner-ui").start()
     try:server.serve_forever(poll_interval=0.25)
     finally:
         browser._close_process()
