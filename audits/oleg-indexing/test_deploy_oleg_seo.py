@@ -91,7 +91,7 @@ class BatchReleaseTests(unittest.TestCase):
             js+='\n'.join(before for before,_ in FROM)
             asset.write_text(js,encoding='utf-8')
             self.initial[asset]=js
-            existing=[str(p.relative_to(site_root)) for p in self.initial if p.is_relative_to(site_root)]
+            existing=[str(p.relative_to(site_root)) for p in self.initial if p.is_relative_to(site_root) and p.suffix=='.html']
             extras=['index.html']
             n=0
             while len(set(existing+extras))<count:
