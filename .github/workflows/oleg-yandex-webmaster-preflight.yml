@@ -1,0 +1,44 @@
+name: Oleg Yandex Webmaster Playwright preflight
+on:
+  push:
+    branches:
+      - audit-oleg-sites-playwright-20261115
+    paths:
+      - 'audits/oleg-indexing/yandex_webmaster_preflight.cjs'
+      - 'audits/oleg-indexing/test_yandex_webmaster_preflight.cjs'
+      - '.github/workflows/oleg-yandex-webmaster-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read-only-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Syntax and unit tests
+        run: |
+          node --check yandex_webmaster_preflight.cjs
+          node --check test_yandex_webmaster_preflight.cjs
+          node --test test_yandex_webmaster_preflight.cjs
+      - name: Verify both production sites with browser and YandexBot-style UA
+        run: node yandex_webmaster_preflight.cjs
+      - name: Save complete public Webmaster report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oleg-yandex-webmaster-public
+          path: audits/oleg-indexing/oleg-yandex-webmaster-public.json
+          if-no-files-found: warn
