@@ -23,7 +23,7 @@ jobs:
           $root='bridge/neurofactory/one_pc_candidate/workbench'
           python -B -m py_compile (Join-Path $root 'chatgpt_bridge_one.py') (Join-Path $root 'desktop_goal_one.py') (Join-Path $root 'desktop_one.py') (Join-Path $root 'desktop_script_one.py') (Join-Path $root 'work_server.py') (Join-Path $root 'test_chatgpt_bridge_one.py') (Join-Path $root 'playwright_access_policy.py') (Join-Path $root 'test_playwright_access_policy.py') (Join-Path $root 'test_playwright_owner_config.py')
           if($LASTEXITCODE -ne 0){throw 'ONE_BRIDGE_PYTHON_SYNTAX_FAILED'}
-          foreach($name in @('desktop_worker.ps1','START_PRIVATE_WORK_ONE.ps1','playwright_owner_readiness.ps1')){
+          foreach($name in @('desktop_worker.ps1','START_PRIVATE_WORK_ONE.ps1','playwright_owner_readiness.ps1','playwright_stage_owner.ps1')){
             $tokens=$null
             $errors=$null
             [System.Management.Automation.Language.Parser]::ParseFile(
