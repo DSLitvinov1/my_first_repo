@@ -39,6 +39,7 @@ class InstallerTests(unittest.TestCase):
             self.assertNotEqual(item['old'],item['new'])
             if path.name == 'oleg-analytics-v1.js':
                 self.assertIn(b'__olegMetrikaIntentGoalsV1',item['new'])
+                self.assertIn(b'__olegCrmBackupLinksV1',item['new'])
             else:
                 self.assertIn(b'oleg-analytics-v1.js?v=',item['new'])
         backup,n = apply_edits(edits,self.root)
