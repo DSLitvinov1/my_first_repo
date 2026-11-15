@@ -53,9 +53,23 @@ async function main(){
     const flow={url,expectedForm:site.form};output.flows.push(flow);
     try{
      await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+     // Privacy choice is a legitimate modal on first visit; decline analytics
+     // to test whether the lead intake remains usable WITHOUT tracking.
+     const consentDeny=page.locator('#oleg-analytics-choice [data-deny]');
+     if(await consentDeny.count() && await consentDeny.isVisible()){
+       await consentDeny.click({timeout:4000});
+       flow.consentDeclinedBeforeTest=true;
+     }
      const widget=page.locator('#legal-help-toggle');
      flow.widgetExists=await widget.count()===1;
      if(!flow.widgetExists){flow.status='no-assistant';continue;}
+     flow.widgetGeometry=await page.evaluate(()=>{
+       const el=document.querySelector('#legal-help-toggle');
+       const r=el.getBoundingClientRect();
+       const top=document.elementFromPoint(Math.min(innerWidth-1,Math.max(0,r.x+r.width/2)),Math.min(innerHeight-1,Math.max(0,r.y+r.height/2)));
+       return {x:r.x,y:r.y,width:r.width,height:r.height,viewport:[innerWidth,innerHeight],
+         hitTop:top?.id||top?.className||top?.tagName||null,visible:getComputedStyle(el).visibility};
+     });
      await widget.click({timeout:5000});
      flow.panelVisible=await page.locator('#legal-help-panel').isVisible();
      flow.topicButtons=await page.locator('#legal-help-topics .legal-choice').allTextContents();
@@ -84,7 +98,8 @@ async function main(){
    const direct=await context.newPage();
    try{
     const response=await direct.goto(site.form,{waitUntil:'domcontentloaded',timeout:30000});
-    await direct.waitForTimeout(1000);
+    try{await direct.locator('form').first().waitFor({state:'attached',timeout:17000})}
+    catch(e){output.forms.push({url:site.form,http:response?.status(),loadWarning:safe(e)})}
     const form=await direct.evaluate(()=>{
      const f=document.querySelector('form');
      const texts=(document.body?.innerText||'').replace(/\s+/g,' ');
