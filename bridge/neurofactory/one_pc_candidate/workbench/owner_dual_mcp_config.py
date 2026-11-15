@@ -11,9 +11,9 @@ import json
 from pathlib import PureWindowsPath
 import re
 
-WINDOWS_PATH = re.compile(r"^[A-Za-z]:\\\\")
+WINDOWS_PATH = re.compile(r"^[A-Za-z]:\\")
 PROJECT_ID = re.compile(r"^[0-9a-f]{32}$")
-APP_NAME = re.compile(r"^[a-z0-9_.-]{2,70}\\.exe$")
+APP_NAME = re.compile(r"^[a-z0-9_.-]{2,70}\.exe$")
 SHELL_APPS = frozenset({
     "cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe",
     "cscript.exe", "regedit.exe", "mmc.exe", "mshta.exe",
