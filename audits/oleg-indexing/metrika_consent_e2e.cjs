@@ -63,11 +63,9 @@ async function main(){
     }));
     check('Allow starts correct counter and stores consent',allow.started&&allow.saved==='yes'&&allow.calls.some(c=>c.counter===site.counter&&c.method==='init'&&c.options?.webvisor===false&&c.options?.clickmap===false));
     await page.locator('#oleg-analytics-settings').click();
-    await Promise.all([
-     page.waitForLoadState('domcontentloaded').catch(()=>{}),
-     page.locator('#oleg-analytics-choice [data-deny]').click()
-    ]);
-    await page.waitForTimeout(500);
+    const didReload=page.waitForEvent('domcontentloaded',{timeout:12000});
+    await page.locator('#oleg-analytics-choice [data-deny]').click();
+    await didReload;
     const revoked=await page.evaluate(()=>({
      saved:JSON.parse(localStorage.getItem('oleg.analytics.choice.v1')||'null')?.value,
      started:!!window.__olegAnalyticsStarted
