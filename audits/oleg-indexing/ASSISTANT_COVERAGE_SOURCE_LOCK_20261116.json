@@ -1,0 +1,58 @@
+{
+  "reviewed_run_id": 43775704087,
+  "reviewed_utc": "2026-11-15T23:36:35.355271+00:00",
+  "notes": "Read-only public HTML snapshot, never production server source",
+  "sites": {
+    "potrebpravo.ru": {
+      "count": 23,
+      "entries": {
+        "/": "7138aad960cb41c169b3417046f2c9d673110ae39e82be5033f48eb3eb5b0704",
+        "/services/vozvrat-deneg.html": "36b354d1915ad8daffa5386d067f02fbea47c3dd9bfd2148b6ba1e644368fabd",
+        "/services/pretenziya-prodavcu.html": "7e05cd3571806437ef69b5cd3083f5e31598f40f279333b9e9ea7bc902ba5085",
+        "/services/nekachestvennye-uslugi.html": "3142781245553a94b27ad6f891b0b2fed6a030199ec2ae632b461a2161c5cda6",
+        "/services/vozvrat-avtomobilya.html": "8c009390cdaa3526bb1d62f30789243e112f61bb2acdec6bf3f152924c0729ef",
+        "/services/neustoyka-zastroishchika.html": "018b464c526e6619eee08c0a04d2509921123e0a69f9989674e904099b254d5a",
+        "/services/strahovye-spory.html": "2b77e784e01c28b5f668a304572506a4e2f9db3c95be15e06ee17415638903c4",
+        "/specialists/levin-oleg.html": "2938b45cc2641dbfba00baa35d32f6e5e51df926b9d69aa0b12a43545781948a",
+        "/specialists/maryin-nikita.html": "c87ce3ec42c8d3f4a6c30c7e66b83390be28040e32ee05bc9675eefa96acdb97",
+        "/specialists/nikolaeva-alena.html": "42db9e32cd65cad0a14e66b7e549c08b38131a8229a4330e256c3bf8a01e4fbf",
+        "/specialists/nigmatova-karina.html": "88eb1147527a1f2bbd0c0d46eeca4cf54e36223025f073f79bb30a549331d7cd",
+        "/specialists/obyknovennova-yulia.html": "e9718cf6cbcb7e87898fa2cc77807314c465db7488b386a2aec859f63b15e908",
+        "/specialists/tonyan-aram.html": "5abd7f2de0ffa90c0d4d5d86f289e924869b8e2d44b227e55b43e4e64088d538",
+        "/practice/index.html": "d04da5264e52198a480960780c25950e0a9af2177257ad52b872caa2f82f06e4",
+        "/practice/cases/zpp-staircase.html": "28ce9d52eaf19f9feb119d66a86a7b13a0d8da365eb64234a4a36eb483d69809",
+        "/practice/cases/developer-one.html": "2d0712087cf0c4e9dee5dbd099fdae384b36bb94f01eb0c2a7f6925a1b2c9cf2",
+        "/practice/cases/developer-two.html": "da0d789d9716312db806da4d102ae81dee7a8e5494df7cb1dee796e4eb358418",
+        "/practice/cases/developer-three.html": "221ab26d6dc7abf676f1fae0e5308a5dad88b957e3fc5d1d2df358094415653c",
+        "/practice/cases/developer-four.html": "e73316e14d8f40c439b1d73aa55ade1b3a1077feececd952359c06396997d86a",
+        "/practice/cases/traffic-accident.html": "45e9af16eb4774e3338ecf648da306c3412975ef2a8cf3b082974f972c2024fa",
+        "/practice/cases/rental-dispute.html": "9683b57d197f2ce04cce2df1277c3402dcb435b0750f9b82dd5996c96c7e6c8f",
+        "/practice/cases/rental-money.html": "8541c473c8cd9b610c941801196cdb5acfbfbd8e7fca8ac0158cc40e1c0bd2dc",
+        "/practice/cases/consumer-refunded.html": "9a4ee91598e29f61704f8c40bf8d0bef846cdc874671fbbb68ece4d8afe47e79"
+      }
+    },
+    "semya-yurist.ru": {
+      "count": 18,
+      "entries": {
+        "/": "f7b0b6a897aefe7bf09b06bc550691709988a4cfee1641e7caec48f47a805eaa",
+        "/services/razvod.html": "4a78e664ce93b8a2b0dfc29cbc6a40c4fe7d2f87aec32f8f605b7154e4cb220b",
+        "/services/alimenty.html": "b1160799bfc53e392faebe21b9a4c3408e09ef2215e48422718366b7b9f9d0a6",
+        "/services/razdel-imushchestva.html": "aca8aa1f55becddd5386b09c096dea3499be22d3403de4f30d0c4d20a28230fc",
+        "/services/spory-o-detyakh.html": "fac706556ad317066a858424a26ab10578e3a74bd4401555ab4b0632c1a8094a",
+        "/services/brachnyi-dogovor.html": "791f537754760c00612a78a31907a9048b94a73fccda275a2d35d10f8d82851b",
+        "/services/ipotechnaya-kvartira.html": "c89a7de3a4b49c19aac73067a4c5b6d0fb69a39b4cd5913354561109c31a8665",
+        "/specialists/levin-oleg.html": "135be3c4a37d4e67931ba4fb9a227aa7853f13a7340d7c90966c95ae88b9a469",
+        "/specialists/maryin-nikita.html": "ef76a69ac2a5f39a8e539d835d02e931402eb5bc5801c6b95cef87eef2d7f893",
+        "/specialists/nikolaeva-alena.html": "c9a98aa13ff0410a854cb1ba4013a4cf3796f7b5436a6933330072d4c90f44ee",
+        "/specialists/nigmatova-karina.html": "a92b541452cdd5f6991ac5ddc8b37559940e9414d5f44937cebffaf3ac360f6f",
+        "/specialists/obyknovennova-yulia.html": "30e4dd982dae1a9b017037c98ad64f9e2ab788a0ef31ab2c0ba4975f38d6236c",
+        "/specialists/tonyan-aram.html": "982579f1164eba3fda5550a4a2d93b2fd113011876b996d84eec2f0c1d4ad165",
+        "/practice/index.html": "af7b35d414d37f19d0fc4d5b15a8c1b6ea472d8bc2fb8f60941e7446158d42fe",
+        "/practice/cases/family-invalid-marriage.html": "7dc983c3807df1a18d810927c29bf4c75bcf63cbe10b8f4301e74ea34a24da7f",
+        "/practice/cases/family-alimony-appeal.html": "38d689bf6bff66c30e1efa9e9207e8688247323e76245d50f1a17d4ea7f8f51e",
+        "/practice/cases/family-alimony-cassation.html": "3d198b1b109b7e201fa9b3b6bf7ecf006e321ae54fe7f0bace29575a33eb5c2f",
+        "/practice/cases/family-divorce-public-example.html": "d967a3e1d6ce9db648ffe13418dbc2bd62087a80af34978c5f8ca4fc3a294185"
+      }
+    }
+  }
+}
