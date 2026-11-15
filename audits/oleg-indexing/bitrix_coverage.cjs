@@ -72,6 +72,9 @@ async function main(){
      });
      await widget.click({timeout:5000});
      flow.panelVisible=await page.locator('#legal-help-panel').isVisible();
+     flow.legalScripts=await page.evaluate(()=>[...document.scripts].map(x=>x.src).filter(x=>/assistant|helper|oleg/i.test(x)).map(x=>{
+       const u=new URL(x);return u.origin+u.pathname;
+     }));
      flow.panelStructure=await page.evaluate(()=>{
        const panel=document.querySelector('#legal-help-panel');
        const guide=document.querySelector('#legal-help-topics');
@@ -84,7 +87,10 @@ async function main(){
          guideDisplay:guide?getComputedStyle(guide).display:null};
      });
      flow.topicButtons=await page.locator('#legal-help-topics .legal-choice').allTextContents();
-     await page.getByRole('button',{name:'Оставить заявку юристу'}).click({timeout:5000});
+     const newer=page.getByRole('button',{name:'Передать вопрос юристу',exact:true});
+     const older=page.getByRole('button',{name:'Оставить заявку юристу',exact:true});
+     flow.ctaLabel=await newer.count() ? 'Передать вопрос юристу' : 'Оставить заявку юристу';
+     await (await newer.count()?newer:older).click({timeout:5000});
      const frameEl=page.locator('#legal-help-form-step iframe.legal-frame');
      await frameEl.waitFor({state:'visible',timeout:10000});
      const src=await frameEl.getAttribute('src');
