@@ -17,11 +17,16 @@ COUNTERS = {'potrebpravo.ru': '114249897', 'semya-yurist.ru': '114251443'}
 ANALYTICS = Path('assets/oleg-analytics-v1.js')
 EXTENSION_FILE = Path(__file__).with_name('oleg-metrika-goals-v1.js')
 MARKER = '__olegMetrikaIntentGoalsV1'
+# Versions and the page counts were verified with Playwright from both live sites.
+BASELINE_VERSIONS = {'potrebpravo.ru': 'f96b5eb2', 'semya-yurist.ru': '173e16dd'}
+PAGE_COUNTS = {'potrebpravo.ru': 25, 'semya-yurist.ru': 20}
+SCRIPT_URL_PATTERN = re.compile(r'((?:/|(?:\\.\\./)*)assets/oleg-analytics-v1\\.js\\?v=)([A-Za-z0-9._-]+)')
 
 def digest(x):
     return hashlib.sha256(x).hexdigest()
 
-def prepare(root_parent: Path, extension: str):
+def prepare(root_parent: Path, extension: str, expected_counts=None):
+    expected_counts = PAGE_COUNTS if expected_counts is None else expected_counts
     if MARKER not in extension or 'oleg_lead_success' not in extension:
         raise ValueError('Goal extension safety markers missing')
     if extension.count('addEventListener') < 1:
@@ -60,6 +65,38 @@ def prepare(root_parent: Path, extension: str):
                 raise ValueError('Unexpected HTML code in JavaScript asset')
             new = (text.rstrip() + '\n\n' + extension.rstrip() + '\n').encode('utf-8')
         edits[target] = {'old': old, 'new': new, 'domain': host, 'path': str(ANALYTICS)}
+        # A static cache-busting query is present on every live HTML page.
+        # Update it atomically along with the JavaScript; otherwise browser
+        # caches can retain the previous file indefinitely.
+        old_version = BASELINE_VERSIONS[host]
+        new_version = digest(new)[:8]
+        referenced = 0
+        for html_path in document_root.rglob('*.html'):
+            if html_path.is_symlink() or not html_path.is_file() or not html_path.resolve().is_relative_to(root):
+                raise ValueError('Unsafe symlink/HTML path in hosting root: ' + str(html_path))
+            html_bytes = html_path.read_bytes()
+            try:
+                html_source = html_bytes.decode('utf-8')
+            except UnicodeDecodeError as exc:
+                raise ValueError('Non-UTF8 HTML page: ' + str(html_path)) from exc
+            found = list(SCRIPT_URL_PATTERN.finditer(html_source))
+            if not found:
+                continue
+            if len(found) != 1:
+                raise ValueError('Multiple analytics script URLs found in page ' + str(html_path))
+            if found[0].group(2) not in (old_version, new_version):
+                raise ValueError('Analytics script version drift in ' + str(html_path))
+            referenced += 1
+            patched = SCRIPT_URL_PATTERN.sub(lambda m: m.group(1) + new_version, html_source)
+            relative = html_path.relative_to(document_root)
+            edits[html_path] = {
+                'old': html_bytes,
+                'new': patched.encode('utf-8'),
+                'domain': host,
+                'path': str(relative)
+            }
+        if referenced != expected_counts[host]:
+            raise ValueError(f'Unexpected number of instrumented pages for {host}: {referenced}; expected {expected_counts[host]}. STOP')
     return edits
 
 def main():
@@ -73,7 +110,7 @@ def main():
     changed = sum(item['old'] != item['new'] for item in edits.values())
     result = {'mode': 'apply' if args.apply else 'dry-run', 'filesChecked': len(edits),
               'filesToChange': changed,
-              'expectedAssets': [{'domain': v['domain'], 'path': v['path'],
+              'verifiedFiles': [{'domain': v['domain'], 'path': v['path'],
                                   'currentSha256': digest(v['old']),
                                   'updatedSha256': digest(v['new'])} for v in edits.values()]}
     if args.apply:
