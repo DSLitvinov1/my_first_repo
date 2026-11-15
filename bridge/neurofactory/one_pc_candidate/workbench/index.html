@@ -183,6 +183,21 @@
                 placeholder="Текст для печати в выбранном поле"/>
               <button id="mesh-type" type="button" class="button accent small">Напечатать</button>
             </div>
+            <div class="mesh-private-ready" aria-label="Планирование действий по обычной просьбе">
+              <strong>Объясни ONE Agent своими словами</strong>
+              <p>Агент осмотрит доступные кнопки и вкладки выбранного окна и попросит Qwen
+                 составить план. Никаких действий он не выполнит, пока ты не проверишь
+                 и не разрешишь план.</p>
+              <label for="mesh-desktop-goal" class="agent-label">Что нужно сделать</label>
+              <textarea id="mesh-desktop-goal" rows="3" maxlength="500" spellcheck="false"
+                placeholder="Посмотри меню этой программы, найди отчёты и покажи их"></textarea>
+              <div class="mesh-actions">
+                <button id="mesh-desktop-goal-submit" type="button" class="button accent small">Понять задачу и составить план</button>
+              </div>
+              <div id="mesh-desktop-goal-status" role="status" class="mesh-status">
+                Выбери окно программы и опиши результат.
+              </div>
+            </div>
             <div class="mesh-private-ready" aria-label="Безопасное задание для выбранного окна Windows">
               <strong>Задание Windows — несколько действий за один запуск</strong>
               <p>Пиши по одной команде в строке. Агент выполнит до 8 проверенных шагов в выбранной программе. Отправка, удаление, платежи и сохранение без отдельного разрешения заблокированы.</p>
@@ -228,6 +243,30 @@
               <input id="mesh-bitrix-token" type="password" maxlength="4096" placeholder="OAuth-токен с правом tasks" autocomplete="off"/>
               <button type="button" id="mesh-bitrix-connect" class="button soft small">Подключить портал</button>
               <button type="button" id="mesh-bitrix-disconnect" class="button soft small">Отключить</button>
+            </div>
+          </div>
+          <div class="mesh-part" aria-label="Команды ONE Agent из ChatGPT">
+            <h3>Связь с ChatGPT</h3>
+            <p>Подключи закрытый GitHub-репозиторий для передачи задач. ChatGPT отправляет команды,
+              ONE Agent забирает их сам. Доступ к компьютеру извне не открывается.
+              Действия мышью и клавиатурой требуют твоего подтверждения.</p>
+            <label class="agent-label" for="mesh-chatgpt-repo">Закрытый репозиторий</label>
+            <input id="mesh-chatgpt-repo" type="text" maxlength="140"
+                   value="DSLitvinov1/lesson3.1" spellcheck="false" autocomplete="off"/>
+            <label class="agent-label" for="mesh-chatgpt-owner">Владелец репозитория</label>
+            <input id="mesh-chatgpt-owner" type="text" maxlength="39"
+                   value="DSLitvinov1" spellcheck="false" autocomplete="off"/>
+            <label class="agent-label" for="mesh-chatgpt-token">Персональный ключ GitHub — только Issues в выбранном репозитории</label>
+            <input id="mesh-chatgpt-token" type="password" maxlength="255"
+                   placeholder="Ввести один раз для шифрованного хранения Windows" autocomplete="off"/>
+            <div class="mesh-actions">
+              <button type="button" id="mesh-chatgpt-connect" class="button accent small">Подключить ChatGPT</button>
+              <button type="button" id="mesh-chatgpt-disconnect" class="button soft small">Отключить</button>
+              <button type="button" id="mesh-chatgpt-refresh" class="button soft small">Проверить задачи</button>
+            </div>
+            <div id="mesh-chatgpt-status" role="status" class="mesh-status">Подключение не настроено.</div>
+            <div id="mesh-chatgpt-pending" class="mesh-private-ready" aria-live="polite">
+              Нет заданий на подтверждение.
             </div>
           </div>
           <div class="mesh-part">

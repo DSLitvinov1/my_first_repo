@@ -48,6 +48,18 @@ class DesktopScriptTests(unittest.TestCase):
         self.assertEqual(steps[1]["steps"], 2)
         self.assertEqual(steps[3]["key"], "ctrl_f")
 
+    def test_human_window_observe_and_verify_labels(self):
+        script="Посмотри окно\nНайди элемент «Отчёты»\nНажми «Отчёты»\nУбедись что есть «Статистика»"
+        steps=parse_safe_desktop_script(script)
+        self.assertEqual([x["op"] for x in steps],
+                         ["observe","expect_label","click_label","expect_label"])
+        self.assertEqual(steps[1]["label"],"Отчёты")
+        self.assertEqual(steps[3]["label"],"Статистика")
+        for unsafe in ("Найди элемент «Пароль»","Найди элемент «Удалить все»",
+                       "Убедись что есть «token»"):
+            with self.subTest(script=unsafe),self.assertRaises(WorkDenied):
+                parse_safe_desktop_script(unsafe)
+
     def test_focused_editor_unicode_safe_grammar(self):
         script = ('Нажми кнопку «Открыть тест»\nНажми Tab\n'
                   'Напечатай «ONE проверка»\nСделай снимок')

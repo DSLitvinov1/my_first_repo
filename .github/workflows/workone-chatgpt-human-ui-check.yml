@@ -1,0 +1,61 @@
+name: ONE Agent ChatGPT bridge and human-like UI safe regressions
+on:
+  push:
+    branches:
+      - workone-human-ui-chatgpt-bridge-20261115
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/**'
+      - '.github/workflows/workone-chatgpt-human-ui-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bridge_and_desktop:
+    runs-on: windows-2025
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate Python, JavaScript and Windows PowerShell
+        shell: pwsh
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          python -B -m py_compile (Join-Path $root 'chatgpt_bridge_one.py') (Join-Path $root 'desktop_goal_one.py') (Join-Path $root 'desktop_one.py') (Join-Path $root 'desktop_script_one.py') (Join-Path $root 'work_server.py') (Join-Path $root 'test_chatgpt_bridge_one.py') (Join-Path $root 'playwright_access_policy.py') (Join-Path $root 'test_playwright_access_policy.py') (Join-Path $root 'test_playwright_owner_config.py')
+          if($LASTEXITCODE -ne 0){throw 'ONE_BRIDGE_PYTHON_SYNTAX_FAILED'}
+          foreach($name in @('desktop_worker.ps1','START_PRIVATE_WORK_ONE.ps1','playwright_owner_readiness.ps1','playwright_stage_owner.ps1','START_OWNER_DESKTOP_CONTROL.ps1')){
+            $tokens=$null
+            $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path (Join-Path $root $name)).Path,[ref]$tokens,[ref]$errors)|Out-Null
+            if($errors.Count -gt 0){throw ('ONE_POWERSHELL_PARSE_FAILED: '+$name+': '+$errors[0])}
+          }
+          foreach($name in @('app.js','toolmesh.js','browser_worker.cjs')){
+            node --check (Join-Path $root $name)
+            if($LASTEXITCODE -ne 0){throw ('ONE_JS_PARSE_FAILED: '+$name)}
+          }
+      - name: Run new bridge security plus existing Windows desktop regressions
+        shell: pwsh
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -B -m unittest -q test_safe_qwen_planner_one test_qwen_reliability_one test_chatgpt_bridge_one test_desktop_goal_one test_desktop_script_one test_toolmesh_one test_browser_control test_workflow_one test_agent_one test_searchconsole_one test_yandex_one test_bitrix_crm_list_one test_workbench test_private_preflight_one test_personal_readiness_one test_playwright_access_policy test_playwright_owner_config
+          if($LASTEXITCODE -ne 0){throw 'ONE_BRIDGE_REGRESSION_FAILED'}
+          node --test test_browser_typing.cjs
+          if($LASTEXITCODE -ne 0){throw 'ONE_BROWSER_REGRESSION_FAILED'}
+      - name: Real isolated Chromium typing E2E on synthetic page
+        shell: pwsh
+        run: |
+          $root='bridge/neurofactory/one_pc_candidate/workbench'
+          $chrome='C:\Program Files\Google\Chrome\Application\chrome.exe'
+          if(!(Test-Path -LiteralPath $chrome)){throw 'ONE_CHROMIUM_NOT_INSTALLED_ON_CI'}
+          Push-Location $root
+          try{
+            npm ci --ignore-scripts --no-audit --no-fund
+            if($LASTEXITCODE -ne 0){throw 'ONE_PUPPETEER_INSTALL_FAILED'}
+            $env:NF_TEST_CHROMIUM=$chrome
+            node --test test_browser_typing.cjs
+            if($LASTEXITCODE -ne 0){throw 'ONE_CHROMIUM_REAL_KEYBOARD_TEST_FAILED'}
+          } finally {
+            Remove-Item Env:NF_TEST_CHROMIUM -ErrorAction SilentlyContinue
+            Pop-Location
+          }

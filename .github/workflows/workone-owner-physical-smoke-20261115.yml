@@ -1,0 +1,27 @@
+name: ONE Agent owner Windows physical read-only bridge check
+on:
+  push:
+    branches: [workone-human-ui-chatgpt-bridge-20261115]
+    paths: ['.github/workflows/workone-owner-physical-smoke-20261115.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner_host:
+    runs-on: [self-hosted, Windows, X64, recovery]
+    timeout-minutes: 9
+    steps:
+      - name: Stage isolated candidate checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          clean: false
+          path: one-physical-20261115-${{ github.run_id }}
+      - name: Inspect exact owner Windows baseline and session, no GUI mutation
+        shell: cmd
+        run: |
+          powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';if($env:COMPUTERNAME -ne 'WIN-LIDC05TBOQD'){throw 'ONE_WRONG_MACHINE'};$root='C:\ChatGPTProjects\WorkOneStage\qwen-combined-b9fcd433-20261114';$m=Get-Content -LiteralPath (Join-Path $root 'manifest.json') -Raw|ConvertFrom-Json;if($m.source_sha -ne 'b9fcd4337f0f76cca0bcbb41c150e9cfe2582cc8'){throw 'ONE_BASELINE_CHANGED'};$proc=@(Get-CimInstance Win32_Process|Where-Object{$_.Name -eq 'python.exe' -and [string]$_.ExecutablePath -like ($root+'*') -and [string]$_.CommandLine -like '*work_server.py*'});if($proc.Count -ne 1){throw 'ONE_PROCESS_MISSING'};$win=Get-Process -Id $proc[0].ProcessId;$own=[Diagnostics.Process]::GetCurrentProcess();Write-Output 'ONE_BASELINE_EXACT=TRUE';Write-Output ('ONE_RUNNING_SESSION='+[int]$win.SessionId);Write-Output ('ONE_RUNNER_SESSION='+[int]$own.SessionId);Write-Output ('ONE_RUNNER_INTERACTIVE='+[bool][Environment]::UserInteractive);Write-Output ('ONE_SAME_SESSION='+[bool]($win.SessionId -eq $own.SessionId));Write-Output 'ONE_GUI_TEST_NOT_EXECUTED_ON_USER_DESKTOP=TRUE'"
+      - name: Run exact candidate offline tests on Windows owner device
+        shell: cmd
+        run: |
+          powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop';$root=Join-Path $env:GITHUB_WORKSPACE 'one-physical-20261115-%GITHUB_RUN_ID%\bridge\neurofactory\one_pc_candidate\workbench';$py='C:\ChatGPTProjects\WorkOneStage\qwen-combined-b9fcd433-20261114\runtime\python\python.exe';if(!(Test-Path -LiteralPath $py)){throw 'ONE_EMBEDDED_PYTHON_MISSING'};Set-Location -LiteralPath $root;& $py -B -m unittest -q test_chatgpt_bridge_one test_desktop_goal_one test_desktop_script_one test_browser_control test_searchconsole_one test_yandex_one test_bitrix_crm_list_one;if($LASTEXITCODE -ne 0){throw 'ONE_CANDIDATE_TESTS_FAILED'};Write-Output 'ONE_CANDIDATE_OWNER_MACHINE_OFFLINE_TESTS=PASS'"

@@ -49,6 +49,13 @@ def parse_safe_desktop_script(script):
         if re.fullmatch(r"(?i)сделай снимок(?: окна| экрана)?", line):
             result.append({"op": "frame"})
             continue
+        if re.fullmatch(r"(?i)(?:посмотри|осмотри|изучи)(?: окно| интерфейс)", line):
+            result.append({"op": "observe"})
+            continue
+        m = re.fullmatch(r"(?i)(?:проверь наличие|найди элемент|убедись что есть)\s+" + Q, line)
+        if m:
+            result.append({"op": "expect_label", "label": _label(m[1])})
+            continue
         m = re.fullmatch(r"(?i)прокрути\s+(вверх|вниз)(?:\s+на\s+([123])\s+шага?)?", line)
         if m:
             result.append({"op": "scroll", "direction": "up" if m[1].lower() == "вверх" else "down",
