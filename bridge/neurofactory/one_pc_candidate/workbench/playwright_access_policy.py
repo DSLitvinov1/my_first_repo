@@ -55,10 +55,11 @@ def exact_origin(raw: str) -> str:
         raise PlaywrightAccessDenied("INVALID_URL")
     try:
         u = urlsplit(raw)
+        explicit_port = u.port
     except ValueError as error:
         raise PlaywrightAccessDenied("INVALID_URL") from error
-    if (u.scheme != "https" or not u.hostname or u.username or u.password or
-        u.port not in (None, 443) or u.fragment or any(ord(c) < 32 for c in raw)):
+    if (not raw.startswith("https://") or u.scheme != "https" or not u.hostname or u.username or u.password or
+        explicit_port not in (None, 443) or u.fragment or any(ord(c) < 32 for c in raw)):
         raise PlaywrightAccessDenied("INSECURE_OR_AMBIGUOUS_URL")
     try:
         origin = "https://" + u.hostname.lower()
