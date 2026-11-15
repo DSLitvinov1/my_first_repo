@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from apply_metrika_goals import prepare, COUNTERS, ANALYTICS, EXTENSION_FILE, BASELINE_VERSIONS, PAGE_COUNTS, digest
+from apply_metrika_goals import prepare, COUNTERS, ANALYTICS, EXTENSION_FILE, BASELINE_VERSIONS, PAGE_COUNTS, digest, extension_contents
 from metadata_guard import apply_edits
 
 def source_for(host):
@@ -18,7 +18,7 @@ class InstallerTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
-        self.extension = EXTENSION_FILE.read_text(encoding='utf-8')
+        self.extension = extension_contents()
         for host in COUNTERS:
             dirname = self.root / host / 'public_html' / 'assets'
             dirname.mkdir(parents=True)
