@@ -29,6 +29,8 @@ jobs:
           node-version: '22'
       - name: Verify guarded SEO metadata changes
         run: python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo
+      - name: Verify CRM acknowledgement and privacy-safe Metrika conversion gate
+        run: node --test lead-conversion-guard/lead-confirmation-guard.test.js
       - name: Verify audit syntax
         run: |
           node --check audit.cjs
