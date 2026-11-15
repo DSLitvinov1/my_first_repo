@@ -22,6 +22,16 @@ REQUIRED = frozenset((
     "portable_runtime_one.py", "SETUP_LOCAL_QWEN.ps1",
     "start_work_one.py", "START_WORK_ONE.cmd", "cloud_ssh_draft_provider.py",
 ))
+# Backward compatible: original signed 32-file bundles are still valid.
+# Extended 42/44-file bundles contain owner-gated bridge components; 44 adds isolated launch.
+EXTENDED_REQUIRED = frozenset((
+    "chatgpt_bridge_one.py", "desktop_goal_one.py", "yandex_one.py",
+    "one_desktop_owner_mcp.py", "owner_dual_mcp_config.py",
+    "playwright_access_policy.py", "playwright_owner_mcp.json",
+    "playwright_stage_owner.ps1", "playwright_owner_readiness.ps1",
+    "START_OWNER_DESKTOP_CONTROL.ps1",
+))
+CANDIDATE_REQUIRED = frozenset(("start_chatgpt_candidate_one.py", "START_CHATGPT_ONE.cmd"))
 LOCAL_URL="http://127.0.0.1:18770"
 TOKEN_META=re.compile(r'<meta\s+name="nf-token"\s+content="([^"]+)"')
 MAX_FILE_BYTES=1024*1024
@@ -38,7 +48,10 @@ def verify_manifest(root):
         names=doc["file_digests"]
         if (doc.get("schema")!="nf.workone.personal-bundle.v1" or
             type(names) is not dict or not REQUIRED.issubset(names) or
-            len(names)!=32 or doc.get("contains_secrets") is not False or
+            (len(names) not in (32,42,44) or
+             (len(names) in (42,44) and not EXTENDED_REQUIRED.issubset(names)) or
+             (len(names)==44 and not CANDIDATE_REQUIRED.issubset(names))) or
+            doc.get("contains_secrets") is not False or
             doc.get("installs_windows_service") is not False):
             return {"state":"invalid","reason":"MANIFEST_INVALID"}
         for name,digest in names.items():

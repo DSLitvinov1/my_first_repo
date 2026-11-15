@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED
+from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED,EXTENDED_REQUIRED,CANDIDATE_REQUIRED
 
 class PrivatePreflightTests(unittest.TestCase):
     def setUp(self):
@@ -36,6 +36,45 @@ class PrivatePreflightTests(unittest.TestCase):
     def test_packaged_files_verified_exactly(self):
         self.setup_manifest()
         self.assertEqual(verify_manifest(self.root)["state"],"verified")
+
+    def test_extended_42_file_manifest_only_if_complete(self):
+        import hashlib
+        file_digests=self.setup_manifest()
+        for name in EXTENDED_REQUIRED:
+            body=b"verified synthetic extended owner module"
+            (self.root/name).write_bytes(body)
+            file_digests[name]=hashlib.sha256(body).hexdigest()
+        self.assertEqual(len(file_digests),42)
+        path=self.root/"manifest.json"
+        data=json.loads(path.read_text())
+        data["file_digests"]=file_digests
+        path.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["state"],"verified")
+        removed="chatgpt_bridge_one.py"
+        file_digests.pop(removed)
+        file_digests["not_approved_module.py"]=hashlib.sha256(b"new").hexdigest()
+        (self.root/"not_approved_module.py").write_bytes(b"new")
+        path.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["reason"],"MANIFEST_INVALID")
+
+    def test_extended_44_file_candidate_manifest_requires_both_launchers(self):
+        files=self.setup_manifest()
+        for name in EXTENDED_REQUIRED | CANDIDATE_REQUIRED:
+            body=b"isolated synthetic candidate artifact"
+            (self.root/name).write_bytes(body)
+            files[name]=hashlib.sha256(body).hexdigest()
+        self.assertEqual(len(files),44)
+        manifest=self.root/"manifest.json"
+        document=json.loads(manifest.read_text())
+        document["file_digests"]=files
+        manifest.write_text(json.dumps(document))
+        self.assertEqual(verify_manifest(self.root)["state"],"verified")
+        removed="START_CHATGPT_ONE.cmd"
+        files.pop(removed)
+        files["not_in_allowlist.cmd"]=hashlib.sha256(b"x").hexdigest()
+        (self.root/"not_in_allowlist.cmd").write_bytes(b"x")
+        manifest.write_text(json.dumps(document))
+        self.assertEqual(verify_manifest(self.root)["reason"],"MANIFEST_INVALID")
 
     def test_tampered_file_rejected(self):
         self.setup_manifest()
