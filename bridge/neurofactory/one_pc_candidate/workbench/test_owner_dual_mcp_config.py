@@ -41,7 +41,6 @@ class ConfigTests(unittest.TestCase):
         for project in ["", "d"*31, "g"*32, "A"*32, "all","a"*33]:
             with self.assertRaises(ConfigDenied):
                 make_config(**{**VALID,"project":project})
-        self.assertEqual(make_config(**{**VALID,"project":"a"*32})["mcpServers"]["one-desktop"]["args"][-3:-1],["--apps","notepad.exe,chrome.exe"][:0]) if False else None
         # Valid project gets transported as a fixed argument, not shell text.
         args=make_config(**{**VALID,"project":"a"*32})["mcpServers"]["one-desktop"]["args"]
         self.assertEqual(args[args.index("--project")+1],"a"*32)
