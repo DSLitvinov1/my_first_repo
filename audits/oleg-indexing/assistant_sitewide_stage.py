@@ -14,6 +14,9 @@ from pathlib import Path, PurePosixPath
 
 DOMAINS = {'potrebpravo.ru': 23, 'semya-yurist.ru': 18}
 ASSISTANT = '<script defer src="/assets/legal-assistant-v4.js"></script>'
+# Visitor analytics choice must be clickable above the floating assistant on mobile.
+CONSENT_PRIORITY = '<style id="oleg-consent-priority">#oleg-analytics-choice{z-index:2147483647!important}</style>'
+INJECTION = CONSENT_PRIORITY + '\n' + ASSISTANT
 ASSET_SHA256 = '3ae643d908b5cc3b7a5cc1081b06183fbe686887323ad345639e57e01b846e8a'
 MAX_HTML_BYTES = 1500000
 
@@ -31,10 +34,10 @@ def inject_assistant(src):
     if len(closings) != 1:
         raise ValueError('Missing or ambiguous HTML body closing tag')
     anchor = closings[0]
-    new = text[:anchor.start()] + '\n' + ASSISTANT + '\n' + text[anchor.start():]
+    new = text[:anchor.start()] + '\n' + INJECTION + '\n' + text[anchor.start():]
     if new.count('legal-assistant-v4.js') != 1:
         raise ValueError('Assistant insertion was not unique')
-    if new.replace('\n' + ASSISTANT + '\n', '', 1) != text:
+    if new.replace('\n' + INJECTION + '\n', '', 1) != text:
         raise ValueError('Mutation exceeded single assistant script tag')
     return new.encode('utf-8'), True
 
