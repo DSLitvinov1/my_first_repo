@@ -86,7 +86,11 @@ class BatchReleaseTests(unittest.TestCase):
             site_root=self.parent/host/'public_html'
             asset=site_root/'assets'/'legal-assistant-v4.js'
             asset.parent.mkdir(parents=True,exist_ok=True)
-            asset.write_text('const forms={consumer:"crm_form_fhi3n",family:"crm_form_ep5fd"};document.getElementById("legal-help-toggle")',encoding='utf-8')
+            from bitrix_fallback_guard import FROM
+            js='const forms={consumer:"crm_form_fhi3n",family:"crm_form_ep5fd"};document.getElementById("legal-help-toggle");const id="legal-help-form-step";\n'
+            js+='\n'.join(before for before,_ in FROM)
+            asset.write_text(js,encoding='utf-8')
+            self.initial[asset]=js
             existing=[str(p.relative_to(site_root)) for p in self.initial if p.is_relative_to(site_root)]
             extras=['index.html']
             n=0
@@ -111,18 +115,21 @@ class BatchReleaseTests(unittest.TestCase):
     def test_full_seo_and_bitrix_release_without_overwriting_sources(self):
         self.setup_site_assistant_fixture()
         changes,overlap,missing=build_full_release(self.meta,self.links,self.parent)
-        self.assertEqual(len(changes),41)
+        self.assertEqual(len(changes),43)
         self.assertEqual(overlap,13)
         self.assertEqual(missing,39)
-        self.assertEqual(sum(x['new']!=x['old'] for x in changes.values()),39)
+        self.assertEqual(sum(x['new']!=x['old'] for x in changes.values()),41)
         for path,old in self.initial.items():
             self.assertEqual(path.read_text(encoding='utf-8'),old)
         backup,changed=apply_edits(changes,self.parent)
-        self.assertEqual(changed,39)
+        self.assertEqual(changed,41)
         for path,info in changes.items():
             new=path.read_text(encoding='utf-8')
             self.assertEqual(new,info['new'].decode('utf-8'))
-            self.assertIn('/assets/legal-assistant-v4.js',new)
+            if path.suffix=='.js':
+                self.assertIn('formStep.insertBefore(fallback, frame);',new)
+            else:
+                self.assertIn('/assets/legal-assistant-v4.js',new)
             self.assertEqual((backup/info['domain']/info['path']).read_text(encoding='utf-8'),self.initial[path])
             if path.name.startswith('case-'):
                 self.assertIn('article-related',new)
