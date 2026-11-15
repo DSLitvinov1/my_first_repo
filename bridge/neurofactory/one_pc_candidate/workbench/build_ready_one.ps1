@@ -29,9 +29,10 @@ $names=@(
   'one_desktop_owner_mcp.py','owner_dual_mcp_config.py',
   'playwright_access_policy.py','playwright_owner_mcp.json',
   'playwright_stage_owner.ps1','playwright_owner_readiness.ps1',
-  'START_OWNER_DESKTOP_CONTROL.ps1'
+  'START_OWNER_DESKTOP_CONTROL.ps1',
+  'start_chatgpt_candidate_one.py','START_CHATGPT_ONE.cmd'
 )
-if ($names.Count -ne 42) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
+if ($names.Count -ne 44) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
 $digests=@{}
 foreach ($name in $names) {
   if ($name -notmatch '^[A-Za-z0-9_.-]{2,90}$') {throw 'BUNDLE_UNSAFE_SOURCE_NAME'}
