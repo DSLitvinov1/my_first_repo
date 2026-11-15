@@ -151,6 +151,24 @@ class OneDesktopTests(unittest.TestCase):
     def test_nonwindows_consent_denied(self):
         import os
         if os.name!='nt':self.assertFalse(windows_owner_consent('ok','ok'))
+    def test_invalid_jsonrpc_tool_requests_fail_closed(self):
+        calls=[
+            {'jsonrpc':'2.0','id':20,'method':'tools/call','params':{'name':'one_desktop_execute','arguments':{'script':'Посмотри окно','approved':True}}},
+            {'jsonrpc':'2.0','id':21,'method':'tools/call','params':{'name':'execute_shell','arguments':{'command':'dir'}}},
+            {'jsonrpc':'2.0','id':22,'method':'tools/call','params':{'name':'one_desktop_status','arguments':{'secret':'x'}}},
+        ]
+        for request in calls:
+            with self.subTest(name=request['params']['name']):
+                result=process(request,self.bridge)
+                self.assertIs(result['result']['isError'],True)
+                self.assertNotIn('secret',str(result).lower())
+                self.assertEqual(self.desktop.calls,[])
+
+    def test_unknown_protocol_method_does_not_execute(self):
+        response=process({'jsonrpc':'2.0','id':50,'method':'tools/execute'},self.bridge)
+        self.assertEqual(response['error']['message'],'METHOD_NOT_FOUND')
+        self.assertEqual(self.desktop.calls,[])
+
     def test_wrong_project_not_accepted(self):
         with self.assertRaises(ValueError):OneDesktopOwnerMcp(self.desktop,self.scripts,'b'*32,lambda *a:True)
 
