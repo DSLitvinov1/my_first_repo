@@ -5,6 +5,7 @@ on:
     paths:
       - 'audits/oleg-indexing/metrika_goals_audit.cjs'
       - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
+      - 'audits/oleg-indexing/oleg-crm-backup-links-v1.js'
       - 'audits/oleg-indexing/test_metrika_goals_preview.cjs'
       - 'audits/oleg-indexing/apply_metrika_goals.py'
       - 'audits/oleg-indexing/test_apply_metrika_goals.py'
