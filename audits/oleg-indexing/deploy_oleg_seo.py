@@ -13,6 +13,7 @@ from pathlib import Path
 from metadata_guard import prepare as prepare_meta, replace_once, apply_edits
 from case_links_guard import prepare as prepare_links
 from lead_assistant_guard import prepare as prepare_assistant, patch as patch_assistant
+from bitrix_fallback_guard import prepare as prepare_fallback
 
 SITES = {'potrebpravo.ru', 'semya-yurist.ru'}
 DEFAULT_META = 'METADATA_PROPOSALS_20261115.json'
@@ -81,7 +82,16 @@ def build_full_release(metadata_plan, links_plan, root_parent):
             raise ValueError('Concurrent source or path mismatch '+str(target))
         staged['new']=patch_assistant(staged['new'].decode('utf-8'),staged['domain']).encode('utf-8')
     if len(seo)!=41:
-        raise ValueError('Unexpected full release target count')
+        raise ValueError('Unexpected full release HTML target count')
+    assets=prepare_fallback(root_parent)
+    if len(assets)!=2:
+        raise ValueError('Expected exactly two existing Bitrix24 helper assets')
+    for target,info in assets.items():
+        if target in seo:
+            raise ValueError('JS asset overlaps HTML targets')
+        seo[target]=dict(info)
+    if len(seo)!=43:
+        raise ValueError('Unexpected release bundle target count')
     return seo,overlaps,missing
 
 
@@ -99,7 +109,7 @@ def main(argv=None):
     changes,overlaps,assistantMissing=build_full_release(meta,links,root)
     summary={'mode':'apply' if args.apply else 'dry-run',
              'root':str(root),'uniqueFiles':len(changes),
-             'overlappingFiles':overlaps,'assistantMissingBeforeDeployment':assistantMissing,
+             'overlappingFiles':overlaps,'assistantMissingBeforeDeployment':assistantMissing,'bitrixAssets':2,
              'filesWithRealChanges':sum(x['new']!=x['old'] for x in changes.values())}
     print(json.dumps(summary,ensure_ascii=False))
     if args.apply:
