@@ -12,6 +12,7 @@ from pathlib import Path
 
 from metadata_guard import prepare as prepare_meta, replace_once, apply_edits
 from case_links_guard import prepare as prepare_links
+from lead_assistant_guard import prepare as prepare_assistant, patch as patch_assistant
 
 SITES = {'potrebpravo.ru', 'semya-yurist.ru'}
 DEFAULT_META = 'METADATA_PROPOSALS_20261115.json'
@@ -64,6 +65,26 @@ def build_release(metadata_plan, links_plan, root_parent):
     return combined,overlaps
 
 
+
+def build_full_release(metadata_plan, links_plan, root_parent):
+    seo,overlaps=build_release(metadata_plan,links_plan,root_parent)
+    assistant=prepare_assistant(root_parent)
+    missing=sum(item['old']!=item['new'] for item in assistant.values())
+    if len(assistant)!=41:
+        raise ValueError('Assistant coverage must match 41 verified sitemap pages')
+    for target,info in assistant.items():
+        if target not in seo:
+            seo[target]=dict(info)
+            continue
+        staged=seo[target]
+        if staged['old']!=info['old'] or staged['domain']!=info['domain'] or staged['path']!=info['path']:
+            raise ValueError('Concurrent source or path mismatch '+str(target))
+        staged['new']=patch_assistant(staged['new'].decode('utf-8'),staged['domain']).encode('utf-8')
+    if len(seo)!=41:
+        raise ValueError('Unexpected full release target count')
+    return seo,overlaps,missing
+
+
 def main(argv=None):
     ap=argparse.ArgumentParser()
     here=Path(__file__).parent
@@ -75,10 +96,10 @@ def main(argv=None):
     meta=json.loads(Path(args.metadata_plan).read_text(encoding='utf-8'))
     links=json.loads(Path(args.links_plan).read_text(encoding='utf-8'))
     root=Path(args.root_parent)
-    changes,overlaps=build_release(meta,links,root)
+    changes,overlaps,assistantMissing=build_full_release(meta,links,root)
     summary={'mode':'apply' if args.apply else 'dry-run',
              'root':str(root),'uniqueFiles':len(changes),
-             'overlappingFiles':overlaps,
+             'overlappingFiles':overlaps,'assistantMissingBeforeDeployment':assistantMissing,
              'filesWithRealChanges':sum(x['new']!=x['old'] for x in changes.values())}
     print(json.dumps(summary,ensure_ascii=False))
     if args.apply:
