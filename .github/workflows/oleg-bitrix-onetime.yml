@@ -28,8 +28,6 @@ jobs:
           node --check bitrix_funnel_e2e.cjs
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Verify both form journeys without creating leads
-        run: node bitrix_funnel_e2e.cjs
       - name: Submit two synthetic test leads once through the actual public forms
         env:
           OWNER_AUTHORIZED_CRM_TEST: 'true'
