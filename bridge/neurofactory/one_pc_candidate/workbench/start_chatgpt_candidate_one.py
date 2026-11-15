@@ -11,6 +11,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+# Embedded Windows Python uses isolated sys.path; add only the verified package directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from private_preflight_one import verify_manifest
 from start_work_one import owner_session_eligible, _safe_private_folder
 
