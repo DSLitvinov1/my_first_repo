@@ -42,7 +42,7 @@ class InstallerTests(unittest.TestCase):
             else:
                 self.assertIn(b'oleg-analytics-v1.js?v=',item['new'])
         backup,n = apply_edits(edits,self.root)
-        self.assertEqual(n,2)
+        self.assertEqual(n,2 + sum(PAGE_COUNTS.values()))
         for host in COUNTERS:
             expected=source_for(host)
             asset=self.root/host/'public_html'/ANALYTICS
