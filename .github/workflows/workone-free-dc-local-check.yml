@@ -25,3 +25,12 @@ jobs:
         shell: bash
         working-directory: bridge/neurofactory/one_pc_candidate/workbench
         run: python -m unittest -v test_owner_dual_mcp_config test_one_files_dc_mcp
+      - name: Windows setup PowerShell syntax check (not execution)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $script = 'bridge/neurofactory/one_pc_candidate/workbench/setup_free_dc/SETUP_FREE_DC_READONLY.ps1'
+          [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }
