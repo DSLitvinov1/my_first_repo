@@ -12,3 +12,5 @@ Creates **at most one** visibly marked synthetic test inquiry per distinct websi
 - Record the HTTP statuses and Bitrix form confirmation in a JSON artifact. A form success message does **not** prove lead visibility or correct funnel stage inside the private CRM; an authenticated read-back is still required.
 
 Do not trigger again or re-run the workflow for the same marker.
+
+Preflight: Playwright both-site form journeys 30/30 PASS on GitHub Actions run 43662807471. YAML conditional quoting fixed before this run.
