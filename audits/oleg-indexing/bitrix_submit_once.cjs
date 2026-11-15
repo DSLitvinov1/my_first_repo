@@ -58,9 +58,26 @@ async function main(){
     const src=await iframe.getAttribute('src');
     const exact='https://'+expectedHost+'/'+site.form+'/';
     if(src!==exact)throw Error('Wrong form iframe: '+compact(src).slice(0,200));
-    const frame=page.frameLocator('iframe.legal-frame');
-    const form=frame.locator('form').first();
-    await form.waitFor({state:'visible',timeout:35000});
+    let frame=page.frameLocator('iframe.legal-frame');
+    let form=frame.locator('form').first();
+    let mode='embedded';
+    try{await form.waitFor({state:'visible',timeout:14000});}
+    catch{
+      details.errors.push('Embedded Bitrix iframe was slow; attempting one GET-only reload.');
+      await iframe.evaluate(el=>{const src=el.src;el.src='about:blank';el.src=src;});
+      try{await form.waitFor({state:'visible',timeout:19000});}
+      catch{
+        const fallback=await context.newPage();
+        const formRes=await fallback.goto(exact,{waitUntil:'domcontentloaded',timeout:27000});
+        if(formRes?.status()!==200)throw Error('Both embedded and direct Bitrix forms unavailable');
+        frame=fallback;
+        form=fallback.locator('form').first();
+        await form.waitFor({state:'visible',timeout:25000});
+        mode='direct-native-fallback';
+        details.errors.push('Iframe slow; submission continued through native Bitrix form URL.');
+      }
+    }
+    details.mode=mode;
     const name=form.locator('input[name="name"]');
     const phone=form.locator('input[name="phone"]');
     const description=form.locator('textarea').first();
