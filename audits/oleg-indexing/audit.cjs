@@ -49,10 +49,17 @@ async function main(){
       const critical=(code,detail)=>out.critical.push({code,detail});
       const warning=(code,detail)=>out.warnings.push({code,detail});
       async function fetch(url){
-        try{
-          const response=await api.get(url,{maxRedirects:5});
-          return {status:response.status(),url:response.url(),body:await response.text(),headers:response.headers()};
-        }catch(e){return {status:0,url,body:'',error:norm(e.message).slice(0,220)};}
+        let lastError='';
+        for(let attempt=0;attempt<3;attempt++){
+          try{
+            const response=await api.get(url,{maxRedirects:5});
+            return {status:response.status(),url:response.url(),body:await response.text(),headers:response.headers()};
+          }catch(e){
+            lastError=norm(e.message).slice(0,220);
+            if(attempt<2)await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
+          }
+        }
+        return {status:0,url,body:'',error:lastError};
       }
       const robots=await fetch(base+'/robots.txt');
       out.robots={status:robots.status,blocked_agents:robots.status===200?robotsRootRestrictions(robots.body):[],sitemap_lines:robots.body.split(/\r?\n/).filter(x=>/^\s*Sitemap\s*:/i.test(x))};
