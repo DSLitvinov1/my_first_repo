@@ -31,7 +31,7 @@ async function main(){
      const widget=page.locator('[data-oleg-crm-backup="v1"]');
      await widget.waitFor({state:'attached',timeout:12000});
      check(row,'Accessible fallback inserted',await widget.count()===1);
-     const link=widget.getByRole('link',{name:'Открыть форму заявки'});
+     const link=widget.locator('a[href^="https://b24-s2dosa.bitrix24site.ru/"]').first(); // Detect while parent form step is hidden; visibility checked after opening.
      const expected='https://b24-s2dosa.bitrix24site.ru/'+c.form+'/';
      check(row,'Correct domain-specific Bitrix direct link',(await link.getAttribute('href'))===expected,{actual:await link.getAttribute('href')});
      check(row,'External link target + safe rel',(await link.getAttribute('target'))==='_blank'&&/noopener/.test(await link.getAttribute('rel')||''));
