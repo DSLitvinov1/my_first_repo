@@ -125,3 +125,34 @@ Evidence: OpenSEO early-2026-11-14 completed crawls. **These crawls predate subs
 - Next permitted step depends on owner/browser host granting access for `webmaster.yandex.ru`, `metrika.yandex.ru`, and `search.google.com` in an authorized interactive session or on a properly connected Search Console account. Do not attempt browser-host bypass, raw CDP, credential/cookie extraction, or cross-browser workarounds.
 - Previously verified full sitemap **41/41 HTTP 200** and Playwright operator simulated UI tests **PASS** (GitHub Actions #43652024913). The local operator is **not** a completed authenticated production submission.
 - No production files or search console settings were modified in this follow-up. Yandex Direct not touched.
+
+## Release-grade SEO continuation — 2026-11-15
+
+### What Playwright verified now
+- [GitHub Actions #43660367037](https://github.com/DSLitvinov1/my_first_repo/actions/runs/43660367037), complete browser audit and staged-release validation, PASS.
+- Both existing sitemaps return HTTP 200, **41/41 indexable canonical URLs** (23 consumer, 18 family) return HTTP 200, and no critical crawl/canonical/robots errors were found.
+- Dedicated 13-page legal case audit: 13/13 HTTP 200; every case template has an article containing very short decision summaries; no direct service links inside article were found. No publicly linked PDF in case body and no clear author/time element inside main content were detected. Do not assume the court-act source documents are absent off-site.
+- All 20 staged SEO title/meta-description changes match the live public page values and have no collision among proposed texts; the **20/20 browser preflight passed**.
+- `CASE_RELATED_LINKS_20261115.json` stages **26 relevant internal links on 13 short case pages**, with **15 distinct canonical link targets** verified HTTP 200. `case_links_guard.py` is dry-run-first, fails on source drift/duplicate links, uses backup/rollback from `metadata_guard.py`. **13/13 case-page preflight passed**.
+- The safeguarded metadata backup function now rechecks live bytes before and during writes to refuse concurrent changes. Offline regression tests in GitHub Actions PASSED.
+- There is **no deployed metadata/link update** yet, because current authorized session has no production hosting write access.
+
+### Confirmed analytics — supersedes the 2026-11-14 incomplete family-site report
+- **potrebpravo.ru**: all **25/25** HTML pages (23 sitemap pages plus 2 legal pages) reference `assets/oleg-analytics-v1.js?v=f96b5eb2`; asset HTTP 200; correct separate Yandex Metrica counter `114249897` present; consent panel code present; webvisor false.
+- **semya-yurist.ru**: all **20/20** HTML pages (18 sitemap pages plus 2 legal pages) reference `assets/oleg-analytics-v1.js?v=173e16dd`; asset HTTP 200; separate counter `114251443` present; consent panel code present; webvisor false.
+- These results verify live code installation and **not** actual delivery of lead-success events, conversion goal counts, or a complete live consent network-flow audit.
+
+### Pending legitimate release actions
+1. Identify the actual live hosting directory and its active source version before touching files: 2026-10-31 notes mention Beget, while 2026-11-14 confirmed published edits through Timeweb SSH. Public runtime and latest deployment take precedence over assumptions. No DNS changes.
+2. In the authorized actual web hosting, back up site files, run `metadata_guard.py` and `case_links_guard.py` with no `--apply`, inspect diffs, then perform the guarded changes only if all source versions still match. Never auto-merge the PR or assume staging is production.
+3. After publication, repeat the complete Playwright crawl, mobile view, accessible links, canonical/noindex, consent and analytics code checks; verify actual 20 metadata fixes and 26 contextual links. Fix any regression before saying deployed.
+4. Add the previously staged IndexNow public verification file only under the intended consumer host, verify exact HTTPS response and retry the same five actually changed case URLs. IndexNow previously returned FAILED (missing key). No accepted notification is claimed.
+5. In authenticated Yandex Webmaster, inspect both sitemaps and queue states and verify actual indexed/removed URL counts; 7 family URLs last observed `В очереди` from the real Webmaster page. The consumer site's 7 were queued 2026-11-14 in the prior verified report. Do not repeat blindly.
+6. Connect and verify the two exact Oleg domain properties in Google Search Console. The available OpenSEO integration still has **zero connected accounts**. Only then submit/verify sitemaps and inspect URL coverage.
+7. For 13 brief legal case pages, obtain source judgment or verified court docket (court, date, case number, claims, arguments, evidence, exact outcome and appeals) before enriching original facts; avoid copied boilerplate and fabricated legal outcomes.
+8. The two OpenSEO projects still default to **US / English**, although the sites and business market are Russian / Moscow. Set their project market in the actual account UI when permitted; do not create duplicate projects or spend research credits.
+9. Verify tracking of real confirmed Bitrix24 form submissions before using any conversion rate or lead-success claim. Do not manufacture or submit real customer inquiries.
+
+### Safety/status
+- **CI tested** != **published** != **indexed**. Project remains a draft PR with no live hosting updates or ad launch.
+- Browser plugin access can read family Webmaster reindex page, but the other dashboard tabs are blocked by host permissions; Playwright CI browser runs without Oleg's authenticated session. Do not bypass the browser host guard, import cookies, or run unapproved production changes.
