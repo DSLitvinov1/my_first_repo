@@ -1,0 +1,216 @@
+{
+  "snapshot": "2026-11-15",
+  "status": "REVIEW_ONLY_NOT_DEPLOYED",
+  "origin": "Playwright case content pass 43659637130 and latest OpenSEO audit",
+  "purpose": "Increase relevant, contextual internal links to existing public, verified pages; without legal case outcome claims.",
+  "changes": [
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/zpp-staircase.html",
+      "url": "https://potrebpravo.ru/practice/cases/zpp-staircase.html",
+      "expectedTitle": "Неисполненный подряд на изготовление лестницы — судебная практика",
+      "related": [
+        {
+          "href": "/services/nekachestvennye-uslugi.html",
+          "label": "Споры из-за качества выполненных работ"
+        },
+        {
+          "href": "/services/pretenziya-prodavcu.html",
+          "label": "Подготовка претензии исполнителю"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/developer-one.html",
+      "url": "https://potrebpravo.ru/practice/cases/developer-one.html",
+      "expectedTitle": "Строительные недостатки квартиры: требования двух покупателей — судебная практика",
+      "related": [
+        {
+          "href": "/services/neustoyka-zastroishchika.html",
+          "label": "Претензии и неустойка по ДДУ"
+        },
+        {
+          "href": "/services/nekachestvennye-uslugi.html",
+          "label": "Вопросы качества работ и услуг"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/developer-two.html",
+      "url": "https://potrebpravo.ru/practice/cases/developer-two.html",
+      "expectedTitle": "Возмещение стоимости устранения недостатков жилья — судебная практика",
+      "related": [
+        {
+          "href": "/services/neustoyka-zastroishchika.html",
+          "label": "Споры с застройщиком"
+        },
+        {
+          "href": "/services/vozvrat-deneg.html",
+          "label": "Требования о возврате денежных средств"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/developer-three.html",
+      "url": "https://potrebpravo.ru/practice/cases/developer-three.html",
+      "expectedTitle": "Стоимость устранения недостатков и неустойка — судебная практика",
+      "related": [
+        {
+          "href": "/services/neustoyka-zastroishchika.html",
+          "label": "Споры с застройщиком по ДДУ"
+        },
+        {
+          "href": "/practice/cases/developer-one.html",
+          "label": "Другой пример спора о недостатках жилья"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/developer-four.html",
+      "url": "https://potrebpravo.ru/practice/cases/developer-four.html",
+      "expectedTitle": "Строительные дефекты по договору долевого участия — судебная практика",
+      "related": [
+        {
+          "href": "/services/neustoyka-zastroishchika.html",
+          "label": "Споры с застройщиком и документы"
+        },
+        {
+          "href": "/practice/cases/developer-two.html",
+          "label": "Другой пример спора о качестве жилья"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/traffic-accident.html",
+      "url": "https://potrebpravo.ru/practice/cases/traffic-accident.html",
+      "expectedTitle": "Взыскание ущерба от дорожно-транспортного происшествия — судебная практика",
+      "related": [
+        {
+          "href": "/services/strahovye-spory.html",
+          "label": "Юридическая помощь по страховым спорам"
+        },
+        {
+          "href": "/specialists/levin-oleg.html",
+          "label": "Профиль юриста по гражданским спорам"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/rental-dispute.html",
+      "url": "https://potrebpravo.ru/practice/cases/rental-dispute.html",
+      "expectedTitle": "Долги по найму жилого помещения — судебная практика",
+      "related": [
+        {
+          "href": "/practice/cases/rental-money.html",
+          "label": "Другой пример денежного спора по найму"
+        },
+        {
+          "href": "/specialists/levin-oleg.html",
+          "label": "Профиль юриста по гражданским делам"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/rental-money.html",
+      "url": "https://potrebpravo.ru/practice/cases/rental-money.html",
+      "expectedTitle": "Денежные требования после найма квартиры — судебная практика",
+      "related": [
+        {
+          "href": "/practice/cases/rental-dispute.html",
+          "label": "Другой пример спора по найму жилья"
+        },
+        {
+          "href": "/specialists/levin-oleg.html",
+          "label": "Профиль юриста по гражданским делам"
+        }
+      ]
+    },
+    {
+      "host": "potrebpravo.ru",
+      "path": "practice/cases/consumer-refunded.html",
+      "url": "https://potrebpravo.ru/practice/cases/consumer-refunded.html",
+      "expectedTitle": "Возврат средств за автомобильную деталь — судебная практика",
+      "related": [
+        {
+          "href": "/services/vozvrat-deneg.html",
+          "label": "Как вернуть деньги по спору с продавцом"
+        },
+        {
+          "href": "/services/pretenziya-prodavcu.html",
+          "label": "Как подготовить претензию продавцу"
+        }
+      ]
+    },
+    {
+      "host": "semya-yurist.ru",
+      "path": "practice/cases/family-invalid-marriage.html",
+      "url": "https://semya-yurist.ru/practice/cases/family-invalid-marriage.html",
+      "expectedTitle": "Признание двух браков недействительными — судебная практика",
+      "related": [
+        {
+          "href": "/services/razvod.html",
+          "label": "Расторжение брака: отдельная правовая процедура"
+        },
+        {
+          "href": "/services/razdel-imushchestva.html",
+          "label": "Как решаются вопросы раздела имущества"
+        }
+      ]
+    },
+    {
+      "host": "semya-yurist.ru",
+      "path": "practice/cases/family-alimony-appeal.html",
+      "url": "https://semya-yurist.ru/practice/cases/family-alimony-appeal.html",
+      "expectedTitle": "Изменение размера алиментов в апелляции — судебная практика",
+      "related": [
+        {
+          "href": "/services/alimenty.html",
+          "label": "Помощь по взысканию и изменению алиментов"
+        },
+        {
+          "href": "/practice/cases/family-alimony-cassation.html",
+          "label": "Другой пример обжалования по алиментам"
+        }
+      ]
+    },
+    {
+      "host": "semya-yurist.ru",
+      "path": "practice/cases/family-alimony-cassation.html",
+      "url": "https://semya-yurist.ru/practice/cases/family-alimony-cassation.html",
+      "expectedTitle": "Кассационная проверка алиментного спора — судебная практика",
+      "related": [
+        {
+          "href": "/services/alimenty.html",
+          "label": "Консультации и документы по алиментам"
+        },
+        {
+          "href": "/practice/cases/family-alimony-appeal.html",
+          "label": "Другой пример судебного обжалования"
+        }
+      ]
+    },
+    {
+      "host": "semya-yurist.ru",
+      "path": "practice/cases/family-divorce-public-example.html",
+      "url": "https://semya-yurist.ru/practice/cases/family-divorce-public-example.html",
+      "expectedTitle": "Судебное расторжение брака: внешний пример — судебная практика",
+      "related": [
+        {
+          "href": "/services/razvod.html",
+          "label": "Юридическая помощь при расторжении брака"
+        },
+        {
+          "href": "/services/razdel-imushchestva.html",
+          "label": "Раздел имущества после расторжения брака"
+        }
+      ]
+    }
+  ]
+}
