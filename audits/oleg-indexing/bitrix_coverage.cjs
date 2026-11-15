@@ -72,6 +72,17 @@ async function main(){
      });
      await widget.click({timeout:5000});
      flow.panelVisible=await page.locator('#legal-help-panel').isVisible();
+     flow.panelStructure=await page.evaluate(()=>{
+       const panel=document.querySelector('#legal-help-panel');
+       const guide=document.querySelector('#legal-help-topics');
+       return {panelCount:document.querySelectorAll('#legal-help-panel').length,
+         guideCount:document.querySelectorAll('#legal-help-topics').length,
+         guideHidden:guide?.hidden,
+         childButtons:panel?[...panel.querySelectorAll('button')].map(x=>x.textContent.trim().slice(0,80)):[],
+         visibleText:(panel?.innerText||'').replace(/\\s+/g,' ').slice(0,450),
+         htmlSnippet:(panel?.outerHTML||'').slice(0,1600),
+         guideDisplay:guide?getComputedStyle(guide).display:null};
+     });
      flow.topicButtons=await page.locator('#legal-help-topics .legal-choice').allTextContents();
      await page.getByRole('button',{name:'Оставить заявку юристу'}).click({timeout:5000});
      const frameEl=page.locator('#legal-help-form-step iframe.legal-frame');
