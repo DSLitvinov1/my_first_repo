@@ -18,6 +18,7 @@ SHELL_APPS = frozenset({
     "cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe",
     "cscript.exe", "regedit.exe", "mmc.exe", "mshta.exe",
     "rundll32.exe", "schtasks.exe", "taskmgr.exe",
+    "python.exe", "node.exe", "msiexec.exe", "control.exe",
 })
 
 
