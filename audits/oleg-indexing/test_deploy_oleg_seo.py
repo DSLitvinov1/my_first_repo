@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from copy import deepcopy
 
-from deploy_oleg_seo import build_release
+from deploy_oleg_seo import build_release, build_full_release
 from metadata_guard import apply_edits
 
 HOSTS=('potrebpravo.ru','semya-yurist.ru')
@@ -80,6 +80,54 @@ class BatchReleaseTests(unittest.TestCase):
         for path in list(changes.keys())[1:]:
             self.assertEqual(path.read_text(encoding='utf-8'),self.initial[path])
         self.assertEqual(list(self.parent.glob('.oleg-seo-metadata-backup-*')),[])
+    def setup_site_assistant_fixture(self):
+        from lead_assistant_guard import SCRIPT
+        for host,count in [('potrebpravo.ru',23),('semya-yurist.ru',18)]:
+            site_root=self.parent/host/'public_html'
+            asset=site_root/'assets'/'legal-assistant-v4.js'
+            asset.parent.mkdir(parents=True,exist_ok=True)
+            asset.write_text('const forms={consumer:"crm_form_fhi3n",family:"crm_form_ep5fd"};document.getElementById("legal-help-toggle")',encoding='utf-8')
+            existing=[str(p.relative_to(site_root)) for p in self.initial if p.is_relative_to(site_root)]
+            extras=['index.html']
+            n=0
+            while len(set(existing+extras))<count:
+                rel=f'services/extra-{n}.html'
+                extras.append(rel)
+                n+=1
+            pages=list(dict.fromkeys(existing+extras))
+            self.assertEqual(len(pages),count)
+            for rel in extras:
+                path=site_root/rel
+                if path not in self.initial:
+                    path.parent.mkdir(parents=True,exist_ok=True)
+                    code='<html><head><title>Страница</title></head><body><main>Информация</main></body></html>'
+                    if rel=='index.html':
+                        code=code.replace('</body>',SCRIPT+'</body>')
+                    path.write_text(code,encoding='utf-8')
+                    self.initial[path]=code
+            urls=['https://'+host+('/' if rel=='index.html' else '/'+rel) for rel in pages]
+            (site_root/'sitemap.xml').write_text('<urlset>'+''.join('<url><loc>'+url+'</loc></url>' for url in urls)+'</urlset>',encoding='utf-8')
+
+    def test_full_seo_and_bitrix_release_without_overwriting_sources(self):
+        self.setup_site_assistant_fixture()
+        changes,overlap,missing=build_full_release(self.meta,self.links,self.parent)
+        self.assertEqual(len(changes),41)
+        self.assertEqual(overlap,13)
+        self.assertEqual(missing,39)
+        self.assertEqual(sum(x['new']!=x['old'] for x in changes.values()),39)
+        for path,old in self.initial.items():
+            self.assertEqual(path.read_text(encoding='utf-8'),old)
+        backup,changed=apply_edits(changes,self.parent)
+        self.assertEqual(changed,39)
+        for path,info in changes.items():
+            new=path.read_text(encoding='utf-8')
+            self.assertEqual(new,info['new'].decode('utf-8'))
+            self.assertIn('/assets/legal-assistant-v4.js',new)
+            self.assertEqual((backup/info['domain']/info['path']).read_text(encoding='utf-8'),self.initial[path])
+            if path.name.startswith('case-'):
+                self.assertIn('article-related',new)
+                self.assertIn('Новый заголовок',new)
+
     def test_mismatch_domain_list_rejected(self):
         bad=deepcopy(self.meta)
         bad['sites'][1]['host']='some-other-site.ru'
