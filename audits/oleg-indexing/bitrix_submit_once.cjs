@@ -17,8 +17,8 @@ const compact=s=>String(s||'').replace(/\s+/g,' ').trim();
 
 async function main(){
  if(process.argv.indexOf('--execute-single-live-check')<0 || process.env.OWNER_AUTHORIZED_CRM_TEST !== 'true' ||
-   process.env.GITHUB_RUN_ATTEMPT!=='1' || process.env.GITHUB_EVENT_NAME!=='pull_request' ||
-   process.env.GITHUB_HEAD_REF!=='audit-oleg-sites-playwright-20261115') {
+   process.env.GITHUB_RUN_ATTEMPT!=='1' || process.env.GITHUB_EVENT_NAME!=='push' ||
+   process.env.GITHUB_REF_NAME!=='audit-oleg-sites-playwright-20261115') {
    throw Error('Explicit owner-authorized single-run CI guard not satisfied; no lead submitted.');
  }
  const runToken=String(process.env.GITHUB_RUN_ID||'');
