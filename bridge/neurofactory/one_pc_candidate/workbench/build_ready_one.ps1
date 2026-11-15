@@ -24,9 +24,14 @@ $names=@(
   'package.json','package-lock.json','README.md',
   'START_PRIVATE_WORK_ONE.ps1','PERSONAL_START_README.md',
   'private_preflight_one.py','portable_runtime_one.py','SETUP_LOCAL_QWEN.ps1',
-  'start_work_one.py','START_WORK_ONE.cmd','cloud_ssh_draft_provider.py'
+  'start_work_one.py','START_WORK_ONE.cmd','cloud_ssh_draft_provider.py',
+  'chatgpt_bridge_one.py','desktop_goal_one.py','yandex_one.py',
+  'one_desktop_owner_mcp.py','owner_dual_mcp_config.py',
+  'playwright_access_policy.py','playwright_owner_mcp.json',
+  'playwright_stage_owner.ps1','playwright_owner_readiness.ps1',
+  'START_OWNER_DESKTOP_CONTROL.ps1'
 )
-if ($names.Count -ne 32) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
+if ($names.Count -ne 42) {throw 'BUNDLE_SOURCE_ALLOWLIST_CHANGED'}
 $digests=@{}
 foreach ($name in $names) {
   if ($name -notmatch '^[A-Za-z0-9_.-]{2,90}$') {throw 'BUNDLE_UNSAFE_SOURCE_NAME'}
