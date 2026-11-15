@@ -34,3 +34,14 @@
 
 ## Продолжение
 При наличии реального Timeweb write-доступа: выполнить guarded-dry-run и резервную копию, только затем узкую выкладку и регрессионный тест. Сохранять draft PR #125; не смешивать со статусом ONE/CORE/HOST.
+
+## Фактическая продолженная проверка 16.11 — Desktop Commander / Timeweb / staging
+
+- Бесплатный Desktop Commander MCP на `WIN-LIDC05TBOQD` подтвердил существование двух локальных деревьев `C:\\Users\\user\\Documents\\oleg_sites_to_publish\\consumer\\public_html` и `...\\family\\public_html`. Эти исходники **устарели**: на главных страницах `| Демо`; не использовать их в production. Фиксация: `DSLitvinov1/lesson3.1/bridge/results/oleg-seo-source-snapshot-20261116.json`.
+- Timeweb `cl664853`: проверка безопасного, строго host-key-verified, key-only SSH на `vh460.timeweb.ru` с Windows завершилась `exit_code=255`; авторизация/точные каталоги не подтверждены. `bridge/results/oleg-timeweb-ssh-recovery-20261116.json`. Ни пароли, ни токены не читались, доверие к новому ключу хоста автоматически не выдавалось.
+- В исходном staging-скрипте Windows PowerShell обнаружена ошибка кодировки кириллицы, отчего защитные сравнения исходников прежних тестов отклоняли все изменения. Перевод файлов плана и Python-скриптов через Base64 из **оригинальных UTF-8 байтов** исправил ошибку, без ослабления source guards.
+- **PASS** GitHub Actions `DSLitvinov1/lesson3.1` [#43770552997](https://github.com/DSLitvinov1/lesson3.1/actions/runs/43770552997): 24 свежескачанные PUBLIC HTML-страницы, **24 файла безопасно изменены только в новой локальной копии**, **21/21 title/description полей проверены**, **26/26 контекстных ссылок проверены**, пропущенных 0. Результат: `bridge/results/oleg-seo-utf8-stage-20261116.json`.
+- Локальная staged-копия на Windows: `C:\\ChatGPTProjects\\OlegLegal\\SEO_SAFE_STAGE_20261116_43770552997`; локальные копии исходных публичных HTML: `original-public-html-only.zip` и `.oleg-seo-metadata-backup-20261115-224038`. **ЭТО НЕ BACKUP ФАЙЛОВ TIMEWEB** и не свидетельство настоящей выкладки. Никаких изменений на Timeweb не производилось.
+- Запущен контрольный read-only обход sitemap двух публичных сайтов: GitHub Actions `DSLitvinov1/lesson3.1` [#43770718300](https://github.com/DSLitvinov1/lesson3.1/actions/runs/43770718300). Отмечать как PASS только после чтения фактической квитанции и job conclusion.
+- Принципиально не публиковать локальный staging через слепой upload: для обоих доменов нужен **действующий авторизованный доступ к Timeweb**; загрузить именно текущие серверные файлы в безопасную папку, сравнить patch с ними, создать и проверить **серверный** backup вне public_html, применить под защитой exact-source hashes и проверить живые страницы/формы/цели/откат.
+- Директ не запускался, Битрикс24 и Метрика не изменялись; CRM-доставка и настоящая успешная цель не подтверждены.
