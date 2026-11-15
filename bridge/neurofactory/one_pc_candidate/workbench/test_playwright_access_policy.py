@@ -7,7 +7,7 @@ from playwright_access_policy import (
 class PolicyTests(unittest.TestCase):
     def test_exact_service_read(self):
         for domain in ('potrebpravo.ru','semya-yurist.ru','metrika.yandex.ru',
-                       'webmaster.yandex.ru','hosting.timeweb.ru',
+                       'webmaster.yandex.ru','hosting.timeweb.ru','direct.yandex.ru',
                        'b24-xlzm11.bitrix24.ru','search.google.com'):
             result=classify('oleg-legal','https://'+domain+'/','inspect')
             self.assertEqual(result.origin,'https://'+domain)
@@ -42,7 +42,7 @@ class PolicyTests(unittest.TestCase):
             classify('another-client','https://metrika.yandex.ru/','inspect')
     def test_approved_hosts_are_exact(self):
         urls=expected_config_origins('oleg-legal')
-        self.assertEqual(len(urls),8)
+        self.assertEqual(len(urls),9)
         self.assertEqual(len(urls),len(set(urls)))
         self.assertTrue(all(url.startswith('https://') and '*' not in url for url in urls))
     def test_read_not_mutate(self):
