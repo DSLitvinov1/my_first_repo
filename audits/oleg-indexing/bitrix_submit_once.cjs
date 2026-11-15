@@ -90,10 +90,14 @@ async function main(){
       'Источник: https://'+site.host+'/; контрольный идентификатор: '+key+'.'
     );
     const checkbox=form.locator('input[type="checkbox"]').first();
-    if(await checkbox.count()===1){
-      await checkbox.check({force:true,timeout:8000});
-      if(!await checkbox.isChecked())throw Error('Form consent checkbox not checked');
-    }
+    if(await checkbox.count()!==1)throw Error('Consent checkbox missing');
+    // Bitrix24 implements consent as a two-step modal: click the box,
+    // then explicitly click "Принимаю". Using checkbox.check() alone fails.
+    await checkbox.click({force:true,timeout:8000});
+    const consentAccept=frame.getByRole('button',{name:'Принимаю',exact:true});
+    await consentAccept.waitFor({state:'visible',timeout:8000});
+    await consentAccept.click({timeout:8000});
+    if(!await checkbox.isChecked())throw Error('Consent acceptance not confirmed after modal');
     // The user requested a real CRM submission. Click the SEND button just once.
     const submit=frame.getByRole('button',{name:'Отправить',exact:true}).first();
     if(!await submit.isVisible())throw Error('Submit button not visible');
