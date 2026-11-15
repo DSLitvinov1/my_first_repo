@@ -1,0 +1,27 @@
+name: Work ONE free local Desktop Commander safe file MCP
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/one_files_dc_mcp.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/owner_free_dc_config.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/test_one_files_dc_mcp.py'
+      - '.github/workflows/workone-free-dc-local-check.yml'
+permissions:
+  contents: read
+jobs:
+  offline-file-mcp:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline protocol and policy regressions, no Node or browser
+        shell: bash
+        working-directory: bridge/neurofactory/one_pc_candidate/workbench
+        run: python -m unittest -v test_owner_dual_mcp_config test_one_files_dc_mcp
