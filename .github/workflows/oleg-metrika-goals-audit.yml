@@ -4,6 +4,8 @@ on:
     branches: [audit-oleg-sites-playwright-20261115]
     paths:
       - 'audits/oleg-indexing/metrika_goals_audit.cjs'
+      - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
+      - 'audits/oleg-indexing/test_metrika_goals_preview.cjs'
       - '.github/workflows/oleg-metrika-goals-audit.yml'
   workflow_dispatch:
 permissions:
@@ -30,10 +32,17 @@ jobs:
         run: |
           node --check metrika_goals_audit.cjs
           node metrika_goals_audit.cjs
+      - name: Test staged conversion goals on desktop and mobile without network tracking
+        run: |
+          node --check oleg-metrika-goals-v1.js
+          node --check test_metrika_goals_preview.cjs
+          node test_metrika_goals_preview.cjs
       - name: Save technical evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: oleg-metrika-goals
-          path: audits/oleg-indexing/oleg-metrika-goals-audit.json
+          path: |
+            audits/oleg-indexing/oleg-metrika-goals-audit.json
+            audits/oleg-indexing/oleg-metrika-goals-preview.json
           if-no-files-found: warn
