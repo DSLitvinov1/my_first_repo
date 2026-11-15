@@ -20,7 +20,7 @@ MARKER = '__olegMetrikaIntentGoalsV1'
 # Versions and the page counts were verified with Playwright from both live sites.
 BASELINE_VERSIONS = {'potrebpravo.ru': 'f96b5eb2', 'semya-yurist.ru': '173e16dd'}
 PAGE_COUNTS = {'potrebpravo.ru': 25, 'semya-yurist.ru': 20}
-SCRIPT_URL_PATTERN = re.compile(r'((?:/|(?:\\.\\./)*)assets/oleg-analytics-v1\\.js\\?v=)([A-Za-z0-9._-]+)')
+SCRIPT_URL_PATTERN = re.compile(r'((?:/|(?:\.\./)*)assets/oleg-analytics-v1\.js\?v=)([A-Za-z0-9._-]+)')
 
 def digest(x):
     return hashlib.sha256(x).hexdigest()
