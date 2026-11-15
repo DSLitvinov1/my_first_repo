@@ -37,7 +37,10 @@ class InstallerTests(unittest.TestCase):
         for path,item in edits.items():
             self.assertEqual(item['old'],path.read_bytes())
             self.assertNotEqual(item['old'],item['new'])
-            self.assertIn(b'__olegMetrikaIntentGoalsV1',item['new'])
+            if path.name == 'oleg-analytics-v1.js':
+                self.assertIn(b'__olegMetrikaIntentGoalsV1',item['new'])
+            else:
+                self.assertIn(b'oleg-analytics-v1.js?v=',item['new'])
         backup,n = apply_edits(edits,self.root)
         self.assertEqual(n,2)
         for host in COUNTERS:
