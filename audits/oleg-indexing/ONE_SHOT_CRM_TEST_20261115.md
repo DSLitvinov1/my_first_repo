@@ -14,3 +14,5 @@ Creates **at most one** visibly marked synthetic test inquiry per distinct websi
 Do not trigger again or re-run the workflow for the same marker.
 
 Preflight: Playwright both-site form journeys 30/30 PASS on GitHub Actions run 43662807471. YAML conditional quoting fixed before this run.
+
+Retry authorization: Previous one-time run 43663214149 completed without any live submission (preflight consumer iframe timed out; submit step was skipped). Added one iframe GET reload and exact native form fallback before submission. This is the first live attempt.
