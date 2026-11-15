@@ -34,6 +34,7 @@ jobs:
           node --check audit.cjs
           node --check sitemap_operator.mjs
           node --check test_sitemap_operator.mjs
+          node --check case_quality_audit.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
@@ -42,10 +43,14 @@ jobs:
         run: node --test test_sitemap_operator.mjs
       - name: Audit public indexing eligibility without changing sites
         run: node audit.cjs
+      - name: Analyze short legal cases without changing the live websites
+        run: node case_quality_audit.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: oleg-indexability
-          path: audits/oleg-indexing/oleg-indexability.json
+          path: |
+            audits/oleg-indexing/oleg-indexability.json
+            audits/oleg-indexing/oleg-legal-case-quality.json
           if-no-files-found: warn
