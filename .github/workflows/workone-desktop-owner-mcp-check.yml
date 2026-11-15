@@ -6,6 +6,8 @@ on:
     paths:
       - 'bridge/neurofactory/one_pc_candidate/workbench/one_desktop_owner_mcp.py'
       - 'bridge/neurofactory/one_pc_candidate/workbench/test_one_desktop_owner_mcp.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/owner_dual_mcp_config.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/test_owner_dual_mcp_config.py'
       - '.github/workflows/workone-desktop-owner-mcp-check.yml'
   workflow_dispatch:
 permissions:
@@ -28,7 +30,7 @@ jobs:
         shell: pwsh
         run: |
           cd bridge/neurofactory/one_pc_candidate/workbench
-          python -m py_compile one_desktop_owner_mcp.py test_one_desktop_owner_mcp.py
+          python -m py_compile one_desktop_owner_mcp.py test_one_desktop_owner_mcp.py owner_dual_mcp_config.py test_owner_dual_mcp_config.py
           if ($LASTEXITCODE -ne 0) {throw 'ONE_DESKTOP_MCP_PY_COMPILE_FAILED'}
-          python -B -m unittest -v test_one_desktop_owner_mcp
+          python -B -m unittest -v test_one_desktop_owner_mcp test_owner_dual_mcp_config
           if ($LASTEXITCODE -ne 0) {throw 'ONE_DESKTOP_MCP_OFFLINE_TESTS_FAILED'}
