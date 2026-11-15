@@ -37,7 +37,8 @@ async function main(){
      if(res.request().method().toUpperCase()!=='POST')return;
      try{
       const u=new URL(res.url());
-      if(u.hostname===expectedHost)details.responses.push({path:u.pathname,status:res.status()});
+      if(u.hostname===expectedHost || /(^|\.)bitrix24(?:site)?\.(?:ru|com|net)$/.test(u.hostname))
+        details.responses.push({host:u.hostname,path:u.pathname,status:res.status()});
      }catch{}
    });
    try{
@@ -113,12 +114,18 @@ async function main(){
     const text=compact(await frame.locator('body').innerText()).slice(0,1200);
     const success=/(спасибо|успешно\s+отправлен|заявк[ау]\s+отправлен|сообщение\s+отправлено|форма\s+отправлена|thank you)/i.test(text);
     const formGone=await form.isHidden().catch(()=>false);
-    details.formAccepted=!!success;
+    // A static Bitrix success phrase can already exist in its initial DOM.
+    // Only treat the form as accepted when a fresh 2xx POST receipt or a
+    // visible form-to-success transition accompanies the message.
+    const freshPost2xx=details.responses.some(x=>x.status>=200&&x.status<300);
+    details.formAccepted=!!success&&(formGone||freshPost2xx);
+    details.uiSuccessTextDetected=!!success;
+    details.receiptEvidence={formGone,freshPost2xx};
     details.postStatus=details.responses.map(x=>x.status);
     details.formHiddenAfterSubmit=formGone;
     details.outcomeText=success?text.slice(0,140):text.slice(0,280);
-    if(!success){
-      details.errors.push('No native Bitrix24 success message visible after one submit; outcome unconfirmed.');
+    if(!details.formAccepted){
+      details.errors.push('Server-side CRM receipt unverified after one submit; do not retry blindly.');
     }
    }catch(e){
     details.errors.push(compact(e.message).slice(0,360));
