@@ -16,6 +16,18 @@ from metadata_guard import apply_edits
 COUNTERS = {'potrebpravo.ru': '114249897', 'semya-yurist.ru': '114251443'}
 ANALYTICS = Path('assets/oleg-analytics-v1.js')
 EXTENSION_FILE = Path(__file__).with_name('oleg-metrika-goals-v1.js')
+FALLBACK_FILE = Path(__file__).with_name('oleg-crm-backup-links-v1.js')
+
+def extension_contents() -> str:
+    goals = EXTENSION_FILE.read_text(encoding='utf-8').rstrip()
+    fallback = FALLBACK_FILE.read_text(encoding='utf-8').rstrip()
+    if '__olegCrmBackupLinksV1' not in fallback or 'https://b24-s2dosa.bitrix24site.ru/' not in fallback:
+        raise ValueError('Sitewide CRM fallback script source is missing required markers')
+    # The fallback changes only visitor-visible links, NEVER form data or real
+    # CRM submissions. Combining into the existing HTML-loaded JS allows one
+    # atomic, cache-busted release of 2 scripts + 45 HTML references.
+    return goals + '\n\n' + fallback + '\n'
+
 MARKER = '__olegMetrikaIntentGoalsV1'
 # Versions and the page counts were verified with Playwright from both live sites.
 BASELINE_VERSIONS = {'potrebpravo.ru': 'f96b5eb2', 'semya-yurist.ru': '173e16dd'}
@@ -105,7 +117,7 @@ def main():
     parser.add_argument('--apply', action='store_true', help='Explicitly apply only after backup and exact-source checks')
     args = parser.parse_args()
     parent = Path(args.root_parent).resolve(strict=True)
-    extension = EXTENSION_FILE.read_text(encoding='utf-8')
+    extension = extension_contents()
     edits = prepare(parent, extension)
     changed = sum(item['old'] != item['new'] for item in edits.values())
     result = {'mode': 'apply' if args.apply else 'dry-run', 'filesChecked': len(edits),
