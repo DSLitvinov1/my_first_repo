@@ -34,14 +34,19 @@ async function main(){
   try{
    const res=await page.goto(site,{waitUntil:'domcontentloaded',timeout:30000});
    check('Homepage HTTP 200',res?.status()===200,res?.status());
+   const deny=page.locator('#oleg-analytics-choice [data-deny]');
+   if(await deny.count()&&await deny.isVisible())await deny.click({timeout:5000});
    const launch=page.locator('#legal-help-toggle');
    await launch.waitFor({state:'visible',timeout:10000});
    check('Legal assistant launch visible',await launch.isVisible());
    await launch.click();
    check('Assistant panel opens',await page.locator('#legal-help-panel').isVisible());
-   const topicButtons=await page.locator('#legal-help-topics button.legal-choice').allTextContents();
+   const topicButtons=await page.locator('#oleg-standard-faq button,#legal-help-topics button.legal-choice').allTextContents();
    check('Common question buttons exist',topicButtons.length>=3,topicButtons);
-   await page.getByRole('button',{name:'Оставить заявку юристу'}).click();
+   const modern=page.getByRole('button',{name:'Передать вопрос юристу',exact:true});
+   const classic=page.getByRole('button',{name:'Оставить заявку юристу',exact:true});
+   result.CTA=await modern.count()?'Передать вопрос юристу':'Оставить заявку юристу';
+   await (await modern.count()?modern:classic).click({timeout:7000});
    const iframe=page.locator('iframe.legal-frame');
    check('Embedded form visible',await iframe.isVisible());
    const exactFormUrl=BITRIX_ORIGIN+config.form;
