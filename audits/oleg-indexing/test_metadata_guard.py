@@ -31,6 +31,21 @@ class MetadataGuardTests(unittest.TestCase):
         self.assertIn('name="robots" content="index,follow"',new)
         self.assertEqual((backup/"potrebpravo.ru"/"index.html").read_text(encoding="utf-8"),DOC)
         self.assertEqual(prepare(self.plan(),self.parent)[self.root/"index.html"]["new"],new.encode("utf-8"))
+    def test_refuses_race_after_preparing_without_any_upload(self):
+        edits=prepare(self.plan(),self.parent)
+        latest=DOC.replace("Заявка","Изменено в Timeweb после подготовки")
+        (self.root/"index.html").write_text(latest,encoding="utf-8")
+        with self.assertRaisesRegex(ValueError,"source changed since preflight"):
+            apply_edits(edits,self.parent)
+        self.assertEqual((self.root/"index.html").read_text(encoding="utf-8"),latest)
+        self.assertEqual(len(list(self.parent.glob(".oleg-seo-metadata-backup-*"))),0)
+    def test_html_escaping_of_title_and_description(self):
+        source=DOC
+        source=replace_once(source,"title","Старый заголовок",'Заголовок "А & Б"',"sample.html")
+        source=replace_once(source,"description","Старое описание страницы",'Кавычки " и амперсанд &',"sample.html")
+        self.assertIn('Заголовок &quot;А &amp; Б&quot;',source)
+        self.assertIn('Кавычки &quot; и амперсанд &amp;',source)
+
     def test_refuses_modified_html(self):
         (self.root/"index.html").write_text(DOC.replace("Старый заголовок","Изменён кем-то ещё"),encoding="utf-8")
         with self.assertRaisesRegex(ValueError,"changed since audit"):
