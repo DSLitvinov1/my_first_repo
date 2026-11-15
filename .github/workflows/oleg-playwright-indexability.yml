@@ -40,6 +40,7 @@ jobs:
           node --check metrika_consent_e2e.cjs
           node --check bitrix_lead_readiness.cjs
           node --check bitrix_funnel_e2e.cjs
+          node --check bitrix_consent_probe.cjs
           node --check bitrix_coverage.cjs
           node --check bitrix_preview.cjs
       - name: Install Playwright Chromium
@@ -48,6 +49,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Test authenticated sitemap operator against simulated UI only
         run: node --test test_sitemap_operator.mjs
+      - name: Inspect Bitrix consent behavior with all writes blocked
+        run: node bitrix_consent_probe.cjs
       - name: Audit public indexing eligibility without changing sites
         run: node audit.cjs
       - name: Analyze short legal cases without changing the live websites
