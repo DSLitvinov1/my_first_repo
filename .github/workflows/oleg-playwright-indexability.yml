@@ -39,6 +39,7 @@ jobs:
           node --check metrika_presence_audit.cjs
           node --check metrika_consent_e2e.cjs
           node --check bitrix_lead_readiness.cjs
+          node --check bitrix_funnel_e2e.cjs
           node --check bitrix_coverage.cjs
       - name: Install Playwright Chromium
         run: |
@@ -60,6 +61,8 @@ jobs:
         run: node bitrix_lead_readiness.cjs
       - name: Check Bitrix assistant coverage and two forms on all site URLs
         run: node bitrix_coverage.cjs
+      - name: Check each site assistant opens its own usable Bitrix24 form
+        run: node bitrix_funnel_e2e.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,5 +75,6 @@ jobs:
             audits/oleg-indexing/oleg-analytics-presence.json
             audits/oleg-indexing/oleg-metrika-consent-e2e.json
             audits/oleg-indexing/oleg-bitrix-lead-readiness.json
+            audits/oleg-indexing/oleg-bitrix-funnel-e2e.json
             audits/oleg-indexing/oleg-bitrix-coverage.json
           if-no-files-found: warn
