@@ -6,6 +6,8 @@ on:
       - 'audits/oleg-indexing/metrika_goals_audit.cjs'
       - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
       - 'audits/oleg-indexing/test_metrika_goals_preview.cjs'
+      - 'audits/oleg-indexing/apply_metrika_goals.py'
+      - 'audits/oleg-indexing/test_apply_metrika_goals.py'
       - '.github/workflows/oleg-metrika-goals-audit.yml'
   workflow_dispatch:
 permissions:
@@ -24,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify safe local hosting installer without any production writes
+        run: python -m unittest -v test_apply_metrika_goals
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
