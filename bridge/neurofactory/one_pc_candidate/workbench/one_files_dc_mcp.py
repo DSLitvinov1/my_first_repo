@@ -60,15 +60,15 @@ def safe_windows_path(value: str, root: str, *, must_exist_root: bool = False) -
     return value
 
 
-def verify_workspace(root: str) -> str:
+def verify_workspace(root: str, *, require_exists: bool = False) -> str:
     if not isinstance(root, str) or not WINDOWS_ABSOLUTE.match(root):
         raise Denied("WORKSPACE_REQUIRED")
     prefix = ntpath.normcase(r"C:\ChatGPTProjects\ONE-")
     norm = ntpath.normcase(ntpath.normpath(root))
     if not norm.startswith(prefix) or '..' in PureWindowsPath(root).parts:
         raise Denied("DEDICATED_ONE_WORKSPACE_REQUIRED")
-    safe_windows_path(root, root, must_exist_root=True)
-    if os.name == 'nt' and os.path.normcase(os.path.realpath(root)) != os.path.normcase(os.path.abspath(root)):
+    safe_windows_path(root, root, must_exist_root=require_exists)
+    if require_exists and os.name == 'nt' and os.path.normcase(os.path.realpath(root)) != os.path.normcase(os.path.abspath(root)):
         raise Denied("WORKSPACE_JUNCTION_REFUSED")
     return root
 
@@ -137,7 +137,7 @@ def main():
     parser.add_argument('--workspace', required=True)
     parser.add_argument('--allow-write', action='store_true')
     args = parser.parse_args()
-    workspace = verify_workspace(args.workspace)
+    workspace = verify_workspace(args.workspace, require_exists=True)
     # STDIO only. No remote tunnel, no listening service, no shell=True.
     child = subprocess.Popen(['npx.cmd', '-y', PACKAGE], stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
