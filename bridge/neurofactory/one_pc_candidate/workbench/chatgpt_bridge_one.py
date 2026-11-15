@@ -85,7 +85,10 @@ def verify_command(issue, owner, now=None):
         if set(params) != {"script"} or type(script) is not str or not 1 <= len(script) <= 2400:
             raise WorkDenied("CHATGPT_DESKTOP_SCRIPT_REFUSED")
         from desktop_script_one import parse_safe_desktop_script
-        parse_safe_desktop_script(script)
+        try:
+            parse_safe_desktop_script(script)
+        except ValueError as exc:
+            raise WorkDenied("CHATGPT_DESKTOP_SCRIPT_REFUSED") from exc
     return cmd
 
 
