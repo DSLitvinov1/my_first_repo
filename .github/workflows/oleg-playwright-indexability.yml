@@ -36,6 +36,7 @@ jobs:
           node --check test_sitemap_operator.mjs
           node --check case_quality_audit.cjs
           node --check validate_staged_seo.cjs
+          node --check metrika_presence_audit.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
@@ -48,6 +49,8 @@ jobs:
         run: node case_quality_audit.cjs
       - name: Validate staged SEO release against current public pages
         run: node validate_staged_seo.cjs
+      - name: Read-only Metrika code presence audit on both websites
+        run: node metrika_presence_audit.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,4 +60,5 @@ jobs:
             audits/oleg-indexing/oleg-indexability.json
             audits/oleg-indexing/oleg-legal-case-quality.json
             audits/oleg-indexing/oleg-staged-seo-preflight.json
+            audits/oleg-indexing/oleg-analytics-presence.json
           if-no-files-found: warn
