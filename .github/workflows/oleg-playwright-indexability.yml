@@ -38,6 +38,7 @@ jobs:
           node --check validate_staged_seo.cjs
           node --check metrika_presence_audit.cjs
           node --check metrika_consent_e2e.cjs
+          node --check bitrix_lead_readiness.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
@@ -54,6 +55,8 @@ jobs:
         run: node metrika_presence_audit.cjs
       - name: Mobile browser consent and revoke test without Yandex telemetry
         run: node metrika_consent_e2e.cjs
+      - name: Verify Bitrix24 lead form readiness (no writes or customer submissions)
+        run: node bitrix_lead_readiness.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,4 +68,5 @@ jobs:
             audits/oleg-indexing/oleg-staged-seo-preflight.json
             audits/oleg-indexing/oleg-analytics-presence.json
             audits/oleg-indexing/oleg-metrika-consent-e2e.json
+            audits/oleg-indexing/oleg-bitrix-lead-readiness.json
           if-no-files-found: warn
