@@ -17,7 +17,8 @@ MANDATORY = {
     "one_desktop_owner_mcp.py", "owner_dual_mcp_config.py",
     "playwright_access_policy.py", "playwright_owner_mcp.json",
     "playwright_stage_owner.ps1", "playwright_owner_readiness.ps1",
-    "START_OWNER_DESKTOP_CONTROL.ps1", "desktop_script_one.py",
+    "START_OWNER_DESKTOP_CONTROL.ps1", "START_CHATGPT_ONE.cmd",
+    "start_chatgpt_candidate_one.py", "desktop_script_one.py",
     "desktop_one.py", "credentials_one.py", "START_PRIVATE_WORK_ONE.ps1",
 }
 
@@ -33,7 +34,7 @@ def source_allowlist():
 class BundleActivationClosure(unittest.TestCase):
     def test_no_missing_or_duplicate_sources(self):
         allowed = source_allowlist()
-        self.assertEqual(len(allowed), 42)
+        self.assertEqual(len(allowed), 44)
         self.assertEqual(len(set(allowed)), len(allowed))
         self.assertTrue(MANDATORY.issubset(allowed))
         self.assertTrue(all((ROOT / name).is_file() for name in allowed))
