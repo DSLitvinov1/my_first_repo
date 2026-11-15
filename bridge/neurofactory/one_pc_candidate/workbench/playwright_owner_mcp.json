@@ -1,0 +1,36 @@
+{
+  "extension": true,
+  "server": {
+    "host": "127.0.0.1"
+  },
+  "saveSession": false,
+  "imageResponses": "omit",
+  "console": {
+    "level": "error"
+  },
+  "network": {
+    "allowedOrigins": [
+      "https://potrebpravo.ru",
+      "https://semya-yurist.ru",
+      "https://hosting.timeweb.ru",
+      "https://metrika.yandex.ru",
+      "https://webmaster.yandex.ru",
+      "https://passport.yandex.ru",
+      "https://oauth.yandex.ru",
+      "https://mc.yandex.ru",
+      "https://b24-xlzm11.bitrix24.ru",
+      "https://b24-s2dosa.bitrix24site.ru",
+      "https://search.google.com",
+      "https://accounts.google.com",
+      "https://www.google.com",
+      "https://www.gstatic.com",
+      "https://ssl.gstatic.com"
+    ]
+  },
+  "allowUnrestrictedFileAccess": false,
+  "timeouts": {
+    "action": 8000,
+    "navigation": 30000,
+    "settle": 600
+  }
+}
