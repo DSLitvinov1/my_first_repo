@@ -16,3 +16,5 @@ Do not trigger again or re-run the workflow for the same marker.
 Preflight: Playwright both-site form journeys 30/30 PASS on GitHub Actions run 43662807471. YAML conditional quoting fixed before this run.
 
 Retry authorization: Previous one-time run 43663214149 completed without any live submission (preflight consumer iframe timed out; submit step was skipped). Added one iframe GET reload and exact native form fallback before submission. This is the first live attempt.
+
+Consent diagnostic: read-only GitHub Actions job 132658517985 confirmed BOTH native Bitrix checkboxes need checkbox click followed by a visible 'Принимаю' modal button; then checked=true. Previous live run 43663539416 submitted=false on BOTH sites, no leads sent. Updated the guarded one-time script accordingly.
