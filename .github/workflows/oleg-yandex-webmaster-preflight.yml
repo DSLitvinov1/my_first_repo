@@ -6,6 +6,8 @@ on:
     paths:
       - 'audits/oleg-indexing/yandex_webmaster_preflight.cjs'
       - 'audits/oleg-indexing/test_yandex_webmaster_preflight.cjs'
+      - 'audits/oleg-indexing/yandex_webmaster_auth_inspector.mjs'
+      - 'audits/oleg-indexing/test_yandex_webmaster_auth_inspector.mjs'
       - '.github/workflows/oleg-yandex-webmaster-preflight.yml'
   workflow_dispatch:
 permissions:
@@ -32,7 +34,9 @@ jobs:
         run: |
           node --check yandex_webmaster_preflight.cjs
           node --check test_yandex_webmaster_preflight.cjs
-          node --test test_yandex_webmaster_preflight.cjs
+          node --check yandex_webmaster_auth_inspector.mjs
+          node --check test_yandex_webmaster_auth_inspector.mjs
+          node --test test_yandex_webmaster_preflight.cjs test_yandex_webmaster_auth_inspector.mjs
       - name: Verify both production sites with browser and YandexBot-style UA
         run: node yandex_webmaster_preflight.cjs
       - name: Save complete public Webmaster report
