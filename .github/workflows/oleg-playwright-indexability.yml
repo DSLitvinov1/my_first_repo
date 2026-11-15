@@ -41,6 +41,7 @@ jobs:
           node --check bitrix_lead_readiness.cjs
           node --check bitrix_funnel_e2e.cjs
           node --check bitrix_coverage.cjs
+          node --check bitrix_preview.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
@@ -63,6 +64,8 @@ jobs:
         run: node bitrix_coverage.cjs
       - name: Check each site assistant opens its own usable Bitrix24 form
         run: node bitrix_funnel_e2e.cjs
+      - name: Preview Bitrix widget on inner pages without deployment
+        run: node bitrix_preview.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
@@ -77,4 +80,5 @@ jobs:
             audits/oleg-indexing/oleg-bitrix-lead-readiness.json
             audits/oleg-indexing/oleg-bitrix-funnel-e2e.json
             audits/oleg-indexing/oleg-bitrix-coverage.json
+            audits/oleg-indexing/oleg-bitrix-preview.json
           if-no-files-found: warn
