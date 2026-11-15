@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED
+from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED,EXTENDED_REQUIRED
 
 class PrivatePreflightTests(unittest.TestCase):
     def setUp(self):
@@ -36,6 +36,26 @@ class PrivatePreflightTests(unittest.TestCase):
     def test_packaged_files_verified_exactly(self):
         self.setup_manifest()
         self.assertEqual(verify_manifest(self.root)["state"],"verified")
+
+    def test_extended_42_file_manifest_only_if_complete(self):
+        import hashlib
+        file_digests=self.setup_manifest()
+        for name in EXTENDED_REQUIRED:
+            body=b"verified synthetic extended owner module"
+            (self.root/name).write_bytes(body)
+            file_digests[name]=hashlib.sha256(body).hexdigest()
+        self.assertEqual(len(file_digests),42)
+        path=self.root/"manifest.json"
+        data=json.loads(path.read_text())
+        data["file_digests"]=file_digests
+        path.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["state"],"verified")
+        removed="chatgpt_bridge_one.py"
+        file_digests.pop(removed)
+        file_digests["not_approved_module.py"]=hashlib.sha256(b"new").hexdigest()
+        (self.root/"not_approved_module.py").write_bytes(b"new")
+        path.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["reason"],"MANIFEST_INVALID")
 
     def test_tampered_file_rejected(self):
         self.setup_manifest()
