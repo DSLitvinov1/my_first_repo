@@ -18,7 +18,7 @@ PROJECT_ORIGINS = {
     "oleg-legal": frozenset({
         "https://potrebpravo.ru", "https://semya-yurist.ru",
         "https://webmaster.yandex.ru", "https://metrika.yandex.ru",
-        "https://hosting.timeweb.ru", "https://b24-xlzm11.bitrix24.ru",
+        "https://hosting.timeweb.ru", "https://direct.yandex.ru", "https://b24-xlzm11.bitrix24.ru",
         "https://b24-s2dosa.bitrix24site.ru", "https://search.google.com",
     })
 }

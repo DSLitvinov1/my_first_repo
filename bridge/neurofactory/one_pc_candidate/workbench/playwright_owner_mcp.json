@@ -24,7 +24,15 @@
       "https://accounts.google.com",
       "https://www.google.com",
       "https://www.gstatic.com",
-      "https://ssl.gstatic.com"
+      "https://ssl.gstatic.com",
+      "https://direct.yandex.ru",
+      "https://yandex.ru",
+      "https://yandex.com",
+      "https://yastatic.net",
+      "https://yandex.net",
+      "https://apis.google.com",
+      "https://googleapis.com",
+      "https://www.googleapis.com"
     ]
   },
   "allowUnrestrictedFileAccess": false,
