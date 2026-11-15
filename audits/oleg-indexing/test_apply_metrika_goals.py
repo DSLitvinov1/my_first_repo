@@ -11,7 +11,8 @@ def source_for(host):
             "const key='oleg.analytics.choice.v1';\n"
             "window.ym(counter, 'init', {webvisor: false});\n"
             "function safety() { return !!key; }\n"
-            "})();\n").encode('utf-8')
+            + ("// Test-only placeholder for retained live analytics behavior, including consent lifecycle.\n" * 5)
+            + "})();\n").encode('utf-8')
 
 class InstallerTests(unittest.TestCase):
     def setUp(self):
