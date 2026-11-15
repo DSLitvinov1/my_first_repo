@@ -5,6 +5,7 @@ on:
     paths:
       - 'audits/oleg-indexing/assistant_sitewide_stage.py'
       - 'audits/oleg-indexing/test_assistant_sitewide_stage.py'
+      - 'audits/oleg-indexing/assistant_sitewide_smoke.cjs'
       - 'audits/oleg-indexing/ASSISTANT_COVERAGE_SOURCE_LOCK_20261116.json'
       - '.github/workflows/oleg-assistant-offline-stage.yml'
 permissions:
@@ -41,6 +42,15 @@ jobs:
               assert z.testzip() is None and len(z.namelist())==41
           print('STAGED_39_ASSISTANT_PAGES_AND_41_PUBLIC_HTML_BACKUPS_PASS')
           PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright Chromium for offline-stage smoke
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Validate staged service and court-case assistant on mobile and desktop
+        run: node assistant_sitewide_smoke.cjs
       - uses: actions/upload-artifact@v4
         if: success()
         with:
@@ -50,4 +60,5 @@ jobs:
             audits/oleg-indexing/assistant-stage-output/semya-yurist.ru
             audits/oleg-indexing/assistant-stage-output/original-public-html-backup.zip
             audits/oleg-indexing/assistant-stage-output/stage-report.json
+            audits/oleg-indexing/assistant-stage-output/playwright-smoke.json
           if-no-files-found: error
