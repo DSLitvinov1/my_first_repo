@@ -64,7 +64,7 @@ def fetch_url(url, maximum=MAX_HTML_BYTES):
 
 def path_for(url, host):
     p = urllib.parse.urlsplit(url)
-    if p.scheme != 'https' or p.hostname != host or p.query or p.fragment or p.port:
+    if p.scheme != 'https' or p.hostname != host or p.query or p.fragment or p.port or p.username or p.password:
         raise ValueError('Unapproved URL in sitemap')
     path = p.path
     if path == '/':
