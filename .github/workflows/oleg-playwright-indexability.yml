@@ -35,6 +35,7 @@ jobs:
           node --check sitemap_operator.mjs
           node --check test_sitemap_operator.mjs
           node --check case_quality_audit.cjs
+          node --check validate_staged_seo.cjs
       - name: Install Playwright Chromium
         run: |
           npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
@@ -45,6 +46,8 @@ jobs:
         run: node audit.cjs
       - name: Analyze short legal cases without changing the live websites
         run: node case_quality_audit.cjs
+      - name: Validate staged SEO release against current public pages
+        run: node validate_staged_seo.cjs
       - name: Attach report
         if: always()
         uses: actions/upload-artifact@v4
@@ -53,4 +56,5 @@ jobs:
           path: |
             audits/oleg-indexing/oleg-indexability.json
             audits/oleg-indexing/oleg-legal-case-quality.json
+            audits/oleg-indexing/oleg-staged-seo-preflight.json
           if-no-files-found: warn
