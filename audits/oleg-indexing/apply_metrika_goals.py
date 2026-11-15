@@ -45,15 +45,17 @@ def prepare(root_parent: Path, extension: str):
             raise ValueError('Non-UTF8 current analytics asset') from e
         if counter not in text or 'oleg.analytics.choice.v1' not in text or 'webvisor' not in text:
             raise ValueError('Current live file does not match the independently verified counter/consent implementation')
-        for other, number in COUNTERS.items():
-            if other != host and number in text:
-                raise ValueError('Cross-counter leakage in asset ' + host)
         if MARKER in text:
+            # The appended, reviewed extension deliberately contains both
+            # host->counter mappings. Recognize ONLY an exact previous append.
             if text.endswith('\n' + extension.rstrip() + '\n'):
                 new = old
             else:
                 raise ValueError('Existing goal extension differs: manual inspection required')
         else:
+            for other, number in COUNTERS.items():
+                if other != host and number in text:
+                    raise ValueError('Cross-counter leakage in original asset ' + host)
             if '<script' in text.lower():
                 raise ValueError('Unexpected HTML code in JavaScript asset')
             new = (text.rstrip() + '\n\n' + extension.rstrip() + '\n').encode('utf-8')
