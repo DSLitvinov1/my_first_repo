@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: '22'
       - name: Verify guarded SEO metadata changes
-        run: python -m unittest -v test_metadata_guard test_case_links_guard
+        run: python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo
       - name: Verify audit syntax
         run: |
           node --check audit.cjs
