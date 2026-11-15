@@ -1,4 +1,4 @@
-name: Oleg assistant 40-page offline-only stage and guarded unit tests
+name: Oleg assistant 39-page offline-only stage and guarded unit tests
 on:
   push:
     branches: [audit-oleg-sites-playwright-20261115]
@@ -33,18 +33,18 @@ jobs:
           import json,pathlib,zipfile
           p=pathlib.Path('assistant-stage-output/stage-report.json')
           d=json.loads(p.read_text(encoding='utf-8'))
-          assert d['status']=='OFFLINE_ONLY_40_PAGE_ASSISTANT_STAGE_PASS'
-          assert d['pages_total']==41 and d['pages_changed']==40
+          assert d['status']=='OFFLINE_ONLY_39_PAGE_ASSISTANT_STAGE_PASS'
+          assert d['pages_total']==41 and d['pages_changed']==39
           assert d['sites']=={'potrebpravo.ru':22,'semya-yurist.ru':17}
           assert d['offline_backup_verified'] and not d['production_modified']
           with zipfile.ZipFile(d['archive']) as z:
               assert z.testzip() is None and len(z.namelist())==41
-          print('STAGED_40_ASSISTANT_PAGES_AND_41_PUBLIC_HTML_BACKUPS_PASS')
+          print('STAGED_39_ASSISTANT_PAGES_AND_41_PUBLIC_HTML_BACKUPS_PASS')
           PY
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: oleg-assistant-offline-stage-40
+          name: oleg-assistant-offline-stage-39
           path: |
             audits/oleg-indexing/assistant-stage-output/potrebpravo.ru
             audits/oleg-indexing/assistant-stage-output/semya-yurist.ru

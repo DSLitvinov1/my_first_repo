@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a *non-production* 40-page assistant rollout using exact public HTML locks."""
+"""Build a *non-production* 39-page assistant rollout using exact public HTML locks."""
 import argparse
 import hashlib
 import json
@@ -106,7 +106,7 @@ def build(lock, destination):
             if edited != should_edit:
                 raise ValueError('Assistant insertion state disagrees with reviewed page at ' + host + path)
             gathered[(host,str(rel))] = (raw,new,edited)
-    if len(gathered) != 41 or sum(v[2] for v in gathered.values()) != 40:
+    if len(gathered) != 41 or sum(v[2] for v in gathered.values()) != 39:
         raise ValueError('Wrong stage page count')
     destination.mkdir(parents=True, exist_ok=False)
     originals = destination / '.originals'
@@ -129,7 +129,7 @@ def build(lock, destination):
     with zipfile.ZipFile(archive) as z:
         if z.testzip() is not None or len(z.namelist()) != 41:
             raise RuntimeError('Public HTML backup archive corrupt')
-    report={'status':'OFFLINE_ONLY_40_PAGE_ASSISTANT_STAGE_PASS',
+    report={'status':'OFFLINE_ONLY_39_PAGE_ASSISTANT_STAGE_PASS',
        'sites':{host:len([m for m in manifest if m['site']==host and m['changed']]) for host in DOMAINS},
        'pages_total':41,'pages_changed':40,'assistant_sha256':ASSET_SHA256,
        'offline_backup_verified':True,'backups_are_not_timeweb_backups':True,
