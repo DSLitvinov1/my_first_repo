@@ -1,0 +1,34 @@
+name: ONE Desktop Owner MCP offline regression
+on:
+  push:
+    branches:
+      - workone-playwright-desktop-mcp-20261115
+    paths:
+      - 'bridge/neurofactory/one_pc_candidate/workbench/one_desktop_owner_mcp.py'
+      - 'bridge/neurofactory/one_pc_candidate/workbench/test_one_desktop_owner_mcp.py'
+      - '.github/workflows/workone-desktop-owner-mcp-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safe_mcp_offline:
+    strategy:
+      matrix:
+        os: [windows-2025, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python syntax and stdio protocol tests
+        shell: pwsh
+        run: |
+          cd bridge/neurofactory/one_pc_candidate/workbench
+          python -m py_compile one_desktop_owner_mcp.py test_one_desktop_owner_mcp.py
+          if ($LASTEXITCODE -ne 0) {throw 'ONE_DESKTOP_MCP_PY_COMPILE_FAILED'}
+          python -B -m unittest -v test_one_desktop_owner_mcp
+          if ($LASTEXITCODE -ne 0) {throw 'ONE_DESKTOP_MCP_OFFLINE_TESTS_FAILED'}
