@@ -85,6 +85,10 @@ def apply_edits(edits, root_parent):
     backup = root_parent / f'.oleg-seo-metadata-backup-{stamp}'
     if backup.exists():
         raise FileExistsError(backup)
+    # Refuse stale prepared edits before creating any backup or modifying pages.
+    for target, info in edits.items():
+        if target.is_symlink() or not target.is_file() or target.read_bytes() != info['old']:
+            raise ValueError(f'{target}: source changed since preflight; STOP')
     backup.mkdir(mode=0o700)
     manifest,changed = [],[]
     try:
@@ -97,6 +101,9 @@ def apply_edits(edits, root_parent):
         for target, info in edits.items():
             if info['old'] == info['new']:
                 continue
+            # One more drift check immediately before replace; prevent overwriting a concurrent edit.
+            if target.is_symlink() or target.read_bytes() != info['old']:
+                raise ValueError(f'{target}: source changed before write; STOP')
             tmp = target.with_name(target.name + '.oleg-tmp')
             if tmp.exists():
                 raise FileExistsError(tmp)
