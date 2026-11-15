@@ -131,7 +131,7 @@ def build(lock, destination):
             raise RuntimeError('Public HTML backup archive corrupt')
     report={'status':'OFFLINE_ONLY_39_PAGE_ASSISTANT_STAGE_PASS',
        'sites':{host:len([m for m in manifest if m['site']==host and m['changed']]) for host in DOMAINS},
-       'pages_total':41,'pages_changed':40,'assistant_sha256':ASSET_SHA256,
+       'pages_total':len(manifest),'pages_changed':sum(m['changed'] for m in manifest),'assistant_sha256':ASSET_SHA256,
        'offline_backup_verified':True,'backups_are_not_timeweb_backups':True,
        'production_modified':False,'bitrix_deals_created':0,
        'manifest':manifest,'archive':str(archive),'stage_dir':str(destination)}
