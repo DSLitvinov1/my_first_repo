@@ -21,8 +21,11 @@ jobs:
       - name: Test all existing Work ONE components and new offline runtime discovery
         run: |
           cd bridge/neurofactory/one_pc_candidate/workbench
-          python -B -m unittest -q test_bundle_activation_closure_one test_chatgpt_bridge_one test_one_desktop_owner_mcp test_owner_dual_mcp_config test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_portable_runtime_one test_start_work_one
+          python -B -m unittest -q test_bundle_activation_closure_one test_chatgpt_bridge_one test_workbench test_agent_one test_browser_control test_workflow_one test_toolmesh_one test_personal_readiness_one test_private_flow_one test_private_preflight_one test_portable_runtime_one test_start_work_one
           if ($LASTEXITCODE -ne 0) {throw 'WORK_ONE_TESTS_FAILED'}
+          # MCP test fixtures mock modules globally; isolate them in another Python process.
+          python -B -m unittest -q test_one_desktop_owner_mcp test_owner_dual_mcp_config
+          if ($LASTEXITCODE -ne 0) {throw 'MCP_PROTOCOL_TESTS_FAILED'}
       - name: Compile Python JS and parse Windows launch, worker and builder
         run: |
           $root='bridge/neurofactory/one_pc_candidate/workbench'
