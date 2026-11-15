@@ -36,6 +36,10 @@ async function main(){
    check('Homepage HTTP 200',res?.status()===200,res?.status());
    const deny=page.locator('#oleg-analytics-choice [data-deny]');
    if(await deny.count()&&await deny.isVisible())await deny.click({timeout:5000});
+   const banner=page.locator('#oleg-analytics-choice');
+   if(await banner.count() && await banner.isVisible()){
+     await banner.locator('[data-deny]').click({timeout:7000});
+   }
    const launch=page.locator('#legal-help-toggle');
    await launch.waitFor({state:'visible',timeout:10000});
    check('Legal assistant launch visible',await launch.isVisible());
