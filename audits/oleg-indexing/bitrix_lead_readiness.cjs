@@ -95,6 +95,15 @@ async function main(){
        }catch(e){check.openAttempts.push({selector,error:compact(e.message).slice(0,120)})}
      }
      check.afterFrames=page.frames().filter(f=>f!==page.mainFrame()).map(f=>captureHref(f.url()));
+     check.assistantElements=await page.evaluate(()=>[...document.querySelectorAll('[id*="assistant"],[class*="assistant"],[id*="chat"],[class*="chat"],iframe')]
+       .slice(0,24).map(el=>({
+         tag:el.tagName.toLowerCase(),id:el.id||null,
+         className:typeof el.className==='string'?el.className.slice(0,90):'',
+         text:(el.textContent||'').replace(/\\s+/g,' ').trim().slice(0,100),
+         hidden:el.hidden||getComputedStyle(el).display==='none',
+         iframeSrc:el instanceof HTMLIFrameElement?el.getAttribute('src'):''
+       })));
+     check.formMode=await page.getAttribute('body','data-form-mode');
      check.pageErrors=exceptions.splice(0);
      check.liveResponses=responses.splice(0).slice(0,30);
      if(check.http!==200)result.issues.push({type:'HTTP',url:target,http:check.http});
@@ -149,6 +158,9 @@ async function main(){
        const contents=await response.text();
        assetInfo.status=response.status();
        Object.assign(assetInfo,scriptInfo(contents));
+       if(config.site==='https://potrebpravo.ru/' && /legal-assistant-v4\.js/.test(asset)){
+         console.log('PUBLIC_LEGAL_ASSISTANT_JS',JSON.stringify(contents));
+       }
      }catch(e){assetInfo.error=compact(e.message).slice(0,250)}
      result.assets.push(assetInfo);
    }
