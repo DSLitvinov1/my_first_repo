@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED,EXTENDED_REQUIRED
+from private_preflight_one import inspect, verify_manifest,check_local_work,REQUIRED,EXTENDED_REQUIRED,CANDIDATE_REQUIRED
 
 class PrivatePreflightTests(unittest.TestCase):
     def setUp(self):
@@ -55,6 +55,25 @@ class PrivatePreflightTests(unittest.TestCase):
         file_digests["not_approved_module.py"]=hashlib.sha256(b"new").hexdigest()
         (self.root/"not_approved_module.py").write_bytes(b"new")
         path.write_text(json.dumps(data))
+        self.assertEqual(verify_manifest(self.root)["reason"],"MANIFEST_INVALID")
+
+    def test_extended_44_file_candidate_manifest_requires_both_launchers(self):
+        files=self.setup_manifest()
+        for name in EXTENDED_REQUIRED | CANDIDATE_REQUIRED:
+            body=b"isolated synthetic candidate artifact"
+            (self.root/name).write_bytes(body)
+            files[name]=hashlib.sha256(body).hexdigest()
+        self.assertEqual(len(files),44)
+        manifest=self.root/"manifest.json"
+        document=json.loads(manifest.read_text())
+        document["file_digests"]=files
+        manifest.write_text(json.dumps(document))
+        self.assertEqual(verify_manifest(self.root)["state"],"verified")
+        removed="START_CHATGPT_ONE.cmd"
+        files.pop(removed)
+        files["not_in_allowlist.cmd"]=hashlib.sha256(b"x").hexdigest()
+        (self.root/"not_in_allowlist.cmd").write_bytes(b"x")
+        manifest.write_text(json.dumps(document))
         self.assertEqual(verify_manifest(self.root)["reason"],"MANIFEST_INVALID")
 
     def test_tampered_file_rejected(self):
