@@ -6,6 +6,7 @@ hosting terminal against *verified* live site roots. No Bitrix24, tracking, or
 search-console settings are modified.
 """
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -18,6 +19,7 @@ from bitrix_fallback_guard import prepare as prepare_fallback
 SITES = {'potrebpravo.ru', 'semya-yurist.ru'}
 DEFAULT_META = 'METADATA_PROPOSALS_20261115.json'
 DEFAULT_LINKS = 'CASE_RELATED_LINKS_20261115.json'
+DEFAULT_PUBLIC_LOCK = 'ASSISTANT_COVERAGE_SOURCE_LOCK_20261116.json'
 
 
 def build_release(metadata_plan, links_plan, root_parent):
@@ -95,22 +97,52 @@ def build_full_release(metadata_plan, links_plan, root_parent):
     return seo,overlaps,missing
 
 
+def verify_public_lock(changes, lock):
+    """Require exact historical HTML bytes for the 41 public sitemap pages.
+
+    If Timeweb differs even outside the edited span, abort and re-review.
+    This is independent of the immediate pre-write race/drift guard.
+    """
+    if set(lock.get('sites', {})) != SITES:
+        raise ValueError('Unexpected locked site list')
+    verified=0
+    for target, info in changes.items():
+        if not info['path'].endswith('.html'):
+            continue
+        host=info['domain']
+        rel='/' if info['path']=='index.html' else '/'+info['path']
+        expected=lock['sites'][host].get('entries', {}).get(rel)
+        if not isinstance(expected,str) or len(expected)!=64:
+            raise ValueError('Missing exact public source SHA for '+host+rel)
+        digest=hashlib.sha256(info['old']).hexdigest()
+        if digest!=expected:
+            raise ValueError('Public-source content drift; STOP '+host+rel)
+        verified+=1
+    if verified!=41 or sum(len(lock['sites'][host].get('entries',{})) for host in SITES)!=41:
+        raise ValueError('Unexpected 41-page public-source coverage')
+    return verified
+
+
 def main(argv=None):
     ap=argparse.ArgumentParser()
     here=Path(__file__).parent
     ap.add_argument('--metadata-plan',default=str(here/DEFAULT_META))
     ap.add_argument('--links-plan',default=str(here/DEFAULT_LINKS))
     ap.add_argument('--root-parent',default=str(Path.home()))
+    ap.add_argument('--public-source-lock',default=str(here/DEFAULT_PUBLIC_LOCK))
     ap.add_argument('--apply',action='store_true',help='Perform guarded and backed-up publication')
     args=ap.parse_args(argv)
     meta=json.loads(Path(args.metadata_plan).read_text(encoding='utf-8'))
     links=json.loads(Path(args.links_plan).read_text(encoding='utf-8'))
     root=Path(args.root_parent)
     changes,overlaps,assistantMissing=build_full_release(meta,links,root)
+    public_lock=json.loads(Path(args.public_source_lock).read_text(encoding='utf-8'))
+    verified_source_pages=verify_public_lock(changes,public_lock)
     summary={'mode':'apply' if args.apply else 'dry-run',
              'root':str(root),'uniqueFiles':len(changes),
              'overlappingFiles':overlaps,'assistantMissingBeforeDeployment':assistantMissing,'bitrixAssets':2,
-             'filesWithRealChanges':sum(x['new']!=x['old'] for x in changes.values())}
+             'filesWithRealChanges':sum(x['new']!=x['old'] for x in changes.values()),
+             'publicSourceLockVerifiedPages':verified_source_pages}
     print(json.dumps(summary,ensure_ascii=False))
     if args.apply:
         backup,count=apply_edits(changes,root)
