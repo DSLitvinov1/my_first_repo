@@ -130,10 +130,29 @@ class BatchReleaseTests(unittest.TestCase):
                 self.assertIn('formStep.insertBefore(fallback, frame);',new)
             else:
                 self.assertIn('/assets/legal-assistant-v4.js',new)
+                if path.name != 'index.html':
+                    self.assertEqual(new.count('id="oleg-consent-priority"'),1)
+                    self.assertIn('#oleg-analytics-choice{z-index:2147483647!important}',new)
+                else:
+                    self.assertNotIn('oleg-consent-priority',new)
             self.assertEqual((backup/info['domain']/info['path']).read_text(encoding='utf-8'),self.initial[path])
             if path.name.startswith('case-'):
                 self.assertIn('article-related',new)
                 self.assertIn('Новый заголовок',new)
+
+    def test_existing_unreviewed_consent_style_fails_closed(self):
+        from lead_assistant_guard import patch
+        source='<html><body><style id="oleg-consent-priority">unsafe</style></body></html>'
+        with self.assertRaisesRegex(ValueError,'manual review'):
+            patch(source,'semya-yurist.ru')
+
+    def test_assistant_patch_idempotent_after_insertion(self):
+        from lead_assistant_guard import patch
+        source='<html><body><main>Консультация</main></body></html>'
+        first=patch(source,'potrebpravo.ru')
+        self.assertEqual(first,patch(first,'potrebpravo.ru'))
+        self.assertEqual(first.count('/assets/legal-assistant-v4.js'),1)
+        self.assertEqual(first.count('id="oleg-consent-priority"'),1)
 
     def test_mismatch_domain_list_rejected(self):
         bad=deepcopy(self.meta)
