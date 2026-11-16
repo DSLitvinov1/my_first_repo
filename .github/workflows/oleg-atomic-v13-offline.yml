@@ -1,0 +1,45 @@
+name: Oleg V13 offline atomic release acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'audits/oleg-indexing/atomic_pointer_offline.py'
+      - 'audits/oleg-indexing/test_atomic_pointer_offline.py'
+      - 'audits/oleg-indexing/atomic_full_backup_rehearsal.py'
+      - '.github/workflows/oleg-atomic-v13-offline.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-atomic-guard:
+    name: Two-site pointer + simulated crash + rollback
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify Python module syntax
+        working-directory: audits/oleg-indexing
+        run: |
+          python -m py_compile atomic_pointer_offline.py test_atomic_pointer_offline.py atomic_full_backup_rehearsal.py
+      - name: Run synthetic offline pointer acceptance
+        working-directory: audits/oleg-indexing
+        run: python -m unittest -v test_atomic_pointer_offline.py
+      - name: Assert fixture-only protection is present
+        working-directory: audits/oleg-indexing
+        run: |
+          python - <<'PY'
+          from atomic_pointer_offline import sandbox, SwitchError
+          for unsafe in ('/', '/home', '/tmp'):
+              try:
+                  sandbox(unsafe)
+              except (SwitchError, FileNotFoundError):
+                  pass
+              else:
+                  raise AssertionError('Sandbox guard bypassed: '+unsafe)
+          print('OFFLINE_ONLY_GUARD_PASS')
+          PY
