@@ -48,8 +48,8 @@ jobs:
           assert r['production_modified'] is False and r['timeweb_backup_created'] is False
           assert r['real_crm_verified'] is False and r['bitrix_leads_created']==0
           assert r['verified_html_sha_locks']==41 and len(r['manifest'])==43
-          assert r['html_files_changed']==39
-          assert 0<=r['js_assets_changed']<=2
+          assert r['html_files_changed']==41
+          assert r['js_assets_changed']==2
           assert r['files_changed']==r['html_files_changed']+r['js_assets_changed']
           assert r['seo_targets']==24 and r['assistant_inner_page_insertions']==39
           with zipfile.ZipFile('unified-stage-output/original-public-source-43-files.zip') as z:
