@@ -26,6 +26,11 @@
     const crm = body.crm;
     if (!crm || typeof crm !== 'object' || Array.isArray(crm)) return null;
     if (crm.provider !== 'bitrix24' || crm.status !== 'confirmed' || crm.readback_confirmed !== true) return null;
+    // Fail closed unless the backend independently checked the real CRM owner,
+    // website source, UTM attribution, persistent dedupe and delivery log.
+    for (const flag of ['owner_confirmed','source_confirmed','utm_confirmed','dedupe_confirmed','notification_confirmed']) {
+      if (crm[flag] !== true) return null;
+    }
     if (!TYPES.has(crm.entity_type)) return null;
     const id = crm.entity_id;
     const safeId = typeof id === 'number' ? (Number.isSafeInteger(id) ? String(id) : '') : (typeof id === 'string' ? id : '');
