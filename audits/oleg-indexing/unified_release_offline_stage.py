@@ -71,7 +71,7 @@ def assemble(out):
         homepage = (source_root / host / 'public_html' / 'index.html').read_text(encoding='utf-8')
         urls = re.findall(r'<script\\b[^>]*\\bsrc\\s*=\\s*["\\x27]([^"\\x27]*legal-assistant-v4\\.js[^"\\x27]*)["\\x27]', homepage, flags=re.I)
         print('OLEG_V9_PUBLIC_HOME_ASSISTANT_SCRIPT=' + json.dumps({
-            'host': host, 'srcs': urls, 'strictRecognized': bool(SCRIPT_RE.search(homepage)), 'mentions': homepage.count('legal-assistant-v4.js'), 'publicContext': [(homepage[max(0, m.start()-90):m.end()+80]).replace('\\n',' ') for m in list(re.finditer(r'legal-assistant-v4\\.js', homepage))[:2]]
+            'host': host, 'srcs': urls, 'strictRecognized': bool(SCRIPT_RE.search(homepage)), 'mentions': homepage.count('legal-assistant-v4.js'), 'publicContext': homepage[max(0, homepage.find('legal-assistant-v4.js')-120):homepage.find('legal-assistant-v4.js')+140].replace(chr(10),' '), 'hasToggleMarkup': 'legal-help-toggle' in homepage
         }, ensure_ascii=False))
 
     metadata = json.loads((HERE / PLANS['meta']).read_text(encoding='utf-8'))
