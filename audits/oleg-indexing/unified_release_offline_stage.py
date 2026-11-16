@@ -102,7 +102,8 @@ def assemble(out):
         raise ValueError('Manifest incomplete')
     changed_html = sum(x['changed'] for x in manifest if x['path'].endswith('.html'))
     changed_js = sum(x['changed'] for x in manifest if x['path'].endswith('.js'))
-    if changed_html != 39 or changed_js not in (0, 1, 2):
+    # Both homepages also receive SEO metadata; all 41 HTML pages change.
+    if changed_html != 41 or changed_js != 2:
         raise ValueError(
             f'Unexpected staged change count: HTML={changed_html}, JS={changed_js}; STOP'
         )
