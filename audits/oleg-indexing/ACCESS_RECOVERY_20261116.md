@@ -31,3 +31,7 @@ Project: existing `potrebpravo.ru` and `semya-yurist.ru`. Base for this report: 
 5. Preserve current `draft` PR #125. No production write, CRM mutation, synthetic new lead, IndexNow submission or Direct launch until these gates are evidenced.
 
 All checks are read-only or reversible restarts of a **dedicated** local helper. No customer data or credentials in GitHub artifacts.
+
+## Cleanup after diagnostics
+
+The stalled Timeweb request was verified to be **our own** read-only task, 1024 seconds old, with no processing/result file. An isolated reserve command [#43847167089](https://github.com/DSLitvinov1/lesson3.1/actions/runs/43847167089) archived only `pending.json` for exact task ID `oleg-timeweb-readonly-agent-20261116` under `stale-oleg-timeweb-readonly-agent-20261116.json`; result `OWN_READONLY_QUEUE_ARCHIVED=True`, `PENDING_NOW_CLEAR=True`, `NO_USER_TASK_TOUCHED`. No external site or customer data was touched. The old result can be re-examined locally without replaying or submitting it.
