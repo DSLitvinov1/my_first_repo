@@ -167,3 +167,7 @@ P3: применить подготовленный SEO review-пакет (24 HT
 4. **Privacy/legal:** Oleg approved contact fields/name/phone/topic, purposes/consent and 12 month retention for unsigned cases; RKN operator notice status not established. 152-FZ art. 22 generally requires notice before processing absent statutory exception; coordinate official registry/owner legal confirmation before enabling new flows. No real PII in GitHub or logs.
 
 Next prompt: `audits/oleg-indexing/SEO_SUPER_PROMPT_V10_20261116.md`. No Direct launch, server changes, new CRM submissions, payment or merge was performed in this V9 step.
+
+### Latest clean rerun (after removing temporary diagnostic output)
+
+Latest clean rerun: [GitHub Actions #43814539821](https://github.com/DSLitvinov1/my_first_repo/actions/runs/43814539821) **PASS**, code SHA `16a0c3936f235883ae574e4e021d92c102c0feaf`. 41/41 combined DOM, 12/12 staged UI, 4 CDN failure simulations, 43 manifest files, public source ZIP SHA/readback all green. Artifact [#14202315870](https://github.com/DSLitvinov1/my_first_repo/actions/runs/43814539821/artifacts/14202315870): 407344 B, `sha256:83d439e873729cedfc3338ce3a8739bde72d72b7a9997ebb880f7c2c6bc7038e`. No real Timeweb backup, no published changes, no Bitrix CRM entity proof. Latest next prompt V10 now references this clean run.
