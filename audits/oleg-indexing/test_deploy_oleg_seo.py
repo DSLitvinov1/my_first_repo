@@ -147,6 +147,21 @@ class BatchReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'manual review'):
             patch(source,'semya-yurist.ru')
 
+    def test_existing_homepage_relative_assistant_script_preserved(self):
+        from lead_assistant_guard import patch
+        source='<html><body><script defer src="assets/legal-assistant-v4.js"></script></body></html>'
+        for host in HOSTS:
+            self.assertEqual(patch(source,host),source)
+        self.assertNotIn('oleg-consent-priority',patch(source,HOSTS[0]))
+
+    def test_ambiguous_assistant_script_fails_closed(self):
+        from lead_assistant_guard import patch
+        relative='<script defer src="assets/legal-assistant-v4.js"></script>'
+        with self.assertRaisesRegex(ValueError,'Ambiguous or duplicate'):
+            patch('<html><body>'+relative+relative+'</body></html>',HOSTS[0])
+        with self.assertRaisesRegex(ValueError,'Unrecognized assistant script'):
+            patch('<html><body><script src="https://other.site/assets/legal-assistant-v4.js"></script></body></html>',HOSTS[1])
+
     def test_assistant_patch_idempotent_after_insertion(self):
         from lead_assistant_guard import patch
         source='<html><body><main>Консультация</main></body></html>'
