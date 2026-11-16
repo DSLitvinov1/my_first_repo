@@ -16,6 +16,8 @@ from metadata_guard import apply_edits
 
 SITE_COUNTS={'potrebpravo.ru':23,'semya-yurist.ru':18}
 SCRIPT='<script defer src="/assets/legal-assistant-v4.js"></script>'
+# Keep consent/refusal controls above the floating assistant on narrow viewports.
+CONSENT_PRIORITY='<style id="oleg-consent-priority">#oleg-analytics-choice{z-index:2147483647!important}</style>'
 SCRIPT_RE=re.compile(r'''(?i)<script\b[^>]*\bsrc\s*=\s*["'][^"']*/assets/legal-assistant-v4\.js(?:\?[^"']*)?["'][^>]*>''')
 CLOSE_BODY=re.compile(r'(?i)</body\s*>')
 FORMS={'potrebpravo.ru':'crm_form_fhi3n','semya-yurist.ru':'crm_form_ep5fd'}
@@ -51,8 +53,10 @@ def patch(source, host):
     endings=list(CLOSE_BODY.finditer(source))
     if len(endings)!=1:
         raise ValueError('Expected one closing body')
+    if 'oleg-consent-priority' in source:
+        raise ValueError('Existing consent style marker requires manual review')
     at=endings[0].start()
-    return source[:at]+SCRIPT+'\n'+source[at:]
+    return source[:at]+CONSENT_PRIORITY+'\n'+SCRIPT+'\n'+source[at:]
 
 
 def prepare(root_parent):
