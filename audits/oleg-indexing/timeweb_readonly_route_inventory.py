@@ -57,7 +57,7 @@ def site_inventory(host, docroot):
         text = sitejs.read_text(encoding="utf-8", errors="replace")
         found["lead_form_client"] = {
             "posts_to_api_leads": bool(re.search(r"/api/leads", text, re.I)),
-            "uses_only_http_ok": bool(re.search(r"response\\.ok|result\\.ok", text)),
+            "uses_only_http_ok": bool(re.search(r"response\.ok|result\.ok", text)),
             "explicit_readback_proof": bool(re.search(r"readback_confirmed", text))
         }
     return found
@@ -86,15 +86,15 @@ def backend_refs(root):
             raw = p.read_bytes()
             # Never print the source code, URLs, webhook tokens or credentials.
             text = raw.decode("utf-8", errors="replace")
-            lead_route = bool(re.search(r"/api/leads?\\b", text, re.I))
-            bitrix = bool(re.search(r"bitrix24|crm\\.item\\.(?:add|get)|crm\\.deal\\.(?:add|get)", text, re.I))
+            lead_route = bool(re.search(r"/api/leads?\b", text, re.I))
+            bitrix = bool(re.search(r"bitrix24|crm\.item\.(?:add|get)|crm\.deal\.(?:add|get)", text, re.I))
             if lead_route or bitrix:
                 matches.append({
                     "relative_path": str(p.relative_to(root)),
                     "sha256": hashlib.sha256(raw).hexdigest(),
                     "route_reference": lead_route,
                     "bitrix_reference": bitrix,
-                    "post_method_reference": bool(re.search(r"POST|post\\s*\\(", text, re.I)),
+                    "post_method_reference": bool(re.search(r"POST|post\s*\(", text, re.I)),
                     "route_implementation_confirmed": False
                 })
     return matches, scanned, ignored, False
