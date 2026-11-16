@@ -29,7 +29,7 @@ async function run(){
         {width:1365,height:900,label:'desktop',simulateBitrixOutage:false}
       ]){
         const url='https://'+host+urlPath;
-        const file=path.join(__dirname,'assistant-stage-output',host,'public_html',urlPath.slice(1));
+        const file=path.join(__dirname,process.env.OLEG_RELEASE_STAGE_ROOT||'assistant-stage-output',host,'public_html',urlPath.slice(1));
         const body=await fs.readFile(file,'utf8');
         assert.match(body,/legal-assistant-v4\.js/);
         const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},locale:'ru-RU'});
