@@ -68,7 +68,7 @@ def assemble(out):
     links = json.loads((HERE / PLANS['links']).read_text(encoding='utf-8'))
     changes, overlaps, missing = build_full_release(metadata, links, source_root)
     if len(changes) != 43 or overlaps != 9 or missing != 39:
-        raise ValueError('Combined plan unexpectedly changed; STOP')
+        raise ValueError(f'Combined plan differs from expected: files={len(changes)}, overlap={overlaps}, missing={missing}; STOP')
     verified = verify_public_lock(changes, lock)
     if verified != 41:
         raise ValueError('41 public-source lock pages missing; STOP')
