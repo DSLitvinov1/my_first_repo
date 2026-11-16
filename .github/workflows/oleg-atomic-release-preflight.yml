@@ -37,6 +37,6 @@ jobs:
           imports={a.name.split('.')[0] for n in ast.walk(tree) if isinstance(n,ast.Import) for a in n.names}
           imports.update(n.module.split('.')[0] for n in ast.walk(tree) if isinstance(n,ast.ImportFrom) and n.module)
           assert not imports & forbidden,imports & forbidden
-          assert 'apply' not in [a.dest for n in ast.walk(tree) if isinstance(n,ast.Call) and any(isinstance(x,ast.Constant) and x.value=='--apply' for x in n.args) for a in n.keywords]
+          assert "'--apply'" not in Path('atomic_release_preflight.py').read_text(encoding='utf8')
           print('OLEG_ATOMICITY_PREFLIGHT_OFFLINE_ONLY_PASS')
           PY
