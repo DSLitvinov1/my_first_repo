@@ -132,6 +132,12 @@ def main(argv=None):
     ap.add_argument('--public-source-lock',default=str(here/DEFAULT_PUBLIC_LOCK))
     ap.add_argument('--apply',action='store_true',help='Perform guarded and backed-up publication')
     args=ap.parse_args(argv)
+    # Explicit safety stop: per-file os.replace() is not a cross-domain atomic
+    # commit and a sudden process/server exit could leave half the release live.
+    # A shared-pointer topology and a reviewed switch implementation are
+    # prerequisites. The old per-file publication path must not be used.
+    if args.apply:
+        raise ValueError("OLEG_ATOMIC_BATCH_APPLY_DISABLED: no production writes permitted without reviewed single-pointer switch")
     meta=json.loads(Path(args.metadata_plan).read_text(encoding='utf-8'))
     links=json.loads(Path(args.links_plan).read_text(encoding='utf-8'))
     root=Path(args.root_parent)
