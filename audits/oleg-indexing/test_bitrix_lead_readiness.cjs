@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {CONFIG,formUiVerified}=require('./bitrix_lead_readiness.cjs');
+const {CONFIG,formUiVerified}=require('./bitrix_form_evidence.cjs');
 
 const base='https://b24-s2dosa.bitrix24site.ru/';
 const valid=(url)=>({
