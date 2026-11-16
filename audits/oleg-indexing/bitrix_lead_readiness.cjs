@@ -12,6 +12,12 @@ const CONFIG=[
 ];
 const compact=x=>String(x??'').replace(/\s+/g,' ').trim();
 const captureHref=x=>{try{let u=new URL(x);return u.origin+u.pathname}catch{return compact(x).slice(0,220)}};
+const formUiVerified=(frameInfo,formUrl)=>
+ frameInfo.http===200 &&
+ frameInfo.final===captureHref(formUrl) &&
+ Array.isArray(frameInfo.body?.forms) &&
+ frameInfo.body.forms.some(f=>f.fields?.some(x=>x.type==='tel') && f.hasSubmit) &&
+ frameInfo.body.hasConsent===true;
 const scriptInfo=text=>({
  containsBitrixForm:/bitrix24site\.ru\/crm_form_/i.test(text),
  containsLegacyDemoMode:/data-form-mode\s*=\s*["']demo|formMode\s*[:=]\s*["']demo|form-mode["']?\s*,\s*["']demo/i.test(text),
@@ -152,11 +158,7 @@ async function main(){
    }
    out.bitrixDirect=frameInfo;
    // HTTP 200 is not proof that the correct CRM form is usable.
-   frameInfo.formUiVerified=frameInfo.http===200 &&
-       frameInfo.final===captureHref(formUrl) &&
-       Array.isArray(frameInfo.body?.forms) &&
-       frameInfo.body.forms.some(f=>f.fields?.some(x=>x.type==='tel') && f.hasSubmit) &&
-       frameInfo.body.hasConsent===true;
+   frameInfo.formUiVerified=formUiVerified(frameInfo,formUrl);
    if(frameInfo.http===200 && !frameInfo.formUiVerified)
      result.issues.push({type:'FORM_UI_NOT_VERIFIED',site:config.site,form:captureHref(formUrl)});
    for(const asset of [...new Set(out.pages.flatMap(p=>p.assets||[]))]){
@@ -193,4 +195,7 @@ async function main(){
     assets:result.assets
  }));
 }
-main().catch(e=>{console.error('LEAD_READINESS_FATAL',e.message);process.exitCode=1});
+if(require.main===module){
+ main().catch(e=>{console.error('LEAD_READINESS_FATAL',e.message);process.exitCode=1});
+}
+module.exports=Object.freeze({CONFIG,formUiVerified});
