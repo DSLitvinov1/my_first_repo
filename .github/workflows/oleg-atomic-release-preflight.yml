@@ -1,0 +1,42 @@
+name: Oleg Legal two-site atomic release preflight — offline
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/atomic_release_preflight.py'
+      - 'audits/oleg-indexing/test_atomic_release_preflight.py'
+      - '.github/workflows/oleg-atomic-release-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-atomicity-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and strict no-production-writes gate
+        run: |
+          python -m py_compile atomic_release_preflight.py test_atomic_release_preflight.py
+          python -m unittest -v test_atomic_release_preflight
+      - name: Explicitly prohibit publishing and secret access
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          tree=ast.parse(Path('atomic_release_preflight.py').read_text(encoding='utf8'))
+          forbidden={'subprocess','requests','paramiko','playwright','shutil','socket'}
+          imports={a.name.split('.')[0] for n in ast.walk(tree) if isinstance(n,ast.Import) for a in n.names}
+          imports.update(n.module.split('.')[0] for n in ast.walk(tree) if isinstance(n,ast.ImportFrom) and n.module)
+          assert not imports & forbidden,imports & forbidden
+          assert 'apply' not in [a.dest for n in ast.walk(tree) if isinstance(n,ast.Call) and any(isinstance(x,ast.Constant) and x.value=='--apply' for x in n.args) for a in n.keywords]
+          print('OLEG_ATOMICITY_PREFLIGHT_OFFLINE_ONLY_PASS')
+          PY
