@@ -1,0 +1,70 @@
+name: Oleg V14 contact failover (offline browser, CRM blocked)
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/bitrix_resilient_contact_stage_v14.py'
+      - 'audits/oleg-indexing/test_bitrix_resilient_contact_v14.py'
+      - 'audits/oleg-indexing/bitrix_resilient_contact_v14.cjs'
+      - 'audits/oleg-indexing/v14-assets/legal-assistant-v4.js'
+      - '.github/workflows/oleg-bitrix-v14-cdn-failover.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/bitrix_resilient_contact_stage_v14.py'
+      - 'audits/oleg-indexing/test_bitrix_resilient_contact_v14.py'
+      - 'audits/oleg-indexing/bitrix_resilient_contact_v14.cjs'
+      - 'audits/oleg-indexing/v14-assets/legal-assistant-v4.js'
+      - '.github/workflows/oleg-bitrix-v14-cdn-failover.yml'
+permissions:
+  contents: read
+jobs:
+  offline-failover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check exact 43-file helper patch and preserve both form IDs
+        run: python -m unittest -v test_bitrix_resilient_contact_v14
+      - name: Check JS and Python syntax, without contacting CRM
+        run: |
+          python -m py_compile bitrix_resilient_contact_stage_v14.py
+          node --check v14-assets/legal-assistant-v4.js
+          node --check bitrix_resilient_contact_v14.cjs
+      - name: Install isolated Chromium test runner
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Simulate total Bitrix outage on two live homepages (browser-only JS override)
+        run: node bitrix_resilient_contact_v14.cjs
+      - name: Verify six visible alternatives without any customer submission
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('oleg-v14-contact-fallback-e2e.json').read_text())
+          assert r['state']=='OFFLINE_BROWSER_INTERCEPTION_ONLY'
+          assert (r['passed'],r['total'])==(6,6)
+          assert r['crm_posts']==0 and r['production_writes']==0
+          for case in r['cases']:
+            assert case['pass'] is True and case['intercepted']==1
+            assert case['blockedBitrix']>=1 and case['fallback']=='phone+email+direct-form-link'
+          print('V14_CDN_OUTAGE_BOTH_SITES_MOBILE_DESKTOP_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oleg-v14-isolated-bitrix-cdn-outage
+          path: audits/oleg-indexing/oleg-v14-contact-fallback-e2e.json
+          if-no-files-found: warn
