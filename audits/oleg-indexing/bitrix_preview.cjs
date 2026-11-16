@@ -1,6 +1,7 @@
 'use strict';
 // In-memory preview of the SAME guarded assistant patch planned for 39 inner pages.
-// Does not deploy and blocks all POST/PUT/PATCH/DELETE. No real lead can be sent.
+// Does not deploy, blocks all mutations and replaces Bitrix iframe with a
+// CLEARLY MARKED test fixture. This proves only the UI, not real CRM availability.
 const {chromium}=require('playwright');
 const fs=require('node:fs/promises');
 const {spawnSync}=require('node:child_process');
@@ -35,6 +36,8 @@ async function main(){
    const result={host:site.host,url:site.target,mode:'Playwright in-memory HTML patch only'};
    results.push(result);
    const ctx=await browser.newContext({viewport:{width:390,height:844},locale:'ru-RU'});
+   result.bitrixMocked=true;
+   result.liveBitrixStatus='NOT_CHECKED_IN_THIS_UI_TEST';
    await ctx.route('**/*',route=>{
     const req=route.request();
     if(!['GET','HEAD','OPTIONS'].includes(req.method().toUpperCase())){
@@ -44,6 +47,22 @@ async function main(){
     if(/^https:\/\/mc\.yandex\.ru\//i.test(req.url()))
       return route.fulfill({status:204,body:''});
     return route.continue();
+   });
+   await ctx.route(/^https:\/\/b24-s2dosa\.bitrix24site\.ru\//i,route=>{
+     const method=route.request().method().toUpperCase();
+     if(method!=='GET'&&method!=='HEAD'){
+       result.blockedWrites=(result.blockedWrites||0)+1;
+       return route.abort('blockedbyclient');
+     }
+     if(method==='HEAD')return route.fulfill({status:200,body:''});
+     const html='<!doctype html><html lang="ru"><body>'+
+       '<main><h1>MOCKED BITRIX: TEST ONLY, NO CRM</h1>'+
+       '<form><input type="text" name="test_name">'+
+       '<input type="tel" name="test_phone">'+
+       '<textarea name="test_topic"></textarea>'+
+       '<input type="checkbox" name="test_consent">'+
+       '<button type="button">Отправить</button></form></main></body></html>';
+     return route.fulfill({status:200,contentType:'text/html; charset=utf-8',body:html});
    });
    await ctx.route(site.target,async route=>{
     const response=await route.fetch();
@@ -99,7 +118,7 @@ async function main(){
     }
     const box=await page.locator('#legal-help-panel').boundingBox();
     result.mobilePanelFits=!!box&&box.x>=0&&box.x+box.width<=391&&box.y>=0&&box.y+box.height<=845;
-    result.preparedPatchWorks=result.injectionPerformed&&result.releasePatchApplied&&result.consentRefused&&result.iframeSrc===site.form&&
+    result.preparedPatchWorks=result.injectionPerformed&&result.releasePatchApplied&&result.consentRefused&&result.bitrixMocked&&result.iframeSrc===site.form&&
       result.panelVisible&&result.mobilePanelFits&&result.formLoaded&&result.submitPresent;
    }catch(e){result.error=safe(e);result.preparedPatchWorks=false}
    finally{await ctx.close();}
