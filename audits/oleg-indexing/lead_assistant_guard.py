@@ -18,7 +18,7 @@ SITE_COUNTS={'potrebpravo.ru':23,'semya-yurist.ru':18}
 SCRIPT='<script defer src="/assets/legal-assistant-v4.js"></script>'
 # Keep consent/refusal controls above the floating assistant on narrow viewports.
 CONSENT_PRIORITY='<style id="oleg-consent-priority">#oleg-analytics-choice{z-index:2147483647!important}</style>'
-SCRIPT_RE=re.compile(r'''(?i)<script\b[^>]*\bsrc\s*=\s*["'][^"']*/assets/legal-assistant-v4\.js(?:\?[^"']*)?["'][^>]*>''')
+SCRIPT_RE=re.compile(r'''(?i)<script\b[^>]*\bsrc\s*=\s*["'](?:/|\./)?assets/legal-assistant-v4\.js(?:\?[^"']*)?["'][^>]*>''')
 CLOSE_BODY=re.compile(r'(?i)</body\s*>')
 FORMS={'potrebpravo.ru':'crm_form_fhi3n','semya-yurist.ru':'crm_form_ep5fd'}
 
@@ -46,8 +46,13 @@ def site_pages(root,host):
 def patch(source, host):
     if host not in SITE_COUNTS:
         raise ValueError('Unsupported site')
-    if SCRIPT_RE.search(source):
+    recognized = SCRIPT_RE.findall(source)
+    if recognized:
+        if len(recognized) != 1 or source.count('legal-assistant-v4.js') != 1:
+            raise ValueError('Ambiguous or duplicate assistant script reference; manual review')
         return source
+    if 'legal-assistant-v4.js' in source:
+        raise ValueError('Unrecognized assistant script reference; manual review before injection')
     if 'legal-help-toggle' in source:
         raise ValueError('Page has other assistant code; review before install')
     endings=list(CLOSE_BODY.finditer(source))
