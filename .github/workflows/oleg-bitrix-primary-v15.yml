@@ -1,0 +1,46 @@
+name: Oleg V15 main-page CRM links offline gate
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/test_bitrix_primary_contact_v15.py'
+      - '.github/workflows/oleg-bitrix-primary-v15.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/test_bitrix_primary_contact_v15.py'
+      - '.github/workflows/oleg-bitrix-primary-v15.yml'
+permissions:
+  contents: read
+jobs:
+  guarded-primary-links:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify offline candidate builder syntax
+        run: python -m py_compile bitrix_primary_contact_v15.py
+      - name: Regression test both disabled contact forms and direct CRM links
+        run: python -m unittest -v test_bitrix_primary_contact_v15
+      - name: Ensure this never publishes or sends a lead
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('bitrix_primary_contact_v15.py').read_text()
+          assert 'shutil.copytree(src_root, dest_root' in source
+          assert 'STAGED_NOT_DEPLOYED_NOT_CRM_VERIFIED' in source
+          assert 'data-form-mode="demo"' in source
+          assert 'aria-disabled="true"' in source
+          assert 'request.post(' not in source and 'requests.post(' not in source
+          print('V15_CRM_PRIMARY_LINKS_ONLY_OFFLINE_PASS')
+          PY
