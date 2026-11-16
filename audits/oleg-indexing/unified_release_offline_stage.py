@@ -64,6 +64,16 @@ def assemble(out):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(source)
 
+    # Diagnose the exact script URL form without copying client data or HTML.
+    from lead_assistant_guard import SCRIPT_RE
+    import re
+    for host in DOMAINS:
+        homepage = (source_root / host / 'public_html' / 'index.html').read_text(encoding='utf-8')
+        urls = re.findall(r'<script\\b[^>]*\\bsrc\\s*=\\s*["\\x27]([^"\\x27]*legal-assistant-v4\\.js[^"\\x27]*)["\\x27]', homepage, flags=re.I)
+        print('OLEG_V9_PUBLIC_HOME_ASSISTANT_SCRIPT=' + json.dumps({
+            'host': host, 'srcs': urls, 'strictRecognized': bool(SCRIPT_RE.search(homepage))
+        }, ensure_ascii=False))
+
     metadata = json.loads((HERE / PLANS['meta']).read_text(encoding='utf-8'))
     links = json.loads((HERE / PLANS['links']).read_text(encoding='utf-8'))
     changes, overlaps, missing = build_full_release(metadata, links, source_root)
