@@ -91,13 +91,20 @@ def apply_edits(edits, root_parent):
             raise ValueError(f'{target}: source changed since preflight; STOP')
     backup.mkdir(mode=0o700)
     manifest,changed = [],[]
+    original_modes = {target: target.stat().st_mode for target in edits}
     try:
         for target, info in edits.items():
             archive = backup / info['domain'] / info['path']
             archive.parent.mkdir(parents=True,exist_ok=True)
             archive.write_bytes(info['old'])
+            # A failed or corrupted server-side backup must halt BEFORE any live edits.
+            if archive.read_bytes() != info['old'] or sha256(archive.read_bytes()) != sha256(info['old']):
+                raise IOError(f'{archive}: backup write verification failed; STOP')
             manifest.append({'target':str(target),'before_sha256':sha256(info['old']),'after_sha256':sha256(info['new']),'changed':info['old']!=info['new']})
-        (backup / 'manifest.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False),encoding='utf-8')
+        manifest_path = backup / 'manifest.json'
+        manifest_path.write_text(json.dumps(manifest,indent=2,ensure_ascii=False),encoding='utf-8')
+        if json.loads(manifest_path.read_text(encoding='utf-8')) != manifest:
+            raise IOError('Backup manifest verification failed; STOP')
         for target, info in edits.items():
             if info['old'] == info['new']:
                 continue
@@ -111,16 +118,21 @@ def apply_edits(edits, root_parent):
                 tmp.write_bytes(info['new'])
                 os.chmod(tmp,target.stat().st_mode)
                 os.replace(tmp,target)
+                changed.append(target)
+                if target.read_bytes() != info['new']:
+                    raise IOError(f'{target}: post-write readback differs; rollback required')
             finally:
                 if tmp.exists():
                     tmp.unlink()
-            changed.append(target)
     except BaseException:
         for target in reversed(changed):
             original = edits[target]['old']
             tmp = target.with_name(target.name+'.oleg-rollback')
             tmp.write_bytes(original)
+            os.chmod(tmp, original_modes[target])
             os.replace(tmp,target)
+            if target.read_bytes() != original:
+                raise IOError(f'{target}: rollback verification failed')
         raise
     return backup, len(changed)
 
