@@ -17,6 +17,8 @@ on:
       - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.test.js'
       - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
       - 'audits/oleg-indexing/test_metrika_native_attempt.cjs'
+      - 'audits/oleg-indexing/timeweb_readonly_route_inventory.py'
+      - 'audits/oleg-indexing/test_timeweb_readonly_route_inventory.py'
       - '.github/workflows/oleg-unified-release-guard.yml'
 permissions: {contents: read}
 jobs:
@@ -36,7 +38,7 @@ jobs:
       - name: Syntax and 41-page source locked combined release tests
         run: |
           python -m py_compile deploy_oleg_seo.py lead_assistant_guard.py bitrix_fallback_guard.py
-          python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo
+          python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo test_timeweb_readonly_route_inventory
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
