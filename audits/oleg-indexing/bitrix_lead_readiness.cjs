@@ -7,8 +7,8 @@
 const {chromium,request}=require('playwright');
 const fs=require('node:fs/promises');
 const CONFIG=[
- {site:'https://potrebpravo.ru/',path:'/services/vozvrat-deneg.html'},
- {site:'https://semya-yurist.ru/',path:'/services/razvod.html'}
+ {site:'https://potrebpravo.ru/',path:'/services/vozvrat-deneg.html',form:'crm_form_fhi3n'},
+ {site:'https://semya-yurist.ru/',path:'/services/razvod.html',form:'crm_form_ep5fd'}
 ];
 const compact=x=>String(x??'').replace(/\s+/g,' ').trim();
 const captureHref=x=>{try{let u=new URL(x);return u.origin+u.pathname}catch{return compact(x).slice(0,220)}};
@@ -113,7 +113,7 @@ async function main(){
     }
    }
    // Independent direct read-only inspection of the known Bitrix24 form endpoint.
-   const formUrl='https://b24-s2dosa.bitrix24site.ru/crm_form_fhi3n/';
+   const formUrl='https://b24-s2dosa.bitrix24site.ru/'+config.form+'/';
    const bitrix=await context.newPage();
    const frameInfo={url:captureHref(formUrl)};
    try{
@@ -151,6 +151,14 @@ async function main(){
      result.issues.push({type:'FORM_HOST_ACCESS',site:config.site,message:frameInfo.error});
    }
    out.bitrixDirect=frameInfo;
+   // HTTP 200 is not proof that the correct CRM form is usable.
+   frameInfo.formUiVerified=frameInfo.http===200 &&
+       frameInfo.final===captureHref(formUrl) &&
+       Array.isArray(frameInfo.body?.forms) &&
+       frameInfo.body.forms.some(f=>f.fields?.some(x=>x.type==='tel') && f.hasSubmit) &&
+       frameInfo.body.hasConsent===true;
+   if(frameInfo.http===200 && !frameInfo.formUiVerified)
+     result.issues.push({type:'FORM_UI_NOT_VERIFIED',site:config.site,form:captureHref(formUrl)});
    for(const asset of [...new Set(out.pages.flatMap(p=>p.assets||[]))]){
      const assetInfo={site:config.site,url:captureHref(asset)};
      try{
@@ -158,9 +166,7 @@ async function main(){
        const contents=await response.text();
        assetInfo.status=response.status();
        Object.assign(assetInfo,scriptInfo(contents));
-       if(config.site==='https://potrebpravo.ru/' && /legal-assistant-v4\.js/.test(asset)){
-         console.log('PUBLIC_LEGAL_ASSISTANT_JS',JSON.stringify(contents));
-       }
+       // Never dump full production JS into CI logs.
      }catch(e){assetInfo.error=compact(e.message).slice(0,250)}
      result.assets.push(assetInfo);
    }
@@ -177,6 +183,8 @@ async function main(){
         triggered:y.openAttempts,errors:y.pageErrors
       })),
       bitrixHttp:x.bitrixDirect?.http,
+      bitrixFormHost:x.bitrixDirect?.url,
+      bitrixFormUiVerified:x.bitrixDirect?.formUiVerified===true,
       bitrixForms:x.bitrixDirect?.body?.forms?.length,
       bitrixButtons:x.bitrixDirect?.body?.buttons,
       consent:x.bitrixDirect?.body?.hasConsent,
