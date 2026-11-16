@@ -6,6 +6,10 @@ on:
       - 'audits/oleg-indexing/unified_release_offline_stage.py'
       - 'audits/oleg-indexing/unified_release_validate.cjs'
       - 'audits/oleg-indexing/assistant_sitewide_smoke.cjs'
+      - 'audits/oleg-indexing/lead_assistant_guard.py'
+      - 'audits/oleg-indexing/test_deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/metadata_guard.py'
       - '.github/workflows/oleg-unified-v9-41-offline.yml'
   workflow_dispatch:
 permissions:
