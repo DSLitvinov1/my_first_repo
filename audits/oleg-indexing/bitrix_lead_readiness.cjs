@@ -6,18 +6,8 @@
  */
 const {chromium,request}=require('playwright');
 const fs=require('node:fs/promises');
-const CONFIG=[
- {site:'https://potrebpravo.ru/',path:'/services/vozvrat-deneg.html',form:'crm_form_fhi3n'},
- {site:'https://semya-yurist.ru/',path:'/services/razvod.html',form:'crm_form_ep5fd'}
-];
+const {CONFIG,captureHref,formUiVerified}=require('./bitrix_form_evidence.cjs');
 const compact=x=>String(x??'').replace(/\s+/g,' ').trim();
-const captureHref=x=>{try{let u=new URL(x);return u.origin+u.pathname}catch{return compact(x).slice(0,220)}};
-const formUiVerified=(frameInfo,formUrl)=>
- frameInfo.http===200 &&
- frameInfo.final===captureHref(formUrl) &&
- Array.isArray(frameInfo.body?.forms) &&
- frameInfo.body.forms.some(f=>f.fields?.some(x=>x.type==='tel') && f.hasSubmit) &&
- frameInfo.body.hasConsent===true;
 const scriptInfo=text=>({
  containsBitrixForm:/bitrix24site\.ru\/crm_form_/i.test(text),
  containsLegacyDemoMode:/data-form-mode\s*=\s*["']demo|formMode\s*[:=]\s*["']demo|form-mode["']?\s*,\s*["']demo/i.test(text),
