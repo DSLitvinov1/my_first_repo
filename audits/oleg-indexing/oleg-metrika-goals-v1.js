@@ -73,6 +73,14 @@
     }
   }
   document.addEventListener('click', onClick, false);
+  // Only the site's own form can emit an attempt here. Bitrix24 cross-origin
+  // iframe submissions cannot be observed or claimed as sent from this page.
+  document.addEventListener('submit', function (event) {
+    var form = event && event.target;
+    if (form && form.tagName === 'FORM' && form.id === 'lead-form') {
+      send('oleg_lead_submit_attempt');
+    }
+  }, true);
   // This script intentionally does NOT emit oleg_lead_success:
   // only a server-verified Bitrix24 record can establish a real conversion.
 })();
