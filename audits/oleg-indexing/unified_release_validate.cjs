@@ -40,7 +40,7 @@ async function main(){
       title:document.title,
       description:document.querySelector('meta[name="description" i]')?.getAttribute('content')||'',
       canonical:document.querySelector('link[rel="canonical"]')?.getAttribute('href')||'',
-      assistant:[...document.querySelectorAll('script[src]')].filter(x=>x.getAttribute('src')?.includes('/assets/legal-assistant-v4.js')).length,
+      assistant:[...document.querySelectorAll('script[src]')].filter(x=>{const src=(x.getAttribute('src')||'').split('?')[0];return src==='assets/legal-assistant-v4.js'||src==='/assets/legal-assistant-v4.js';}).length,
       consentStyle:document.querySelectorAll('style#oleg-consent-priority').length,
       related:[...document.querySelectorAll('nav.article-related')].map(x=>({
         id:x.id,links:[...x.querySelectorAll('a[href]')].map(a=>a.getAttribute('href'))
