@@ -98,7 +98,7 @@ async function run(){
   assert.ok((blocked.bitrixOutages||0)>=4,'Simulated outage must be exercised for all four 320px pages');
   assert.equal(blocked.mutations,0,'Unexpected mutating request attempted');
   const result={status:'STAGED_ASSISTANT_BROWSER_SMOKE_PASS',flows:results.length,results,blocked,html_source:'local patched public HTML via Playwright route; live JS asset; fake Bitrix iframe',production_modified:false};
-  await fs.writeFile('assistant-stage-output/playwright-smoke.json',JSON.stringify(result,null,2));
+  await fs.writeFile(path.join(process.env.OLEG_RELEASE_STAGE_ROOT||'assistant-stage-output','playwright-smoke.json'),JSON.stringify(result,null,2));
   console.log('ASSISTANT_BROWSER_SMOKE='+JSON.stringify({status:result.status,flows:result.flows,blocked,sites:[...new Set(results.map(r=>r.host))]}));
 }
 run().catch(e=>{console.error('ASSISTANT_BROWSER_SMOKE_FAILED',e.message);process.exitCode=1});
