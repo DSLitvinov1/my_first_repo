@@ -1,4 +1,6 @@
 import json
+import os
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,6 +41,52 @@ class MetadataGuardTests(unittest.TestCase):
             apply_edits(edits,self.parent)
         self.assertEqual((self.root/"index.html").read_text(encoding="utf-8"),latest)
         self.assertEqual(len(list(self.parent.glob(".oleg-seo-metadata-backup-*"))),0)
+    def test_release_restores_first_file_if_second_replace_fails(self):
+        p=self.plan()
+        second=self.root/'second.html'
+        second.write_text(DOC,encoding='utf-8')
+        p['sites'][0]['changes'].append({
+            'path':'second.html',
+            'expected':{'title':'Старый заголовок','description':'Старое описание страницы'},
+            'proposed':{'title':'Другой заголовок','description':'Другое описание'}
+        })
+        first=self.root/'index.html'
+        os.chmod(first,0o640)
+        old_mode=first.stat().st_mode & 0o777
+        edits=prepare(p,self.parent)
+        original_replace=os.replace
+        def fail_on_second(src,dst):
+            if str(dst)==str(second) and str(src).endswith('.oleg-tmp'):
+                raise OSError('simulated mid-release failure')
+            return original_replace(src,dst)
+        with patch('metadata_guard.os.replace',side_effect=fail_on_second):
+            with self.assertRaisesRegex(OSError,'simulated mid-release failure'):
+                apply_edits(edits,self.parent)
+        self.assertEqual(first.read_text(encoding='utf-8'),DOC)
+        self.assertEqual(second.read_text(encoding='utf-8'),DOC)
+        self.assertEqual(first.stat().st_mode & 0o777,old_mode)
+        self.assertFalse(list(self.root.glob('*.oleg-tmp')))
+        self.assertFalse(list(self.root.glob('*.oleg-rollback')))
+        backups=list(self.parent.glob('.oleg-seo-metadata-backup-*'))
+        self.assertEqual(len(backups),1)
+        for name in ['index.html','second.html']:
+            self.assertEqual((backups[0]/'potrebpravo.ru'/name).read_text(encoding='utf-8'),DOC)
+        receipt=json.loads((backups[0]/'manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(len(receipt),2)
+
+    def test_refuses_corrupt_backup_readback_before_modifying_site(self):
+        edits=prepare(self.plan(),self.parent)
+        original_read=Path.read_bytes
+        def corrupted_backup(path):
+            data=original_read(path)
+            if '.oleg-seo-metadata-backup-' in str(path) and path.name=='index.html':
+                return data+b'corrupt'
+            return data
+        with patch('metadata_guard.Path.read_bytes',autospec=True,side_effect=corrupted_backup):
+            with self.assertRaisesRegex(IOError,'backup write verification failed'):
+                apply_edits(edits,self.parent)
+        self.assertEqual((self.root/'index.html').read_text(encoding='utf-8'),DOC)
+
     def test_html_escaping_of_title_and_description(self):
         source=DOC
         source=replace_once(source,"title","Старый заголовок",'Заголовок "А & Б"',"sample.html")
