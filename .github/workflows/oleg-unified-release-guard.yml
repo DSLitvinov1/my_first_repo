@@ -15,6 +15,8 @@ on:
       - 'audits/oleg-indexing/lead-conversion-guard/bitrix-readback-contract.test.js'
       - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.js'
       - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.test.js'
+      - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
+      - 'audits/oleg-indexing/test_metrika_native_attempt.cjs'
       - '.github/workflows/oleg-unified-release-guard.yml'
 permissions: {contents: read}
 jobs:
@@ -40,6 +42,8 @@ jobs:
           node-version: '22'
       - name: Fail-closed Bitrix readback + consent-gated lead conversion tests
         run: node --test lead-conversion-guard/*.test.js
+      - name: Consent-only native form attempt separate from CRM success
+        run: node --test test_metrika_native_attempt.cjs
       - name: Guard source and effect scope
         run: |
           python - <<'PY'
