@@ -11,6 +11,10 @@ on:
       - 'audits/oleg-indexing/test_deploy_oleg_seo.py'
       - 'audits/oleg-indexing/test_metadata_guard.py'
       - 'audits/oleg-indexing/test_case_links_guard.py'
+      - 'audits/oleg-indexing/lead-conversion-guard/bitrix-readback-contract.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/bitrix-readback-contract.test.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.test.js'
       - '.github/workflows/oleg-unified-release-guard.yml'
 permissions: {contents: read}
 jobs:
@@ -31,6 +35,11 @@ jobs:
         run: |
           python -m py_compile deploy_oleg_seo.py lead_assistant_guard.py bitrix_fallback_guard.py
           python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fail-closed Bitrix readback + consent-gated lead conversion tests
+        run: node --test lead-conversion-guard/*.test.js
       - name: Guard source and effect scope
         run: |
           python - <<'PY'
