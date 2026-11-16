@@ -1,0 +1,63 @@
+{
+  "status": "TWO_OF_TWO_HISTORICAL_TESTS_CONFIRMED_IN_OWNER_AUTHENTICATED_BITRIX_UI",
+  "observed_on": "2026-11-16",
+  "source": "Existing Chrome owner session via scheduled interactive read-only Windows UI; Desktop Commander Pro terminal launches limited interactive GUI script. Screenshot files remain on authorized Windows device, not uploaded to repository.",
+  "bitrix_host": "b24-xlzm11.bitrix24.ru",
+  "crm_category": "Юридические консультации",
+  "historical_test_run": "43664345430",
+  "records": [
+    {
+      "domain": "potrebpravo.ru",
+      "marker": "TEST-SEO-CRM-43664345430-consumer",
+      "entity": "deal",
+      "deal_id": 10,
+      "url": "https://b24-xlzm11.bitrix24.ru/crm/deal/details/10/",
+      "created_at_portal_local": "2026-11-15 04:42",
+      "status": "Новая",
+      "assigned": "Олег Лёвин",
+      "source": "CRM-форма",
+      "website_in_test_comment": "https://potrebpravo.ru/",
+      "utm": "отсутствуют",
+      "task": "Связаться с клиентом по новой заявке",
+      "task_assignee": "Олег Лёвин",
+      "timeline_note": "Deal creation and consumer form event 04:42. Family form event 04:43 also visible in deal 10; cross-entity/contact association needs follow-up."
+    },
+    {
+      "domain": "semya-yurist.ru",
+      "marker": "TEST-SEO-CRM-43664345430-family",
+      "entity": "deal",
+      "deal_id": 12,
+      "url": "https://b24-xlzm11.bitrix24.ru/crm/deal/details/12/",
+      "created_at_portal_local": "2026-11-15 04:43",
+      "status": "Новая",
+      "assigned": "Олег Лёвин",
+      "source": "CRM-форма",
+      "website_in_test_comment": "https://semya-yurist.ru/",
+      "utm": "отсутствуют",
+      "task": "Связаться с клиентом по новой заявке",
+      "task_assignee": "Олег Лёвин",
+      "timeline_note": "Separate deal creation 04:43, form submission 04:43, task creation 04:43, reminder events visible."
+    }
+  ],
+  "verification": {
+    "exact_test_markers_in_deal_comment": true,
+    "both_entity_ids_read": true,
+    "assigned_user_confirmed": true,
+    "site_source_in_comment_confirmed": true,
+    "crm_source_field_confirmed": true,
+    "utm_empty_as_displayed": true,
+    "task_created_in_crm": true,
+    "notification_delivery_confirmed": false,
+    "duplicate_free_across_full_crm_confirmed": false,
+    "tests_submitted_in_this_session": 0,
+    "production_site_changes": 0
+  },
+  "privacy": "No client names, phones, raw message bodies, account tokens, or cookies retained in this GitHub report.",
+  "remaining_gates": [
+    "Verify push/email notification delivery if available",
+    "Review cross-form activity displayed in deal 10",
+    "Check complete 43-file Timeweb source lock",
+    "Harden atomic deployment across two site roots and run guarded dry-run",
+    "Complete CRM-sourced Metrika success event mapping and consent verification"
+  ]
+}
