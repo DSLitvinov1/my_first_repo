@@ -23,12 +23,16 @@ async function run(){
   const browser=await chromium.launch({headless:true});
   try{
     for(const {host,urlPath,form} of FIXTURES){
-      for(const mobile of [true,false]){
+      for(const viewport of [
+        {width:320,height:700,label:'mobile320',simulateBitrixOutage:true},
+        {width:390,height:844,label:'mobile390',simulateBitrixOutage:false},
+        {width:1365,height:900,label:'desktop',simulateBitrixOutage:false}
+      ]){
         const url='https://'+host+urlPath;
         const file=path.join(__dirname,'assistant-stage-output',host,'public_html',urlPath.slice(1));
         const body=await fs.readFile(file,'utf8');
         assert.match(body,/legal-assistant-v4\.js/);
-        const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1365,height:900},locale:'ru-RU'});
+        const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},locale:'ru-RU'});
         await context.route('**/*',async route=>{
           const req=route.request(), requestUrl=req.url();
           if(!['GET','HEAD','OPTIONS'].includes(req.method().toUpperCase())){
@@ -41,7 +45,12 @@ async function run(){
             blocked.metrika++;return route.fulfill({status:204,body:''});
           }
           if(requestUrl.startsWith(FORM_HOST)){
-            blocked.bitrixMocked++;return route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body>TEST FIXTURE: No CRM submission possible</body></html>'});
+            if(viewport.simulateBitrixOutage){
+              blocked.bitrixOutages=(blocked.bitrixOutages||0)+1;
+              return route.abort('failed');
+            }
+            blocked.bitrixMocked++;
+            return route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><html><body>TEST FIXTURE: No CRM submission possible</body></html>'});
           }
           return route.continue();
         });
@@ -50,7 +59,12 @@ async function run(){
           const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:28000});
           assert.equal(response?.status(),200);
           const deny=page.locator('#oleg-analytics-choice [data-deny]');
-          if(await deny.count() && await deny.isVisible())await deny.click({timeout:5000});
+          if(await deny.count() && await deny.isVisible()){
+            await deny.click({timeout:5000});
+            assert.equal(await page.locator('#oleg-analytics-choice').evaluate(el=>el.hidden),true,'Consent refusal must work on '+viewport.label);
+          }else{
+            throw Error('Consent refusal not available on '+viewport.label);
+          }
           const launch=page.locator('#legal-help-toggle');
           await launch.waitFor({state:'visible',timeout:14000});
           assert.equal(await launch.count(),1);
@@ -68,15 +82,20 @@ async function run(){
           assert.equal(await fallback.getAttribute('target'),'_blank');
           const safeRel=await fallback.getAttribute('rel');
           assert.match(safeRel||'',/noopener/);
+          assert.equal(await fallback.isVisible(),true,'Fallback link must remain visible when iframe fails');
+          const fallbackRect=await fallback.boundingBox();
+          assert.ok(fallbackRect && fallbackRect.x>=0 &&
+            fallbackRect.x+fallbackRect.width<=viewport.width+2,'Fallback must be reachable without horizontal scrolling');
           const rect=await panel.boundingBox();
-          assert.ok(rect && rect.x>=0 && rect.y>=0 && rect.x+rect.width <= (mobile?392:1367),'Dialog fits viewport');
-          const row={host,urlPath,viewport:mobile?'mobile':'desktop',assistant:'visible',dialog:'opens',formUrl:'correct',fallback:'correct',production_modified:false,crm_submitted:false};
+          assert.ok(rect && rect.x>=0 && rect.y>=0 && rect.x+rect.width <= viewport.width+2,'Dialog fits '+viewport.label);
+          const row={host,urlPath,viewport:viewport.label,bitrixOutageSimulated:viewport.simulateBitrixOutage,assistant:'visible',dialog:'opens',formUrl:'correct',fallback:'correct',production_modified:false,crm_submitted:false};
           results.push(row);
         }finally{await context.close();}
       }
     }
   }finally{await browser.close();}
-  assert.equal(results.length,8);
+  assert.equal(results.length,12);
+  assert.ok((blocked.bitrixOutages||0)>=4,'Simulated outage must be exercised for all four 320px pages');
   assert.equal(blocked.mutations,0,'Unexpected mutating request attempted');
   const result={status:'STAGED_ASSISTANT_BROWSER_SMOKE_PASS',flows:results.length,results,blocked,html_source:'local patched public HTML via Playwright route; live JS asset; fake Bitrix iframe',production_modified:false};
   await fs.writeFile('assistant-stage-output/playwright-smoke.json',JSON.stringify(result,null,2));
