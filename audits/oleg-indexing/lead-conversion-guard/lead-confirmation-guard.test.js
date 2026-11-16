@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { COUNTERS, GOAL, verifiedAck, createTracker } = require('./lead-confirmation-guard');
 function example(hostname='potrebpravo.ru', requestId='safe-req-100') {
-  return { httpOk: true, hostname, requestId, body: { request_id: requestId, source_host:hostname, crm: { provider:'bitrix24',status:'confirmed',readback_confirmed:true,entity_type:'deal',entity_id:9981 }, message:'Accepted' }};
+  return { httpOk: true, hostname, requestId, body: { request_id: requestId, source_host:hostname, crm: { provider:'bitrix24',status:'confirmed',readback_confirmed:true,owner_confirmed:true,source_confirmed:true,utm_confirmed:true,dedupe_confirmed:true,notification_confirmed:true,entity_type:'deal',entity_id:9981 }, message:'Accepted' }};
 }
 test('both verified hosts map to correct counter', () => {
   assert.equal(COUNTERS['potrebpravo.ru'],114249897);
@@ -86,4 +86,16 @@ test('synthetic acknowledgement object cannot trigger analytics', () => {
   const sends=[];const tracker=createTracker({consentGranted:()=>true,metrikaReady:()=>true,sendMetrika:(...args)=>sends.push(args)});
   assert.equal(tracker.record({requestId:'fake',hostname:'potrebpravo.ru',crmType:'deal',crmId:'99'}),false);
   assert.equal(sends.length,0);
+});
+
+test('a positive HTTP and CRM ID do NOT count without independently proven owner/source/UTM/dedupe/notification', () => {
+  const flags=['owner_confirmed','source_confirmed','utm_confirmed','dedupe_confirmed','notification_confirmed'];
+  for (const flag of flags) {
+    const payload=example();delete payload.body.crm[flag];
+    assert.equal(verifiedAck(payload),null,'missing '+flag);
+    payload.body.crm[flag]='true';
+    assert.equal(verifiedAck(payload),null,'string flag '+flag);
+    payload.body.crm[flag]=false;
+    assert.equal(verifiedAck(payload),null,'false '+flag);
+  }
 });
