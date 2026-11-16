@@ -1,9 +1,10 @@
 import tempfile
+import hashlib
 import unittest
 from pathlib import Path
 from copy import deepcopy
 
-from deploy_oleg_seo import build_release, build_full_release
+from deploy_oleg_seo import build_release, build_full_release, verify_public_lock
 from metadata_guard import apply_edits
 
 HOSTS=('potrebpravo.ru','semya-yurist.ru')
@@ -153,6 +154,30 @@ class BatchReleaseTests(unittest.TestCase):
         self.assertEqual(first,patch(first,'potrebpravo.ru'))
         self.assertEqual(first.count('/assets/legal-assistant-v4.js'),1)
         self.assertEqual(first.count('id="oleg-consent-priority"'),1)
+
+    def test_public_source_lock_matches_all_41_pages_then_rejects_stale_content(self):
+        self.setup_site_assistant_fixture()
+        changes,_,_=build_full_release(self.meta,self.links,self.parent)
+        lock={'sites':{host:{'entries':{}} for host in HOSTS}}
+        for info in changes.values():
+            if not info['path'].endswith('.html'):
+                continue
+            url='/' if info['path']=='index.html' else '/'+info['path']
+            lock['sites'][info['domain']]['entries'][url]=hashlib.sha256(info['old']).hexdigest()
+        self.assertEqual(verify_public_lock(changes,lock),41)
+        # A modification not covered by title/description checks still blocks release.
+        first=next(info for info in changes.values() if info['path'].endswith('.html'))
+        first['old']+=b'<!-- unrelated unreviewed live edit -->'
+        with self.assertRaisesRegex(ValueError,'content drift'):
+            verify_public_lock(changes,lock)
+
+    def test_public_source_lock_rejects_missing_page_before_writes(self):
+        self.setup_site_assistant_fixture()
+        changes,_,_=build_full_release(self.meta,self.links,self.parent)
+        lock={'sites':{host:{'entries':{}} for host in HOSTS}}
+        with self.assertRaisesRegex(ValueError,'Missing exact public source SHA'):
+            verify_public_lock(changes,lock)
+        self.assertFalse(list(self.parent.glob('.oleg-seo-metadata-backup-*')))
 
     def test_mismatch_domain_list_rejected(self):
         bad=deepcopy(self.meta)
