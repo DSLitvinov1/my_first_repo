@@ -51,6 +51,13 @@ class BatchReleaseTests(unittest.TestCase):
                          'label':'Примеры судебной практики'}
                     ]
                 })
+    def test_production_cli_apply_blocked_until_atomic_switch(self):
+        # No plan, server path or secrets are read when --apply is supplied.
+        from deploy_oleg_seo import main
+        with self.assertRaisesRegex(ValueError, 'OLEG_ATOMIC_BATCH_APPLY_DISABLED'):
+            main(['--apply'])
+        self.assertFalse(list(self.parent.glob('.oleg-seo-metadata-backup-*')))
+
     def tearDown(self):
         self.tmp.cleanup()
     def test_combined_release_dryrun_and_backup(self):
