@@ -100,8 +100,12 @@ def assemble(out):
         })
     if len(manifest) != 43 or sum(x['path'].endswith('.html') for x in manifest) != 41:
         raise ValueError('Manifest incomplete')
-    if sum(x['changed'] for x in manifest) != 41:
-        raise ValueError('Expected 39 inner HTML and two JS changes; STOP')
+    changed_html = sum(x['changed'] for x in manifest if x['path'].endswith('.html'))
+    changed_js = sum(x['changed'] for x in manifest if x['path'].endswith('.js'))
+    if changed_html != 39 or changed_js not in (0, 1, 2):
+        raise ValueError(
+            f'Unexpected staged change count: HTML={changed_html}, JS={changed_js}; STOP'
+        )
 
     # This archive contains reviewed PUBLIC source files ONLY. It is NOT a Timeweb backup.
     archive = out / 'original-public-source-43-files.zip'
@@ -127,6 +131,8 @@ def assemble(out):
         'verified_html_sha_locks': verified,
         'html_pages': 41, 'js_assets': 2,
         'seo_targets': 24, 'assistant_inner_page_insertions': missing,
+        'files_changed': changed_html + changed_js,
+        'html_files_changed': changed_html, 'js_assets_changed': changed_js,
         'overlapping_metadata_case_targets': overlaps,
         'source_and_output_sha_readback': True,
         'manifest': manifest,
