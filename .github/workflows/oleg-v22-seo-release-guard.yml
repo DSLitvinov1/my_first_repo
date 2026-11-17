@@ -1,0 +1,35 @@
+name: Oleg V22 SEO physical-directory release safety
+on:
+  push:
+    branches:
+      - audit-oleg-sites-playwright-20261115
+    paths:
+      - "audits/oleg-indexing/v22_timeweb_rename_release.py"
+      - "audits/oleg-indexing/test_v22_timeweb_rename_release.py"
+      - ".github/workflows/oleg-v22-seo-release-guard.yml"
+  pull_request:
+    paths:
+      - "audits/oleg-indexing/v22_timeweb_rename_release.py"
+      - "audits/oleg-indexing/test_v22_timeweb_rename_release.py"
+      - ".github/workflows/oleg-v22-seo-release-guard.yml"
+permissions:
+  contents: read
+jobs:
+  offline-rollback-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and isolated 168-file full-directory rollback regressions
+        run: |
+          python -m py_compile audits/oleg-indexing/v22_timeweb_rename_release.py audits/oleg-indexing/test_v22_timeweb_rename_release.py
+          python -m unittest discover -s audits/oleg-indexing -p test_v22_timeweb_rename_release.py -v
+      - name: Confirm no account secrets and no production access
+        run: |
+          test ! -e .private-seo-v19
+          echo "V22_SYNTHETIC_ONLY_NO_REMOTE_WRITES"
