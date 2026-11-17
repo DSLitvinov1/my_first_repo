@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-17",
+  "source_commit": "dc1a039a2a1daed712066a18afb75e213254b548",
+  "unit_hotfix_tests": {
+    "passed": 14,
+    "failed": 0,
+    "where": "cloud Linux"
+  },
+  "http_integration": {
+    "result": "PASS",
+    "where": "isolated /tmp on Timeweb PHP 8.2",
+    "real_submissions": 0,
+    "production_writes": 0,
+    "cases": [
+      "CSRF",
+      "Origin",
+      "Origin-absent with CSRF",
+      "consent",
+      "honeypot",
+      "encrypted COMMIT",
+      "safe confirmation",
+      "idempotent retry",
+      "conflicting retry",
+      "rate limit",
+      "DB missing fail closed",
+      "host allowlist",
+      "0600/0700 permissions",
+      "manual CLI read explicit flag"
+    ]
+  },
+  "php_syntax_passed": 3,
+  "js_syntax_passed": 2,
+  "hotfix_original_sha_checked": 4,
+  "hotfix_changed_files": 4,
+  "publication": "BLOCKED_BY_OWNER_REVIEW_AND_NO_AUTOMATIC_CRM_RELAY",
+  "files_sha256": {
+    "private/intake-core.php": "38f41b05e8ef6b8bd2b4804d33740bc93cc3b37c642d39b0edd57a832c48faef",
+    "private/console.php": "53e80250e7202ebb6a1b9dcd27bba53540a3f0b8723b96607f039dc73e11871e",
+    "public/emergency-lead.php": "04cb336a01c4c2a1f744ba75b302f45b3803af43c761bae8dcef93d215550d9e",
+    "build_hotfix.py": "62439b8d07dbffcfd491e27d964725e5435b6f70bb14966ebb72951ad7290e00",
+    "tests/test_emergency_hotfix.py": "d96185bca7876f792140d5d40f6357514f183aeac989053e8dee75a4707250d3",
+    "tests/test_emergency_intake.py": "92ffbf0e4d0a971a426d730299423714361e79914a90d0b1a306cf9a2b18464b"
+  }
+}
