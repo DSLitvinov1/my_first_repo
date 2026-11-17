@@ -1,0 +1,34 @@
+name: Oleg V23 SEO and availability monitoring regression
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/operations/**'
+      - '.github/workflows/oleg-v23-ops-monitor.yml'
+  pull_request:
+    paths:
+      - 'audits/oleg-indexing/operations/**'
+      - '.github/workflows/oleg-v23-ops-monitor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate no-customer-data monitoring and backup scripts
+        run: |
+          python -m py_compile audits/oleg-indexing/operations/check_live_sites.py audits/oleg-indexing/operations/backup_timeweb.py
+          python -m unittest discover -s audits/oleg-indexing/operations/tests -p 'test_*.py' -v
+      - name: No private files or credentials committed
+        run: |
+          test ! -e .private-v23-timeweb
+          test ! -e .oleg-safe-backups
+          echo "OFFLINE_TESTS_ONLY_NO_CUSTOMER_DATA"
