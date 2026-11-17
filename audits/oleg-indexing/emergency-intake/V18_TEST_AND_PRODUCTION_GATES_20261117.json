@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-17",
+  "v18_parent_commit": "20991d2d5ea37924477f0466da9f0c011eb16f46",
+  "bitrix_owner_notification_email": {
+    "recipient_verified_from": "published site privacy and actual email correspondence",
+    "gmail_message_id": "1a1e9e5147bc11b2",
+    "owner_direct_receipt": "PENDING"
+  },
+  "timeweb_mail_probe": {
+    "result": "ACCEPTED_BY_TRANSPORT_NOT_VERIFIED_DELIVERED",
+    "contained_client_data": false,
+    "test_scope": "single notification from isolated /tmp"
+  },
+  "php_web_runtime": {
+    "both_hosts": "PASS",
+    "https_value": "On",
+    "server_port_443": false,
+    "sapi": "apache2handler",
+    "sqlite": true,
+    "sodium": true,
+    "private_home_access": true,
+    "temp_public_probe_cleanup": true
+  },
+  "tests": {
+    "frontend_existing": 14,
+    "frontend_interim": 9,
+    "isolated_release": 6,
+    "synthetic_http": "PASS_ON_TIMEWEB",
+    "source_utm": "PASS",
+    "timeweb_https_on": "PASS",
+    "mail_dedupe": "PASS_SYNTHETIC",
+    "backup_restore": "PASS_SYNTHETIC",
+    "node_check": 2,
+    "php_lint": 5,
+    "production_crm_posts": 0
+  },
+  "production": {
+    "full_public_site_backup": ".oleg-safe-backups/oleg-v18-availability-pre-20261117T144230Z.tar.gz",
+    "backup_sha256": "808fd121f80391bda44cd0abb9a14aa9579ba279433f6aa4ba80c57008e6a80c",
+    "tar_entries": 182,
+    "private_deploy_stage": ".oleg-safe-backups/oleg-v18-interim-20261117T144230Z",
+    "preflight": "PASS_4_OF_4",
+    "apply": "BLOCKED_BY_PLATFORM_SAFETY_NOT_EXECUTED",
+    "public_changed": false,
+    "reserve_queue_installed": false,
+    "full_seo_release": "NOT_DEPLOYED"
+  },
+  "files": {
+    "public/emergency-lead.php": "701780a98097d451b0bb8c52e7d39842ec785c2de998f2b8e25f15c7ba0e34e1",
+    "private/intake-core.php": "b78e1e5db86f1870cee0d900d8e565110ce3aa66c2b61fad4743b68853807fd1",
+    "private/alert.php": "12bfd384d41e8f33ed2841f5cd719d39bc37e5435762d2c46a0796768a68a54e",
+    "private/backup.php": "018feda900a3fced31d0903443f83f8bde3cbaf94ef015f23c343a3d8eec3ea3",
+    "private/console.php": "53e80250e7202ebb6a1b9dcd27bba53540a3f0b8723b96607f039dc73e11871e",
+    "build_hotfix.py": "5dbaa06aed4de4a27f3083cf42bfe57ec9dc945bae722f5a50ec984fac08f696",
+    "build_interim_contact_release.py": "3682f8623238ed98f70ce8032c14bc542186d39443786d59a27f83e2a5643b28",
+    "deploy_interim_safely.py": "d8506fcd03afe777925f01f5e9a85fb7b9a1b4ebec71b0af2fa562a5066af8cf",
+    "tests/test_tracking.php": "f343d71da3cacd75c19ab45e224f43ee0dbdf944723efe22a104bad02cd818c0",
+    "tests/test_emergency_intake.py": "333d24baf6f0f00723118d48ca074a902b6f8673bb8a2005f1cd9c312b5e2bd2",
+    "tests/test_emergency_hotfix.py": "6eab45e12e1c305092efdf8d4f358728bd0755a484907a13c8329fd77076adbe",
+    "tests/test_interim_release.py": "7be4d5241d98a15a715c8814b9f85a93ad59dfc0d8d19b3bce03d3e4968306f6",
+    "tests/test_interim_contact.py": "8e07f092958c588ed0d13c98c826f94555c7e29cd600da8f0b36ef90ff143c19"
+  }
+}

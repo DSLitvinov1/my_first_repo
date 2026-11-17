@@ -1,0 +1,60 @@
+name: Oleg unified SEO assistant release guard - offline
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/lead_assistant_guard.py'
+      - 'audits/oleg-indexing/metadata_guard.py'
+      - 'audits/oleg-indexing/case_links_guard.py'
+      - 'audits/oleg-indexing/bitrix_fallback_guard.py'
+      - 'audits/oleg-indexing/test_deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/test_metadata_guard.py'
+      - 'audits/oleg-indexing/test_case_links_guard.py'
+      - 'audits/oleg-indexing/lead-conversion-guard/bitrix-readback-contract.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/bitrix-readback-contract.test.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.js'
+      - 'audits/oleg-indexing/lead-conversion-guard/lead-confirmation-guard.test.js'
+      - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
+      - 'audits/oleg-indexing/test_metrika_native_attempt.cjs'
+      - 'audits/oleg-indexing/timeweb_readonly_route_inventory.py'
+      - 'audits/oleg-indexing/test_timeweb_readonly_route_inventory.py'
+      - '.github/workflows/oleg-unified-release-guard.yml'
+permissions: {contents: read}
+jobs:
+  offline-merge-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and 41-page source locked combined release tests
+        run: |
+          python -m py_compile deploy_oleg_seo.py lead_assistant_guard.py bitrix_fallback_guard.py
+          python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo test_timeweb_readonly_route_inventory
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fail-closed Bitrix readback + consent-gated lead conversion tests
+        run: node --test lead-conversion-guard/*.test.js
+      - name: Consent-only native form attempt separate from CRM success
+        run: node --test test_metrika_native_attempt.cjs
+      - name: Guard source and effect scope
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('deploy_oleg_seo.py').read_text(encoding='utf-8')
+          assert 'build_full_release' in source and 'len(seo)!=43' in source
+          assert "'--apply'" in source and "'dry-run'" in source
+          consent=Path('lead_assistant_guard.py').read_text(encoding='utf-8')
+          assert 'oleg-consent-priority' in consent
+          assert 'LOCAL_OWNER_APPROVED' not in source
+          print('COMBINED_RELEASE_OFFLINE_GUARD_PASS')
+          PY

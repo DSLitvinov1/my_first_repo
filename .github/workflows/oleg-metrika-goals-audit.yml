@@ -1,0 +1,53 @@
+name: Oleg Metrika real-site Playwright goals and privacy audit
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/metrika_goals_audit.cjs'
+      - 'audits/oleg-indexing/oleg-metrika-goals-v1.js'
+      - 'audits/oleg-indexing/oleg-crm-backup-links-v1.js'
+      - 'audits/oleg-indexing/test_metrika_goals_preview.cjs'
+      - 'audits/oleg-indexing/apply_metrika_goals.py'
+      - 'audits/oleg-indexing/test_apply_metrika_goals.py'
+      - '.github/workflows/oleg-metrika-goals-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify safe local hosting installer without any production writes
+        run: python -m unittest -v test_apply_metrika_goals
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Audit public Metrika goals without telemetry or test leads
+        run: |
+          node --check metrika_goals_audit.cjs
+          node metrika_goals_audit.cjs
+      - name: Test staged conversion goals on desktop and mobile without network tracking
+        run: |
+          node --check oleg-metrika-goals-v1.js
+          node --check test_metrika_goals_preview.cjs
+          node test_metrika_goals_preview.cjs
+      - name: Save technical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oleg-metrika-goals
+          path: |
+            audits/oleg-indexing/oleg-metrika-goals-audit.json
+            audits/oleg-indexing/oleg-metrika-goals-preview.json
+          if-no-files-found: warn

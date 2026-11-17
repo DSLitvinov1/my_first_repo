@@ -1,0 +1,41 @@
+{
+  "state": "OFFLINE_AVAILABILITY_HOTFIX_V17_NOT_DEPLOYED",
+  "changes": [
+    {
+      "host": "potrebpravo.ru",
+      "file": "index.html",
+      "previous_sha256": "7138aad960cb41c169b3417046f2c9d673110ae39e82be5033f48eb3eb5b0704",
+      "prepared_sha256": "64261c4470e574aba793a11355ab8131a4851f7fa9c544ca1c4936fb4d821473",
+      "size": 131956
+    },
+    {
+      "host": "semya-yurist.ru",
+      "file": "index.html",
+      "previous_sha256": "f7b0b6a897aefe7bf09b06bc550691709988a4cfee1641e7caec48f47a805eaa",
+      "prepared_sha256": "870fa9f60c06339c47b680b0d2963899423ad5a7e436255adf90f20536a436a9",
+      "size": 128813
+    },
+    {
+      "host": "potrebpravo.ru",
+      "file": "assets/legal-assistant-v4.js",
+      "previous_sha256": "3ae643d908b5cc3b7a5cc1081b06183fbe686887323ad345639e57e01b846e8a",
+      "prepared_sha256": "e9c2f922e444002cf35edd64b4aacb72373d6f8e154707350cbc639a09edc99d",
+      "size": 10294
+    },
+    {
+      "host": "semya-yurist.ru",
+      "file": "assets/legal-assistant-v4.js",
+      "previous_sha256": "3ae643d908b5cc3b7a5cc1081b06183fbe686887323ad345639e57e01b846e8a",
+      "prepared_sha256": "e9c2f922e444002cf35edd64b4aacb72373d6f8e154707350cbc639a09edc99d",
+      "size": 10294
+    }
+  ],
+  "source_lock": 4,
+  "public_endpoint": "/emergency-lead.php",
+  "private_backend_required": true,
+  "crm_auto_delivery": false,
+  "success_semantics": "local_sqlite_commit_only",
+  "production_writes": 0,
+  "test_submissions_real": 0,
+  "scope": "2 home HTML and 2 shared assistant JS ONLY; no SEO metadata changes"
+}

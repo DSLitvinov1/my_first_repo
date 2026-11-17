@@ -1,0 +1,13 @@
+{
+  "status": "STAGED_NOT_DEPLOYED_NOT_CRM_VERIFIED",
+  "files_verified": 43,
+  "home_pages_changed_from_v14": 2,
+  "other_files_unchanged": 41,
+  "crm_forms": {
+    "potrebpravo.ru": "crm_form_fhi3n",
+    "semya-yurist.ru": "crm_form_ep5fd"
+  },
+  "unverified_legacy_form_remains_disabled": true,
+  "confirmation_of_new_crm_deal": false,
+  "production_modified": false
+}

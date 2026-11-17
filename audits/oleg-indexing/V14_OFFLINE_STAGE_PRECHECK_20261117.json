@@ -1,0 +1,16 @@
+{
+  "utc": "2026-11-16T21:34:57.381477+00:00",
+  "previous_v13_unchanged_files": 41,
+  "v14_changed_files": 2,
+  "v14_changed_paths": [
+    "/assets/legal-assistant-v4.js"
+  ],
+  "source_lock_preserved": true,
+  "files_verified_by_sha": 43,
+  "v13_source_sha": "e3b14f2ebc1524140d99bf20af5e13e00a596cfbcf0ba963bed2b7d0938c18a6",
+  "v14_target_sha": "bdc89e956c80712fdb25c0333d941377d3b1b09afe0bf842a97cea1e9fb64c74",
+  "full_archive_restore_simulation": "PASS",
+  "browser_simulated_outage": "NOT_YET_VERIFIED",
+  "production_modified": false,
+  "crm_requests_created": 0
+}

@@ -1,0 +1,14 @@
+{
+  "utc": "2026-11-16T21:34:04.274666+00:00",
+  "status": "OFFLINE_REAL_BACKUP_REHEARSAL_PASS",
+  "real_private_backup_sha256_match": true,
+  "archive_files_reconstructed": 168,
+  "release_reviewed_files": 43,
+  "both_domains_single_pointer": true,
+  "crash_after_pointer_recovery_pass": true,
+  "manual_rollback_pass": true,
+  "whole_snapshot_unchanged_files_preserved": true,
+  "production_modified": false,
+  "production_topology_migrated": false,
+  "authorized_for_production_release": false
+}

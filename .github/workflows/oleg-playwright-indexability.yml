@@ -1,0 +1,91 @@
+name: Oleg sites Playwright indexability audit
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/**'
+      - '.github/workflows/oleg-playwright-indexability.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/**'
+      - '.github/workflows/oleg-playwright-indexability.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify guarded SEO metadata changes
+        run: python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo
+      - name: Verify CRM acknowledgement and privacy-safe Metrika conversion gate
+        run: node --test lead-conversion-guard/lead-confirmation-guard.test.js
+      - name: Regression test distinct CRM forms and reject fake HTTP 200 readiness
+        run: node --test test_bitrix_lead_readiness.cjs
+      - name: Verify audit syntax
+        run: |
+          node --check audit.cjs
+          node --check sitemap_operator.mjs
+          node --check test_sitemap_operator.mjs
+          node --check case_quality_audit.cjs
+          node --check validate_staged_seo.cjs
+          node --check metrika_presence_audit.cjs
+          node --check metrika_consent_e2e.cjs
+          node --check bitrix_lead_readiness.cjs
+          node --check bitrix_funnel_e2e.cjs
+          node --check bitrix_consent_probe.cjs
+          node --check bitrix_coverage.cjs
+          node --check bitrix_preview.cjs
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test authenticated sitemap operator against simulated UI only
+        run: node --test test_sitemap_operator.mjs
+      - name: Inspect Bitrix consent behavior with all writes blocked
+        run: node bitrix_consent_probe.cjs
+      - name: Audit public indexing eligibility without changing sites
+        run: node audit.cjs
+      - name: Analyze short legal cases without changing the live websites
+        run: node case_quality_audit.cjs
+      - name: Validate staged SEO release against current public pages
+        run: node validate_staged_seo.cjs
+      - name: Read-only Metrika code presence audit on both websites
+        run: node metrika_presence_audit.cjs
+      - name: Mobile browser consent and revoke test without Yandex telemetry
+        run: node metrika_consent_e2e.cjs
+      - name: Verify Bitrix24 lead form readiness (no writes or customer submissions)
+        run: node bitrix_lead_readiness.cjs
+      - name: Check Bitrix assistant coverage and two forms on all site URLs
+        run: node bitrix_coverage.cjs
+      - name: Check each site assistant opens its own usable Bitrix24 form
+        run: node bitrix_funnel_e2e.cjs
+      - name: Preview Bitrix widget on inner pages without deployment
+        run: node bitrix_preview.cjs
+      - name: Attach report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oleg-indexability
+          path: |
+            audits/oleg-indexing/oleg-indexability.json
+            audits/oleg-indexing/oleg-legal-case-quality.json
+            audits/oleg-indexing/oleg-staged-seo-preflight.json
+            audits/oleg-indexing/oleg-analytics-presence.json
+            audits/oleg-indexing/oleg-metrika-consent-e2e.json
+            audits/oleg-indexing/oleg-bitrix-lead-readiness.json
+            audits/oleg-indexing/oleg-bitrix-funnel-e2e.json
+            audits/oleg-indexing/oleg-bitrix-coverage.json
+            audits/oleg-indexing/oleg-bitrix-preview.json
+          if-no-files-found: warn

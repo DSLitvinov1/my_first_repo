@@ -1,0 +1,41 @@
+name: Oleg Bitrix24 one-time synthetic CRM intake test
+on:
+  push:
+    branches:
+      - audit-oleg-sites-playwright-20261115
+    paths:
+      - 'audits/oleg-indexing/ONE_SHOT_CRM_TEST_20261115.md'
+permissions:
+  contents: read
+jobs:
+  once:
+    if: "${{ github.event.head_commit.message == 'test(oleg): execute one-time synthetic CRM check' && github.run_attempt == 1 }}"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate test syntax and install Chromium
+        run: |
+          node --check bitrix_submit_once.cjs
+          node --check bitrix_funnel_e2e.cjs
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Submit two synthetic test leads once through the actual public forms
+        env:
+          OWNER_AUTHORIZED_CRM_TEST: 'true'
+        run: node bitrix_submit_once.cjs --execute-single-live-check
+      - name: Save form acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitrix-one-time-crm-form-test
+          path: audits/oleg-indexing/oleg-bitrix-single-live-leads.json
+          if-no-files-found: warn

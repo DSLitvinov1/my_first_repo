@@ -1,0 +1,79 @@
+name: Oleg V9 combined release 41-page offline validation
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/unified_release_offline_stage.py'
+      - 'audits/oleg-indexing/unified_release_validate.cjs'
+      - 'audits/oleg-indexing/assistant_sitewide_smoke.cjs'
+      - 'audits/oleg-indexing/lead_assistant_guard.py'
+      - 'audits/oleg-indexing/test_deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/deploy_oleg_seo.py'
+      - 'audits/oleg-indexing/metadata_guard.py'
+      - '.github/workflows/oleg-unified-v9-41-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  staged-combined:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 16
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check syntax and offline-only scope
+        run: |
+          python -m py_compile unified_release_offline_stage.py deploy_oleg_seo.py
+          node --check unified_release_validate.cjs
+          node --check assistant_sitewide_smoke.cjs
+      - name: Verify prior release guards and stale source refusal
+        run: python -m unittest -v test_metadata_guard test_case_links_guard test_deploy_oleg_seo test_assistant_sitewide_stage
+      - name: Fetch only reviewed public bytes and stage one combined 43-file release
+        run: python unified_release_offline_stage.py --out unified-stage-output
+      - name: Verify manifest, source archives and no private server claims
+        run: |
+          python - <<'PY'
+          import json, pathlib, zipfile
+          r=json.loads(pathlib.Path('unified-stage-output/unified-manifest.json').read_text(encoding='utf-8'))
+          assert r['production_modified'] is False and r['timeweb_backup_created'] is False
+          assert r['real_crm_verified'] is False and r['bitrix_leads_created']==0
+          assert r['verified_html_sha_locks']==41 and len(r['manifest'])==43
+          assert r['html_files_changed']==41
+          assert r['js_assets_changed']==2
+          assert r['files_changed']==r['html_files_changed']+r['js_assets_changed']
+          assert r['seo_targets']==24 and r['assistant_inner_page_insertions']==39
+          with zipfile.ZipFile('unified-stage-output/original-public-source-43-files.zip') as z:
+              assert z.testzip() is None and len(z.namelist())==43
+          print('OLEG_V9_ALL_43_SOURCE_ARCHIVE_VERIFIED_OFFLINE_ONLY')
+          PY
+      - name: Install isolated Playwright Chromium
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Test all 41 combined HTML pages locally in Playwright DOM
+        run: node unified_release_validate.cjs
+      - name: Test 12 actual site UI scenarios against combined staged HTML, CDN mocked
+        env:
+          OLEG_RELEASE_STAGE_ROOT: unified-stage-output/unified-release
+        run: node assistant_sitewide_smoke.cjs
+      - name: Attach public-source guarded release and 41-page test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oleg-v9-unified-release-offline-only
+          path: |
+            audits/oleg-indexing/unified-stage-output/unified-release/
+            audits/oleg-indexing/unified-stage-output/unified-manifest.json
+            audits/oleg-indexing/unified-stage-output/playwright-41-offline.json
+            audits/oleg-indexing/unified-stage-output/original-public-source-43-files.zip
+          if-no-files-found: warn

@@ -1,0 +1,79 @@
+name: Oleg V15 main-page CRM links offline gate
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/test_bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15_browser.cjs'
+      - '.github/workflows/oleg-bitrix-primary-v15.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/test_bitrix_primary_contact_v15.py'
+      - 'audits/oleg-indexing/bitrix_primary_contact_v15_browser.cjs'
+      - '.github/workflows/oleg-bitrix-primary-v15.yml'
+permissions:
+  contents: read
+jobs:
+  guarded-primary-links:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify offline candidate builder syntax
+        run: python -m py_compile bitrix_primary_contact_v15.py
+      - name: Regression test both disabled contact forms and direct CRM links
+        run: python -m unittest -v test_bitrix_primary_contact_v15
+      - name: Ensure this never publishes or sends a lead
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source=Path('bitrix_primary_contact_v15.py').read_text()
+          assert 'shutil.copytree(src_root, dest_root' in source
+          assert 'STAGED_NOT_DEPLOYED_NOT_CRM_VERIFIED' in source
+          assert 'data-form-mode="demo"' in source
+          assert 'aria-disabled="true"' in source
+          assert 'request.post(' not in source and 'requests.post(' not in source
+          print('V15_CRM_PRIMARY_LINKS_ONLY_OFFLINE_PASS')
+          PY
+
+      - name: Install isolated Chromium (no deployment or CRM writes)
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Browser check both homes, three viewports, Bitrix offline
+        run: node bitrix_primary_contact_v15_browser.cjs
+      - name: Assert all six contact blocks and guarded demo form
+        run: |
+          python - <<'PYCODE'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('oleg-v15-primary-link-browser.json').read_text('utf8'))
+          assert (report['passed'],report['total'])==(6,6)
+          assert report['crmSubmissions']==0 and report['productionWrites']==0
+          for row in report['results']:
+              assert row['success'] is True and row['htmlPatched']==1
+              assert row['legacyForm']=='hidden' and row['primary']=='direct-bitrix-link'
+              assert row['backups']==['tel','mailto']
+              assert row['overflow']==0 and row['blockedWrites']==0
+          print('V15_MAIN_CONTACT_BOTH_SITES_SIX_BROWSERS_PASS')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oleg-v15-primary-link-browser-readonly
+          path: audits/oleg-indexing/oleg-v15-primary-link-browser.json
+          if-no-files-found: warn

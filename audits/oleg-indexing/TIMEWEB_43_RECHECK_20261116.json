@@ -1,0 +1,12 @@
+{
+  "time_utc": "2026-11-16T17:05:38.225244+00:00",
+  "git_commit": "1c5d8471f255b401a5cb8538a78dd5531618f667",
+  "matched": 43,
+  "total": 43,
+  "failures": [],
+  "timeweb_backup_sha_confirmed": true,
+  "physical_docroots": true,
+  "shared_pointer_present": false,
+  "production_modified": false,
+  "read_only": true
+}

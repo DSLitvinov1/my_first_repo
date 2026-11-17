@@ -1,0 +1,71 @@
+name: Oleg V17 emergency intake isolated acceptance
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/emergency-intake/**'
+      - '.github/workflows/oleg-emergency-intake-v17.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/emergency-intake/**'
+      - '.github/workflows/oleg-emergency-intake-v17.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-only-gates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing/emergency-intake
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Ensure PHP 8.3 SQLite and Sodium without paid services
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq php8.3-cli php8.3-sqlite3 php8.3-mbstring
+          php -m | grep -i '^pdo_sqlite$'
+          php -m | grep -i '^sodium$'
+      - name: Lint production-intended PHP and Python
+        run: |
+          php -l public/emergency-lead.php
+          php -l private/intake-core.php
+          php -l private/console.php
+          python -m py_compile build_hotfix.py tests/test_emergency_hotfix.py tests/test_emergency_intake.py
+      - name: Four-file fallback UI safety regressions
+        run: python -m unittest discover -s tests -p test_emergency_hotfix.py -v
+      - name: Real local HTTP on fake client data - no CRM POST or production writes
+        run: python tests/test_emergency_intake.py
+      - name: Prevent accidental checkout of customer data or private key
+        run: |
+          test ! -f private/secretbox.key
+          test ! -f private/intake.sqlite
+          test ! -e .offline-v17-availability-hotfix
+          test ! -e .private-source-v17
+          echo "V17_CODE_ONLY_NO_SECRETS"
+      - name: Publish only test receipt, never synthetic PII
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data = {
+              "result":"V17_OFFLINE_INTAKE_ACCEPTED",
+              "four_file_hotfix_tests":14,
+              "php_http": "PASS_IN_ISOLATED_TEMP_DIRECTORY",
+              "production_writes":0,
+              "real_crm_submissions":0,
+              "status":"NOT_DEPLOYED",
+          }
+          Path("v17-ci-receipt.json").write_text(json.dumps(data,indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: oleg-v17-emergency-intake-synthetic
+          path: audits/oleg-indexing/emergency-intake/v17-ci-receipt.json
+          if-no-files-found: error

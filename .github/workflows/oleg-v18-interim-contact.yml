@@ -1,0 +1,53 @@
+name: Oleg V18 isolated contact and UTM gate
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/emergency-intake/**'
+      - '.github/workflows/oleg-v18-interim-contact.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'audits/oleg-indexing/emergency-intake/**'
+      - '.github/workflows/oleg-v18-interim-contact.yml'
+permissions:
+  contents: read
+jobs:
+  verified-synthetic-no-production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing/emergency-intake
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Enable local PHP SQLite and Sodium without cloud secrets
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq php8.3-cli php8.3-sqlite3 php8.3-mbstring
+          php -m | grep -iq '^pdo_sqlite$'
+          php -m | grep -iq '^sodium$'
+      - name: Strict PHP syntax
+        run: |
+          for p in public/*.php private/*.php tests/test_tracking.php; do php -l "$p"; done
+      - name: Real observed UTM and Timeweb HTTPS On unit cases
+        run: php tests/test_tracking.php
+      - name: Temporary offline customer-free preview and rollback tests
+        run: |
+          python -m unittest discover -s tests -p test_emergency_hotfix.py -v
+          python -m unittest discover -s tests -p test_interim_contact.py -v
+          python -m unittest discover -s tests -p test_interim_release.py -v
+      - name: Synthetic HTTP + zero-data notification and backup restore
+        run: python tests/test_emergency_intake.py
+      - name: No secrets or customer data in tracked files
+        run: |
+          test ! -e private/secretbox.key
+          test ! -e private/intake.sqlite
+          test ! -e .private-source-v18
+          test ! -e .offline-v18-interim-contact
+          echo "V18_NO_PRODUCTION_ACCESS_NO_REAL_CRM_POST"

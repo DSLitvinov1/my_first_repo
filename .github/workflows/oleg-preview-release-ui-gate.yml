@@ -1,0 +1,57 @@
+name: Oleg assistant Playwright true-release patch UI gate (CRM mocked)
+on:
+  push:
+    branches: [audit-oleg-sites-playwright-20261115]
+    paths:
+      - 'audits/oleg-indexing/bitrix_preview.cjs'
+      - 'audits/oleg-indexing/lead_assistant_guard.py'
+      - 'audits/oleg-indexing/metadata_guard.py'
+      - '.github/workflows/oleg-preview-release-ui-gate.yml'
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: audits/oleg-indexing
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check release preview syntax before browser
+        run: node --check bitrix_preview.cjs
+      - name: Install isolated Playwright without modifying sites
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Independently verify two preview interfaces with consent refusal and mock CRM
+        run: node bitrix_preview.cjs
+      - name: Check strict result semantics (no Bitrix credentials or real submissions)
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('oleg-bitrix-preview.json').read_text())
+          assert len(r['results'])==2
+          for site in r['results']:
+              assert site['preparedPatchWorks'] is True,site
+              assert site['bitrixMocked'] is True
+              assert site['liveBitrixStatus']=='NOT_CHECKED_IN_THIS_UI_TEST'
+              assert site['consentRefused'] is True
+              assert site['releasePatchApplied'] is True
+          print('OLEG_UI_RELEASE_MOCK_GATE_2_SITES_PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: oleg-ui-preview-no-real-CRM
+          path: audits/oleg-indexing/oleg-bitrix-preview.json
+          if-no-files-found: warn
