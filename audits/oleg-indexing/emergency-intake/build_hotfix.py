@@ -34,7 +34,15 @@ NEW_FALLBACK = """  const fallback = create('p');
   open.rel = 'noopener noreferrer';
   const reserve = create('a', 'сохраните резервное обращение');
   reserve.className = 'legal-open';
-  reserve.href = '/emergency-lead.php';
+  const attribution = new URLSearchParams(location.search);
+  const trusted = new URLSearchParams('entry=assistant');
+  for (const name of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content']) {
+    const value = attribution.get(name);
+    if (value && value.length <= 100 && !/[<>@]|https?:|\\d{10,}/i.test(value)) {
+      trusted.set(name, value);
+    }
+  }
+  reserve.href = '/emergency-lead.php?' + trusted.toString();
   const phone = create('a', 'позвоните');
   phone.className = 'legal-open';
   phone.href = 'tel:+79172052125';
@@ -57,21 +65,21 @@ def patch_home(text,host):
     replacement=(
       '<div class="lead-form-unavailable" role="status">'
       'Для консультации <a href="'+form+'" target="_blank" rel="noopener noreferrer">откройте форму Битрикс24</a>. '
-      'Если она не загружается, <a href="/emergency-lead.php">сохраните резервное обращение</a> '
+      'Если она не загружается, <a href="/emergency-lead.php?entry=homepage">сохраните резервное обращение</a> '
       'непосредственно на нашем сервере. Также можно <a href="tel:+79172052125">позвонить</a> '
       'или <a href="mailto:centr-uprav@inbox.ru">написать на почту</a>. '
       'Подтверждение резервной формы означает сохранение на сервере, а не регистрацию в CRM.'
       '</div>')
     result=text.replace(OLD_NOTICE,replacement)
     if result.replace(replacement,OLD_NOTICE,1)!=text:raise AssertionError("Unexpected homepage changes")
-    if result.count(form)!=1 or result.count('href="/emergency-lead.php"')!=1:raise AssertionError("Missing site-specific links")
+    if result.count(form)!=1 or result.count('href="/emergency-lead.php?entry=homepage"')!=1:raise AssertionError("Missing site-specific links")
     return result
 
 def patch_assistant(text):
     if text.count(OLD_FALLBACK)!=1 or "Qwen" in text or "qwen" in text:raise ValueError("Unexpected assistant JS baseline")
     result=text.replace(OLD_FALLBACK,NEW_FALLBACK)
     if result.replace(NEW_FALLBACK,OLD_FALLBACK,1)!=text:raise AssertionError("Unexpected JS changes")
-    if result.count("reserve.href = '/emergency-lead.php'")!=1 or result.count('formStep.insertBefore(fallback, frame)')!=1:raise AssertionError("Hotfix not visible above iframe")
+    if result.count("reserve.href = '/emergency-lead.php?' + trusted.toString()")!=1 or result.count('formStep.insertBefore(fallback, frame)')!=1:raise AssertionError("Hotfix not visible above iframe")
     for marker in ("crm_form_fhi3n","crm_form_ep5fd","tel:+79172052125","mailto:centr-uprav@inbox.ru"):
         if marker not in result:raise AssertionError("Missing fallback or CRM marker")
     return result

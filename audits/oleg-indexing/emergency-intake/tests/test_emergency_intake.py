@@ -31,8 +31,8 @@ class Parser(HTMLParser):
 def check(cond,message):
     if not cond: raise AssertionError(message)
 
-def call(opener,port,method="GET",values=None,extra_headers=None,host=SITE,follow=True):
-    u=f"http://127.0.0.1:{port}/emergency-lead.php"
+def call(opener,port,method="GET",values=None,extra_headers=None,host=SITE,follow=True,query=""):
+    u=f"http://127.0.0.1:{port}/emergency-lead.php"+query
     headers={"Host":host}
     if extra_headers: headers.update(extra_headers)
     if values is not None:
@@ -51,8 +51,8 @@ def call(opener,port,method="GET",values=None,extra_headers=None,host=SITE,follo
 def opener():
     return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
-def form(o,port,host=SITE):
-    code,url,body=call(o,port,host=host)
+def form(o,port,host=SITE,query=""):
+    code,url,body=call(o,port,host=host,query=query)
     check(code==200 and "Сохранить обращение" in body,"GET form not ready")
     p=Parser();p.feed(body)
     check(len(p.fields.get("csrf",""))==64 and len(p.fields.get("request_id",""))==32,"missing CSRF/id")
@@ -67,7 +67,7 @@ def count(conn):
 def main():
     mods=subprocess.check_output(["php","-m"],text=True).lower()
     check("pdo_sqlite" in mods and "sodium" in mods,"PHP sqlite and sodium required")
-    with tempfile.TemporaryDirectory(prefix="oleg-v17-test-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="oleg-v18-intake-test.") as tmp:
         home=pathlib.Path(tmp)
         private=home/".oleg-emergency-intake-v17"
         private.mkdir(mode=0o700)
@@ -96,7 +96,7 @@ def main():
             db=sqlite3.connect(private/"intake.sqlite")
             db.row_factory=sqlite3.Row
             p=opener()
-            fields=form(p,port)
+            fields=form(p,port,query="?entry=homepage&utm_source=yandex&utm_medium=cpc&utm_campaign=legal_ad")
             # Unrelated source without cookies cannot post
             status,_,body=call(p,port,values=valid(fields),extra_headers={"Origin":"https://evil.example"})
             check(status==403 and "не сохранено" in body.lower(),"cross-origin not denied")
@@ -130,6 +130,9 @@ def main():
             check(denied.returncode==2 and "Мария Тест" not in denied.stdout,"sensitive read must require opt-in")
             authorized=subprocess.run(["php",str(private/"console.php"),"read",str(private),receipt,"--confirm-sensitive"],capture_output=True,text=True)
             check(authorized.returncode==0 and "Мария Тест" in authorized.stdout,"explicit local-only decrypt path broken")
+            source=__import__('json').loads(authorized.stdout)['contact']['observed_source']
+            check(source['site']==SITE and source['entry_hint']=='homepage' and source['traffic_channel']=='unverified','source site must be verified, channel must remain unknown')
+            check(source['utm']=={'utm_source':'yandex','utm_medium':'cpc','utm_campaign':'legal_ad'} and source['utm_transport']=='query','real query UTM not persisted')
             check("Мария Тест" not in (subprocess.check_output(["php",str(private/"console.php"),"status",str(private)],text=True)),"CLI count must not expose PII")
             status,final2,body2=call(p,port,values=good)
             check(status==200 and final2==final and count(db)==1,"idempotency failed")
@@ -152,6 +155,34 @@ def main():
             st,_,out=call(p,port,values=overflow)
             check(st==429 and "не сохранено" in out.lower(),"rate control not enforced")
             check(count(db)==5,"6th attempt was recorded")
+            alert_env={**os.environ, "OLEG_ALERT_TEST_MODE":"1", "OLEG_ALERT_TEST_SINK":str(home/"alert-test-sink.jsonl")}
+            def alert(mode):
+                return subprocess.run(["php",str(private/"alert.php"),str(private),mode],env=alert_env,capture_output=True,text=True)
+            dry=alert("--dry-run")
+            check(dry.returncode==0 and '"pending_total":5' in dry.stdout,"pending digest failed")
+            check(not (home/"alert-test-sink.jsonl").exists(),"dry-run sent mail")
+            first=alert("--check")
+            check(first.returncode==0 and "ACCEPTED_BY_MAIL_TRANSPORT" in first.stdout,"first alert missing")
+            check(len((home/"alert-test-sink.jsonl").read_text().splitlines())==1,"expected one privacy-safe alert")
+            repeat=alert("--check")
+            check(repeat.returncode==0 and "ALERT_NOOP" in repeat.stdout,"duplicate alert sent")
+            test_mail=alert("--test-mail")
+            check(test_mail.returncode==0 and len((home/"alert-test-sink.jsonl").read_text().splitlines())==2,"test mail not sandboxed")
+            messages=(home/"alert-test-sink.jsonl").read_text()
+            check("Мария" not in messages and "79990000001" not in messages,"notification leaked applicant data")
+            db.execute("UPDATE requests SET status='crm_verified'");db.commit()
+            check(alert("--check").returncode==0,"cannot reset alert state after clearing queue")
+            db.execute("UPDATE requests SET status='awaiting_manual_review' WHERE receipt=?",(receipt,));db.commit()
+            newalert=alert("--check")
+            check(newalert.returncode==0 and len((home/"alert-test-sink.jsonl").read_text().splitlines())==3,"fresh alert not triggered after clearance")
+            snapshot=subprocess.run(["php",str(private/"backup.php"),str(private),"backup"],capture_output=True,text=True)
+            check(snapshot.returncode==0 and "BACKUP_INTEGRITY_RESTORE_VERIFIED" in snapshot.stdout,"encrypted snapshot failed to restore")
+            verify=subprocess.run(["php",str(private/"backup.php"),str(private),"verify"],capture_output=True,text=True)
+            check(verify.returncode==0 and "BACKUP_INTEGRITY_RESTORE_VERIFIED" in verify.stdout,"backup verification failed")
+            backups=list((private/"backups").glob("*.sqlite"))
+            keycopies=list((private/"backups").glob("*.key"))
+            check(len(backups)==len(keycopies)==1,"expected one isolated backup/key pair")
+            check((backups[0].stat().st_mode & 0o777)==0o600 and (keycopies[0].stat().st_mode & 0o777)==0o600,"backup/key permissions unsafe")
             # Missing storage must return fail-closed, not a false success
             db.close()
             (private/"intake.sqlite").rename(private/"intake.sqlite.missing")

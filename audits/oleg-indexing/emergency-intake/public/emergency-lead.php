@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-use function Oleg\Emergency\{e,page,form_html,host,private_home,db,key,save};
+use function Oleg\Emergency\{e,page,form_html,host,private_home,db,key,save,tracking};
 use const Oleg\Emergency\{SITES,MAX_PER_IP_20_MIN};
 
 umask(0077);
@@ -46,6 +46,7 @@ if ($method==='GET') {
     }
     $id=bin2hex(random_bytes(16));
     $_SESSION['last_request_id']=$id;
+    $_SESSION['last_source']=tracking($_GET,(string)($_SERVER['HTTP_REFERER']??''),$site);
     echo form_html($site,$_SESSION['csrf'],$id);
     exit;
 }
@@ -85,7 +86,7 @@ if ((string)($_POST['request_id']??'')!==(string)($_SESSION['last_request_id']??
     exit;
 }
 try {
-    $saved=save($pdo,$secret,$site,(string)($_SERVER['REMOTE_ADDR']??''),$_POST);
+    $saved=save($pdo,$secret,$site,(string)($_SERVER['REMOTE_ADDR']??''),$_POST,(array)($_SESSION['last_source']??[]));
     $_SESSION['receipts'][$saved['receipt']]=time();
     if (count($_SESSION['receipts'])>12) $_SESSION['receipts']=array_slice($_SESSION['receipts'],-12,null,true);
     session_write_close();

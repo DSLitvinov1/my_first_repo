@@ -1,0 +1,34 @@
+{
+  "state": "INTERIM_AVAILABILITY_ONLY_NOT_DEPLOYED",
+  "files": [
+    {
+      "relative_file": "potrebpravo.ru/index.html",
+      "previous_sha256": "7138aad960cb41c169b3417046f2c9d673110ae39e82be5033f48eb3eb5b0704",
+      "new_sha256": "ecba3afc41182ff7157c7f8a800fdf2fb94238b97b158db5730e46169c73f9cd",
+      "bytes": 131783
+    },
+    {
+      "relative_file": "semya-yurist.ru/index.html",
+      "previous_sha256": "f7b0b6a897aefe7bf09b06bc550691709988a4cfee1641e7caec48f47a805eaa",
+      "new_sha256": "e6358f0b5ecd5ddd4565c9bb03f30e6db0ae3e63c288611e36530256f65f4ee8",
+      "bytes": 128640
+    },
+    {
+      "relative_file": "potrebpravo.ru/assets/legal-assistant-v4.js",
+      "previous_sha256": "3ae643d908b5cc3b7a5cc1081b06183fbe686887323ad345639e57e01b846e8a",
+      "new_sha256": "d2aa014c6bea2aebd3c60640992afffd8a4732c0d46ace58d0aff4473edf44d8",
+      "bytes": 10302
+    },
+    {
+      "relative_file": "semya-yurist.ru/assets/legal-assistant-v4.js",
+      "previous_sha256": "3ae643d908b5cc3b7a5cc1081b06183fbe686887323ad345639e57e01b846e8a",
+      "new_sha256": "d2aa014c6bea2aebd3c60640992afffd8a4732c0d46ace58d0aff4473edf44d8",
+      "bytes": 10302
+    }
+  ],
+  "requires_private_queue": false,
+  "changes_PII_collection": false,
+  "SEO_changed": false,
+  "fallback": "phone+email+existing_Bitrix_forms",
+  "UTM_behavior": "pass through only when present and sanitized; CRM readback still required"
+}

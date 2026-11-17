@@ -17,7 +17,7 @@ function host(): string {
     $h=strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
     if (!in_array($h, SITES, true)) throw new RuntimeException('Unsupported host');
     $test=getenv('OLEG_INTAKE_TEST_MODE') === '1' && in_array((string)($_SERVER['REMOTE_ADDR']??''),['127.0.0.1','::1'],true);
-    if (!$test && ($_SERVER['HTTPS']??'') !== 'on' && (string)($_SERVER['SERVER_PORT']??'') !== '443') throw new RuntimeException('HTTPS required');
+    if (!$test && strtolower((string)($_SERVER['HTTPS']??'')) !== 'on' && (string)($_SERVER['SERVER_PORT']??'') !== '443') throw new RuntimeException('HTTPS required');
     return $h;
 }
 function private_home(): string {
@@ -71,7 +71,36 @@ function install(string $home): void {
     $db->exec('CREATE INDEX IF NOT EXISTS requests_ip_time ON requests(ip_hash,created_at)');
     chmod($p,0600);
 }
-function save(PDO $db,string $secret,string $site,string $clientIP,array $f): array {
+/** Only observed, sanitized context. No traffic channel is inferred from missing UTMs. */
+function tracking(array $query, string $referer, string $site): array {
+    $source = 'query';
+    $allowed = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content'];
+    $present = [];
+    foreach ($allowed as $name) {
+        if (isset($query[$name])) $present[$name]=$query[$name];
+    }
+    if (!$present && $referer !== '') {
+        $parts = parse_url($referer);
+        if (is_array($parts) && ($parts['scheme']??'')==='https' && ($parts['host']??'')===$site) {
+            parse_str((string)($parts['query']??''), $fromReferrer);
+            foreach ($allowed as $name) {
+                if (isset($fromReferrer[$name])) $present[$name]=$fromReferrer[$name];
+            }
+            $source='same_site_referer';
+        }
+    }
+    $clean = [];
+    foreach ($present as $name=>$raw) {
+        if (!is_string($raw)) continue;
+        $v=trim($raw);
+        if ($v==='' || mb_strlen($v)>100 || preg_match('/[<>@\\x00-\\x1F]|https?:|(?:\\+?\\d[ -]?){10,}/iu',$v)) continue;
+        $clean[$name]=$v;
+    }
+    $entry=(string)($query['entry']??'');
+    if (!in_array($entry,['homepage','assistant'],true)) $entry='unknown';
+    return ['site'=>$site,'entry_hint'=>$entry,'traffic_channel'=>'unverified','utm_transport'=>$clean ? $source : 'none','utm'=>$clean];
+}
+function save(PDO $db,string $secret,string $site,string $clientIP,array $f,array $source=[]): array {
     $id=(string)($f['request_id']??'');
     $name=trim((string)($f['name']??''));
     $tel=trim((string)($f['phone']??''));
@@ -82,7 +111,7 @@ function save(PDO $db,string $secret,string $site,string $clientIP,array $f): ar
     if (mb_strlen($problem)<10||mb_strlen($problem)>3000||str_contains($problem,"\0")) throw new \InvalidArgumentException('Опишите проблему (10–3000 символов).');
     if (($f['consent']??'')!=='yes') throw new \InvalidArgumentException('Необходимо согласие на обработку данных.');
     if (trim((string)($f['website']??''))!=='') throw new \InvalidArgumentException('Обращение не принято.');
-    $plain=json_encode(['name'=>$name,'phone'=>$tel,'problem'=>$problem,'consent'=>true,'policy_version'=>POLICY_VERSION],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+    $plain=json_encode(['name'=>$name,'phone'=>$tel,'problem'=>$problem,'consent'=>true,'policy_version'=>POLICY_VERSION,'observed_source'=>$source],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
     $hash=hash_hmac('sha256',$site."\0".$plain,$secret);
     $ipHash=hash_hmac('sha256',$clientIP,$secret);
     $db->exec('BEGIN IMMEDIATE');

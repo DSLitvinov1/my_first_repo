@@ -22,7 +22,7 @@ class AvailabilityHotfixTests(unittest.TestCase):
     def test_always_visible_internal_backup_on_home(self):
         for site in HOST_FORMS:
             new=patch_home(homepage(),site)
-            self.assertIn('href="/emergency-lead.php"',new)
+            self.assertIn('href="/emergency-lead.php?entry=homepage"',new)
             self.assertIn('href="tel:+79172052125"',new)
             self.assertIn('href="mailto:centr-uprav@inbox.ru"',new)
             self.assertIn('сохранение на сервере, а не регистрацию в CRM',new)
@@ -55,7 +55,7 @@ class AvailabilityHotfixTests(unittest.TestCase):
         result=patch_assistant(helper())
         self.assertIn('formStep.insertBefore(fallback, frame)',result)
         self.assertNotIn('formStep.append(fallback);',result)
-        self.assertIn("reserve.href = '/emergency-lead.php'",result)
+        self.assertIn("reserve.href = '/emergency-lead.php?' + trusted.toString()",result)
 
     def test_both_public_forms_preserved_in_assistant(self):
         result=patch_assistant(helper())
@@ -65,7 +65,7 @@ class AvailabilityHotfixTests(unittest.TestCase):
     def test_outage_does_not_require_js_or_external_form_for_primary_backup(self):
         for site in HOST_FORMS:
             html=patch_home(homepage(),site)
-            self.assertIn('<a href="/emergency-lead.php">',html)
+            self.assertIn('<a href="/emergency-lead.php?entry=homepage">',html)
             self.assertNotIn('Заявка успешно отправлена',html)
 
     def test_assistant_changes_are_exactly_one_snippet(self):
