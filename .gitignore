@@ -1,3 +1,5 @@
 .private-v24-offline/
 **/__pycache__/
 *.pyc
+
+.private-v25-offline/
