@@ -18,8 +18,10 @@ ANALYTICS = Path('assets/oleg-analytics-v1.js')
 EXTENSION_FILE = Path(__file__).with_name('oleg-metrika-goals-v1.js')
 FALLBACK_FILE = Path(__file__).with_name('oleg-crm-backup-links-v1.js')
 
-def extension_contents() -> str:
+def extension_contents(goals_only=False) -> str:
     goals = EXTENSION_FILE.read_text(encoding='utf-8').rstrip()
+    if goals_only:
+        return goals + '\n'
     fallback = FALLBACK_FILE.read_text(encoding='utf-8').rstrip()
     if '__olegCrmBackupLinksV1' not in fallback or 'https://b24-s2dosa.bitrix24site.ru/' not in fallback:
         raise ValueError('Sitewide CRM fallback script source is missing required markers')
@@ -115,9 +117,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--root-parent', required=True, help='Authorized parent directory containing <domain>/public_html for both sites')
     parser.add_argument('--apply', action='store_true', help='Explicitly apply only after backup and exact-source checks')
+    parser.add_argument('--goals-only', action='store_true', help='Enable consent-safe goals without adding extra site UI')
     args = parser.parse_args()
     parent = Path(args.root_parent).resolve(strict=True)
-    extension = extension_contents()
+    extension = extension_contents(goals_only=args.goals_only)
     edits = prepare(parent, extension)
     changed = sum(item['old'] != item['new'] for item in edits.values())
     result = {'mode': 'apply' if args.apply else 'dry-run', 'filesChecked': len(edits),
