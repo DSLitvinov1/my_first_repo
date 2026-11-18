@@ -40,6 +40,17 @@
     var rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   }
+  // Count a visitor's verified click on this site's native Bitrix form link.
+  // The existing assistant frame tracking does not cover these direct links.
+  // This is an *intent* goal, never proof that a CRM lead was accepted.
+  function isOwnCrmFormLink(anchor) {
+    try {
+      var link = new URL(anchor.href, location.href);
+      return link.protocol === 'https:' &&
+        link.hostname === 'b24-s2dosa.bitrix24site.ru' &&
+        link.pathname === '/' + FORMS[hostname] + '/';
+    } catch (_) { return false; }
+  }
   function onClick(event) {
     var target = event.target;
     if (!target || typeof target.closest !== 'function') return;
@@ -49,6 +60,7 @@
       var href = anchor.getAttribute('href') || '';
       if (/^tel:\+?\d/i.test(href)) send('oleg_phone_click');
       else if (/^mailto:/i.test(href)) send('oleg_email_click');
+      else if (isOwnCrmFormLink(anchor)) send('oleg_crm_form_open');
     }
 
     var toggle = target.closest('#legal-help-toggle');
