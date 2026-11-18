@@ -51,6 +51,19 @@
         link.pathname === '/' + FORMS[hostname] + '/';
     } catch (_) { return false; }
   }
+  function preserveCampaignInFormLink(anchor) {
+    if (!isOwnCrmFormLink(anchor)) return false;
+    try {
+      var dest = new URL(anchor.href, location.href);
+      var source = new URLSearchParams(location.search || '');
+      for (var key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+        var value = source.get(key);
+        if (value && /^[\p{L}\p{N}_ .:+|{}~-]{1,180}$/u.test(value)) dest.searchParams.set(key, value);
+      }
+      anchor.href = dest.toString();
+      return true;
+    } catch (_) { return false; }
+  }
   function onClick(event) {
     var target = event.target;
     if (!target || typeof target.closest !== 'function') return;
@@ -60,7 +73,7 @@
       var href = anchor.getAttribute('href') || '';
       if (/^tel:\+?\d/i.test(href)) send('oleg_phone_click');
       else if (/^mailto:/i.test(href)) send('oleg_email_click');
-      else if (isOwnCrmFormLink(anchor)) send('oleg_crm_form_open');
+      else if (preserveCampaignInFormLink(anchor)) send('oleg_crm_form_open');
     }
 
     var toggle = target.closest('#legal-help-toggle');
