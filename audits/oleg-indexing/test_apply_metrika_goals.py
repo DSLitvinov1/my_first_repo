@@ -55,6 +55,20 @@ class InstallerTests(unittest.TestCase):
             self.assertEqual((backup/host/'index.html').read_text(encoding='utf-8').count('v=' + BASELINE_VERSIONS[host]), 1)
         repeat=prepare(self.root,self.extension)
         self.assertTrue(all(x['old']==x['new'] for x in repeat.values()))
+    def test_goals_only_mode_has_no_extra_site_ui_and_is_idempotent(self):
+        extension = extension_contents(goals_only=True)
+        self.assertIn('__olegMetrikaIntentGoalsV1', extension)
+        self.assertNotIn('__olegCrmBackupLinksV1', extension)
+        edits = prepare(self.root, extension)
+        self.assertEqual(len(edits), 2 + sum(PAGE_COUNTS.values()))
+        for path, item in edits.items():
+            if path.name == 'oleg-analytics-v1.js':
+                self.assertIn(b'__olegMetrikaIntentGoalsV1', item['new'])
+                self.assertNotIn(b'__olegCrmBackupLinksV1', item['new'])
+        _, changed = apply_edits(edits, self.root)
+        self.assertEqual(changed, 2 + sum(PAGE_COUNTS.values()))
+        self.assertTrue(all(item['old'] == item['new'] for item in prepare(self.root, extension).values()))
+
     def test_source_drift_blocks_entire_operation(self):
         target=self.root/'semya-yurist.ru'/'public_html'/ANALYTICS
         target.write_text('short or unknown script',encoding='utf-8')
