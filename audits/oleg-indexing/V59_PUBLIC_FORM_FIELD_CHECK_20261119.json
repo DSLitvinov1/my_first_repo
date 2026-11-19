@@ -1,0 +1,79 @@
+{
+  "status": "READ_ONLY_NO_CLIENT_SUBMISSIONS",
+  "entries": [
+    {
+      "site": "consumer",
+      "status": 200,
+      "url": "https://b24-s2dosa.bitrix24site.ru",
+      "formCount": 1,
+      "fields": [
+        {
+          "type": "text",
+          "name": "name",
+          "id": "b24-form-field-1",
+          "hasValue": false
+        },
+        {
+          "type": "tel",
+          "name": "phone",
+          "id": "b24-form-field-2",
+          "hasValue": true
+        },
+        {
+          "type": "textarea",
+          "name": "",
+          "id": "b24-form-field-3",
+          "hasValue": false
+        },
+        {
+          "type": "checkbox",
+          "name": "",
+          "id": "b24-form-field-4",
+          "hasValue": true
+        }
+      ],
+      "external_links": [],
+      "metricaClientIdField": false,
+      "present": true,
+      "nonGETblocked": 2,
+      "forwardedWrites": 0
+    },
+    {
+      "site": "family",
+      "status": 200,
+      "url": "https://b24-s2dosa.bitrix24site.ru",
+      "formCount": 1,
+      "fields": [
+        {
+          "type": "text",
+          "name": "name",
+          "id": "b24-form-field-1",
+          "hasValue": false
+        },
+        {
+          "type": "tel",
+          "name": "phone",
+          "id": "b24-form-field-2",
+          "hasValue": true
+        },
+        {
+          "type": "textarea",
+          "name": "",
+          "id": "b24-form-field-3",
+          "hasValue": false
+        },
+        {
+          "type": "checkbox",
+          "name": "",
+          "id": "b24-form-field-4",
+          "hasValue": true
+        }
+      ],
+      "external_links": [],
+      "metricaClientIdField": false,
+      "present": true,
+      "nonGETblocked": 2,
+      "forwardedWrites": 0
+    }
+  ]
+}
