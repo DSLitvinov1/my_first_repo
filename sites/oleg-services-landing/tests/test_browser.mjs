@@ -77,6 +77,14 @@ try {
   assert((await evaluate("document.querySelector('#topic').value"))==="Арбитражные споры по договору подряда");
   assert((await evaluate("document.querySelectorAll('[data-topic]').length"))===14);
 
+  // ChatGPT may append a referral marker. Hide only that marker, retain unrelated parameters.
+  await call("Page.navigate", {url:"http://127.0.0.1:"+port+"/?utm_source=chatgpt.com&utm_campaign=original&topic="+encodeURIComponent("Наследство")});
+  await sleep(550);
+  const clean=await evaluate("({source:new URL(location.href).searchParams.get('utm_source'),campaign:new URL(location.href).searchParams.get('utm_campaign'),topic:document.querySelector('#topic').value})");
+  assert(clean.source===null && clean.campaign==="original" && clean.topic==="Наследство", "referral cleanup failed: "+JSON.stringify(clean));
+  await call("Page.navigate", {url:"http://127.0.0.1:"+port+"/?utm_source=yandex&utm_campaign=original&topic="+encodeURIComponent("Наследство")});
+  await sleep(550);
+  assert((await evaluate("new URL(location.href).searchParams.get('utm_source')"))==="yandex", "real paid attribution removed");
   console.log("PASS browser",width,"navigation, wizard, 5 services, preview blocked, attribution, no overflow");
  }
 }finally{

@@ -1,5 +1,13 @@
 "use strict";
 (() => {
+  // Remove only the unwanted ChatGPT referral tag; keep Yandex and other campaign parameters intact.
+  try {
+    const url = new URL(location.href);
+    if ((url.searchParams.get("utm_source") || "").toLowerCase() === "chatgpt.com") {
+      url.searchParams.delete("utm_source");
+      history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    }
+  } catch { /* Non-browser preview, inaccessible history or malformed URL: leave original URL untouched. */ }
   const $ = (selector) => document.querySelector(selector);
   const form = $("#lead-form");
   const status = $("#lead-status");
