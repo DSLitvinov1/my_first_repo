@@ -1,0 +1,26 @@
+{
+  "status": "prepared_not_connected",
+  "counter": "SET_UNIQUE_COUNTER_AT_RELEASE",
+  "site": "pravosfera",
+  "privacy": "do_not_include_personal_data_in_goals_or_utm",
+  "events": [
+    {
+      "id": "landing_crm_accepted",
+      "meaning": "confirmed Bitrix24 deal readback",
+      "primary": true
+    },
+    {
+      "id": "landing_phone_click",
+      "meaning": "visitor clicked the phone link",
+      "primary": false
+    },
+    {
+      "id": "landing_topic_selected",
+      "meaning": "visitor selected law subject",
+      "primary": false
+    }
+  ],
+  "requires_cookie_consent": true,
+  "webvisor": false,
+  "do_not_count_pseudo_leads": true
+}
