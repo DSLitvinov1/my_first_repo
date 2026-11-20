@@ -1,0 +1,60 @@
+from html.parser import HTMLParser
+from pathlib import Path
+import subprocess
+ROOT=Path(__file__).resolve().parents[1]
+class Site(HTMLParser):
+ def __init__(self): super().__init__();self.ids=set();self.links=[];self.headings=[]
+ def handle_starttag(self,tag,attrs):
+  d=dict(attrs)
+  if 'id' in d: self.ids.add(d['id'])
+  if tag=='a': self.links.append(d.get('href',''))
+  if tag in ('h1','h2','h3'):self.headings.append(tag)
+site=Site();html=(ROOT/'index.html').read_text(encoding='utf-8');site.feed(html)
+assert site.headings.count('h1')==1
+assert all(url[1:] in site.ids for url in site.links if url.startswith('#'))
+assert all((ROOT/url).is_file() for url in site.links if url and not url.startswith(('#','tel:','https:')))
+assert 'noindex,nofollow' in html
+assert 'data-metrika-id=' not in html
+assert 'ОБРАЩЕНИЕ К ЮРИСТУ' in html
+js=(ROOT/'assets/site.js').read_text()
+assert 'landing_crm_accepted' in js and 'data.status!=="accepted"' in js
+assert 'api/nonce.php' in js and 'credentials:"same-origin"' in js
+assert "window.ym(metrikaId" in js
+api=(ROOT/'api/lead.php').read_text()
+assert "api_resolve_deal" in api and "outcome_unconfirmed" in api
+assert "crm.deal.get" in (ROOT/"api/bootstrap.php").read_text()
+assert 'api_crm_config()' in api and 'HTTP_ORIGIN' in api
+assert not (ROOT/'sitemap.xml').exists()
+subprocess.run(['node','--check',str(ROOT/'assets/site.js')],check=True)
+print('PASS: static structure, staging gates, no fake lead goals')
+
+
+# Ticker remains compact, accessible, and does not rely on moving text for SEO.
+assert html.count('<section class="ticker"') == 1
+assert html.count('class="ticker-group"') == 2
+assert 'ticker-screenreader' in html and 'aria-hidden="true"' in html
+css=(ROOT/'assets/site.css').read_text()
+assert '@keyframes ticker-slide' in css and 'prefers-reduced-motion:reduce' in css
+
+assert html.count('class="ticker-star"') == 28
+assert 'ticker-diamond' not in html
+assert '.ticker-star{color:#ffc7a9' in css
+
+
+# The client-approved offer must be identical on the landing and in metadata.
+assert 'Бесплатная юридическая<br><span>консультация онлайн</span><small>по всем отраслям права</small>' in html
+assert '<title>Юридическая консультация онлайн — Ростовская область и Краснодарский край' in html
+assert 'content="Бесплатная юридическая консультация онлайн по всем отраслям права"' in html
+
+# User-approved regions are in the public copy and do not revert to Moscow.
+assert 'Ростовская область и Краснодарский край' in html
+assert 'МОСКВА И МОСКОВСКАЯ ОБЛАСТЬ' not in html
+
+# 14 law directions in both landing versions (8 originals + 6 client additions).
+assert html.count('data-topic=') == 14
+assert html.count('class="ticker-item"') == 28
+new_specialties = ('Арбитражные споры по договору подряда', 'Уголовные дела (адвокат)', 'Военное право', 'Медицинское право', 'Пенсионное право (перерасчёт пенсии)', 'Интеллектуальное право')
+for name in new_specialties:
+    assert f'data-topic="{name}"' in html
+    assert f'<option>{name}</option>' in html
+    assert name in api

@@ -1,0 +1,4 @@
+# Replace __DOMAIN__ after ownership and HTTPS are verified, then publish as /robots.txt.
+User-agent: *
+Allow: /
+Sitemap: https://__DOMAIN__/sitemap.xml
