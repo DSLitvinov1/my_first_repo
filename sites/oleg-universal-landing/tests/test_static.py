@@ -27,3 +27,11 @@ assert 'api_crm_config()' in api and 'HTTP_ORIGIN' in api
 assert not (ROOT/'sitemap.xml').exists()
 subprocess.run(['node','--check',str(ROOT/'assets/site.js')],check=True)
 print('PASS: static structure, staging gates, no fake lead goals')
+
+
+# Ticker remains compact, accessible, and does not rely on moving text for SEO.
+assert html.count('<section class="ticker"') == 1
+assert html.count('class="ticker-group"') == 2
+assert 'ticker-screenreader' in html and 'aria-hidden="true"' in html
+css=(ROOT/'assets/site.css').read_text()
+assert '@keyframes ticker-slide' in css and 'prefers-reduced-motion:reduce' in css
