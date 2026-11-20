@@ -20,6 +20,8 @@ def build(domain: str, counter: int, privacy: Path, advertiser: Path, dest: Path
     data = json.loads(advertiser.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("Advertiser identity must be an object")
+    if data.get('review_status') != 'approved':
+        raise ValueError('Verified advertiser details require explicit owner approval')
     required = ('legal_name', 'physical_address', 'inn')
     if any(not isinstance(data.get(k), str) or len(data[k].strip()) < (10 if k != 'inn' else 10) for k in required):
         raise ValueError("Verified legal name, actual address and INN are mandatory")

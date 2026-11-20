@@ -21,7 +21,8 @@ assert 'landing_crm_accepted' in js and 'data.status!=="accepted"' in js
 assert 'api/nonce.php' in js and 'credentials:"same-origin"' in js
 assert "window.ym(metrikaId" in js
 api=(ROOT/'api/lead.php').read_text()
-assert "crm.deal.get" in api and "outcome_unconfirmed" in api
+assert "api_resolve_deal" in api and "outcome_unconfirmed" in api
+assert "crm.deal.get" in (ROOT/"api/bootstrap.php").read_text()
 assert 'api_crm_config()' in api and 'HTTP_ORIGIN' in api
 assert not (ROOT/'sitemap.xml').exists()
 subprocess.run(['node','--check',str(ROOT/'assets/site.js')],check=True)

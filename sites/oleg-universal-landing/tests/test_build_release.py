@@ -10,7 +10,7 @@ with TemporaryDirectory() as tmp:
     privacy = root / "privacy.html"
     advertiser = base / "advertiser.json"
     advertiser.write_text(json.dumps({
-        "legal_name": "ООО Юридический Пример",
+        "review_status": "approved", "legal_name": "ООО Юридический Пример",
         "physical_address": "Москва, Примерная улица, дом 17",
         "inn": "1234567890", "ogrn_or_ogrnip": "1234567890123"
     }, ensure_ascii=False))
@@ -22,6 +22,16 @@ with TemporaryDirectory() as tmp:
     approved = base / "approved.html"
     approved.write_text("<!doctype html><html lang='ru'><head><title>Политика</title></head><body><h1>ООО Юридический Пример</h1>" + ("<p>Согласованный документ оператора данных.</p>" * 22) + "</body></html>")
     release = base / "release"
+    pending = json.loads(advertiser.read_text())
+    pending['review_status']='pending'
+    advertiser.write_text(json.dumps(pending, ensure_ascii=False))
+    try:
+        build("example.org",123456789,approved,advertiser,release)
+        raise AssertionError('unapproved advertiser must not be published')
+    except ValueError as err:
+        assert 'approval' in str(err)
+    pending['review_status']='approved'
+    advertiser.write_text(json.dumps(pending, ensure_ascii=False))
     build("example.org",123456789,approved,advertiser,release)
     html = (release/"index.html").read_text()
     assert "noindex,nofollow" not in html and "index,follow" in html

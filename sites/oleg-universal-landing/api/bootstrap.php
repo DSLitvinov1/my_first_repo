@@ -23,10 +23,17 @@ function api_session(): void {
     session_start();
 }
 function api_state_dir(): string {
-    $dir = getenv('OLEG_LANDING_STATE_DIR') ?: sys_get_temp_dir() . '/oleg-landing-state-v1';
+    $dir = trim((string) getenv('OLEG_LANDING_STATE_DIR'));
+    if (!$dir || !str_starts_with($dir, '/') || str_contains($dir, '..')) {
+        throw new RuntimeException('private state directory must be explicitly configured');
+    }
     if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) throw new RuntimeException('private storage unavailable');
-    if (!is_writable($dir)) throw new RuntimeException('private storage not writable');
-    return $dir;
+    $resolved = realpath($dir);
+    $docroot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? ''));
+    if (!$resolved || !is_writable($resolved) || ($docroot && ($resolved === $docroot || str_starts_with($resolved, $docroot . '/')))) {
+        throw new RuntimeException('private storage not safely located');
+    }
+    return $resolved;
 }
 function api_phone(string $raw): ?string {
     $digits = preg_replace('/\D+/', '', $raw);
@@ -90,7 +97,7 @@ function api_deal_fields(array $data, int $contactId, int $category, int $assign
     $fields = [
         'TITLE' => 'Юридическая помощь — ' . $data['topic'],
         'CATEGORY_ID' => $category, 'ASSIGNED_BY_ID' => $assigned,
-        'CONTACT_ID' => $contactId, 'COMMENTS' => $comments,
+        'CONTACT_IDS' => [$contactId], 'COMMENTS' => $comments,
         'ORIGINATOR_ID' => 'oleg-universal-landing',
         'ORIGIN_ID' => $data['request_id'],
         'SOURCE_DESCRIPTION' => 'Отдельный универсальный юридический лендинг'
@@ -99,4 +106,43 @@ function api_deal_fields(array $data, int $contactId, int $category, int $assign
     $source = trim((string)getenv('OLEG_BITRIX_SOURCE_ID'));
     if ($source !== '') $fields['SOURCE_ID'] = $source; // Only after verifying status-list for this CRM.
     return $fields;
+}
+
+/** Search for an existing deal by durable source-specific ID before creating another one. */
+function api_existing_deal(callable $call, string $requestId): ?array {
+    $response = $call('crm.deal.list', [
+        'filter'=>['=ORIGINATOR_ID'=>'oleg-universal-landing', '=ORIGIN_ID'=>$requestId],
+        'select'=>['ID','CONTACT_ID','CATEGORY_ID','ASSIGNED_BY_ID','ORIGINATOR_ID','ORIGIN_ID']
+    ]);
+    if (!is_array($response)) throw new RuntimeException('CRM deal search unavailable');
+    if (count($response) > 1) throw new RuntimeException('multiple CRM deals for one request');
+    if (!$response) return null;
+    $row = $response[0];
+    if (!is_array($row) || (int)($row['ID'] ?? 0) <= 0) throw new RuntimeException('unexpected deal lookup result');
+    return $row;
+}
+function api_verify_deal(callable $call, int $dealId, int $contactId, int $category, int $assigned, string $requestId): void {
+    $item = $call('crm.deal.get', ['id'=>$dealId]);
+    if (!is_array($item) || (int)($item['ID'] ?? 0) !== $dealId
+        || (int)($item['CONTACT_ID'] ?? 0) !== $contactId
+        || (int)($item['CATEGORY_ID'] ?? -1) !== $category
+        || (int)($item['ASSIGNED_BY_ID'] ?? -1) !== $assigned
+        || (string)($item['ORIGINATOR_ID'] ?? '') !== 'oleg-universal-landing'
+        || (string)($item['ORIGIN_ID'] ?? '') !== $requestId) {
+        throw new RuntimeException('CRM readback does not match submission');
+    }
+}
+function api_resolve_deal(callable $call, array $data, int $contactId, int $category, int $assigned): int {
+    $existing = api_existing_deal($call, $data['request_id']);
+    if ($existing !== null) {
+        $id = (int)$existing['ID'];
+        api_verify_deal($call, $id, $contactId, $category, $assigned, $data['request_id']);
+        return $id;
+    }
+    $id = $call('crm.deal.add', ['fields'=>api_deal_fields($data, $contactId, $category, $assigned)]);
+    if (!filter_var($id, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]])) {
+        throw new RuntimeException('CRM deal not confirmed');
+    }
+    api_verify_deal($call, (int)$id, $contactId, $category, $assigned, $data['request_id']);
+    return (int)$id;
 }

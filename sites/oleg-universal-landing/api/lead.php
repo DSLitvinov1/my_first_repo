@@ -48,13 +48,33 @@ try {
     $recent[] = time(); rewind($rateFile); ftruncate($rateFile, 0); fwrite($rateFile, json_encode($recent)); fflush($rateFile);
     flock($rateFile, LOCK_UN); fclose($rateFile);
     $statePath = $dir . '/submission-' . strtolower($requestId) . '.json';
+    $fingerprint = hash('sha256', json_encode([$data, $name, $phone], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     $record = @fopen($statePath, 'x');
     if ($record === false) {
         $prior = json_decode((string)@file_get_contents($statePath), true);
-        if (is_array($prior) && ($prior['status'] ?? '') === 'accepted') api_json(200,['status'=>'accepted']);
+        if (!is_array($prior) || !hash_equals((string)($prior['digest'] ?? ''), $fingerprint)) {
+            api_json(409, ['status'=>'request_conflict']);
+        }
+        if (($prior['status'] ?? '') === 'accepted') api_json(200,['status'=>'accepted']);
+        // Never retry creating a deal after uncertain transport outcome.
+        // Reconcile by immutable source ID if contact was already established.
+        $savedContact = (int)($prior['contact_id'] ?? 0);
+        if ($savedContact > 0) {
+            $call = static fn(string $method, array $params) => api_crm_call($webhook, $method, $params);
+            $found = api_existing_deal($call, $requestId);
+            if ($found !== null) {
+                $foundId = (int)$found['ID'];
+                api_verify_deal($call, $foundId, $savedContact, $category, $assigned, $requestId);
+                $receipt = ['status'=>'accepted','digest'=>$fingerprint,'deal_id'=>$foundId,'at'=>time()];
+                if (@file_put_contents($statePath, json_encode($receipt), LOCK_EX) === false) {
+                    api_json(503,['status'=>'outcome_unconfirmed']);
+                }
+                api_json(200,['status'=>'accepted']);
+            }
+        }
         api_json(503,['status'=>'outcome_unconfirmed']);
     }
-    fwrite($record, json_encode(['status'=>'pending','at'=>time()]));
+    fwrite($record, json_encode(['status'=>'pending','digest'=>$fingerprint,'at'=>time()]));
     fclose($record);
     @chmod($statePath,0600);
     $duplicate = api_crm_call($webhook, 'crm.duplicate.findbycomm', ['type'=>'PHONE','values'=>[$phone],'entity_type'=>'CONTACT']);
@@ -73,14 +93,11 @@ try {
         if (!filter_var($created, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]])) throw new RuntimeException('contact not confirmed');
         $contactId = (int)$created;
     }
-    $fields = api_deal_fields($data, $contactId, $category, $assigned);
-    $createdDeal = api_crm_call($webhook, 'crm.deal.add', ['fields'=>$fields]);
-    if (!filter_var($createdDeal, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]])) throw new RuntimeException('deal not confirmed');
-    $dealId = (int)$createdDeal;
-    $readBack = api_crm_call($webhook, 'crm.deal.get', ['id'=>$dealId]);
-    if (!is_array($readBack) || (int)($readBack['ID'] ?? 0) !== $dealId
-        || (int)($readBack['CONTACT_ID'] ?? 0) !== $contactId) throw new RuntimeException('CRM readback does not match');
-    $saved = @file_put_contents($statePath, json_encode(['status'=>'accepted','deal_id'=>$dealId,'at'=>time()]), LOCK_EX);
+    $pending = @file_put_contents($statePath, json_encode(['status'=>'pending','digest'=>$fingerprint,'contact_id'=>$contactId,'at'=>time()]), LOCK_EX);
+    if ($pending === false) throw new RuntimeException('pending contact receipt not persisted');
+    $call = static fn(string $method, array $params) => api_crm_call($webhook, $method, $params);
+    $dealId = api_resolve_deal($call, $data, $contactId, $category, $assigned);
+    $saved = @file_put_contents($statePath, json_encode(['status'=>'accepted','digest'=>$fingerprint,'deal_id'=>$dealId,'at'=>time()]), LOCK_EX);
     if ($saved === false) throw new RuntimeException('receipt not persisted');
     api_json(200,['status'=>'accepted']);
 } catch (Throwable $e) {
