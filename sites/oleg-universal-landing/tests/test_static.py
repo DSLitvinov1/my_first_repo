@@ -43,5 +43,9 @@ assert '.ticker-star{color:#ffc7a9' in css
 
 # The client-approved offer must be identical on the landing and in metadata.
 assert 'Бесплатная юридическая<br><span>консультация онлайн</span><small>по всем отраслям права</small>' in html
-assert '<title>Бесплатная юридическая консультация онлайн' in html
+assert '<title>Юридическая консультация онлайн — Ростовская область и Краснодарский край' in html
 assert 'content="Бесплатная юридическая консультация онлайн по всем отраслям права"' in html
+
+# User-approved regions are in the public copy and do not revert to Moscow.
+assert 'Ростовская область и Краснодарский край' in html
+assert 'МОСКВА И МОСКОВСКАЯ ОБЛАСТЬ' not in html

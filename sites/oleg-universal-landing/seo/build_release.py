@@ -56,8 +56,8 @@ def build(domain: str, counter: int, privacy: Path, advertiser: Path, dest: Path
         "@context": "https://schema.org", "@type": "LegalService",
         "name": data['legal_name'].strip(), "url": url,
         "telephone": "+79172052125", "address": data['physical_address'].strip(),
-        "areaServed": [{"@type": "AdministrativeArea", "name": "Москва"},
-                       {"@type": "AdministrativeArea", "name": "Московская область"}]
+        "areaServed": [{"@type": "AdministrativeArea", "name": "Ростовская область"},
+                       {"@type": "AdministrativeArea", "name": "Краснодарский край"}]
     }
     html = html.replace('</head>',
         '<script type="application/ld+json">' + json.dumps(schema, ensure_ascii=False).replace('<', '\\u003c')
