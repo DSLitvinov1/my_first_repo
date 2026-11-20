@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Publish only after __DOMAIN__ is configured, HTTPS verified and privacy text approved. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://__DOMAIN__/</loc></url>
+<url><loc>https://__DOMAIN__/privacy.html</loc></url>
+</urlset>

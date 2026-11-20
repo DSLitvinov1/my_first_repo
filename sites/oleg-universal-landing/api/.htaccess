@@ -1,0 +1,7 @@
+<Files "bootstrap.php">
+  Require all denied
+</Files>
+Options -Indexes
+<IfModule mod_headers.c>
+ Header always set Cache-Control "no-store"
+</IfModule>
