@@ -91,7 +91,7 @@
     sending=true; submit.disabled=true;
     show("Проверяем отправку обращения…");
     try {
-      const payload={topic:topic.value,name,phone,message,website:$("#company-site").value,consent:true,csrf:nonce,request_id:requestId,page:sanitizeRoute(),...utm};
+      const payload={topic:topic.value,name,phone,message,website:$("#company-site").value,consent:true,csrf:nonce,request_id:requestId,page:sanitizeRoute(),yclid:(params.get("yclid")||"").slice(0,150),...utm};
       const res=await fetch("api/lead.php",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)});
       const data=await res.json().catch(()=>({}));
       if (!res.ok || data.status!=="accepted") throw new Error("CRM_NOT_CONFIRMED");

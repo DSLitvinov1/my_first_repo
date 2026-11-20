@@ -85,7 +85,8 @@ function api_deal_fields(array $data, int $contactId, int $category, int $assign
         . "Направление: " . $data['topic'] . "\n"
         . "Сообщение: " . ($data['message'] ?: 'Не указано') . "\n"
         . "Страница: " . $data['page'] . "\n"
-        . "Идентификатор обращения: " . $data['request_id'];
+        . "Идентификатор обращения: " . $data['request_id']
+        . (empty($data['yclid']) ? "" : "\nYandex Click ID: " . $data['yclid']);
     $fields = [
         'TITLE' => 'Юридическая помощь — ' . $data['topic'],
         'CATEGORY_ID' => $category, 'ASSIGNED_BY_ID' => $assigned,

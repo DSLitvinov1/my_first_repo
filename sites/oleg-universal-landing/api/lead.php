@@ -32,7 +32,7 @@ if (!in_array($topic, $topics, true) || mb_strlen($name) < 2 || !$phone || ($bod
     api_json(422,['status'=>'invalid_fields']);
 }
 $data = ['topic'=>$topic,'name'=>$name,'phone'=>$phone,'message'=>$message,'request_id'=>$requestId,
- 'page'=>api_field($body['page'] ?? '/', 180)];
+ 'page'=>api_field($body['page'] ?? '/', 180), 'yclid'=>api_field($body['yclid'] ?? '', 150)];
 foreach (['utm_source','utm_medium','utm_campaign','utm_content','utm_term'] as $u) {
     $data[$u] = api_field($body[$u] ?? '', 150);
 }
