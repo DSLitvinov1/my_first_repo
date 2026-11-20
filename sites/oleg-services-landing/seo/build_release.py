@@ -5,6 +5,8 @@ import argparse
 import json
 import re
 import shutil
+import csv
+from datetime import date
 from pathlib import Path
 from html import escape
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,6 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def build(domain: str, counter: int, privacy: Path, advertiser: Path, dest: Path) -> None:
     if not re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", domain) or '.' not in domain:
         raise ValueError("Verified HTTPS domain name required")
+    if '..' in domain or domain.startswith(('-', '.')) or domain.endswith(('-', '.')) or domain.count('.') < 1:
+        raise ValueError("Invalid canonical host")
+    if domain.lower().endswith(('.trycloudflare.com', '.localhost', '.local', '.invalid', '.test')):
+        raise ValueError("Cannot release to temporary or reserved host")
+    if len(domain) > 253 or any(len(label)>63 or not label for label in domain.split('.')):
+        raise ValueError("Invalid DNS label")
     if counter < 1000000:
         raise ValueError("Provide a distinct verified Metrika counter")
     approved = privacy.read_text(encoding="utf-8")
@@ -45,19 +53,47 @@ def build(domain: str, counter: int, privacy: Path, advertiser: Path, dest: Path
                         '<meta name="robots" content="index,follow">', 1)
     html = html.replace('<html lang="ru">', f'<html lang="ru" data-metrika-id="{counter}">', 1)
     url = f"https://{domain}/"
-    html = html.replace('</head>', f'<link rel="canonical" href="{url}">\n<meta property="og:url" content="{url}">\n</head>', 1)
+    # The source stays noindex. Production metadata is inserted once at release-build time.
+    html = html.replace('</head>',
+        f'<link rel="canonical" href="{url}">\n'
+        f'<meta property="og:url" content="{url}">\n'
+        '<meta property="og:locale" content="ru_RU">\n'
+        '<meta name="twitter:card" content="summary">\n'
+        '<meta name="referrer" content="strict-origin-when-cross-origin">\n'
+        '</head>', 1)
     legal = (f'<div class="wrap legal-details"><strong>{escape(data["legal_name"].strip())}</strong>'
              f'<span>{escape(data["physical_address"].strip())}</span>'
              f'<span>ИНН: {escape(data["inn"].strip())}</span>'
              + (f'<span>ОГРН/ОГРНИП: {escape(str(ogrn))}</span>' if ogrn else '')
              + '</div>')
+    if html.count('</footer>') != 1:
+        raise ValueError("Footer must have a single legal disclosure mount")
     html = html.replace('</footer>', legal + '</footer>', 1)
+    semantic_map = ROOT / "seo" / "semantic-map.csv"
+    with semantic_map.open(encoding="utf-8", newline="") as source:
+        keyword_rows = list(csv.DictReader(source, delimiter=";"))
+    names = list(dict.fromkeys(row["service_topic"] for row in keyword_rows))
+    if len(names) != 14:
+        raise ValueError("All fourteen real legal directions must be represented in semantic map")
+    if any(name not in html for name in names):
+        raise ValueError("A topic in the SEO map is missing from the landing")
+    area = [{"@type": "AdministrativeArea", "name": "Ростовская область"},
+            {"@type": "AdministrativeArea", "name": "Краснодарский край"}]
     schema = {
         "@context": "https://schema.org", "@type": "LegalService",
+        "@id": url + "#legal-service",
         "name": data['legal_name'].strip(), "url": url,
         "telephone": "+79172052125", "address": data['physical_address'].strip(),
-        "areaServed": [{"@type": "AdministrativeArea", "name": "Ростовская область"},
-                       {"@type": "AdministrativeArea", "name": "Краснодарский край"}]
+        "areaServed": area,
+        "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Направления юридической помощи",
+            "itemListElement": [
+                {"@type": "ListItem", "position": index, "item": {
+                    "@type": "Service", "name": name, "areaServed": area}}
+                for index, name in enumerate(names, 1)
+            ]
+        }
     }
     html = html.replace('</head>',
         '<script type="application/ld+json">' + json.dumps(schema, ensure_ascii=False).replace('<', '\\u003c')
@@ -67,7 +103,9 @@ def build(domain: str, counter: int, privacy: Path, advertiser: Path, dest: Path
     shutil.copytree(ROOT / 'api', dest / 'api')
     (dest / 'index.html').write_text(html, encoding='utf-8')
     (dest / 'privacy.html').write_text(approved, encoding='utf-8')
-    (dest / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nSitemap: {url}sitemap.xml\n', encoding='utf-8')
+    (dest / 'robots.txt').write_text(
+        f'User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: {url}sitemap.xml\n',
+        encoding='utf-8')
     (dest / 'sitemap.xml').write_text(
       f'<?xml version="1.0" encoding="UTF-8"?>\n'
       f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>{url}</loc></url></urlset>\n',
