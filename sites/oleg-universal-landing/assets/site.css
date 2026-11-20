@@ -7,11 +7,11 @@
 .ticker-track{display:flex;width:max-content;align-items:center;animation:ticker-slide 45s linear infinite;will-change:transform}
 .ticker-group{flex:0 0 auto;display:flex;align-items:center;gap:22px;padding-right:22px;white-space:nowrap;min-width:max-content}
 .ticker-item{display:inline-block;font-weight:750;text-transform:uppercase;font-size:13px;letter-spacing:.07em;line-height:1}
-.ticker-diamond{display:inline-block;flex:0 0 auto;width:9px;height:9px;border:1.5px solid #f7efdf;transform:rotate(45deg);opacity:.95}
+.ticker-star{color:#ffc7a9;font-size:17px;line-height:1}
 .ticker-screenreader{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .ticker:hover .ticker-track,.ticker:focus-within .ticker-track{animation-play-state:paused}
 @keyframes ticker-slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media(max-width:760px){.ticker{min-height:48px}.ticker-track{animation-duration:37s}.ticker-item{font-size:11px;letter-spacing:.045em}.ticker-group{gap:16px;padding-right:16px}.ticker-diamond{width:7px;height:7px}}
+@media(max-width:760px){.ticker{min-height:48px}.ticker-track{animation-duration:37s}.ticker-item{font-size:11px;letter-spacing:.045em}.ticker-group{gap:16px;padding-right:16px}.ticker-star{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.ticker-track{animation:none;will-change:auto}}
 
 /* Compact title for the confirmed free-online-consultation offer. */

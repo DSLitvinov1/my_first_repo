@@ -36,9 +36,9 @@ assert 'ticker-screenreader' in html and 'aria-hidden="true"' in html
 css=(ROOT/'assets/site.css').read_text()
 assert '@keyframes ticker-slide' in css and 'prefers-reduced-motion:reduce' in css
 
-assert html.count('class="ticker-diamond"') == 16
-assert 'ticker-star' not in html
-assert 'border:1.5px solid #f7efdf' in css
+assert html.count('class="ticker-star"') == 16
+assert 'ticker-diamond' not in html
+assert '.ticker-star{color:#ffc7a9' in css
 
 
 # The client-approved offer must be identical on the landing and in metadata.
