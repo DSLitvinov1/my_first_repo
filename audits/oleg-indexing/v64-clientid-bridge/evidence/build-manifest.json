@@ -1,0 +1,24 @@
+{
+  "mode": "V64_REBASED_ON_ACTUAL_TIMEWEB_SOURCE_OFFLINE_ONLY",
+  "production_modified": false,
+  "sites": [
+    {
+      "site": "potrebpravo.ru",
+      "counter": 114249897,
+      "form": "crm_form_fhi3n",
+      "html_changed": 25,
+      "client_bridge_sha256": "1b60a68b27ee7eafecbca192ff2c3351a6592d7ec60e24c1a7cdca19fc4f46af",
+      "analytics_changed": true,
+      "assistant_changed": true
+    },
+    {
+      "site": "semya-yurist.ru",
+      "counter": 114251443,
+      "form": "crm_form_ep5fd",
+      "html_changed": 20,
+      "client_bridge_sha256": "1b60a68b27ee7eafecbca192ff2c3351a6592d7ec60e24c1a7cdca19fc4f46af",
+      "analytics_changed": true,
+      "assistant_changed": true
+    }
+  ]
+}
