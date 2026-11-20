@@ -11,7 +11,7 @@ with TemporaryDirectory() as tmp:
     advertiser = base / "advertiser.json"
     advertiser.write_text(json.dumps({
         "review_status": "approved", "legal_name": "ООО Юридический Пример",
-        "physical_address": "Москва, Примерная улица, дом 17",
+        "physical_address": "Ростов-на-Дону, Примерная улица, дом 17",
         "inn": "1234567890", "ogrn_or_ogrnip": "1234567890123"
     }, ensure_ascii=False))
     try:
@@ -39,6 +39,8 @@ with TemporaryDirectory() as tmp:
     assert 'data-metrika-id="123456789"' in html
     assert "ООО Юридический Пример" in html and "ИНН: 1234567890" in html
     assert '"@type": "LegalService"' in html
+    assert '"name": "Ростовская область"' in html
+    assert '"name": "Краснодарский край"' in html
     assert "https://example.org/sitemap.xml" in (release/"robots.txt").read_text()
     assert (release/"api/lead.php").is_file()
     try:

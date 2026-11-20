@@ -21,7 +21,7 @@ assert 'data-metrika-id=' not in html and not (ROOT/'sitemap.xml').exists()
 assert 'id="step-one"' in html and 'id="step-two"' in html
 assert 'id="step-two" class="form-step" aria-labelledby="step-two-title" hidden' in html
 assert html.count('type="radio" name="service"')==5
-assert html.count('data-service=')==5 and html.count('data-topic=')==8
+assert html.count('data-service=')==5 and html.count('data-topic=')==14
 assert 'id="lead-consent"' in html and 'id="lead-submit"' in html
 assert 'Бесплатная консультация' in html and 'Дело под ключ' in html
 assert 'До 8–10 минут, без анализа документов' in html
@@ -43,4 +43,12 @@ css=(ROOT/'assets/site.css').read_text()
 assert '@media(max-width:760px)' in css and 'prefers-reduced-motion:reduce' in css
 assert '.service-option:has(input:checked)' in css
 subprocess.run(['node','--check',str(ROOT/'assets/site.js')],check=True)
-print('PASS: site2 static, two-step, 5 services, 8 directions, SEO noindex, attribution and separate CRM')
+print('PASS: site2 static, two-step, 5 services, 14 directions, SEO noindex, attribution and separate CRM')
+
+# New legal specialties requested by the client, with back-end allowlist.
+new_topics=('Арбитражные споры по договору подряда','Уголовные дела (адвокат)','Военное право','Медицинское право','Пенсионное право (перерасчёт пенсии)','Интеллектуальное право')
+for topic in new_topics:
+ assert f'data-topic="{topic}"' in html and f'<option>{topic}</option>' in html
+ assert topic in lead
+assert 'Ростовская область и Краснодарский край' in html
+assert 'МОСКВА И ОБЛАСТЬ' not in html

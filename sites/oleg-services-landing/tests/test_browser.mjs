@@ -72,6 +72,11 @@ try {
   // On-screen directions select the correct topic.
   await evaluate("document.querySelector('[data-topic=\"Трудовой спор\"]').click()");
   assert((await evaluate("document.querySelector('#topic').value"))==="Трудовой спор");
+  // The newly requested subjects must also preselect the actual CRM value.
+  await evaluate("document.querySelector('[data-topic=\"Арбитражные споры по договору подряда\"]').click()");
+  assert((await evaluate("document.querySelector('#topic').value"))==="Арбитражные споры по договору подряда");
+  assert((await evaluate("document.querySelectorAll('[data-topic]').length"))===14);
+
   console.log("PASS browser",width,"navigation, wizard, 5 services, preview blocked, attribution, no overflow");
  }
 }finally{
