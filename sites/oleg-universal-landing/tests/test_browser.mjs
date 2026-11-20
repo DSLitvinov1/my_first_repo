@@ -72,6 +72,14 @@ try {
         await sleep(900);
         const message=await evaluate("document.querySelector('#lead-status').textContent");
         assert(message.includes("Не удалось подтвердить"), "false CRM success: "+message);
+        // ChatGPT may append a referral marker. Hide only that marker, retain unrelated parameters.
+        await call("Page.navigate", {url:"http://127.0.0.1:"+appPort+"/?utm_source=chatgpt.com&utm_campaign=original&topic="+encodeURIComponent("Наследство")});
+        await sleep(550);
+        const clean=await evaluate("({source:new URL(location.href).searchParams.get('utm_source'),campaign:new URL(location.href).searchParams.get('utm_campaign'),topic:document.querySelector('#topic').value})");
+        assert(clean.source===null && clean.campaign==="original" && clean.topic==="Наследство", "referral cleanup failed: "+JSON.stringify(clean));
+        await call("Page.navigate", {url:"http://127.0.0.1:"+appPort+"/?utm_source=yandex&utm_campaign=original&topic="+encodeURIComponent("Наследство")});
+        await sleep(550);
+        assert((await evaluate("new URL(location.href).searchParams.get('utm_source')"))==="yandex", "real paid attribution removed");
         console.log("PASS browser", width, "no overflow, form validation, no fake CRM, consent, ads topic");
     }
 } finally {
