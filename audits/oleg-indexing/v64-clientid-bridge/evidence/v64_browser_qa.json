@@ -1,0 +1,260 @@
+{
+  "mode": "ISOLATED_V64_LOCAL_STAGE_BROWSER_ALL_EXTERNAL_MOCKED",
+  "cases": 4,
+  "checks": 52,
+  "failed": 0,
+  "results": [
+    {
+      "host": "potrebpravo.ru",
+      "consent": "no",
+      "checks": [
+        {
+          "name": "analytics not loaded before fresh consent",
+          "pass": true
+        },
+        {
+          "name": "bridge active on exact site",
+          "pass": true
+        },
+        {
+          "name": "old consent remains untrusted",
+          "pass": true
+        },
+        {
+          "name": "new consent saved",
+          "pass": true
+        },
+        {
+          "name": "analytics follows consent",
+          "pass": true
+        },
+        {
+          "name": "link own hosted form",
+          "pass": true
+        },
+        {
+          "name": "direct link CID gated",
+          "pass": true
+        },
+        {
+          "name": "iframe exact own form",
+          "pass": true
+        },
+        {
+          "name": "iframe CID gated",
+          "pass": true
+        },
+        {
+          "name": "no PII query in iframe",
+          "pass": true
+        },
+        {
+          "name": "no outbound write or CRM submit",
+          "pass": true
+        },
+        {
+          "name": "Yandex never loaded on deny",
+          "pass": true
+        }
+      ],
+      "failures": [],
+      "errors": [],
+      "externalPost": 0,
+      "externalGet": 1,
+      "yandexGet": 0
+    },
+    {
+      "host": "potrebpravo.ru",
+      "consent": "yes",
+      "checks": [
+        {
+          "name": "analytics not loaded before fresh consent",
+          "pass": true
+        },
+        {
+          "name": "bridge active on exact site",
+          "pass": true
+        },
+        {
+          "name": "old consent remains untrusted",
+          "pass": true
+        },
+        {
+          "name": "new consent saved",
+          "pass": true
+        },
+        {
+          "name": "analytics follows consent",
+          "pass": true
+        },
+        {
+          "name": "link own hosted form",
+          "pass": true
+        },
+        {
+          "name": "direct link CID gated",
+          "pass": true
+        },
+        {
+          "name": "true callback ID on form link",
+          "pass": true
+        },
+        {
+          "name": "iframe exact own form",
+          "pass": true
+        },
+        {
+          "name": "iframe CID gated",
+          "pass": true
+        },
+        {
+          "name": "iframe CID matches actual Yandex callback",
+          "pass": true
+        },
+        {
+          "name": "no PII query in iframe",
+          "pass": true
+        },
+        {
+          "name": "no outbound write or CRM submit",
+          "pass": true
+        },
+        {
+          "name": "Yandex never loaded on deny",
+          "pass": true
+        }
+      ],
+      "failures": [],
+      "errors": [],
+      "externalPost": 0,
+      "externalGet": 3,
+      "yandexGet": 2
+    },
+    {
+      "host": "semya-yurist.ru",
+      "consent": "no",
+      "checks": [
+        {
+          "name": "analytics not loaded before fresh consent",
+          "pass": true
+        },
+        {
+          "name": "bridge active on exact site",
+          "pass": true
+        },
+        {
+          "name": "old consent remains untrusted",
+          "pass": true
+        },
+        {
+          "name": "new consent saved",
+          "pass": true
+        },
+        {
+          "name": "analytics follows consent",
+          "pass": true
+        },
+        {
+          "name": "link own hosted form",
+          "pass": true
+        },
+        {
+          "name": "direct link CID gated",
+          "pass": true
+        },
+        {
+          "name": "iframe exact own form",
+          "pass": true
+        },
+        {
+          "name": "iframe CID gated",
+          "pass": true
+        },
+        {
+          "name": "no PII query in iframe",
+          "pass": true
+        },
+        {
+          "name": "no outbound write or CRM submit",
+          "pass": true
+        },
+        {
+          "name": "Yandex never loaded on deny",
+          "pass": true
+        }
+      ],
+      "failures": [],
+      "errors": [],
+      "externalPost": 0,
+      "externalGet": 1,
+      "yandexGet": 0
+    },
+    {
+      "host": "semya-yurist.ru",
+      "consent": "yes",
+      "checks": [
+        {
+          "name": "analytics not loaded before fresh consent",
+          "pass": true
+        },
+        {
+          "name": "bridge active on exact site",
+          "pass": true
+        },
+        {
+          "name": "old consent remains untrusted",
+          "pass": true
+        },
+        {
+          "name": "new consent saved",
+          "pass": true
+        },
+        {
+          "name": "analytics follows consent",
+          "pass": true
+        },
+        {
+          "name": "link own hosted form",
+          "pass": true
+        },
+        {
+          "name": "direct link CID gated",
+          "pass": true
+        },
+        {
+          "name": "true callback ID on form link",
+          "pass": true
+        },
+        {
+          "name": "iframe exact own form",
+          "pass": true
+        },
+        {
+          "name": "iframe CID gated",
+          "pass": true
+        },
+        {
+          "name": "iframe CID matches actual Yandex callback",
+          "pass": true
+        },
+        {
+          "name": "no PII query in iframe",
+          "pass": true
+        },
+        {
+          "name": "no outbound write or CRM submit",
+          "pass": true
+        },
+        {
+          "name": "Yandex never loaded on deny",
+          "pass": true
+        }
+      ],
+      "failures": [],
+      "errors": [],
+      "externalPost": 0,
+      "externalGet": 3,
+      "yandexGet": 2
+    }
+  ]
+}
