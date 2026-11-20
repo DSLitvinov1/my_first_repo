@@ -39,3 +39,9 @@ assert '@keyframes ticker-slide' in css and 'prefers-reduced-motion:reduce' in c
 assert html.count('class="ticker-diamond"') == 16
 assert 'ticker-star' not in html
 assert 'border:1.5px solid #f7efdf' in css
+
+
+# The client-approved offer must be identical on the landing and in metadata.
+assert 'Бесплатная юридическая<br><span>консультация онлайн</span><small>по всем отраслям права</small>' in html
+assert '<title>Бесплатная юридическая консультация онлайн' in html
+assert 'content="Бесплатная юридическая консультация онлайн по всем отраслям права"' in html
