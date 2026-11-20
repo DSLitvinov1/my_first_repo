@@ -36,7 +36,7 @@ assert 'ticker-screenreader' in html and 'aria-hidden="true"' in html
 css=(ROOT/'assets/site.css').read_text()
 assert '@keyframes ticker-slide' in css and 'prefers-reduced-motion:reduce' in css
 
-assert html.count('class="ticker-star"') == 16
+assert html.count('class="ticker-star"') == 28
 assert 'ticker-diamond' not in html
 assert '.ticker-star{color:#ffc7a9' in css
 
@@ -49,3 +49,12 @@ assert 'content="Бесплатная юридическая консульта�
 # User-approved regions are in the public copy and do not revert to Moscow.
 assert 'Ростовская область и Краснодарский край' in html
 assert 'МОСКВА И МОСКОВСКАЯ ОБЛАСТЬ' not in html
+
+# 14 law directions in both landing versions (8 originals + 6 client additions).
+assert html.count('data-topic=') == 14
+assert html.count('class="ticker-item"') == 28
+new_specialties = ('Арбитражные споры по договору подряда', 'Уголовные дела (адвокат)', 'Военное право', 'Медицинское право', 'Пенсионное право (перерасчёт пенсии)', 'Интеллектуальное право')
+for name in new_specialties:
+    assert f'data-topic="{name}"' in html
+    assert f'<option>{name}</option>' in html
+    assert name in api

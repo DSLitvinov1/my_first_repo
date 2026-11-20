@@ -56,7 +56,7 @@ try {
         await sleep(1000);
         const state=await evaluate("({width:innerWidth,scroll:document.documentElement.scrollWidth,topic:document.querySelector('#topic').value,headings:document.querySelectorAll('h1').length,services:document.querySelectorAll('[data-topic]').length,form:!!document.querySelector('#lead-form'),cookieVisible:!document.querySelector('#cookie-banner').hidden})");
         assert(state.scroll <= state.width+1, "horizontal scrolling "+JSON.stringify(state));
-        assert(state.topic==="Наследство" && state.headings===1 && state.services===8 && state.form);
+        assert(state.topic==="Наследство" && state.headings===1 && state.services===14 && state.form);
         if (!state.cookieVisible) await evaluate("document.querySelector('#cookie-settings').click()");
         assert(await evaluate("!document.querySelector('#cookie-banner').hidden"));
         await evaluate("document.querySelector('#cookie-deny').click()");
@@ -64,6 +64,8 @@ try {
         assert(!(await evaluate("!!window.ym")), "analytics loaded after reject");
         await evaluate("document.querySelector('[data-topic=\"Судебный спор\"]').click()");
         assert((await evaluate("document.querySelector('#topic').value"))==="Судебный спор");
+        await evaluate("document.querySelector('[data-topic=\"Арбитражные споры по договору подряда\"]').click()");
+        assert((await evaluate("document.querySelector('#topic').value"))==="Арбитражные споры по договору подряда");
         await evaluate("document.querySelector('#lead-submit').click()");
         assert((await evaluate("document.querySelector('#lead-status').textContent")).includes("Укажите тему"));
         await evaluate("document.querySelector('#client-name').value='Тестовый контакт';document.querySelector('#client-phone').value='+7 (999) 000-00-00';document.querySelector('#lead-consent').checked=true;document.querySelector('#lead-submit').click()");
