@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#102c29">
+<meta name="description" content="Юридическая помощь онлайн в Москве и Московской области. Выберите формат: бесплатная или платная консультация, подготовка документов, дистанционное сопровождение или дело под ключ.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Юридическая помощь — выберите подходящий формат">
+<meta property="og:description" content="Опишите ситуацию, затем выберите, какая юридическая помощь вам нужна.">
+<title>Юридическая помощь онлайн — выберите формат консультации | ПравоФормат</title>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a href="#main" class="skip">К содержанию</a>
+<header class="header">
+  <div class="shell header-row">
+    <a href="#main" class="brand" aria-label="ПравоФормат — главная">
+      <span class="brand-symbol" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span class="brand-text">ПРАВО<span>ФОРМАТ</span><small>юридическая помощь онлайн</small></span>
+    </a>
+    <nav aria-label="Главное меню"><a href="#formats">Форматы помощи</a><a href="#directions">Направления</a><a href="#consultation">Оставить заявку</a></nav>
+    <a class="contact-phone" href="tel:+79172052125" data-track="phone"><small>Связаться с юристом</small><strong>+7 (917) 205-21-25</strong></a>
+  </div>
+</header>
+<main id="main">
+<section class="hero">
+ <div class="hero-orbit orbit-one" aria-hidden="true"></div><div class="hero-orbit orbit-two" aria-hidden="true"></div>
+ <div class="shell hero-layout">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="eyebrow-square"></span> ЮРИДИЧЕСКАЯ ПОМОЩЬ · МОСКВА И ОБЛАСТЬ</p>
+    <h1>Юридический вопрос?<br><em>Найдём формат помощи.</em></h1>
+    <p class="hero-lead">Опишите ситуацию в нескольких словах. Затем выберите, что нужно: консультация, документы или сопровождение дела.</p>
+    <div class="hero-actions"><a href="#consultation" class="action action-lime">Подобрать помощь <span aria-hidden="true">↗</span></a><a href="#formats" class="hero-text-link">Посмотреть варианты <span aria-hidden="true">↗</span></a></div>
+    <div class="hero-footnote"><span class="note-index">01 / 02</span><span>Два простых шага до обращения<br>Ничего лишнего</span></div>
+  </div>
+  <div id="consultation" class="wizard-card">
+   <div class="wizard-topline"><span class="tiny-tag">ОБРАЩЕНИЕ К ЮРИСТУ</span><span class="wizard-counter" id="step-counter">ШАГ 01 / 02</span></div>
+   <div class="progress" aria-hidden="true"><span class="progress-fill" id="progress-fill"></span></div>
+   <form id="lead-form" novalidate>
+    <section id="step-one" class="form-step" aria-labelledby="step-one-title">
+     <h2 id="step-one-title">Расскажите, что случилось</h2>
+     <p class="step-desc">Оставьте контакты и коротко опишите ваш вопрос.</p>
+     <label for="client-name">Как к вам обращаться</label>
+     <input id="client-name" name="name" autocomplete="name" maxlength="80" placeholder="Ваше имя" required>
+     <label for="client-phone">Номер телефона</label>
+     <input id="client-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="22" placeholder="+7 (999) 000-00-00" required>
+     <label for="client-message">В чём вопрос?</label>
+     <textarea id="client-message" name="message" rows="3" minlength="5" maxlength="1000" placeholder="Например: спор по наследству, нужна помощь с документами…" required></textarea>
+     <button type="button" id="step-next" class="action action-ink form-next">Далее — выбрать помощь <span aria-hidden="true">→</span></button>
+    </section>
+    <section id="step-two" class="form-step" aria-labelledby="step-two-title" hidden>
+     <h2 id="step-two-title" tabindex="-1">Какая помощь нужна?</h2>
+     <p class="step-desc">Выберите один вариант. Уточнить детали можно будет с юристом.</p>
+     <fieldset class="service-options" id="service-options">
+       <legend class="visually-hidden">Формат юридической помощи</legend>
+       <label class="service-option"><input type="radio" name="service" value="free" required><span class="option-icon">01</span><span><strong>Бесплатная консультация</strong><small>До 8–10 минут, без анализа документов</small></span><span class="option-check" aria-hidden="true">✓</span></label>
+       <label class="service-option"><input type="radio" name="service" value="paid"><span class="option-icon">02</span><span><strong>Платная консультация</strong><small>Очная или по видео, с изучением документов</small></span><span class="option-check" aria-hidden="true">✓</span></label>
+       <label class="service-option"><input type="radio" name="service" value="documents"><span class="option-icon">03</span><span><strong>Составление документов</strong><small>Заявления, претензии, договоры, иски</small></span><span class="option-check" aria-hidden="true">✓</span></label>
+       <label class="service-option"><input type="radio" name="service" value="remote"><span class="option-icon">04</span><span><strong>Дистанционное сопровождение</strong><small>Помощь в ходе дела без постоянных встреч</small></span><span class="option-check" aria-hidden="true">✓</span></label>
+       <label class="service-option"><input type="radio" name="service" value="turnkey"><span class="option-icon">05</span><span><strong>Дело под ключ</strong><small>Комплексное сопровождение юристом</small></span><span class="option-check" aria-hidden="true">✓</span></label>
+     </fieldset>
+     <label for="topic">Направление права <span class="muted-label">(если знаете)</span></label>
+     <select id="topic" name="topic">
+      <option value="Другая юридическая проблема">Помогите определить</option>
+      <option>Семейное право</option><option>Жилищные вопросы</option><option>Наследство</option><option>Недвижимость и земля</option><option>Долги и кредиты</option><option>Трудовой спор</option><option>Защита прав потребителей</option><option>Судебный спор</option>
+     </select>
+     <label class="consent"><input id="lead-consent" type="checkbox" required><span>Согласен(на) на <a href="privacy.html" target="_blank" rel="noopener">обработку персональных данных</a> для ответа на обращение.</span></label>
+     <div class="wizard-actions"><button id="step-back" type="button" class="back-button"><span aria-hidden="true">←</span> Назад</button><button id="lead-submit" type="submit" class="action action-ink">Отправить заявку <span aria-hidden="true">↗</span></button></div>
+    </section>
+    <div class="hidden-field" aria-hidden="true"><label for="company-site">Не заполнять</label><input id="company-site" type="text" name="website" tabindex="-1" autocomplete="off"></div>
+    <p class="form-status" id="lead-status" role="status" aria-live="polite"></p>
+   </form>
+   <div class="wizard-bottom"><span>БЕЗ ОБЯЗАТЕЛЬНОЙ РЕГИСТРАЦИИ</span><span class="dot"></span><span>МОСКВА И МО</span></div>
+  </div>
+ </div>
+</section>
+<section id="formats" class="formats">
+ <div class="shell">
+  <div class="section-header"><div><p class="section-index">01 — ФОРМАТЫ ПОМОЩИ</p><h2>Под задачу.<br><span>Не по шаблону.</span></h2></div><p>Пять вариантов обращения — от короткого вопроса до сопровождения дела.</p></div>
+  <div class="format-grid">
+   <a href="#consultation" data-service="free" class="format-tile"><span class="format-number">01</span><span class="format-arrow" aria-hidden="true">↗</span><span class="format-name">Бесплатная<br>консультация</span><span class="format-description">До 8–10 минут, без изучения документов</span></a>
+   <a href="#consultation" data-service="paid" class="format-tile"><span class="format-number">02</span><span class="format-arrow" aria-hidden="true">↗</span><span class="format-name">Платная<br>консультация</span><span class="format-description">С документами и обсуждением перспектив</span></a>
+   <a href="#consultation" data-service="documents" class="format-tile"><span class="format-number">03</span><span class="format-arrow" aria-hidden="true">↗</span><span class="format-name">Подготовка<br>документов</span><span class="format-description">Иски, претензии, заявления и договоры</span></a>
+   <a href="#consultation" data-service="remote" class="format-tile"><span class="format-number">04</span><span class="format-arrow" aria-hidden="true">↗</span><span class="format-name">Сопровождение<br>дистанционно</span><span class="format-description">Связь с юристом на этапах ведения дела</span></a>
+   <a href="#consultation" data-service="turnkey" class="format-tile"><span class="format-number">05</span><span class="format-arrow" aria-hidden="true">↗</span><span class="format-name">Сопровождение<br>под ключ</span><span class="format-description">Комплексная юридическая помощь</span></a>
+  </div>
+  <p class="services-note">Условия и стоимость платных услуг уточняются при обращении. Исход дела не гарантируется.</p>
+ </div>
+</section>
+<section id="directions" class="directions">
+ <div class="shell direction-layout">
+  <div><p class="section-index">02 — НАПРАВЛЕНИЯ</p><h2>С какими вопросами<br>можно обратиться</h2><p>Выберите тему или просто опишите ситуацию — поможем определить направление.</p></div>
+  <div class="direction-list" aria-label="Выбрать направление права">
+   <a href="#consultation" data-topic="Семейное право">Семейные вопросы <span>↗</span></a>
+   <a href="#consultation" data-topic="Жилищные вопросы">Жильё и ЖКХ <span>↗</span></a>
+   <a href="#consultation" data-topic="Наследство">Наследство <span>↗</span></a>
+   <a href="#consultation" data-topic="Недвижимость и земля">Недвижимость и земля <span>↗</span></a>
+   <a href="#consultation" data-topic="Долги и кредиты">Долги и кредиты <span>↗</span></a>
+   <a href="#consultation" data-topic="Трудовой спор">Трудовые споры <span>↗</span></a>
+   <a href="#consultation" data-topic="Защита прав потребителей">Права потребителей <span>↗</span></a>
+   <a href="#consultation" data-topic="Судебный спор">Судебные споры <span>↗</span></a>
+  </div>
+ </div>
+</section>
+<section class="closing"><div class="shell closing-row"><div><p class="section-index">НАЧАТЬ ПРОСТО</p><h2>Расскажите, что произошло.</h2></div><a class="action action-lime" href="#consultation">Начать обращение <span aria-hidden="true">↗</span></a></div></section>
+</main>
+<footer class="footer"><div class="shell footer-row"><span>© <span id="year">2026</span> ПравоФормат · Москва и область</span><a href="privacy.html">Обработка персональных данных</a><button id="cookie-settings" type="button">Настройки аналитики</button></div></footer>
+<div id="cookie-banner" class="cookie-banner" role="dialog" aria-label="Настройки аналитики" hidden><p>Разрешить статистику посещений? Отказ не влияет на заявку.</p><div><button id="cookie-deny" type="button">Отказать</button><button id="cookie-allow" type="button">Разрешить</button></div></div>
+</body>
+</html>
