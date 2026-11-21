@@ -20,7 +20,8 @@ def good(site="potrebpravo.ru", deal=18, stage="Консультация про�
         "deal_id":deal, "site":site, "form_code":cfg["form"],
         "crm_source":cfg["source"],"client_id":"1700654321987654321",
         "analytics_consent_confirmed":True, "lead_consent_confirmed":True,
-        "crm_stage":stage, "crm_stage_verified":True, "event_timestamp": NOW-1000
+        "crm_stage":stage, "crm_stage_verified":True, "event_timestamp": NOW-1000,
+        "is_test":False, "qualified_lead_confirmed":True, "responsible_oleg_verified":True
     }
 
 class RouteTests(unittest.TestCase):
@@ -42,17 +43,34 @@ class RouteTests(unittest.TestCase):
     def test_reject_no_consent_and_clientid(self):
         for field,value in (("analytics_consent_confirmed",False),("lead_consent_confirmed",False),
                             ("client_id",""),("client_id","123456<script>"),("client_id",123456),
-                            ("crm_stage_verified",False)):
+                            ("crm_stage_verified",False),("qualified_lead_confirmed",False),
+                            ("responsible_oleg_verified",False),("is_test",True),("is_test",None)):
             rec=good();rec[field]=value
             _,reasons=mod.route_records([rec],NOW)
             self.assertEqual(reasons.get("eligible",0),0,(field,value))
     def test_status_and_timestamp_gate(self):
-        for field,value in (("crm_stage","Новая"),("crm_stage","В работе"),("crm_stage",[]),
+        for field,value in (("crm_stage","Новая"),("crm_stage","Отказ/Закрыта"),("crm_stage",[]),
                             ("event_timestamp",NOW+20),("event_timestamp",NOW-22*86400),
                             ("deal_id",0)):
             rec=good();rec[field]=value
             _,reasons=mod.route_records([rec],NOW)
             self.assertEqual(reasons.get("eligible",0),0,(field,value))
+    def test_qualified_lead_both_sites_routes_to_distinct_offline_goals(self):
+        rows=[good("potrebpravo.ru",18,"В работе"),good("semya-yurist.ru",22,"В работе")]
+        routed,reason=mod.route_records(rows,NOW)
+        self.assertEqual(reason,{"eligible":2})
+        self.assertEqual([(r.deal_id,r.target) for r in routed[114249897]],[(18,"oleg_crm_lead_confirmed")])
+        self.assertEqual([(r.deal_id,r.target) for r in routed[114251443]],[(22,"oleg_crm_lead_confirmed")])
+    def test_test_leads_cannot_trigger_any_crm_goal(self):
+        for stage in ("В работе","Консультация проведена","Договор заключён"):
+            for v in (True,None):
+                rec=good(stage=stage);rec["is_test"]=v
+                routed,reasons=mod.route_records([rec],NOW)
+                self.assertEqual(sum(map(len,routed.values())),0,(stage,v))
+                self.assertEqual(reasons.get("test_or_unverified_lead_rejected"),1)
+            rec=good(stage=stage);del rec["is_test"]
+            routed,reasons=mod.route_records([rec],NOW)
+            self.assertEqual(reasons.get("eligible",0),0)
     def test_reject_pii_and_limit(self):
         rec=good();rec["phone"]="+79998887766"
         _,reasons=mod.route_records([rec],NOW)
