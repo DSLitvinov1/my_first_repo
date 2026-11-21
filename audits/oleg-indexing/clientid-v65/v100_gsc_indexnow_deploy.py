@@ -39,7 +39,9 @@ def main():
   need(bool(re.fullmatch(r'[a-f0-9]{32}',key)),'INVALID_INDEXNOW_KEY')
   folder=ROOT/host/'public_html'
   need(folder.is_dir() and not folder.is_symlink(),'UNEXPECTED_ROOT_'+host)
-  page=folder/'index.html';old=page.read_bytes()
+  page=folder/'index.html'
+  need(page.is_file() and not page.is_symlink(),'INDEX_FILE_INVALID_'+host)
+  old=page.read_bytes()
   need(sha(old)==ORIGINAL_HASHES[host],'LIVE_HTML_SOURCE_DRIFT_'+host)
   meta=f'<meta name="google-site-verification" content="{token}" />'.encode('ascii')
   need(meta not in old,'TAG_ALREADY_APPLIED_'+host)
