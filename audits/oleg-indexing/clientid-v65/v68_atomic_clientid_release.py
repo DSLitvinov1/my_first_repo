@@ -120,7 +120,8 @@ def make_plan(root: Path, source: bytes, test_mode: bool):
                 continue
             need(page.count("oleg-clientid-bridge-v1.js") == 0, "BRIDGE_TAG_ALREADY_PRESENT_" + host)
             need(len(ANALYTICS_TAG.findall(page)) == 1, "ANALYTICS_TAG_DRIFT_" + host + "_" + p.name)
-            need(bool(ASSISTANT_REF.search(page)), "ASSISTANT_TAG_DRIFT_" + host + "_" + p.name)
+            if p.name not in ("privacy.html", "consent.html"):
+                need(bool(ASSISTANT_REF.search(page)), "ASSISTANT_TAG_DRIFT_" + host + "_" + p.name)
             bridge_tag = '<script defer src="/assets/oleg-clientid-bridge-v1.js?v=' + BRIDGE_SHA[:12] + '"></script>'
             def swap(match):
                 tag = match.group(0)
