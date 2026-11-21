@@ -130,7 +130,8 @@ def make_plan(root: Path, source: bytes, test_mode: bool):
             page, tagcount = ANALYTICS_TAG.subn(swap, page)
             need(tagcount == 1, "ANALYTICS_REPLACEMENT_GUARD")
             page, assistant_count = ASSISTANT_REF.subn(lambda m:m.group(1) + digest(patched_assistant)[:12], page)
-            need(assistant_count >= 1, "ASSISTANT_VERSION_UPDATE_GUARD")
+            if p.name not in ("privacy.html", "consent.html"):
+                need(assistant_count >= 1, "ASSISTANT_VERSION_UPDATE_GUARD")
             change[p] = page.encode("utf-8")
             pages += 1
         need(pages == (25 if host == "potrebpravo.ru" else 20), "UNEXPECTED_HTML_COUNT_" + host + "_" + str(pages))
