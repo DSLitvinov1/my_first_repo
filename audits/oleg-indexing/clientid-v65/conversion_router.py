@@ -21,6 +21,7 @@ CONFIG = {
     "semya-yurist.ru": {"counter": 114251443, "form": "crm_form_ep5fd", "source": "Сайт — Семейное право"},
 }
 GOALS = {
+    "В работе": "oleg_crm_lead_confirmed",
     "Консультация проведена": "oleg_crm_consultation_completed",
     "Договор заключён": "oleg_crm_contract_signed",
 }
@@ -52,7 +53,8 @@ def validate_record(record: object, now: int) -> Conversion:
     # Explicit whitelist: reject PII-rich exports instead of accidentally storing them.
     allowed = {"deal_id", "site", "form_code", "crm_source", "client_id",
                "analytics_consent_confirmed", "lead_consent_confirmed",
-               "crm_stage", "crm_stage_verified", "event_timestamp"}
+               "crm_stage", "crm_stage_verified", "event_timestamp",
+               "is_test", "qualified_lead_confirmed", "responsible_oleg_verified"}
     if set(record) - allowed:
         raise InvalidRecord("unexpected_fields_PII_guard")
     site = record.get("site")
@@ -69,6 +71,14 @@ def validate_record(record: object, now: int) -> Conversion:
         raise InvalidRecord("lead_consent_missing")
     if record.get("crm_stage_verified") is not True:
         raise InvalidRecord("crm_stage_not_verified")
+    # The three offline goals represent real, qualified CRM outcomes, never QA/test data.
+    # Explicit False is required; missing or null flags must fail closed.
+    if record.get("is_test") is not False:
+        raise InvalidRecord("test_or_unverified_lead_rejected")
+    if record.get("qualified_lead_confirmed") is not True:
+        raise InvalidRecord("not_qualified_crm_lead")
+    if record.get("responsible_oleg_verified") is not True:
+        raise InvalidRecord("crm_responsible_not_verified")
     deal = record.get("deal_id")
     if type(deal) is not int or not 1 <= deal <= 100000000:
         raise InvalidRecord("deal_id_invalid")
